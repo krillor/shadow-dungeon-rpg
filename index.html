@@ -5256,6 +5256,14 @@ function renderEquip(el){
       +'</div>';
   });
   el.innerHTML='<div class="panel">'
+    +'<div class="panel-title"><span class="icon">⚡</span> 快捷操作</div>'
+    +'<div class="btn-group">'
+    +'<button class="btn btn-primary" onclick="autoEquipAll()" style="flex:1">🤖 一键穿戴</button>'
+    +'<button class="btn btn-primary" onclick="autoEnhanceAll()" style="flex:1">🔥 一键强化</button>'
+    +'</div>'
+    +'<div class="text-xs text-dim" style="margin-top:6px">一键穿戴：高品质装备优先给高战力英雄 | 一键强化：优先强化高品质已穿戴装备</div>'
+    +'</div>'
+    +'<div class="panel">'
     +'<div class="panel-title"><span class="icon">🎒</span> 背包 ('+unequipped.length+'件)</div>'
     +(unequipped.length===0?'<div class="text-dim">背包为空</div>':unequippedHTML)
     +'</div>'
@@ -5299,6 +5307,114 @@ function unequipFromHero(heroUid,slot){
   unequipItem(heroUid,slot);
   showToast('已卸下装备');
   renderCurrentTab();
+}
+
+// ==================== 一键穿戴 ====================
+function autoEquipAll(){
+  // 获取所有未装备的装备
+  var unequipped=G.equipment.filter(function(e){return e.heroUid===null});
+  if(unequipped.length===0){showToast('没有可穿戴的装备');return}
+  
+  // 英雄按战力排序（高品质优先，同品质按等级）
+  var qualityOrder={mythic:5,legendary:4,epic:3,rare:2,common:1};
+  var sortedHeroes=G.heroes.slice().sort(function(a,b){
+    var qa=qualityOrder[a.quality]||0, qb=qualityOrder[b.quality]||0;
+    if(qa!==qb)return qb-qa;
+    return b.level-a.level;
+  });
+  
+  // 装备按品质排序（高品质优先，同品质按强化等级）
+  var sortedEquip=unequipped.slice().sort(function(a,b){
+    var ta=EQUIP_TEMPLATES.find(function(t){return t.id===a.id});
+    var tb=EQUIP_TEMPLATES.find(function(t){return t.id===b.id});
+    if(!ta||!tb)return 0;
+    var qa=qualityOrder[ta.quality]||0, qb=qualityOrder[tb.quality]||0;
+    if(qa!==qb)return qb-qa;
+    return (b.enhance||0)-(a.enhance||0);
+  });
+  
+  var equippedCount=0;
+  sortedEquip.forEach(function(eq){
+    var tpl=EQUIP_TEMPLATES.find(function(t){return t.id===eq.id});
+    if(!tpl)return;
+    var slot=tpl.type==='weapon'?'weapon':tpl.type==='armor'?'armor':'accessory';
+    
+    // 找到该槽位未装备的最高优先级英雄
+    for(var i=0;i<sortedHeroes.length;i++){
+      var hero=sortedHeroes[i];
+      if(hero.equipment[slot]==null){
+        // 装备
+        hero.equipment[slot]=eq.uid;
+        eq.heroUid=hero.uid;
+        equippedCount++;
+        break;
+      }
+    }
+  });
+  
+  saveGame();
+  renderCurrentTab();
+  showToast('✅ 一键穿戴完成！共装备 '+equippedCount+' 件');
+}
+
+// ==================== 一键强化 ====================
+function autoEnhanceAll(){
+  // 获取所有已穿戴装备，按品质排序（高品质优先）
+  var qualityOrder={mythic:5,legendary:4,epic:3,rare:2,common:1};
+  var equipped=G.equipment.filter(function(e){return e.heroUid!==null});
+  if(equipped.length===0){showToast('没有已穿戴的装备');return}
+  
+  // 按品质排序（高品质优先），同品质按强化等级低的优先
+  equipped.sort(function(a,b){
+    var ta=EQUIP_TEMPLATES.find(function(t){return t.id===a.id});
+    var tb=EQUIP_TEMPLATES.find(function(t){return t.id===b.id});
+    if(!ta||!tb)return 0;
+    var qa=qualityOrder[ta.quality]||0, qb=qualityOrder[tb.quality]||0;
+    if(qa!==qb)return qb-qa;
+    return (a.enhance||0)-(b.enhance||0);
+  });
+  
+  var totalEnhanced=0;
+  var totalGold=0;
+  var totalIron=0;
+  
+  equipped.forEach(function(eq){
+    // 先卸下
+    var heroUid=eq.heroUid;
+    eq.heroUid=null;
+    
+    var level=eq.enhance||0;
+    while(level<10){
+      var ironCost=10+level*5;
+      var goldCost=50+level*30;
+      
+      if((G.resources.iron||0)<ironCost||(G.resources.gold||0)<goldCost)break;
+      
+      G.resources.iron-=ironCost;
+      G.resources.gold-=goldCost;
+      totalGold+=goldCost;
+      totalIron+=ironCost;
+      level++;
+    }
+    
+    if(level>(eq.enhance||0)){
+      eq.enhance=level;
+      totalEnhanced++;
+    }
+    
+    // 重新穿上
+    eq.heroUid=heroUid;
+  });
+  
+  saveGame();
+  updateResUI();
+  renderCurrentTab();
+  
+  if(totalEnhanced>0){
+    showToast('✅ 一键强化完成！强化 '+totalEnhanced+' 件装备 (💰'+totalGold+' ⛏️'+totalIron+')');
+  }else{
+    showToast('⚠️ 没有装备可以强化（资源不足或已满级）');
+  }
 }
 
 // ==================== 装备强化与分解 ====================
