@@ -305,9 +305,71 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .equip-stats{color:var(--green);font-size:10px}
 
 /* 模态框 */
-.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center;padding:10px}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center;padding:10px;animation:fadeIn .2s ease}
 .modal{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto}
 .modal-title{color:var(--gold);font-size:14px;font-weight:bold;margin-bottom:10px}
+
+/* ===== 英雄详情弹窗增强样式 ===== */
+.hero-detail-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:150;display:flex;align-items:center;justify-content:center;padding:10px;animation:fadeIn .25s ease}
+.hero-detail-panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.hero-detail-panel::-webkit-scrollbar{width:4px}
+.hero-detail-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.hd-header{display:flex;align-items:center;gap:14px;padding:16px;border-bottom:1px solid var(--border);position:relative}
+.hd-close{position:absolute;top:10px;right:12px;background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;padding:4px;line-height:1;transition:color .2s}
+.hd-close:hover{color:var(--gold)}
+.hd-avatar{width:64px;height:64px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:36px;flex-shrink:0;border:2px solid var(--border)}
+.hd-name{font-size:18px;font-weight:bold;line-height:1.3}
+.hd-meta{font-size:11px;color:var(--text2);margin-top:4px}
+.hd-lore{font-size:11px;color:var(--text3);font-style:italic;margin-top:6px;line-height:1.5}
+.hd-section{padding:12px 16px;border-bottom:1px solid rgba(42,42,74,.5)}
+.hd-section:last-child{border-bottom:none}
+.hd-section-title{color:var(--gold);font-size:13px;font-weight:bold;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.hd-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.hd-stat-item{background:rgba(0,0,0,.25);border-radius:8px;padding:8px;text-align:center}
+.hd-stat-icon{font-size:16px;display:block;margin-bottom:2px}
+.hd-stat-val{font-size:15px;font-weight:bold;color:var(--text);display:block}
+.hd-stat-label{font-size:9px;color:var(--text2);display:block;margin-top:2px}
+.hd-stat-bar{height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:4px;overflow:hidden}
+.hd-stat-bar-fill{height:100%;border-radius:2px;transition:width .4s ease}
+.hd-quality-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:bold}
+.hd-quality-common{background:rgba(150,150,150,.2);color:#aaa;border:1px solid rgba(150,150,150,.3)}
+.hd-quality-rare{background:rgba(50,120,220,.15);color:#5b9bd5;border:1px solid rgba(50,120,220,.3)}
+.hd-quality-epic{background:rgba(140,50,220,.15);color:#b06ce6;border:1px solid rgba(140,50,220,.3)}
+.hd-quality-legendary{background:rgba(220,160,30,.15);color:#e8c840;border:1px solid rgba(220,160,30,.3)}
+.hd-quality-mythic{background:rgba(220,50,50,.15);color:#ff6b6b;border:1px solid rgba(220,50,50,.3)}
+.hd-passive{background:rgba(0,0,0,.2);border-radius:8px;padding:10px;border-left:3px solid var(--gold)}
+.hd-passive-name{font-weight:bold;color:var(--gold);font-size:12px}
+.hd-passive-desc{font-size:11px;color:var(--text);margin-top:4px;line-height:1.5}
+.hd-skill-card{background:rgba(0,0,0,.2);border-radius:8px;padding:10px;display:flex;gap:10px;align-items:flex-start}
+.hd-skill-icon{font-size:24px;flex-shrink:0;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.05);border-radius:8px}
+.hd-skill-info{flex:1;min-width:0}
+.hd-skill-name{font-weight:bold;font-size:12px}
+.hd-skill-desc{font-size:10px;color:var(--text2);margin-top:3px;line-height:1.4}
+.hd-skill-meta{font-size:9px;color:var(--text3);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap}
+.hd-skill-meta span{display:inline-flex;align-items:center;gap:2px}
+.hd-equip-slot{background:rgba(0,0,0,.2);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:8px}
+.hd-equip-slot-empty{color:var(--text3);font-size:11px}
+.hd-equip-icon{font-size:20px}
+.hd-equip-info{flex:1}
+.hd-equip-name{font-size:12px;font-weight:bold}
+.hd-equip-stats{font-size:10px;color:var(--green)}
+.hd-equip-enhance{font-size:9px;color:var(--blue)}
+.hd-trait-tag{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:4px;font-size:10px;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.2);color:var(--gold2)}
+.hd-growth-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11px}
+.hd-growth-label{color:var(--text2);width:50px;flex-shrink:0}
+.hd-growth-bar{flex:1;height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+.hd-growth-bar-fill{height:100%;border-radius:3px}
+.hd-growth-val{color:var(--text);font-weight:bold;width:60px;text-align:right;flex-shrink:0}
+.hd-mechanism{background:rgba(0,0,0,.15);border-radius:8px;padding:10px}
+.hd-mechanism-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:11px;border-bottom:1px solid rgba(255,255,255,.04)}
+.hd-mechanism-row:last-child{border-bottom:none}
+.hd-mechanism-label{color:var(--text2)}
+.hd-mechanism-val{color:var(--text);font-weight:bold}
+.hd-actions{display:flex;gap:8px;padding:14px 16px;flex-wrap:wrap}
+.hd-actions .btn{flex:1;min-width:80px;text-align:center}
+.hd-power-display{text-align:center;padding:8px;background:rgba(201,162,39,.08);border-radius:8px;margin-top:6px}
+.hd-power-num{font-size:22px;font-weight:bold;color:var(--gold)}
+.hd-power-label{font-size:10px;color:var(--text2)}
 
 /* Toast */
 .toast{position:fixed;top:50px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--gold);color:var(--gold);padding:8px 16px;border-radius:6px;z-index:200;animation:fadeIn .3s;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,.5);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
@@ -1228,6 +1290,11 @@ function showModal(title,contentHTML,buttons=[]){
   </div>`;
 }
 function closeModal(){document.getElementById('modal-root').innerHTML=''}
+
+// openModal: 直接将HTML渲染到modal-root（用于showHeroDetail等）
+function openModal(html){
+  document.getElementById('modal-root').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">${html}</div>`;
+}
 
 // ==================== 英雄特质系统 ====================
 // 每个英雄招募/合成时随机获得1-2个特质，赋予个性加成
@@ -4218,72 +4285,284 @@ function renderHeroCard(h){
   </div>`;
 }
 
-// 英雄详情弹窗
+// 英雄详情弹窗（增强版）
 function showHeroDetail(uid){
   const h=G.heroes.find(x=>x.uid===uid);
   if(!h)return;
   const role=ROLES[h.role];
   const stats=getHeroStats(h);
   const allSkills=[...h.skills,...h.bonusSkills];
-  const roleTraits={
-    warrior:{desc:'近战输出型职业',pros:'高AOE伤害，爆发能力强',cons:'生存能力一般',tips:'适合放在队伍前排'},
-    guardian:{desc:'坦克型职业',pros:'高防御，能嘲讽保护队友',cons:'输出较低',tips:'适合作为主坦'},
-    mage:{desc:'远程法术型职业',pros:'高伤害AOE，控制能力强',cons:'脆弱，需要保护',tips:'放在后排输出'},
-    healer:{desc:'治疗辅助型职业',pros:'群体治疗，净化debuff',cons:'输出极低',tips:'必备辅助'},
-    assassin:{desc:'暴击输出型职业',pros:'高暴击，单体爆发',cons:'AOE能力弱',tips:'优先击杀敌方后排'},
-    ranger:{desc:'远程物理型职业',pros:'陷阱控制，持续输出',cons:'爆发不如刺客',tips:'适合中排位置'},
-    warlock:{desc:'诅咒控制型职业',pros:'吸血续航，debuff强',cons:'需要时间叠加',tips:'配合AOE队友'},
-    paladin:{desc:'圣光战士型职业',pros:'攻守兼备，有治疗能力',cons:'各方面都不突出',tips:'万金油角色'}
+  const inTeam=G.team.some(t=>t&&t.uid===h.uid);
+  const power=calcHeroPower(h);
+  const levelCap=getHeroLevelCap();
+
+  // 品质颜色映射
+  const qualityColors={common:'#aaa',rare:'#5b9bd5',epic:'#b06ce6',legendary:'#e8c840',mythic:'#ff6b6b'};
+  const qualityStars={common:'★',rare:'★★',epic:'★★★',legendary:'★★★★',mythic:'★★★★★'};
+  const qualityDescs={
+    common:'基础品质，属性成长一般',
+    rare:'稀有品质，属性加成+25%',
+    epic:'史诗品质，属性加成+55%',
+    legendary:'传说品质，属性加成+90%',
+    mythic:'神话品质，属性加成+140%'
   };
-  const rt=roleTraits[h.role]||{desc:'未知',pros:'',cons:'',tips:''};
+
+  // 属性上限参考（用于进度条百分比）
+  const statMaxRef={maxHP:8000,atk:500,def:350,spd:120,maxMP:500};
+  const statColors={maxHP:'#c0392b',atk:'#e74c3c',def:'#2980b9',spd:'#27ae60',maxMP:'#8e44ad'};
+
+  // 技能类型标签
+  const skillTypeLabels={damage:'伤害',buff:'增益',debuff:'减益',heal:'治疗',shield:'护盾',drain:'汲取',cleanse:'净化'};
+  const skillTypeColors={damage:'#e74c3c',buff:'#27ae60',debuff:'#8e44ad',heal:'#2ecc71',shield:'#3498db',drain:'#c0392b',cleanse:'#f1c40f'};
+
+  // 装备槽位名称
+  const slotNames={weapon:'武器',armor:'护甲',accessory:'饰品'};
+  const slotIcons={weapon:'⚔️',armor:'🛡️',accessory:'💍'};
+
+  // 计算下一级属性预览
+  const nextLevelStats={};
+  if(h.level<levelCap){
+    const qm=QUALITY_MULT[h.quality];
+    nextLevelStats.maxHP=calcStat(role.baseHP,qm,h.level+1);
+    nextLevelStats.atk=calcStat(role.baseATK,qm,h.level+1);
+    nextLevelStats.def=calcStat(role.baseDEF,qm,h.level+1);
+    nextLevelStats.spd=calcStat(role.baseSPD,qm,h.level+1);
+    nextLevelStats.maxMP=calcStat(role.baseMP,qm,h.level+1);
+  }
+
+  // 构建装备HTML
+  function buildEquipHTML(){
+    let html='';
+    for(const slot of ['weapon','armor','accessory']){
+      const eid=h.equipment[slot];
+      if(eid!=null){
+        const eq=G.equipment.find(e=>e.uid===eid);
+        if(eq){
+          const tpl=EQUIP_TEMPLATES.find(t=>t.id===eq.id);
+          if(tpl){
+            const enhanceLevel=eq.enhance||0;
+            const enhanceMult=1+enhanceLevel*0.1;
+            const statsStr=Object.entries(tpl.stats).map(([k,v])=>{
+              const finalVal=Math.floor(v*enhanceMult);
+              const statNames={atk:'攻击',def:'防御',hp:'生命',mp:'魔法',spd:'速度'};
+              return (statNames[k]||k)+'+'+finalVal;
+            }).join(' ');
+            html+=`<div class="hd-equip-slot">
+              <div class="hd-equip-icon">${tpl.icon}</div>
+              <div class="hd-equip-info">
+                <div class="hd-equip-name q-${tpl.quality}">${tpl.name}</div>
+                <div class="hd-equip-stats">${statsStr}</div>
+                ${enhanceLevel>0?`<div class="hd-equip-enhance">强化 +${enhanceLevel} (额外+${Math.round(enhanceLevel*10)}%)</div>`:''}
+              </div>
+              <span class="text-xs text-dim">${slotIcons[slot]} ${slotNames[slot]}</span>
+            </div>`;
+            continue;
+          }
+        }
+      }
+      html+=`<div class="hd-equip-slot">
+        <div class="hd-equip-icon" style="opacity:.3">${slotIcons[slot]}</div>
+        <div class="hd-equip-slot-empty">未装备${slotNames[slot]}</div>
+      </div>`;
+    }
+    return html;
+  }
+
+  // 构建技能HTML
+  function buildSkillHTML(){
+    return allSkills.map((sid,idx)=>{
+      const sk=SKILLS[sid];
+      if(!sk)return '';
+      const isBonus=idx>=h.skills.length;
+      const typeLabel=skillTypeLabels[sk.type]||sk.type;
+      const typeColor=skillTypeColors[sk.type]||'#999';
+      let metaParts=[];
+      if(sk.mpCost)metaParts.push('💎'+sk.mpCost);
+      if(sk.cooldown)metaParts.push('⏱'+sk.cooldown+'回合');
+      if(sk.mult)metaParts.push('倍率:'+sk.mult+'x');
+      if(sk.healPct)metaParts.push('回复:'+Math.round(sk.healPct*100)+'%');
+      if(sk.shieldPct)metaParts.push('护盾:'+Math.round(sk.shieldPct*100)+'%');
+      if(sk.stunChance)metaParts.push('眩晕:'+Math.round(sk.stunChance*100)+'%');
+      if(sk.critBonus)metaParts.push('暴击+'+Math.round(sk.critBonus*100)+'%');
+      if(sk.alwaysHit)metaParts.push('必中');
+      if(sk.dot)metaParts.push(sk.dot.name+':'+Math.round(sk.dot.dmgPct*100)+'%/回合');
+      return `<div class="hd-skill-card" style="margin-bottom:8px">
+        <div class="hd-skill-icon">${sk.icon}</div>
+        <div class="hd-skill-info">
+          <div class="hd-skill-name">${sk.name} ${isBonus?'<span class="text-purple text-xs">★融合</span>':''}</div>
+          <div class="hd-skill-desc">${sk.desc}</div>
+          <div class="hd-skill-meta">
+            <span style="color:${typeColor};background:rgba(255,255,255,.05);padding:1px 6px;border-radius:3px">${typeLabel}</span>
+            ${metaParts.map(p=>'<span>'+p+'</span>').join('')}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // 构建成长预览HTML
+  function buildGrowthHTML(){
+    const statKeys=['maxHP','atk','def','spd','maxMP'];
+    const statNames={maxHP:'❤️ 生命',atk:'⚔️ 攻击',def:'🛡️ 防御',spd:'💨 速度',maxMP:'💎 魔法'};
+    const barColors={maxHP:'#c0392b',atk:'#e74c3c',def:'#2980b9',spd:'#27ae60',maxMP:'#8e44ad'};
+    return statKeys.map(k=>{
+      const val=stats[k]||0;
+      const maxRef=statMaxRef[k]||100;
+      const pct=Math.min(100,Math.round(val/maxRef*100));
+      const nextVal=nextLevelStats[k];
+      const diff=nextVal?nextVal-val:0;
+      return `<div class="hd-growth-row">
+        <div class="hd-growth-label">${statNames[k]}</div>
+        <div class="hd-growth-bar">
+          <div class="hd-growth-bar-fill" style="width:${pct}%;background:${barColors[k]}"></div>
+        </div>
+        <div class="hd-growth-val">${val}${diff>0?' <span style="color:var(--green);font-size:9px">+'+diff+'</span>':''}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // 构建机制数据HTML
+  function buildMechanismHTML(){
+    const rows=[];
+    rows.push(['暴击率',(role.critRate?Math.round(role.critRate*100):0)+'%']);
+    rows.push(['暴击伤害',(role.critDmg?Math.round(role.critDmg*100):150)+'%']);
+    if(role.damageReduction)rows.push(['伤害减免',Math.round(role.damageReduction*100)+'%']);
+    if(role.dodgeRate)rows.push(['闪避率',Math.round(role.dodgeRate*100)+'%']);
+    if(role.healBoost)rows.push(['治疗加成','+'+Math.round(role.healBoost*100)+'%']);
+    if(role.skillDmgBoost)rows.push(['技能伤害','+'+Math.round(role.skillDmgBoost*100)+'%']);
+    if(role.lifeSteal)rows.push(['生命汲取',Math.round(role.lifeSteal*100)+'%']);
+    if(role.hitBonus)rows.push(['命中加成','+'+Math.round(role.hitBonus*100)+'%']);
+    if(role.armorPen)rows.push(['护甲穿透',Math.round(role.armorPen*100)+'%']);
+    if(role.shieldBoost)rows.push(['护盾加成','+'+Math.round(role.shieldBoost*100)+'%']);
+    if(role.regenPct)rows.push(['每回合回复',Math.round(role.regenPct*100)+'%']);
+    if(role.dotBoost)rows.push(['DOT加成','+'+Math.round(role.dotBoost*100)+'%']);
+    if(role.undeadBonus)rows.push(['对亡灵伤害','+'+Math.round(role.undeadBonus*100)+'%']);
+    if(role.deathDefy)rows.push(['死亡守护','每场1次']);
+    return rows.map(([label,val])=>`<div class="hd-mechanism-row"><span class="hd-mechanism-label">${label}</span><span class="hd-mechanism-val">${val}</span></div>`).join('');
+  }
+
   const html=`
-    <div class="panel" style="max-width:500px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div style="font-size:48px">${h.icon}</div>
-        <div>
-          <div class="q-${h.quality}" style="font-size:18px;font-weight:bold">${h.name}</div>
-          <div class="text-dim">${role.icon} ${role.name} · ${QUALITY_NAMES[h.quality]} · Lv.${h.level}</div>
+  <div class="hero-detail-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="hero-detail-panel">
+      <!-- 头部：英雄基本信息 -->
+      <div class="hd-header" style="background:linear-gradient(135deg,rgba(${h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':'220,50,50'},.12),transparent)">
+        <button class="hd-close" onclick="closeModal()">✕</button>
+        <div class="hd-avatar" style="background:rgba(${h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':'220,50,50'},.2);border-color:${qualityColors[h.quality]}">
+          ${h.icon}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="hd-name" style="color:${qualityColors[h.quality]}">${h.name}</div>
+          <div class="hd-meta">
+            ${role.icon} ${role.name} · <span class="hd-quality-badge hd-quality-${h.quality}">${QUALITY_NAMES[h.quality]} ${qualityStars[h.quality]}</span>
+            ${inTeam?'<span style="color:#2ed573;font-size:10px"> · 🛡️队伍中</span>':''}
+          </div>
+          <div class="hd-meta">Lv.${h.level} / ${levelCap} · EXP ${h.exp}/${getExpToLevel(h.level)}</div>
+          <div class="bar-wrap" style="margin-top:4px;width:100%"><div class="bar-fill" style="width:${(h.exp/getExpToLevel(h.level))*100}%;background:var(--exp-bar)"></div></div>
+          <div class="hd-lore">"${h.lore}"</div>
         </div>
       </div>
-      <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:10px;margin-bottom:12px">
-        <div style="color:var(--gold);margin-bottom:6px">📜 职业特性</div>
-        <div class="text-sm">${rt.desc}</div>
-        <div class="text-xs text-green mt-4">✅ 优势: ${rt.pros}</div>
-        <div class="text-xs text-red">❌ 劣势: ${rt.cons}</div>
-        <div class="text-xs text-blue">💡 建议: ${rt.tips}</div>
-      </div>
-      <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:10px;margin-bottom:12px">
-        <div style="color:var(--gold);margin-bottom:6px">📊 属性详情</div>
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
-          <div><span class="text-dim">❤️ 生命值:</span> <b>${stats.maxHP}</b> <span class="text-xs text-dim">(存活能力)</span></div>
-          <div><span class="text-dim">⚔️ 攻击力:</span> <b>${stats.atk}</b> <span class="text-xs text-dim">(伤害输出)</span></div>
-          <div><span class="text-dim">🛡️ 防御力:</span> <b>${stats.def}</b> <span class="text-xs text-dim">(减伤比例)</span></div>
-          <div><span class="text-dim">💨 速度:</span> <b>${stats.spd}</b> <span class="text-xs text-dim">(行动顺序)</span></div>
-          <div><span class="text-dim">💎 魔法值:</span> <b>${stats.maxMP}</b> <span class="text-xs text-dim">(技能消耗)</span></div>
-          <div><span class="text-dim">⭐ 经验:</span> <b>${h.exp}/${getExpToLevel(h.level)}</b></div>
+
+      <!-- 品质说明 -->
+      <div class="hd-section">
+        <div class="hd-section-title">🏷️ 品质信息</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span class="hd-quality-badge hd-quality-${h.quality}" style="font-size:12px;padding:4px 12px">${qualityStars[h.quality]} ${QUALITY_NAMES[h.quality]}</span>
+          <span class="text-xs text-dim">${qualityDescs[h.quality]}</span>
+        </div>
+        <div class="hd-power-display">
+          <div class="hd-power-label">综合战力</div>
+          <div class="hd-power-num">⚡ ${power}</div>
         </div>
       </div>
-      <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:10px;margin-bottom:12px">
-        <div style="color:var(--gold);margin-bottom:6px">⚔️ 技能列表</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          ${allSkills.map(sid=>{const sk=SKILLS[sid];return sk?`<div style="background:rgba(255,255,255,.05);border-radius:6px;padding:6px 10px"><b>${sk.icon}${sk.name}</b><div class="text-xs text-dim">${sk.desc}</div></div>`:''}).join('')}
+
+      <!-- 属性详情 -->
+      <div class="hd-section">
+        <div class="hd-section-title">📊 属性详情 ${h.level<levelCap?'<span class="text-xs text-green">(下一级预览)</span>':''}</div>
+        <div class="hd-stat-grid">
+          <div class="hd-stat-item">
+            <span class="hd-stat-icon">❤️</span>
+            <span class="hd-stat-val">${stats.maxHP}</span>
+            <span class="hd-stat-label">生命值</span>
+            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${Math.min(100,stats.maxHP/statMaxRef.maxHP*100)}%;background:#c0392b"></div></div>
+          </div>
+          <div class="hd-stat-item">
+            <span class="hd-stat-icon">⚔️</span>
+            <span class="hd-stat-val">${stats.atk}</span>
+            <span class="hd-stat-label">攻击力</span>
+            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${Math.min(100,stats.atk/statMaxRef.atk*100)}%;background:#e74c3c"></div></div>
+          </div>
+          <div class="hd-stat-item">
+            <span class="hd-stat-icon">🛡️</span>
+            <span class="hd-stat-val">${stats.def}</span>
+            <span class="hd-stat-label">防御力</span>
+            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${Math.min(100,stats.def/statMaxRef.def*100)}%;background:#2980b9"></div></div>
+          </div>
+          <div class="hd-stat-item">
+            <span class="hd-stat-icon">💨</span>
+            <span class="hd-stat-val">${stats.spd}</span>
+            <span class="hd-stat-label">速度</span>
+            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${Math.min(100,stats.spd/statMaxRef.spd*100)}%;background:#27ae60"></div></div>
+          </div>
+          <div class="hd-stat-item">
+            <span class="hd-stat-icon">💎</span>
+            <span class="hd-stat-val">${stats.maxMP}</span>
+            <span class="hd-stat-label">魔法值</span>
+            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${Math.min(100,stats.maxMP/statMaxRef.maxMP*100)}%;background:#8e44ad"></div></div>
+          </div>
+          <div class="hd-stat-item">
+            <span class="hd-stat-icon">⭐</span>
+            <span class="hd-stat-val">${h.level}</span>
+            <span class="hd-stat-label">等级/${levelCap}</span>
+            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${h.level/levelCap*100}%;background:var(--gold)"></div></div>
+          </div>
+        </div>
+        ${h.level<levelCap?`<div style="margin-top:10px">${buildGrowthHTML()}</div>`:''}
+      </div>
+
+      <!-- 被动技能 -->
+      <div class="hd-section">
+        <div class="hd-section-title">🔮 被动技能</div>
+        <div class="hd-passive">
+          <div class="hd-passive-name">${role.passive.name}</div>
+          <div class="hd-passive-desc">${role.passive.desc}</div>
         </div>
       </div>
+
+      <!-- 机制数据 -->
+      <div class="hd-section">
+        <div class="hd-section-title">⚙️ 职业机制</div>
+        <div class="hd-mechanism">${buildMechanismHTML()}</div>
+      </div>
+
+      <!-- 技能列表 -->
+      <div class="hd-section">
+        <div class="hd-section-title">⚔️ 技能列表 (${allSkills.length})</div>
+        ${buildSkillHTML()}
+      </div>
+
+      <!-- 装备信息 -->
+      <div class="hd-section">
+        <div class="hd-section-title">🗡️ 装备信息</div>
+        <div style="display:flex;flex-direction:column;gap:6px">${buildEquipHTML()}</div>
+      </div>
+
+      <!-- 特质 -->
       ${h.traits&&h.traits.length>0?`
-      <div style="background:rgba(255,215,0,.1);border-radius:8px;padding:10px;margin-bottom:12px">
-        <div style="color:var(--gold);margin-bottom:6px">🌟 特质</div>
+      <div class="hd-section">
+        <div class="hd-section-title">🌟 英雄特质</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
-          ${h.traits.map(t=>`<div class="trait-tag" style="padding:4px 8px">${t.icon} <b>${t.name}</b> - ${t.desc}</div>`).join('')}
+          ${h.traits.map(t=>`<div class="hd-trait-tag">${t.icon} <b>${t.name}</b> - ${t.desc}</div>`).join('')}
         </div>
-      </div>
-      `:''}
-      <div class="text-xs text-dim" style="font-style:italic;text-align:center">"${h.lore}"</div>
-      <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
+      </div>`:''}
+
+      <!-- 操作按钮 -->
+      <div class="hd-actions">
         <button class="btn btn-primary btn-sm" onclick="closeModal();switchTab('team')">🛡️ 编队</button>
         <button class="btn btn-sm" onclick="closeModal();switchTab('equip')">🗡️ 装备</button>
         <button class="btn btn-sm" style="color:#ff6b6b" onclick="dismissHero('${h.uid}')">🗑️ 遣散</button>
       </div>
-    </div>`;
+    </div>
+  </div>`;
   openModal(html);
 }
 
