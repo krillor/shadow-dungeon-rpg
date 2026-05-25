@@ -9,29 +9,33 @@
 <title>暗影地牢 - 文字策略RPG</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{--bg:#0d0d0d;--panel:#1a1a2e;--panel2:#16213e;--border:#2a2a4a;--gold:#c9a227;--gold2:#e8d44d;--red:#c0392b;--green:#27ae60;--blue:#2980b9;--purple:#8e44ad;--text:#d4c5a0;--text2:#8a7d6b;--text3:#5a5245;--hp-bar:#c0392b;--mp-bar:#2980b9;--exp-bar:#27ae60;--nav-h:52px;--top-h:36px}
+:root{--bg:#0a0a12;--panel:#141428;--panel2:#1a1a35;--border:#252548;--gold:#c9a227;--gold2:#e8d44d;--red:#c0392b;--green:#27ae60;--blue:#2980b9;--purple:#8e44ad;--text:#d4c5a0;--text2:#8a7d6b;--text3:#5a5245;--hp-bar:#c0392b;--mp-bar:#2980b9;--exp-bar:#27ae60;--nav-h:56px;--top-h:42px}
 body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingFang SC','SimHei',sans-serif;font-size:14px;overflow:hidden;height:100vh;width:100vw;-webkit-user-select:none;user-select:none}
 #app{display:flex;flex-direction:column;height:100vh;width:100vw}
 
-/* ===== 顶部栏（桌面端） ===== */
-#top-bar{height:var(--top-h);background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:8px;flex-shrink:0;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;flex-wrap:nowrap}
+/* ===== 顶部栏 ===== */
+#top-bar{height:var(--top-h);background:linear-gradient(180deg,#1a1a35,#141428);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:6px;flex-shrink:0;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;flex-wrap:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3)}
 #top-bar::-webkit-scrollbar{display:none}
-.res-item{display:flex;align-items:center;gap:3px;font-size:12px;white-space:nowrap;flex-shrink:0}
-.res-icon{font-size:14px}
-.res-val{color:var(--gold);font-weight:bold}
-.sep{color:var(--text3);margin:0 2px;flex-shrink:0}
+.res-item{display:flex;align-items:center;gap:3px;font-size:11px;white-space:nowrap;flex-shrink:0;background:rgba(255,255,255,.03);padding:3px 8px;border-radius:12px;border:1px solid rgba(255,255,255,.04)}
+.res-icon{font-size:13px}
+.res-val{color:var(--gold);font-weight:bold;font-size:12px}
+.sep{color:var(--text3);margin:0 1px;flex-shrink:0;opacity:.3}
 
-/* ===== 底部导航（移动端） ===== */
-#sidebar{position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:var(--panel);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around;padding:0 2px;z-index:50;gap:0;flex-shrink:0}
-#sidebar .nav-btn{width:auto;height:var(--nav-h);border:none;background:transparent;color:var(--text2);cursor:pointer;border-radius:0;font-size:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all .2s;flex:1;min-width:0;padding:2px 0}
-#sidebar .nav-btn:hover,#sidebar .nav-btn.active{background:transparent;color:var(--gold);border-color:transparent}
-#sidebar .nav-btn .nav-label{font-size:9px;margin-top:1px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-#sidebar .nav-btn .nav-icon{font-size:18px;line-height:1}
+/* ===== 底部导航 ===== */
+#sidebar{position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:linear-gradient(180deg,#141428,#0e0e1e);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around;padding:0 2px;z-index:50;gap:0;flex-shrink:0;box-shadow:0 -2px 12px rgba(0,0,0,.4)}
+#sidebar .nav-btn{width:auto;height:var(--nav-h);border:none;background:transparent;color:var(--text3);cursor:pointer;border-radius:0;font-size:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all .25s;flex:1;min-width:0;padding:4px 0;position:relative}
+#sidebar .nav-btn:hover{color:var(--text);background:transparent}
+#sidebar .nav-btn.active{color:var(--gold);border-color:transparent}
+#sidebar .nav-btn.active::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:24px;height:2px;background:var(--gold);border-radius:0 0 2px 2px;box-shadow:0 0 8px rgba(201,162,39,.5)}
+#sidebar .nav-btn .nav-label{font-size:9px;margin-top:2px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;transition:color .25s}
+#sidebar .nav-btn .nav-icon{font-size:19px;line-height:1;transition:transform .25s}
+#sidebar .nav-btn.active .nav-icon{transform:scale(1.1)}
+#sidebar .nav-btn.active .nav-label{color:var(--gold);font-weight:bold}
 
 /* ===== 主内容区 ===== */
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden;padding-bottom:var(--nav-h)}
-#content{flex:1;overflow-y:auto;padding:8px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;-webkit-overflow-scrolling:touch}
-#content::-webkit-scrollbar{width:4px}
+#content{flex:1;overflow-y:auto;padding:12px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
+#content::-webkit-scrollbar{width:3px}
 #content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
 /* 战斗面板 - 可滚动 */
@@ -40,9 +44,9 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 #battle-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
 /* ===== 面板 ===== */
-.panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px}
-.panel-title{color:var(--gold);font-size:14px;font-weight:bold;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
-.panel-title .icon{font-size:16px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.panel-title{color:var(--gold);font-size:15px;font-weight:bold;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.04);display:flex;align-items:center;gap:8px}
+.panel-title .icon{font-size:18px}
 
 
 /* ===== 合成结果展示 ===== */
@@ -86,24 +90,25 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 
 
 /* ===== 城镇界面优化 ===== */
-.town-hero-summary{display:flex;gap:8px;margin-top:10px;padding:8px;background:rgba(0,0,0,.2);border-radius:6px;font-size:11px}
+.town-hero-summary{display:flex;gap:8px;margin-top:10px;padding:10px;background:rgba(0,0,0,.2);border-radius:8px;font-size:11px;border:1px solid rgba(255,255,255,.03)}
 .town-hero-summary-item{flex:1;text-align:center}
-.town-hero-summary-val{font-size:14px;font-weight:bold;color:var(--gold)}
-.town-hero-summary-lbl{color:var(--text2);margin-top:2px}
-.town-module-btn{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px;cursor:pointer;transition:all .2s;text-align:center}
-.town-module-btn:hover{transform:translateY(-1px);border-color:var(--gold);box-shadow:0 3px 10px rgba(0,0,0,.2)}
-.town-module-btn-icon{font-size:24px;margin-bottom:4px}
+.town-hero-summary-val{font-size:15px;font-weight:bold;color:var(--gold)}
+.town-hero-summary-lbl{color:var(--text2);margin-top:3px;font-size:10px}
+.town-module-btn{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 8px;cursor:pointer;transition:all .25s;text-align:center;position:relative;overflow:hidden}
+.town-module-btn:hover{transform:translateY(-2px);border-color:var(--gold);box-shadow:0 4px 16px rgba(0,0,0,.25),0 0 0 1px rgba(201,162,39,.15)}
+.town-module-btn:active{transform:translateY(0);opacity:.85}
+.town-module-btn-icon{font-size:28px;margin-bottom:5px;display:block}
 .town-module-btn-name{font-size:12px;font-weight:bold;color:var(--gold)}
-.town-module-btn-info{font-size:10px;color:var(--text2);margin-top:2px}
-.town-quick-btns{display:flex;gap:6px;flex-wrap:wrap}
+.town-module-btn-info{font-size:10px;color:var(--text2);margin-top:3px}
+.town-quick-btns{display:flex;gap:8px;flex-wrap:wrap}
 
 /* ===== 英雄卡片 ===== */
-.hero-card{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;cursor:pointer;transition:all .25s ease;display:flex;gap:10px;position:relative;overflow:hidden}
+.hero-card{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;transition:all .25s ease;display:flex;gap:10px;position:relative;overflow:hidden}
 .hero-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;opacity:0;transition:opacity .25s}
 .hero-card:hover::before{opacity:1}
-.hero-card:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.hero-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
 .hero-card:active{transform:translateY(0);box-shadow:none}
-.hero-card.selected{border-color:var(--gold);box-shadow:0 0 8px rgba(201,162,39,.3)}
+.hero-card.selected{border-color:var(--gold);box-shadow:0 0 12px rgba(201,162,39,.3)}
 .quality-common::before{background:linear-gradient(90deg,#888,#666)}
 .quality-rare::before{background:linear-gradient(90deg,#4a9eff,#2980b9)}
 .quality-epic::before{background:linear-gradient(90deg,#a855f7,#8e44ad)}
@@ -140,18 +145,19 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .q-common{color:#999}.q-rare{color:#5bb5ff}.q-epic{color:#b86eff}.q-legendary{color:#ffb833;text-shadow:0 0 8px rgba(255,184,51,.3)}.q-mythic{color:#ff5555;text-shadow:0 0 8px rgba(255,85,85,.3)}
 
 /* ===== 按钮 ===== */
-.btn{padding:7px 16px;border:1px solid var(--border);background:var(--panel2);color:var(--text);cursor:pointer;border-radius:6px;font-size:13px;transition:all .2s;font-family:inherit;touch-action:manipulation}
-.btn:active{opacity:.7}
-.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn{padding:7px 16px;border:1px solid var(--border);background:var(--panel2);color:var(--text);cursor:pointer;border-radius:8px;font-size:13px;transition:all .2s;font-family:inherit;touch-action:manipulation}
+.btn:active{opacity:.7;transform:scale(.97)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
 .btn-primary{background:linear-gradient(135deg,#2a1a00,#3a2a00);border-color:var(--gold);color:var(--gold)}
+.btn-primary:hover{background:linear-gradient(135deg,#3a2a00,#4a3a00);box-shadow:0 0 12px rgba(201,162,39,.2)}
 .btn-primary:active{background:linear-gradient(135deg,#3a2a00,#4a3a00)}
 .btn-danger{border-color:var(--red);color:var(--red)}
-.btn-sm{padding:5px 12px;font-size:12px;border-radius:4px}
-.btn-group{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:6px}
+.btn-group{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 
 /* ===== 战斗场景 ===== */
-.battle-scene{position:relative;background:linear-gradient(180deg,#0a0a14 0%,#12121f 50%,#1a1a2e 100%);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px;overflow:hidden;min-height:200px}
-.battle-scene::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 50% 120%,rgba(100,50,150,.08) 0%,transparent 70%);pointer-events:none}
+.battle-scene{position:relative;background:linear-gradient(180deg,#080810 0%,#0e0e1a 50%,#161628 100%);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;overflow:hidden;min-height:200px;box-shadow:inset 0 0 40px rgba(0,0,0,.3)}
+.battle-scene::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 50% 120%,rgba(100,50,150,.1) 0%,transparent 70%);pointer-events:none}
 .battle-vs{display:flex;gap:6px;align-items:start;justify-content:center}
 .battle-vs > div{min-width:0;flex-shrink:1}
 .battle-vs .ally-side,.battle-vs .enemy-side{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
@@ -307,13 +313,13 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .equip-stats{color:var(--green);font-size:10px}
 
 /* 模态框 */
-.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center;padding:10px;animation:fadeIn .2s ease}
-.modal{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto}
-.modal-title{color:var(--gold);font-size:14px;font-weight:bold;margin-bottom:10px}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:100;display:flex;align-items:center;justify-content:center;padding:10px;animation:fadeIn .25s ease;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.modal-title{color:var(--gold);font-size:15px;font-weight:bold;margin-bottom:12px}
 
 /* ===== 英雄详情弹窗增强样式 ===== */
-.hero-detail-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:150;display:flex;align-items:center;justify-content:center;padding:10px;animation:fadeIn .25s ease}
-.hero-detail-panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.hero-detail-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:150;display:flex;align-items:center;justify-content:center;padding:10px;animation:fadeIn .25s ease;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.hero-detail-panel{background:linear-gradient(180deg,#181830,#141428);border:1px solid var(--border);border-radius:14px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;box-shadow:0 12px 40px rgba(0,0,0,.5)}
 .hero-detail-panel::-webkit-scrollbar{width:4px}
 .hero-detail-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 .hd-header{display:flex;align-items:center;gap:14px;padding:16px;border-bottom:1px solid var(--border);position:relative}
@@ -374,7 +380,7 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .hd-power-label{font-size:10px;color:var(--text2)}
 
 /* Toast */
-.toast{position:fixed;top:50px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--gold);color:var(--gold);padding:8px 16px;border-radius:6px;z-index:200;animation:fadeIn .3s;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,.5);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+.toast{position:fixed;top:50px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#1a1a35,#141428);border:1px solid var(--gold);color:var(--gold);padding:10px 20px;border-radius:10px;z-index:200;animation:fadeIn .3s;font-size:12px;box-shadow:0 4px 20px rgba(0,0,0,.5),0 0 0 1px rgba(201,162,39,.15);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 
 /* 网格布局 */
 .grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
