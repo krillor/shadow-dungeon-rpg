@@ -433,6 +433,9 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
       <!-- 建筑材料 -->
       <div class="res-item" title="石材"><span class="res-icon">🪨</span><span class="res-val" id="res-stone">50</span></div>
       <div class="res-item" title="铁矿"><span class="res-icon">⛏️</span><span class="res-val" id="res-iron">0</span></div>
+      <span class="sep">|</span>
+      <!-- 消耗品 -->
+      <div class="res-item" title="经验药水"><span class="res-icon">🧪</span><span class="res-val" id="res-expPotion">0</span></div>
     </div>
     <div id="content"></div>
     <div id="battle-panel" style="display:none">
@@ -980,6 +983,7 @@ const RESOURCE_DEFS = {
   iron:   {name:'铁矿',  icon:'⛏️', desc:'装备锻造核心材料'},
   food:   {name:'食物',  icon:'🍞', desc:'酒馆刷新消耗'},
   fame:   {name:'声望',  icon:'🏆', desc:'酒馆升级条件，竞技场获取'},
+  expPotion: {name:'经验药水', icon:'🧪', desc:'用于提升英雄经验，遣散英雄或关卡掉落获取'},
 };
 
 // 建筑数据
@@ -1353,6 +1357,12 @@ function updateResUI(){
   document.getElementById('res-fame').textContent=G.resources.fame;
   document.getElementById('res-stone').textContent=G.resources.stone;
   document.getElementById('res-iron').textContent=G.resources.iron;
+  document.getElementById('res-expPotion').textContent=G.resources.expPotion||0;
+}
+
+// 资源栏更新别名（兼容不同调用）
+function updateResourceBar(){
+  updateResUI();
 }
 
 // ==================== 英雄系统 ====================
@@ -1540,7 +1550,8 @@ const RESOURCE_LIMITS = {
   food: 5000,       // 食物上限（提升较多）
   stone: 3000,      // 石材上限
   iron: 1500,       // 铁矿上限
-  fame: 999         // 声望上限
+  fame: 999,        // 声望上限
+  expPotion: 99999  // 经验药水上限（较高）
 };
 
 function produceResources(){
@@ -3242,6 +3253,15 @@ async function runBattle(stageId){
       if(h.traits) h.traits.forEach(t=>{if(t.id==='tactician')expBonus+=0.20});
       addHeroExp(h,Math.floor((rw.exp||0)*expBonus));
     });
+    
+    // 经验药水掉落（概率随关卡提升）
+    var potionDrop=0;
+    var potionChance=0.25+stage.id*0.03; // 基础25%，每关+3%
+    if(Math.random()<potionChance){
+      potionDrop=Math.floor((20+stage.id*5)*totalBonus);
+      G.resources.expPotion=Math.min((G.resources.expPotion||0)+potionDrop,RESOURCE_LIMITS.expPotion);
+    }
+    
     let drop=null;
     if(Math.random()<0.3+stage.id*0.05){
       const possibleDrops=EQUIP_TEMPLATES.filter(e=>QUALITIES.indexOf(e.quality)<=Math.min(stage.id,4));
@@ -3252,7 +3272,7 @@ async function runBattle(stageId){
         recordCodex('equipment',tpl.id);
       }
     }
-    log('\n📦 战利品：💰'+(rw.gold||0)+' 🍞'+(rw.food||0)+' 🪨'+(rw.stone||0)+' ⛏️'+(rw.iron||0)+(rw.gems?' 💎'+rw.gems:'')+' ⭐经验+'+(rw.exp||0)+(drop?' 🎁'+EQUIP_TEMPLATES.find(t=>t.id===drop.id).name:''),'title');
+    log('\n📦 战利品：💰'+(rw.gold||0)+' 🍞'+(rw.food||0)+' 🪨'+(rw.stone||0)+' ⛏️'+(rw.iron||0)+(rw.gems?' 💎'+rw.gems:'')+' ⭐经验+'+(rw.exp||0)+(potionDrop>0?' 🧪经验药水+'+potionDrop:'')+(drop?' 🎁'+EQUIP_TEMPLATES.find(t=>t.id===drop.id).name:''),'title');
     if(G.pveWinStreak>=3){
       log('🔥 '+G.pveWinStreak+'连胜！奖励加成 +'+Math.round((streakBonus-1)*100)+'%','crit');
     }
@@ -4162,6 +4182,10 @@ function renderTavernRecruit(){
   var _pity=getPity();
   var pityText=_pity>=10?'<span style="color:#ef4444;font-weight:bold">🎉 保底已触发！</span>':`保底进度: ${_pity}/10`;
   
+  // 经验药水购买价格
+  const potionPrice=50; // 50金币购买100经验药水
+  const potionAmount=100;
+  
   content.innerHTML=`
     <div class="panel">
       <div class="panel-title"><span class="icon">🍺</span> 酒馆招募</div>
@@ -4180,6 +4204,22 @@ function renderTavernRecruit(){
           const canRefresh=canRefreshTavern();
           return`<button class="btn ${canRefresh?'':'disabled'}" ${canRefresh?`onclick="refreshTavernOptions()"`:''}>🔄 刷新 (${costStr})</button>`;
         })()}
+      </div>
+    </div>
+    
+    <!-- 经验药水购买区域 -->
+    <div class="panel" style="margin-top:12px">
+      <div class="panel-title"><span class="icon">🧪</span> 经验药水商店</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div class="text-sm">当前拥有: <span style="color:var(--purple);font-weight:bold">🧪 ${G.resources.expPotion||0}</span> 经验药水</div>
+          <div class="text-xs text-dim mt-4">可用于快速提升英雄等级</div>
+        </div>
+        <div style="text-align:right">
+          <div class="text-sm" style="color:var(--gold)">💰 ${potionPrice} = 🧪 ${potionAmount}</div>
+          <div class="text-xs text-dim">50金币购买100经验药水</div>
+        </div>
+        <button class="btn btn-primary" onclick="buyExpPotion()">购买</button>
       </div>
     </div>
   `;
@@ -4555,6 +4595,21 @@ function showHeroDetail(uid){
         </div>
       </div>`:''}
 
+      <!-- 经验药水使用区域 -->
+      <div class="hd-section" style="background:rgba(142,68,173,.08)">
+        <div class="hd-section-title">🧪 使用经验药水</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="flex:1">
+            <div class="text-sm">当前拥有: <span style="color:var(--purple);font-weight:bold">🧪 ${G.resources.expPotion||0}</span></div>
+            <div class="text-xs text-dim">每次使用消耗100经验药水</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="useExpPotion(${h.uid})" ${(G.resources.expPotion||0)<100||h.level>=levelCap?'disabled':''}>
+            使用 (+100EXP)
+          </button>
+        </div>
+        ${h.level>=levelCap?'<div class="text-xs text-red mt-4">已达当前等级上限，请升级神殿</div>':''}
+      </div>
+
       <!-- 操作按钮 -->
       <div class="hd-actions">
         <button class="btn btn-primary btn-sm" onclick="closeModal();switchTab('team')">🛡️ 编队</button>
@@ -4566,17 +4621,99 @@ function showHeroDetail(uid){
   openModal(html);
 }
 
-// 遣散英雄
+// 使用经验药水
+function useExpPotion(heroUid){
+  const hero=G.heroes.find(h=>h.uid===heroUid);
+  if(!hero)return;
+  
+  const levelCap=getHeroLevelCap();
+  if(hero.level>=levelCap){
+    showToast('该英雄已达当前等级上限！');
+    return;
+  }
+  
+  if((G.resources.expPotion||0)<100){
+    showToast('经验药水不足！需要 🧪100');
+    return;
+  }
+  
+  // 消耗药水并增加经验
+  G.resources.expPotion-=100;
+  const leveledUp=addHeroExp(hero,100);
+  
+  updateResourceBar();
+  saveGame();
+  
+  if(leveledUp){
+    showToast(`${hero.icon}${hero.name} 升级了！当前 Lv.${hero.level}`);
+  }else{
+    showToast(`${hero.icon}${hero.name} 获得经验 +100 (${hero.exp}/${getExpToLevel(hero.level)})`);
+  }
+  
+  // 刷新英雄详情弹窗
+  showHeroDetail(heroUid);
+}
+
+// 购买经验药水
+function buyExpPotion(){
+  const potionPrice=50;
+  const potionAmount=100;
+  
+  if((G.resources.gold||0)<potionPrice){
+    showToast('金币不足！需要 💰'+potionPrice);
+    return;
+  }
+  
+  if((G.resources.expPotion||0)+potionAmount>RESOURCE_LIMITS.expPotion){
+    showToast('经验药水已达上限！');
+    return;
+  }
+  
+  G.resources.gold-=potionPrice;
+  G.resources.expPotion=(G.resources.expPotion||0)+potionAmount;
+  updateResourceBar();
+  saveGame();
+  showToast(`购买成功！获得 🧪${potionAmount}经验药水`);
+  renderTavernRecruit(); // 刷新界面显示
+}
+
+// 遣散英雄（返还资源）
 function dismissHero(uid){
   var idx=G.heroes.findIndex(h=>h.uid===uid);
   if(idx<0)return;
   var h=G.heroes[idx];
+  
+  // 计算返还资源
+  // 经验返还：累计获得经验的 70%
+  var totalExp=0;
+  for(var i=1;i<h.level;i++){
+    totalExp+=getExpToLevel(i);
+  }
+  totalExp+=h.exp;
+  var returnExp=Math.floor(totalExp*0.7);
+  
+  // 金币返还：基于品质和等级的招募成本返还 50%
+  var qualityCostMult={common:1,rare:2,epic:4,legendary:8,mythic:16};
+  var baseCost=50;
+  var returnGold=Math.floor(baseCost*qualityCostMult[h.quality]*h.level*0.5);
+  
+  // 执行遣散
   G.team=G.team.map(t=>(t&&t.uid===uid)?null:t);
   G.heroes.splice(idx,1);
+  
+  // 发放返还资源
+  if(returnExp>0){
+    G.resources.expPotion=(G.resources.expPotion||0)+returnExp;
+  }
+  if(returnGold>0){
+    G.resources.gold=Math.min((G.resources.gold||0)+returnGold,RESOURCE_LIMITS.gold);
+  }
+  
   closeModal();
   renderCurrentTab();
+  updateResourceBar();
   saveGame();
-  showToast('已遣散 '+h.icon+h.name);
+  showToast(`已遣散 ${h.icon}${h.name} 返还 🧪${returnExp}经验药水 💰${returnGold}金币`);
 }
 
 function filterHeroes(filter,btn){
