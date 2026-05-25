@@ -48,6 +48,8 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 /* ===== 合成结果展示 ===== */
 .merge-result-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:300;display:flex;align-items:center;justify-content:center;animation:fadeIn .3s ease}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(.98)}}
+@keyframes btnGlow{0%,100%{box-shadow:0 0 5px rgba(255,165,0,.3)}50%{box-shadow:0 0 15px rgba(255,165,0,.6)}}
 .merge-result-card{background:var(--panel);border:2px solid var(--gold);border-radius:16px;padding:24px;max-width:360px;width:90%;text-align:center;position:relative;animation:cardPop .5s cubic-bezier(.34,1.56,.64,1)}
 @keyframes cardPop{0%{opacity:0;transform:scale(.3) translateY(50px)}70%{transform:scale(1.05) translateY(-10px)}100%{opacity:1;transform:scale(1) translateY(0)}}
 .merge-result-avatar{width:100px;height:100px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:56px;margin:0 auto 16px;position:relative;border:3px solid var(--border);animation:avatarGlow 1.5s ease infinite alternate}
@@ -3301,10 +3303,12 @@ async function runBattle(stageId){
       // 自动推图失败：停止自动推图，不切回战斗页
       G_battleRunning=false;
       G_autoBattle=false;
+      updateAutoBattleButtons(false);
       showToast('💀 自动推图失败！关卡 '+G_currentStageId);
     }else{
       G_battleRunning=false;
       G_autoBattle=false;
+      updateAutoBattleButtons(false);
       // 非自动战斗：显示醒目的"返回"按钮
       btnArea.innerHTML='<div style="text-align:center;padding:16px 0">'
         +'<div style="font-size:16px;font-weight:bold;margin-bottom:8px">'+(won?'🎉 战斗胜利！':'💀 战斗失败...')+'</div>'
@@ -4082,7 +4086,7 @@ function renderTown(el){
     +'<div class="panel">'
       +'<div class="panel-title"><span class="icon">⚔️</span> 快速入口</div>'
       +'<div class="town-quick-btns">'
-        +'<button class="btn btn-primary" style="flex:1" onclick="startAutoBattle(G.stageProgress)">▶️ 自动推图</button>'
+        +'<button class="btn btn-primary auto-battle-btn" style="flex:1" onclick="startAutoBattle(G.stageProgress)">▶️ 自动推图</button>'
         +'<button class="btn" style="flex:1" onclick="renderTavernRecruit()">🍺 招募</button>'
       +'</div>'
     +'</div>'
@@ -4883,7 +4887,7 @@ function renderBattle(el){
         }).join('')}
       </div>
         <div class="btn-group mt-8">
-          <button class="btn btn-primary" onclick="startAutoBattle(G.stageProgress)">▶️ 自动推图（从当前关卡开始）</button>
+          <button class="btn btn-primary auto-battle-btn" onclick="startAutoBattle(G.stageProgress)">▶️ 自动推图（从当前关卡开始）</button>
         </div>
     </div>
   `;
@@ -4896,9 +4900,37 @@ function hideBattlePanel(){
 }
 
 function startAutoBattle(fromStage){
+  // 点击反馈
+  showToast('🚀 开始自动推图...');
+  
   G_autoBattle=true;
   G_currentStageId=fromStage||G.stageProgress;
+  
+  // 更新所有自动推图按钮状态
+  updateAutoBattleButtons(true);
+  
   startBattle(G_currentStageId);
+}
+
+// 更新自动推图按钮状态
+function updateAutoBattleButtons(isRunning){
+  document.querySelectorAll('.auto-battle-btn').forEach(btn=>{
+    if(isRunning){
+      btn.innerHTML='⏳ 推图中...';
+      btn.style.background='linear-gradient(135deg,rgba(255,165,0,.4),rgba(255,100,0,.3))';
+      btn.style.borderColor='#ffa500';
+      btn.style.color='#ffd700';
+      btn.style.animation='pulse 1s infinite, btnGlow 1.5s infinite';
+      btn.style.cursor='wait';
+    }else{
+      btn.innerHTML='▶️ 自动推图';
+      btn.style.background='';
+      btn.style.borderColor='';
+      btn.style.color='';
+      btn.style.animation='';
+      btn.style.cursor='';
+    }
+  });
 }
 
 function startBattle(stageId){
