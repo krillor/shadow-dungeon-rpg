@@ -1050,14 +1050,36 @@ const BUILDING_DEFS = {
 // 竞技场配置
 const ARENA_CONFIG = {
   // 每日挑战次数
-  dailyChallengesByLevel:{1:2,2:3,3:5},
+  dailyChallengesByLevel:{1:3,2:5,3:8},
   // 难度奖励倍率
-  difficultyMultiplier:{easy:1,normal:1.5,hard:2.5},
+  difficultyMultiplier:{easy:1,normal:1.5,hard:2.5,nightmare:4,mythic:6},
   // 基础奖励（根据对手等级计算）
-  baseGoldReward:300,
-  baseFameReward:15,
+  baseGoldReward:400,
+  baseFameReward:20,
   // 连胜加成
   winStreakBonus:{2:0.2,3:0.3,5:0.5,10:1},
+  // 难度解锁条件（竞技场建筑等级）
+  difficultyUnlock:{easy:1,normal:1,hard:2,nightmare:2,mythic:3},
+  // 难度名称
+  difficultyNames:{easy:'简单',normal:'普通',hard:'困难',nightmare:'噩梦',mythic:'神话'},
+  // 难度图标
+  difficultyIcons:{easy:'🟢',normal:'🟡',hard:'🔴',nightmare:'💀',mythic:'👹'},
+  // 难度描述
+  difficultyDesc:{
+    easy:'等级×60% · 最高稀有 · 奖励×1',
+    normal:'等级×90% · 最高史诗 · 奖励×1.5',
+    hard:'等级×110% · 最高传说 · 奖励×2.5',
+    nightmare:'等级×130% · 最高传说 · 合理阵容 · 奖励×4',
+    mythic:'等级×150% · 最高神话 · 完美阵容 · 奖励×6'
+  },
+  // 丰厚奖励：额外掉落
+  rewardExtras:{
+    easy:{gemChance:0,gemAmount:0,expPotionMin:20,expPotionMax:50,ironMin:5,ironMax:15},
+    normal:{gemChance:0.1,gemAmount:1,expPotionMin:40,expPotionMax:100,ironMin:10,ironMax:30},
+    hard:{gemChance:0.2,gemAmount:2,expPotionMin:80,expPotionMax:200,ironMin:20,ironMax:60},
+    nightmare:{gemChance:0.35,gemAmount:3,expPotionMin:150,expPotionMax:400,ironMin:40,ironMax:100},
+    mythic:{gemChance:0.5,gemAmount:5,expPotionMin:300,expPotionMax:800,ironMin:80,ironMax:200}
+  }
 };
 
 // 酒馆刷新配置
@@ -1119,8 +1141,12 @@ let G = {
     dailyChallengesUsed:0,
     lastChallengeDate:'',
     winStreak:0,
+    maxWinStreak:0,
     totalWins:0,
     totalLosses:0,
+    highestDifficulty:'easy',
+    totalGoldEarned:0,
+    totalFameEarned:0,
   },
 };
 
@@ -1656,48 +1682,116 @@ function generateArenaOpponent(difficulty){
   if(teamSize===0)teamSize=1;
   
   // 计算玩家队伍平均等级和品质
-  var totalLevel=0;
-  var totalQuality=0;
-  var maxPlayerLevel=0;
+  var totalLevel=0,totalQuality=0,maxPlayerLevel=0,totalPower=0;
   teamHeroes.forEach(function(h){
     totalLevel+=h.level;
     totalQuality+=QUALITIES.indexOf(h.quality);
     if(h.level>maxPlayerLevel)maxPlayerLevel=h.level;
+    totalPower+=calcHeroPower(h);
   });
   var avgPlayerLevel=Math.floor(totalLevel/teamSize);
   var avgPlayerQuality=Math.floor(totalQuality/teamSize);
   if(avgPlayerLevel===0)avgPlayerLevel=1;
   
-  // 根据难度调整基础等级
-  var levelMultiplier={easy:0.6,normal:0.9,hard:1.2};
-  var baseLevel=Math.floor(avgPlayerLevel*levelMultiplier[difficulty]);
-  baseLevel=Math.max(1,baseLevel);
+  // 难度参数
+  var levelMultiplier={easy:0.6,normal:0.9,hard:1.1,nightmare:1.3,mythic:1.5};
+  var maxQualityIdx={easy:1,normal:2,hard:3,nightmare:4,mythic:4}[difficulty]||2;
+  var baseLevel=Math.max(1,Math.floor(avgPlayerLevel*levelMultiplier[difficulty]));
   
-  // 根据难度调整品质上限
-  var maxQualityIdx={easy:1,normal:3,hard:4}[difficulty]||2; // easy=稀有,normal=史诗,hard=传说
+  // 对手人数：与玩家队伍相同（最少2人最多6人）
+  var opponentCount=Math.min(Math.max(teamSize,2),6);
   
-  // 对手人数与玩家队伍相同（最少2人，最多4人）
-  var opponentCount=Math.min(Math.max(teamSize,2),4);
+  // ===== 合理阵容生成（噩梦/神话难度） =====
+  // 定义阵容模板：确保坦克+输出+辅助的合理搭配
+  var teamCompositions=[
+    // 均衡阵容
+    [{role:'guardian',min:1},{role:'warrior',min:1},{role:'healer',min:1}],
+    // 爆发阵容
+    [{role:'warrior',min:1},{role:'assassin',min:1},{role:'mage',min:1}],
+    // 消耗阵容
+    [{role:'guardian',min:1},{role:'mage',min:1},{role:'healer',min:1}],
+    // 控制阵容
+    [{role:'mage',min:2},{role:'warlock',min:1}],
+    // 速攻阵容
+    [{role:'assassin',min:1},{role:'ranger',min:1},{role:'warrior',min:1}],
+    // 圣光阵容
+    [{role:'paladin',min:1},{role:'healer',min:1},{role:'guardian',min:1}],
+    // 暗影阵容
+    [{role:'warlock',min:1},{role:'assassin',min:1},{role:'mage',min:1}],
+  ];
   
-  // 生成对手
+  // 选择阵容模板（噩梦/神话用合理阵容，其他随机）
+  var useSmartTeam=(difficulty==='nightmare'||difficulty==='mythic');
+  var selectedComp=null;
+  if(useSmartTeam){
+    selectedComp=pick(teamCompositions);
+  }
+  
+  // 统计已分配的角色
+  var roleCount={};
   var opponents=[];
+  
   for(var i=0;i<opponentCount;i++){
-    // 根据难度选择品质
+    // 选择品质：匹配玩家品质范围
     var qualityIdx=Math.min(maxQualityIdx,avgPlayerQuality+rand(-1,1));
     qualityIdx=Math.max(0,Math.min(qualityIdx,QUALITIES.length-1));
     var quality=QUALITIES[qualityIdx];
     
-    // 选择该品质的英雄模板
-    var pool=HERO_TEMPLATES.filter(function(t){return t.quality===quality});
+    // 选择角色（智能阵容 or 随机）
+    var targetRole=null;
+    if(selectedComp){
+      // 找到还需要满足的角色要求
+      for(var c=0;c<selectedComp.length;c++){
+        var req=selectedComp[c];
+        var currentCount=roleCount[req.role]||0;
+        if(currentCount<req.min){
+          targetRole=req.role;
+          break;
+        }
+      }
+      // 如果所有要求都满足，随机选
+      if(!targetRole){
+        var allRoles=Object.keys(ROLES);
+        targetRole=pick(allRoles);
+      }
+    }else{
+      // 随机选角色
+      var allRoles=Object.keys(ROLES);
+      targetRole=pick(allRoles);
+    }
+    
+    roleCount[targetRole]=(roleCount[targetRole]||0)+1;
+    
+    // 从该角色+品质的英雄模板中选择
+    var pool=HERO_TEMPLATES.filter(function(t){return t.quality===quality&&t.role===targetRole});
+    if(pool.length===0)pool=HERO_TEMPLATES.filter(function(t){return t.role===targetRole});
     if(pool.length===0)pool=HERO_TEMPLATES;
     var tpl=pick(pool);
     
     var role=ROLES[tpl.role];
     var qm=QUALITY_MULT[tpl.quality];
     
-    // 等级有随机波动
+    // 等级波动
     var levelVariation=rand(-2,3);
     var opponentLevel=Math.max(1,baseLevel+levelVariation);
+    
+    // 技能：使用模板自带技能（已合理搭配）
+    var skills=tpl.skills.slice();
+    
+    // 高难度额外技能加成
+    if(difficulty==='nightmare'||difficulty==='mythic'){
+      // 给每个英雄额外加一个同角色的强力技能
+      var roleSkills=HERO_TEMPLATES.filter(function(t){return t.role===tpl.role&&t.quality!=='common'});
+      var bonusPool=[];
+      roleSkills.forEach(function(t){
+        t.skills.forEach(function(s){
+          if(skills.indexOf(s)===-1&&bonusPool.indexOf(s)===-1)bonusPool.push(s);
+        });
+      });
+      if(bonusPool.length>0){
+        skills.push(pick(bonusPool));
+      }
+    }
     
     opponents.push({
       name:tpl.name,
@@ -1712,7 +1806,7 @@ function generateArenaOpponent(difficulty){
       spd:calcStat(role.baseSPD,qm,opponentLevel),
       mp:calcStat(role.baseMP,qm,opponentLevel),
       maxMP:calcStat(role.baseMP,qm,opponentLevel),
-      skills:tpl.skills,
+      skills:skills,
       alive:true,
       isEnemy:true,
     });
@@ -1721,11 +1815,10 @@ function generateArenaOpponent(difficulty){
 }
 
 function calculateArenaReward(opponents,difficulty,isWin){
-  if(!isWin)return{gold:0,fame:0};
+  if(!isWin)return{gold:0,fame:0,extras:{}};
   
   // 计算对手平均等级和品质
-  var totalLevel=0;
-  var totalQuality=0;
+  var totalLevel=0,totalQuality=0;
   opponents.forEach(function(o){
     totalLevel+=o.level;
     totalQuality+=QUALITIES.indexOf(o.quality);
@@ -1737,26 +1830,46 @@ function calculateArenaReward(opponents,difficulty,isWin){
   var baseFame=ARENA_CONFIG.baseFameReward;
   var diffMult=ARENA_CONFIG.difficultyMultiplier[difficulty]||1;
   
-  // 根据对手等级和品质计算奖励
-  var levelBonus=1+(avgLevel/100);
-  var qualityBonus=1+(avgQuality*0.1); // 品质每高一级+10%
-  var countBonus=opponents.length*0.2; // 每多一个对手+20%
+  var levelBonus=1+(avgLevel/80);
+  var qualityBonus=1+(avgQuality*0.15);
+  var countBonus=opponents.length*0.2;
   
   var gold=Math.floor(baseGold*levelBonus*qualityBonus*(1+countBonus)*diffMult);
   var fame=Math.floor(baseFame*levelBonus*qualityBonus*(1+countBonus)*diffMult);
   
-  // 连胜加成（使用配置）
+  // 连胜加成
   var winStreak=G.arenaState.winStreak;
   var streakBonus=0;
   var streakThresholds=Object.keys(ARENA_CONFIG.winStreakBonus).map(Number).sort(function(a,b){return b-a});
   for(var i=0;i<streakThresholds.length;i++){
     if(winStreak>=streakThresholds[i]){streakBonus=ARENA_CONFIG.winStreakBonus[streakThresholds[i]];break;}
   }
-  
   gold=Math.floor(gold*(1+streakBonus));
   fame=Math.floor(fame*(1+streakBonus));
   
-  return{gold:gold,fame:fame};
+  // 丰厚额外奖励
+  var extras=ARENA_CONFIG.rewardExtras[difficulty]||ARENA_CONFIG.rewardExtras.easy;
+  var rewardExtras={};
+  
+  // 宝石掉落
+  if(extras.gemChance>0&&Math.random()<extras.gemChance){
+    rewardExtras.gems=extras.gemAmount;
+  }
+  
+  // 经验药水
+  var potionAmount=rand(extras.expPotionMin,extras.expPotionMax);
+  rewardExtras.expPotion=potionAmount;
+  
+  // 铁矿
+  var ironAmount=rand(extras.ironMin,extras.ironMax);
+  rewardExtras.iron=ironAmount;
+  
+  // 石材（高难度）
+  if(difficulty==='hard'||difficulty==='nightmare'||difficulty==='mythic'){
+    rewardExtras.stone=rand(5,20)*(difficulty==='mythic'?3:difficulty==='nightmare'?2:1);
+  }
+  
+  return{gold:gold,fame:fame,extras:rewardExtras};
 }
 
 function startArenaBattle(difficulty){
@@ -2118,7 +2231,34 @@ async function finishArenaBattle(isWin,playerUnits,enemyUnits){
   
   // 显示结算提示（通过Toast）
   if(isWin){
-    showToast('🎉 竞技场胜利！获得 💰'+reward.gold+' 🏆'+reward.fame);
+    // 发放奖励
+    G.resources.gold=Math.min((G.resources.gold||0)+reward.gold,RESOURCE_LIMITS.gold);
+    G.resources.fame=Math.min((G.resources.fame||0)+reward.fame,RESOURCE_LIMITS.fame);
+    G.arenaState.totalGoldEarned=(G.arenaState.totalGoldEarned||0)+reward.gold;
+    G.arenaState.totalFameEarned=(G.arenaState.totalFameEarned||0)+reward.fame;
+    
+    // 额外奖励
+    var extras=reward.extras||{};
+    var extraMsg='';
+    if(extras.gems){
+      G.resources.gems=Math.min((G.resources.gems||0)+extras.gems,RESOURCE_LIMITS.gems);
+      extraMsg+=' 💎'+extras.gems;
+    }
+    if(extras.expPotion){
+      G.resources.expPotion=Math.min((G.resources.expPotion||0)+extras.expPotion,RESOURCE_LIMITS.expPotion);
+      extraMsg+=' 🧪'+extras.expPotion;
+    }
+    if(extras.iron){
+      G.resources.iron=Math.min((G.resources.iron||0)+extras.iron,RESOURCE_LIMITS.iron);
+      extraMsg+=' ⛏️'+extras.iron;
+    }
+    if(extras.stone){
+      G.resources.stone=Math.min((G.resources.stone||0)+extras.stone,RESOURCE_LIMITS.stone);
+      extraMsg+=' 🪨'+extras.stone;
+    }
+    
+    showToast('🎉 竞技场胜利！💰'+reward.gold+' 🏆'+reward.fame+extraMsg);
+    updateResUI();
   }else{
     showToast('💀 竞技场失败...');
   }
@@ -2127,7 +2267,16 @@ async function finishArenaBattle(isWin,playerUnits,enemyUnits){
   var btnArea=document.getElementById('arena-battle-buttons');
   if(btnArea){
     var resultText=isWin?'<span class="text-gold" style="font-size:20px;font-weight:bold">🎉 竞技场胜利！</span>':'<span class="text-red" style="font-size:20px;font-weight:bold">💀 竞技场失败...</span>';
-    var rewardText=isWin?'<div style="text-align:center;margin:12px 0;color:#ffd700;font-size:16px">奖励: 💰'+reward.gold+' 🏆'+reward.fame+'</div>':'';
+    var rewardText='';
+    if(isWin){
+      var extraStr='';
+      var ex=reward.extras||{};
+      if(ex.gems)extraStr+=' 💎'+ex.gems;
+      if(ex.expPotion)extraStr+=' 🧪'+ex.expPotion;
+      if(ex.iron)extraStr+=' ⛏️'+ex.iron;
+      if(ex.stone)extraStr+=' 🪨'+ex.stone;
+      rewardText='<div style="text-align:center;margin:12px 0;color:#ffd700;font-size:16px">💰'+reward.gold+' 🏆'+reward.fame+extraStr+'</div>';
+    }
     var streakText=isWin?'<div style="text-align:center;margin:8px 0;color:#2ed573">连胜: '+G.arenaState.winStreak+'</div>':'';
     btnArea.innerHTML='<div style="margin:20px 0;text-align:center;padding:20px;background:rgba(0,0,0,0.3);border-radius:10px">'+resultText+rewardText+streakText+'</div>';
   }
@@ -2151,11 +2300,16 @@ function showArenaResult(){
   
   if(isWin){
     G.arenaState.winStreak++;
+    if(G.arenaState.winStreak>(G.arenaState.maxWinStreak||0)){
+      G.arenaState.maxWinStreak=G.arenaState.winStreak;
+    }
     G.arenaState.totalWins++;
-    G.resources.gold+=reward.gold;
-    G.resources.fame+=reward.fame;
-    updateResUI();
-    showToast('获得 💰'+reward.gold+' 🏆'+reward.fame);
+    // 记录最高难度
+    var diffOrder=['easy','normal','hard','nightmare','mythic'];
+    var curIdx=diffOrder.indexOf(G.arenaState.highestDifficulty||'easy');
+    var thisIdx=diffOrder.indexOf(difficulty);
+    if(thisIdx>curIdx)G.arenaState.highestDifficulty=difficulty;
+    // 奖励已在 finishArenaBattle 中发放，这里不再重复
   }else{
     G.arenaState.winStreak=0;
     G.arenaState.totalLosses++;
@@ -5587,54 +5741,89 @@ function renderArena(el){
     return;
   }
   
+  // 获取玩家战力信息
+  var teamHeroes=G.team.filter(function(h){return h!==null});
+  var teamPower=0;
+  teamHeroes.forEach(function(h){teamPower+=calcHeroPower(h)});
+  
+  // 构建难度卡片
+  var difficulties=['easy','normal','hard','nightmare','mythic'];
+  var diffCards=difficulties.map(function(diff){
+    var unlockLevel=ARENA_CONFIG.difficultyUnlock[diff]||1;
+    var locked=arenaLevel<unlockLevel;
+    var noChallenges=remaining<=0;
+    var disabled=locked||noChallenges;
+    var icon=ARENA_CONFIG.difficultyIcons[diff];
+    var name=ARENA_CONFIG.difficultyNames[diff];
+    var desc=ARENA_CONFIG.difficultyDesc[diff];
+    var mult=ARENA_CONFIG.difficultyMultiplier[diff];
+    var extras=ARENA_CONFIG.rewardExtras[diff];
+    
+    var bgColors={easy:'rgba(46,213,115,0.1)',normal:'rgba(255,193,7,0.1)',hard:'rgba(255,107,107,0.1)',nightmare:'rgba(139,92,246,0.1)',mythic:'rgba(220,50,50,0.12)'};
+    var textColors={easy:'#2ed573',normal:'#ffc107',hard:'#ff6b6b',nightmare:'#b06ce6',mythic:'#ff4444'};
+    
+    var rewardPreview='💰金币 · 🏆声望';
+    if(extras.expPotionMax>0)rewardPreview+=' · 🧪药水';
+    if(extras.ironMax>0)rewardPreview+=' · ⛏️铁矿';
+    if(extras.gemChance>0)rewardPreview+=' · 💎宝石';
+    if(extras.stone)rewardPreview+=' · 🪨石材';
+    
+    return `<div style="flex:1;min-width:140px;background:${bgColors[diff]};border-radius:10px;padding:14px 10px;text-align:center;position:relative;${locked?'opacity:.4':''}">
+      ${locked?'<div style="position:absolute;top:6px;right:8px;font-size:10px;color:var(--text3)">🔒 Lv.'+unlockLevel+'</div>':''}
+      <div style="font-size:28px;margin-bottom:6px">${icon}</div>
+      <div style="font-weight:bold;color:${textColors[diff]};font-size:14px">${name}</div>
+      <div class="text-xs text-dim" style="margin-top:4px;line-height:1.5">${desc}</div>
+      <div style="margin-top:8px;padding:6px;background:rgba(0,0,0,.2);border-radius:6px">
+        <div class="text-xs" style="color:var(--gold)">奖励×${mult}</div>
+        <div class="text-xs text-dim" style="margin-top:2px">${rewardPreview}</div>
+      </div>
+      <button class="btn btn-sm mt-8" onclick="startArenaBattle('${diff}')" ${disabled?'disabled':''}>${locked?'未解锁':'挑战'}</button>
+    </div>`;
+  }).join('');
+  
   el.innerHTML=`<div class="panel">
     <div class="panel-title"><span class="icon">🏟️</span> 竞技场 <span class="text-blue">Lv.${arenaLevel}</span></div>
     
     <!-- 统计信息 -->
-    <div style="background:rgba(0,0,0,0.2);border-radius:8px;padding:12px;margin-bottom:16px">
-      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px">
+    <div style="background:rgba(0,0,0,0.2);border-radius:8px;padding:12px;margin-bottom:14px;border:1px solid rgba(255,255,255,.03)">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;align-items:center">
         <span>今日剩余: <b style="color:#2ed573">${remaining}/${dailyLimit}</b></span>
-        <span>连胜: <b style="color:#ffd700">${G.arenaState.winStreak}</b></span>
-        <span>总胜场: <b style="color:#4a9eff">${G.arenaState.totalWins}</b></span>
-        <span>总败场: <b style="color:#ff6b6b">${G.arenaState.totalLosses}</b></span>
+        <span>连胜: <b style="color:#ffd700">${G.arenaState.winStreak||0}</b></span>
+        <span>最高连胜: <b style="color:#ffa500">${G.arenaState.maxWinStreak||0}</b></span>
+        <span>胜/负: <b style="color:#4a9eff">${G.arenaState.totalWins||0}</b>/<b style="color:#ff6b6b">${G.arenaState.totalLosses||0}</b></span>
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:var(--text3)">
+        队伍战力: <b style="color:var(--gold)">${teamPower}</b> · 英雄数: <b>${teamHeroes.length}</b> · 最高难度: <b style="color:var(--gold)">${ARENA_CONFIG.difficultyNames[G.arenaState.highestDifficulty||'easy']||'无'}</b>
       </div>
     </div>
     
-    <div class="text-dim text-sm mb-8">对手根据你的队伍等级、品质和人数生成</div>
+    <div class="text-dim text-sm mb-8">对手根据你的队伍等级、品质和战力动态生成，高难度拥有合理阵容搭配</div>
     
     <!-- 难度选择 -->
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
-      <div style="flex:1;min-width:150px;background:rgba(46,213,115,0.1);border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:24px;margin-bottom:8px">🟢</div>
-        <div style="font-weight:bold;color:#2ed573">简单</div>
-        <div class="text-xs text-dim">等级×60% 最高稀有</div>
-        <div class="text-xs text-dim">奖励×0.8</div>
-        <button class="btn btn-sm mt-8" onclick="startArenaBattle('easy')" ${remaining<=0?'disabled':''}>挑战</button>
-      </div>
-      <div style="flex:1;min-width:150px;background:rgba(255,193,7,0.1);border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:24px;margin-bottom:8px">🟡</div>
-        <div style="font-weight:bold;color:#ffc107">普通</div>
-        <div class="text-xs text-dim">等级×90% 最高史诗</div>
-        <div class="text-xs text-dim">奖励×1.0</div>
-        <button class="btn btn-sm mt-8" onclick="startArenaBattle('normal')" ${remaining<=0?'disabled':''}>挑战</button>
-      </div>
-      <div style="flex:1;min-width:150px;background:rgba(255,107,107,0.1);border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:24px;margin-bottom:8px">🔴</div>
-        <div style="font-weight:bold;color:#ff6b6b">困难</div>
-        <div class="text-xs text-dim">等级×120% 最高传说</div>
-        <div class="text-xs text-dim">奖励×1.5</div>
-        <button class="btn btn-sm mt-8" onclick="startArenaBattle('hard')" ${remaining<=0?'disabled':''}>挑战</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      ${diffCards}
+    </div>
+    
+    <!-- 连胜加成 -->
+    <div style="background:rgba(255,215,0,0.08);border-radius:8px;padding:12px;border:1px solid rgba(255,215,0,.1)">
+      <div style="font-weight:bold;margin-bottom:8px;color:#ffd700">🔥 连胜加成</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px">
+        <span>2连胜: <b style="color:#2ed573">+20%</b></span>
+        <span>3连胜: <b style="color:#2ed573">+30%</b></span>
+        <span>5连胜: <b style="color:#ffa500">+50%</b></span>
+        <span>10连胜: <b style="color:#ff6b6b">+100%</b></span>
       </div>
     </div>
     
-    <!-- 连胜加成说明 -->
-    <div style="background:rgba(255,215,0,0.1);border-radius:8px;padding:12px">
-      <div style="font-weight:bold;margin-bottom:8px;color:#ffd700">🔥 连胜加成</div>
-      <div style="font-size:12px;line-height:1.8">
-        <div>2连胜: +10% 奖励</div>
-        <div>3连胜: +20% 奖励</div>
-        <div>5连胜: +30% 奖励</div>
-        <div>10连胜: +50% 奖励</div>
+    <!-- 玩法说明 -->
+    <div style="background:rgba(0,0,0,.15);border-radius:8px;padding:12px;margin-top:10px">
+      <div style="font-weight:bold;margin-bottom:6px;color:var(--blue)">💡 竞技场玩法</div>
+      <div class="text-xs text-dim" style="line-height:1.8">
+        <div>• 对手等级、品质与你的队伍匹配，难度越高对手越强</div>
+        <div>• 噩梦/神话难度的敌方拥有合理阵容搭配（坦克+输出+辅助）</div>
+        <div>• 高难度敌方英雄会携带额外技能，需要针对性调整阵容策略</div>
+        <div>• 丰厚奖励：金币、声望、经验药水、铁矿、宝石、石材</div>
+        <div>• 连胜越高奖励越多，失败则连胜清零</div>
       </div>
     </div>
   </div>`;
