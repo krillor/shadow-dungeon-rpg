@@ -4598,15 +4598,20 @@ function showHeroDetail(uid){
       <!-- 经验药水使用区域 -->
       <div class="hd-section" style="background:rgba(142,68,173,.08)">
         <div class="hd-section-title">🧪 使用经验药水</div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <div style="flex:1">
-            <div class="text-sm">当前拥有: <span style="color:var(--purple);font-weight:bold">🧪 ${G.resources.expPotion||0}</span></div>
-            <div class="text-xs text-dim">每次使用消耗100经验药水</div>
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="useExpPotion(${h.uid})" ${(G.resources.expPotion||0)<100||h.level>=levelCap?'disabled':''}>
-            使用 (+100EXP)
-          </button>
+        <div style="margin-bottom:10px">
+          <div class="text-sm">当前拥有: <span style="color:var(--purple);font-weight:bold">🧪 ${G.resources.expPotion||0}</span></div>
+          <div class="text-xs text-dim">每次使用消耗100经验药水获得100经验</div>
         </div>
+        ${h.level<levelCap?`
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span class="text-xs text-dim">选择数量:</span>
+          <button class="btn btn-sm" style="padding:4px 10px;font-size:11px" onclick="useExpPotion(${h.uid},1)" ${(G.resources.expPotion||0)<100?'disabled':''}>1x (+100)</button>
+          <button class="btn btn-sm" style="padding:4px 10px;font-size:11px" onclick="useExpPotion(${h.uid},5)" ${(G.resources.expPotion||0)<500?'disabled':''}>5x (+500)</button>
+          <button class="btn btn-sm" style="padding:4px 10px;font-size:11px" onclick="useExpPotion(${h.uid},10)" ${(G.resources.expPotion||0)<1000?'disabled':''}>10x (+1000)</button>
+          <button class="btn btn-sm" style="padding:4px 10px;font-size:11px" onclick="useExpPotion(${h.uid},50)" ${(G.resources.expPotion||0)<5000?'disabled':''}>50x (+5000)</button>
+          <button class="btn btn-sm" style="padding:4px 10px;font-size:11px;background:rgba(201,162,39,.2);border-color:var(--gold)" onclick="useExpPotion(${h.uid},-1)" ${(G.resources.expPotion||0)<100?'disabled':''}>全部</button>
+        </div>
+        `:''}
         ${h.level>=levelCap?'<div class="text-xs text-red mt-4">已达当前等级上限，请升级神殿</div>':''}
       </div>
 
@@ -4622,7 +4627,8 @@ function showHeroDetail(uid){
 }
 
 // 使用经验药水
-function useExpPotion(heroUid){
+// 使用经验药水（支持倍数：1/5/10/50/-1为全部）
+function useExpPotion(heroUid,mult=1){
   const hero=G.heroes.find(h=>h.uid===heroUid);
   if(!hero)return;
   
@@ -4632,14 +4638,29 @@ function useExpPotion(heroUid){
     return;
   }
   
-  if((G.resources.expPotion||0)<100){
-    showToast('经验药水不足！需要 🧪100');
+  // 计算实际消耗数量
+  const unitCost=100; // 每次消耗100药水
+  let actualMult=mult;
+  if(mult===-1){
+    // 全部使用：计算最大可用倍数
+    actualMult=Math.floor((G.resources.expPotion||0)/unitCost);
+    if(actualMult<=0){
+      showToast('经验药水不足！');
+      return;
+    }
+  }
+  
+  const totalCost=unitCost*actualMult;
+  const totalExp=100*actualMult;
+  
+  if((G.resources.expPotion||0)<totalCost){
+    showToast(`经验药水不足！需要 🧪${totalCost}`);
     return;
   }
   
   // 消耗药水并增加经验
-  G.resources.expPotion-=100;
-  const leveledUp=addHeroExp(hero,100);
+  G.resources.expPotion-=totalCost;
+  const leveledUp=addHeroExp(hero,totalExp);
   
   updateResourceBar();
   saveGame();
@@ -4647,7 +4668,7 @@ function useExpPotion(heroUid){
   if(leveledUp){
     showToast(`${hero.icon}${hero.name} 升级了！当前 Lv.${hero.level}`);
   }else{
-    showToast(`${hero.icon}${hero.name} 获得经验 +100 (${hero.exp}/${getExpToLevel(hero.level)})`);
+    showToast(`${hero.icon}${hero.name} 获得经验 +${totalExp} (${hero.exp}/${getExpToLevel(hero.level)})`);
   }
   
   // 刷新英雄详情弹窗
