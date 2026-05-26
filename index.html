@@ -6651,8 +6651,11 @@ function confirmPlayerName() {
     
     showToast('✅ 名字设置成功：' + name);
     
-    // 继续保存到云端
+    // 保存到云端
     saveToCloud();
+    
+    // 上传排行榜成绩
+    submitAllLeaderboards();
   });
 }
 
