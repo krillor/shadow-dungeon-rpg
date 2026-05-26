@@ -4917,24 +4917,26 @@ function dismissHero(uid){
   var qName=QUALITY_NAMES[h.quality]||h.quality;
   var qColor=QUALITY_COLORS[h.quality]||'#fff';
   
-  showModal(`
-    <div style="text-align:center;padding:10px">
-      <div style="font-size:48px;margin-bottom:10px">${h.icon}</div>
-      <div style="font-size:18px;font-weight:bold;color:${qColor}">${h.name}</div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:15px">${qName} Lv.${h.level}</div>
-      
-      <div style="background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);border-radius:8px;padding:12px;margin-bottom:15px">
-        <div style="color:#ff6b6b;font-weight:bold;margin-bottom:8px">⚠️ 确定要遣散此英雄吗？</div>
-        <div style="font-size:12px;color:var(--text2)">遣散后将返还以下资源：</div>
-        <div style="margin-top:8px;font-size:14px">
-          🧪 经验药水 ×${returnExp}<br>
-          💰 金币 ×${returnGold}
+  openModal(`
+    <div class="modal" style="max-width:320px;margin:auto">
+      <div style="text-align:center;padding:10px">
+        <div style="font-size:48px;margin-bottom:10px">${h.icon}</div>
+        <div style="font-size:18px;font-weight:bold;color:${qColor}">${h.name}</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:15px">${qName} Lv.${h.level}</div>
+        
+        <div style="background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);border-radius:8px;padding:12px;margin-bottom:15px">
+          <div style="color:#ff6b6b;font-weight:bold;margin-bottom:8px">⚠️ 确定要遣散此英雄吗？</div>
+          <div style="font-size:12px;color:var(--text2)">遣散后将返还以下资源：</div>
+          <div style="margin-top:8px;font-size:14px">
+            🧪 经验药水 ×${returnExp}<br>
+            💰 金币 ×${returnGold}
+          </div>
         </div>
-      </div>
-      
-      <div style="display:flex;gap:10px">
-        <button class="btn" style="flex:1" onclick="closeModal()">取消</button>
-        <button class="btn" style="flex:1;background:rgba(255,107,107,.2);border-color:rgba(255,107,107,.5);color:#ff6b6b" onclick="confirmDismiss('${uid}')">确认遣散</button>
+        
+        <div style="display:flex;gap:10px">
+          <button class="btn" style="flex:1" onclick="closeModal()">取消</button>
+          <button class="btn" style="flex:1;background:rgba(255,107,107,.2);border-color:rgba(255,107,107,.5);color:#ff6b6b" onclick="confirmDismiss('${uid}')">确认遣散</button>
+        </div>
       </div>
     </div>
   `);
