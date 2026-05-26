@@ -6348,6 +6348,116 @@ function unlockCheats(){
   }
 }
 
+// ==================== 兑换码系统 ====================
+var REDEEM_CODES = {
+  // ===== 新手礼包 =====
+  'DARK001': {
+    name: '新手大礼包',
+    rewards: {gold:50000, gems:100, food:500, stone:300, iron:200, fame:50},
+    heroes: [{quality:'epic', count:1}],
+    equipment: [{quality:'legendary', count:1, level:20}]
+  },
+  // ===== 资源礼包 =====
+  'GOLD666': {
+    name: '金币大礼包',
+    rewards: {gold:200000, food:1000, stone:500, iron:300}
+  },
+  'GEM888': {
+    name: '宝石大礼包',
+    rewards: {gems:500, fame:100}
+  },
+  'BUILD999': {
+    name: '建材大礼包',
+    rewards: {stone:2000, iron:1500, gold:50000}
+  },
+  // ===== 英雄礼包 =====
+  'HERO2024': {
+    name: '英雄精选礼包',
+    rewards: {gems:50, food:300},
+    heroes: [{quality:'epic', count:2}]
+  },
+  'LEGEND01': {
+    name: '传说英雄礼包',
+    rewards: {gems:200},
+    heroes: [{quality:'legendary', count:1}]
+  },
+  'MYTHIC01': {
+    name: '神话英雄礼包',
+    rewards: {gems:500},
+    heroes: [{quality:'mythic', count:1}]
+  },
+  'TEAM666': {
+    name: '精锐小队礼包',
+    rewards: {gems:100, food:500, gold:30000},
+    heroes: [{quality:'rare', count:3}]
+  },
+  // ===== 装备礼包 =====
+  'EQUIP001': {
+    name: '史诗装备礼包',
+    rewards: {iron:500, gold:20000},
+    equipment: [{quality:'epic', count:2, level:15}]
+  },
+  'EQUIP002': {
+    name: '传说装备礼包',
+    rewards: {iron:1000, gold:50000, gems:100},
+    equipment: [{quality:'legendary', count:2, level:25}]
+  },
+  'WEAPON01': {
+    name: '神兵利器礼包',
+    rewards: {iron:800, gold:30000},
+    equipment: [{type:'weapon', quality:'legendary', count:1, level:30}]
+  },
+  'ARMOR001': {
+    name: '铜墙铁壁礼包',
+    rewards: {stone:800, gold:30000},
+    equipment: [{type:'armor', quality:'legendary', count:1, level:30}]
+  },
+  // ===== 综合礼包 =====
+  'VIP666': {
+    name: 'VIP至尊礼包',
+    rewards: {gold:100000, gems:300, food:1000, stone:800, iron:600, fame:200},
+    heroes: [{quality:'legendary', count:1}],
+    equipment: [{quality:'legendary', count:2, level:25}]
+  },
+  'SUP888': {
+    name: '超级豪华礼包',
+    rewards: {gold:300000, gems:800, food:2000, stone:1500, iron:1000, fame:500},
+    heroes: [{quality:'legendary', count:1}, {quality:'epic', count:2}],
+    equipment: [{quality:'legendary', count:2, level:30}, {quality:'mythic', count:1, level:20}]
+  },
+  'WEEK001': {
+    name: '七日狂欢礼包',
+    rewards: {gold:150000, gems:200, food:800, stone:600, iron:400, fame:150},
+    heroes: [{quality:'epic', count:1}],
+    equipment: [{quality:'epic', count:2, level:20}]
+  },
+  // ===== 节日/活动礼包 =====
+  'DRAGON01': {
+    name: '龙族秘宝礼包',
+    rewards: {gems:150, gold:80000},
+    heroes: [{id:'dragon_knight', count:1}],
+    equipment: [{quality:'legendary', count:1, level:30}]
+  },
+  'SHADOW01': {
+    name: '暗影降临礼包',
+    rewards: {gems:150, gold:80000},
+    heroes: [{id:'death_reaper', count:1}],
+    equipment: [{quality:'legendary', count:1, level:30}]
+  },
+  'HOLY001': {
+    name: '圣光祝福礼包',
+    rewards: {gems:150, gold:80000},
+    heroes: [{id:'archangel', count:1}],
+    equipment: [{quality:'legendary', count:1, level:30}]
+  },
+  'VOID001': {
+    name: '虚空之力礼包',
+    rewards: {gems:300},
+    heroes: [{id:'chaos_lord', count:1}],
+    equipment: [{id:'chaos_orb', count:1, level:25}]
+  }
+};
+
 // 兑换码功能
 function redeemCode(){
   var input=document.getElementById('redeem-code-input');
@@ -6362,61 +6472,95 @@ function redeemCode(){
     return;
   }
   
-  // 检查兑换码
-  if(code==='DARK001'){
-    // 新手大礼包
-    if(G.redeemedCodes && G.redeemedCodes['DARK001']){
-      resultEl.textContent='⚠️ 该兑换码已使用过';
-      resultEl.style.display='block';
-      resultEl.style.color='var(--yellow)';
-      return;
-    }
-    
-    // 发放奖励
-    G.resources.gold=(G.resources.gold||0)+50000;
-    G.resources.gems=(G.resources.gems||0)+100;
-    G.resources.food=(G.resources.food||0)+500;
-    G.resources.stone=(G.resources.stone||0)+300;
-    G.resources.iron=(G.resources.iron||0)+200;
-    G.resources.fame=(G.resources.fame||0)+50;
-    
-    // 给一个史诗英雄
-    var tpl=HERO_TEMPLATES.filter(function(t){return t.quality==='epic'})[0];
-    if(tpl){
-      var hero=createHero(tpl.id);
-      G.heroes.push(hero);
-    }
-    
-    // 给一件传说装备
-    var equipTpl=EQUIP_TEMPLATES.filter(function(e){return e.quality==='legendary'})[0];
-    if(equipTpl){
-      var equip=createEquipment(equipTpl.id);
-      equip.level=20;
-      G.equipment.push(equip);
-    }
-    
-    // 记录已兑换
-    if(!G.redeemedCodes)G.redeemedCodes={};
-    G.redeemedCodes['DARK001']=Date.now();
-    
-    saveGame();
-    updateResUI();
-    
-    resultEl.innerHTML='<span style="color:#2ecc71">✅ 兑换成功！</span><br>' +
-      '<span style="font-size:12px;color:var(--text2)">' +
-      '金币+50000 | 宝石+100 | 食物+500<br>' +
-      '石头+300 | 铁矿+200 | 声望+50<br>' +
-      '史诗英雄×1 | 传说装备×1' +
-      '</span>';
-    resultEl.style.display='block';
-    input.value='';
-    
-    showToast('🎁 新手大礼包兑换成功！');
-  }else{
+  var codeData = REDEEM_CODES[code];
+  
+  if(!codeData){
     resultEl.textContent='❌ 兑换码无效';
     resultEl.style.display='block';
     resultEl.style.color='var(--red)';
+    return;
   }
+  
+  // 检查是否已使用
+  if(G.redeemedCodes && G.redeemedCodes[code]){
+    resultEl.textContent='⚠️ 该兑换码已使用过';
+    resultEl.style.display='block';
+    resultEl.style.color='var(--yellow)';
+    return;
+  }
+  
+  // 发放资源奖励
+  var rewardDesc = [];
+  var resNames = {gold:'💰金币', gems:'💎宝石', food:'🍞食物', stone:'🪨石材', iron:'⛏️铁矿', fame:'⭐声望'};
+  if(codeData.rewards){
+    for(var key in codeData.rewards){
+      G.resources[key] = (G.resources[key]||0) + codeData.rewards[key];
+      rewardDesc.push(resNames[key] + '+' + codeData.rewards[key]);
+    }
+  }
+  
+  // 发放英雄
+  if(codeData.heroes){
+    for(var h=0;h<codeData.heroes.length;h++){
+      var hConf = codeData.heroes[h];
+      var tpl = null;
+      if(hConf.id){
+        tpl = HERO_TEMPLATES.find(function(t){return t.id===hConf.id});
+      } else if(hConf.quality){
+        var pool = HERO_TEMPLATES.filter(function(t){return t.quality===hConf.quality});
+        tpl = pool[Math.floor(Math.random()*pool.length)];
+      }
+      if(tpl){
+        for(var c=0;c<(hConf.count||1);c++){
+          var hero = createHero(tpl.id);
+          G.heroes.push(hero);
+        }
+        var qName = QUALITY_NAMES[tpl.quality] || tpl.quality;
+        rewardDesc.push((tpl.icon||'') + qName + '英雄×' + (hConf.count||1));
+      }
+    }
+  }
+  
+  // 发放装备
+  if(codeData.equipment){
+    for(var e=0;e<codeData.equipment.length;e++){
+      var eConf = codeData.equipment[e];
+      var eTpl = null;
+      if(eConf.id){
+        eTpl = EQUIP_TEMPLATES.find(function(t){return t.id===eConf.id});
+      } else {
+        var ePool = EQUIP_TEMPLATES.filter(function(t){
+          if(eConf.quality && t.quality !== eConf.quality) return false;
+          if(eConf.type && t.type !== eConf.type) return false;
+          return true;
+        });
+        eTpl = ePool[Math.floor(Math.random()*ePool.length)];
+      }
+      if(eTpl){
+        for(var ec=0;ec<(eConf.count||1);ec++){
+          var equip = createEquipment(eTpl.id);
+          equip.level = eConf.level || 1;
+          G.equipment.push(equip);
+        }
+        var eqName = QUALITY_NAMES[eTpl.quality] || eTpl.quality;
+        rewardDesc.push((eTpl.icon||'') + eqName + '装备×' + (eConf.count||1) + '(Lv' + (eConf.level||1) + ')');
+      }
+    }
+  }
+  
+  // 记录已兑换
+  if(!G.redeemedCodes) G.redeemedCodes = {};
+  G.redeemedCodes[code] = Date.now();
+  
+  saveGame();
+  updateResUI();
+  
+  resultEl.innerHTML = '<span style="color:#2ecc71">✅ ' + codeData.name + ' 兑换成功！</span><br>' +
+    '<span style="font-size:12px;color:var(--text2)">' + rewardDesc.join('<br>') + '</span>';
+  resultEl.style.display = 'block';
+  input.value = '';
+  
+  showToast('🎁 ' + codeData.name + '兑换成功！');
 }
 
 function toggleCheats(){
