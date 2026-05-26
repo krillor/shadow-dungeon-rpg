@@ -4372,6 +4372,11 @@ function renderTavernRecruit(){
         }).join('');
   // 保底进度显示
   var _pity=getPity();
+  // 根据酒馆等级计算当前最高品质
+  var tavernLevel=G.buildings.tavern||1;
+  var maxQIdx=Math.min(Math.floor(tavernLevel/2)+1,QUALITIES.length-1);
+  var maxQuality=QUALITIES[maxQIdx];
+  var qName=QUALITY_NAMES[maxQuality]||maxQuality;
   var pityText=_pity>=10?'<span style="color:#ef4444;font-weight:bold">🎉 保底已触发！</span>':`保底进度: ${_pity}/10`;
   
   // 经验药水购买价格
@@ -4383,7 +4388,7 @@ function renderTavernRecruit(){
       <div class="panel-title"><span class="icon">🍺</span> 酒馆招募</div>
       <div class="text-dim text-sm mb-8">酒馆等级：${G.buildings.tavern} | 可选英雄：${TAVERN_REFRESH.optionsCount[G.buildings.tavern]||3}个${(()=>{var b=TAVERN_REFRESH.qualityWeightBoost[G.buildings.tavern]||0;return b>0?' | 品质+'+(b*100)+'%':''})()}</div>
       <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:6px;padding:8px;margin-bottom:12px;font-size:12px;text-align:center">
-        🎲 ${pityText} <span class="text-dim">（每10次刷新必出史诗+英雄）</span>
+        🎲 ${pityText} <span class="text-dim">（每10次刷新必出${qName}英雄）</span>
       </div>
       <div class="grid-3">
         ${heroesHTML}
