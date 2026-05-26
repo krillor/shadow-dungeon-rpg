@@ -4915,7 +4915,7 @@ function renderTavernRecruit(){
     <!-- 经验药水购买区域 -->
     <div class="panel" style="margin-top:12px">
       <div class="panel-title"><span class="icon">🧪</span> 经验药水商店</div>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
         <div style="flex:1;min-width:200px">
           <div class="text-sm">当前拥有: <span style="color:var(--purple);font-weight:bold">🧪 ${G.resources.expPotion||0}</span> 经验药水</div>
           <div class="text-xs text-dim mt-4">可用于快速提升英雄等级</div>
@@ -4924,7 +4924,32 @@ function renderTavernRecruit(){
           <div class="text-sm" style="color:var(--gold)">💰 ${potionPrice} = 🧪 ${potionAmount}</div>
           <div class="text-xs text-dim">50金币购买100经验药水</div>
         </div>
-        <button class="btn btn-primary" onclick="buyExpPotion()">购买</button>
+      </div>
+      <!-- 批量购买 -->
+      <div style="border-top:1px solid var(--border);padding-top:12px">
+        <div class="text-xs text-dim mb-8">批量购买（自定义数量）</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="number" id="potion-buy-count" min="1" max="999" value="1" style="width:70px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--panel2);color:var(--text);font-size:13px;text-align:center" onchange="updatePotionBuyCost()" oninput="updatePotionBuyCost()">
+          <span class="text-xs text-dim">份</span>
+          <span style="color:var(--text3)">|</span>
+          <span class="text-xs">总计: <span id="potion-buy-total-amount" style="color:var(--purple);font-weight:bold">100</span> 药水</span>
+          <span style="color:var(--text3)">|</span>
+          <span class="text-xs">需: <span id="potion-buy-total-cost" style="color:var(--gold);font-weight:bold">50</span> 金币</span>
+          <span style="flex:1"></span>
+          <button class="btn btn-primary" onclick="buyExpPotionBatch()">批量购买</button>
+        </div>
+        <div id="potion-buy-error" class="text-xs text-red mt-4" style="display:none"></div>
+      </div>
+      <!-- 快捷购买按钮 -->
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px">
+        <div class="text-xs text-dim mb-8">快捷购买</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="buyExpPotionQuick(1)">1份 (💰50)</button>
+          <button class="btn btn-sm" onclick="buyExpPotionQuick(5)">5份 (💰250)</button>
+          <button class="btn btn-sm" onclick="buyExpPotionQuick(10)">10份 (💰500)</button>
+          <button class="btn btn-sm" onclick="buyExpPotionQuick(50)">50份 (💰2500)</button>
+          <button class="btn btn-sm" style="background:rgba(201,162,39,.2);border-color:var(--gold)" onclick="buyExpPotionMax()">最大</button>
+        </div>
       </div>
     </div>
   `;
@@ -5324,12 +5349,25 @@ function showHeroDetail(uid){
           <div class="text-xs text-dim">每次使用消耗100经验药水获得100经验</div>
         </div>
         ${h.level<levelCap?`
+        <!-- 自定义数量输入 -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:10px;background:rgba(0,0,0,.2);border-radius:8px">
+          <span class="text-xs text-dim">自定义数量:</span>
+          <input type="number" id="potion-use-count-${h.uid}" min="1" max="9999" value="1" style="width:70px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--panel2);color:var(--text);font-size:12px;text-align:center" onchange="updatePotionUseCost(${h.uid})" oninput="updatePotionUseCost(${h.uid})">
+          <span class="text-xs text-dim">份</span>
+          <span style="color:var(--text3)">|</span>
+          <span class="text-xs">消耗: <span id="potion-use-cost-${h.uid}" style="color:var(--purple);font-weight:bold">100</span> 药水</span>
+          <span style="color:var(--text3)">|</span>
+          <span class="text-xs">获得: <span id="potion-use-exp-${h.uid}" style="color:var(--green);font-weight:bold">100</span> 经验</span>
+          <span style="flex:1"></span>
+          <button class="btn btn-primary btn-sm" onclick="useExpPotionCustom(${h.uid})" id="potion-use-btn-${h.uid}">使用</button>
+        </div>
+        <!-- 快捷按钮 -->
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <span class="text-xs text-dim">选择数量:</span>
-          <button class="btn btn-sm" style="padding:4px 10px;font-size:11px" onclick="useExpPotion(${h.uid},1)" ${(G.resources.expPotion||0)<100?'disabled':''}>1x (+100)</button>
-          <button class="btn btn-sm" style="padding:4px 10px;font-size:11px" onclick="useExpPotion(${h.uid},5)" ${(G.resources.expPotion||0)<500?'disabled':''}>5x (+500)</button>
-          <button class="btn btn-sm" style="padding:4px 10px;font-size:11px" onclick="useExpPotion(${h.uid},10)" ${(G.resources.expPotion||0)<1000?'disabled':''}>10x (+1000)</button>
-          <button class="btn btn-sm" style="padding:4px 10px;font-size:11px" onclick="useExpPotion(${h.uid},50)" ${(G.resources.expPotion||0)<5000?'disabled':''}>50x (+5000)</button>
+          <span class="text-xs text-dim">快捷:</span>
+          <button class="btn btn-sm" style="padding:4px 10px;font-size:11px" onclick="useExpPotion(${h.uid},1)" ${(G.resources.expPotion||0)<100?'disabled':''}>1x</button>
+          <button class="btn btn-sm" style="padding:4px 10px;font-size:11px" onclick="useExpPotion(${h.uid},5)" ${(G.resources.expPotion||0)<500?'disabled':''}>5x</button>
+          <button class="btn btn-sm" style="padding:4px 10px;font-size:11px" onclick="useExpPotion(${h.uid},10)" ${(G.resources.expPotion||0)<1000?'disabled':''}>10x</button>
+          <button class="btn btn-sm" style="padding:4px 10px;font-size:11px" onclick="useExpPotion(${h.uid},50)" ${(G.resources.expPotion||0)<5000?'disabled':''}>50x</button>
           <button class="btn btn-sm" style="padding:4px 10px;font-size:11px;background:rgba(201,162,39,.2);border-color:var(--gold)" onclick="useExpPotion(${h.uid},-1)" ${(G.resources.expPotion||0)<100?'disabled':''}>全部</button>
         </div>
         `:''}
@@ -5396,27 +5434,127 @@ function useExpPotion(heroUid,mult=1){
   showHeroDetail(heroUid);
 }
 
-// 购买经验药水
+// 购买经验药水（单份，保留原函数兼容）
 function buyExpPotion(){
+  buyExpPotionQuick(1);
+}
+
+// 更新购买成本显示
+function updatePotionBuyCost(){
+  const count=parseInt(document.getElementById('potion-buy-count')?.value)||1;
+  const potionAmount=100;
+  const potionPrice=50;
+  const totalAmount=count*potionAmount;
+  const totalCost=count*potionPrice;
+  
+  const amountEl=document.getElementById('potion-buy-total-amount');
+  const costEl=document.getElementById('potion-buy-total-cost');
+  const errorEl=document.getElementById('potion-buy-error');
+  
+  if(amountEl)amountEl.textContent=totalAmount;
+  if(costEl)costEl.textContent=totalCost;
+  
+  // 检查限制并显示错误
+  if(errorEl){
+    let errorMsg='';
+    if((G.resources.gold||0)<totalCost){
+      errorMsg='金币不足！';
+    }else if((G.resources.expPotion||0)+totalAmount>RESOURCE_LIMITS.expPotion){
+      errorMsg='超过经验药水存储上限！';
+    }
+    errorEl.textContent=errorMsg;
+    errorEl.style.display=errorMsg?'block':'none';
+  }
+}
+
+// 批量购买经验药水
+function buyExpPotionBatch(){
+  const count=parseInt(document.getElementById('potion-buy-count')?.value)||1;
+  buyExpPotionQuick(count);
+}
+
+// 快捷购买经验药水
+function buyExpPotionQuick(count){
   const potionPrice=50;
   const potionAmount=100;
+  const totalCost=count*potionPrice;
+  const totalAmount=count*potionAmount;
   
-  if((G.resources.gold||0)<potionPrice){
-    showToast('金币不足！需要 💰'+potionPrice);
+  if(count<=0){
+    showToast('购买数量必须大于0！');
     return;
   }
   
-  if((G.resources.expPotion||0)+potionAmount>RESOURCE_LIMITS.expPotion){
-    showToast('经验药水已达上限！');
+  if((G.resources.gold||0)<totalCost){
+    showToast(`金币不足！需要 💰${totalCost}，当前 💰${G.resources.gold||0}`);
     return;
   }
   
-  G.resources.gold-=potionPrice;
-  G.resources.expPotion=(G.resources.expPotion||0)+potionAmount;
+  if((G.resources.expPotion||0)+totalAmount>RESOURCE_LIMITS.expPotion){
+    const maxCanBuy=Math.floor((RESOURCE_LIMITS.expPotion-(G.resources.expPotion||0))/potionAmount);
+    if(maxCanBuy<=0){
+      showToast('经验药水已达上限！');
+    }else{
+      showToast(`超过存储上限！最多还能购买 ${maxCanBuy} 份`);
+    }
+    return;
+  }
+  
+  G.resources.gold-=totalCost;
+  G.resources.expPotion=(G.resources.expPotion||0)+totalAmount;
   updateResourceBar();
   saveGame();
-  showToast(`购买成功！获得 🧪${potionAmount}经验药水`);
+  showToast(`购买成功！消耗 💰${totalCost}，获得 🧪${totalAmount}经验药水`);
   renderTavernRecruit(); // 刷新界面显示
+}
+
+// 购买最大数量的经验药水
+function buyExpPotionMax(){
+  const potionPrice=50;
+  const potionAmount=100;
+  const maxByGold=Math.floor((G.resources.gold||0)/potionPrice);
+  const maxByLimit=Math.floor((RESOURCE_LIMITS.expPotion-(G.resources.expPotion||0))/potionAmount);
+  const maxCount=Math.min(maxByGold,maxByLimit);
+  
+  if(maxCount<=0){
+    if(maxByGold<=0){
+      showToast('金币不足！');
+    }else{
+      showToast('经验药水已达上限！');
+    }
+    return;
+  }
+  
+  buyExpPotionQuick(maxCount);
+}
+
+// 更新使用药水成本显示
+function updatePotionUseCost(heroUid){
+  const count=parseInt(document.getElementById(`potion-use-count-${heroUid}`)?.value)||1;
+  const unitCost=100;
+  const unitExp=100;
+  const totalCost=count*unitCost;
+  const totalExp=count*unitExp;
+  
+  const costEl=document.getElementById(`potion-use-cost-${heroUid}`);
+  const expEl=document.getElementById(`potion-use-exp-${heroUid}`);
+  const btnEl=document.getElementById(`potion-use-btn-${heroUid}`);
+  
+  if(costEl)costEl.textContent=totalCost;
+  if(expEl)expEl.textContent=totalExp;
+  
+  // 检查资源是否足够
+  if(btnEl){
+    const hasEnough=(G.resources.expPotion||0)>=totalCost;
+    btnEl.disabled=!hasEnough;
+    btnEl.style.opacity=hasEnough?'1':'0.5';
+  }
+}
+
+// 使用自定义数量的经验药水
+function useExpPotionCustom(heroUid){
+  const count=parseInt(document.getElementById(`potion-use-count-${heroUid}`)?.value)||1;
+  useExpPotion(heroUid,count);
 }
 
 // 遣散英雄（先显示确认，返回资源）
