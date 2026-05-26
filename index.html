@@ -5974,6 +5974,9 @@ function renderLeaderboard(el){
   var totalHeroes = G.heroes ? G.heroes.length : 0;
   
   var connectionStatus = isCloudReady ? '☁️ 已连接云端，数据实时同步' : '⏳ 正在连接云端...';
+  var playerNameDisplay = G.playerName ? '<span style="color:var(--gold)">' + G.playerName + '</span>' : '<span style="color:var(--text3)">未设置名字</span>';
+  var uploadBtnText = G.playerName ? '📤 上传成绩' : '👤 设置名字';
+  var uploadBtnAction = G.playerName ? 'submitAllLeaderboards()' : 'showPlayerNameInput()';
   
   el.innerHTML = '<div class="panel">' +
     '<div class="panel-title"><span class="icon">🏆</span> 全服排行榜</div>' +
@@ -5982,12 +5985,12 @@ function renderLeaderboard(el){
       '<div style="display:flex;align-items:center;gap:12px">' +
         '<div style="font-size:36px">👤</div>' +
         '<div style="flex:1">' +
-          '<div style="font-weight:bold;color:var(--gold)">我的排名</div>' +
+          '<div style="font-weight:bold;color:var(--gold)">我的排名 ' + playerNameDisplay + '</div>' +
           '<div style="font-size:12px;color:var(--text2);margin-top:4px">' +
             '战力: <b>' + teamPower + '</b> | 最高关卡: <b>' + maxStage + '</b> | 竞技场胜场: <b>' + arenaWins + '</b>' +
           '</div>' +
         '</div>' +
-        '<button class="btn btn-primary btn-sm" onclick="submitAllLeaderboards()">📤 上传成绩</button>' +
+        '<button class="btn btn-primary btn-sm" onclick="' + uploadBtnAction + '">' + uploadBtnText + '</button>' +
       '</div>' +
     '</div>' +
     '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">' +
@@ -6721,7 +6724,7 @@ function getLeaderboard(scoreType, limit) {
 
 // 获取玩家排名
 function getPlayerRank(scoreType) {
-  if (!isCloudReady || !currentUser) {
+  if (!isCloudReady || !deviceId) {
     return Promise.resolve(null);
   }
   
