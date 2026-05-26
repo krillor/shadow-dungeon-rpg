@@ -434,6 +434,38 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 input[type="number"],input[type="text"]{outline:none;transition:var(--transition)}
 input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!important;box-shadow:0 0 8px rgba(201,162,39,.15)}
 
+/* ===== 词缀系统样式 ===== */
+.affix-slot{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(0,0,0,.2);border-radius:8px;margin:4px 0;border:1px solid rgba(255,255,255,.04);transition:var(--transition);position:relative;overflow:hidden}
+.affix-slot:hover{border-color:rgba(255,255,255,.1);background:rgba(0,0,0,.3)}
+.affix-slot::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:0 2px 2px 0}
+.affix-slot.tier-1::before{background:#888}.affix-slot.tier-2::before{background:#2ecc71}.affix-slot.tier-3::before{background:#3498db}.affix-slot.tier-4::before{background:#a855f7}.affix-slot.tier-5::before{background:linear-gradient(180deg,#f59e0b,#ef4444)}
+.affix-icon{font-size:16px;width:24px;text-align:center;flex-shrink:0}
+.affix-info{flex:1;min-width:0}
+.affix-name{font-size:12px;font-weight:bold;display:flex;align-items:center;gap:4px}
+.affix-tier-badge{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:bold;letter-spacing:.3px}
+.affix-tier-badge.tier-1{background:rgba(136,136,136,.2);color:#888;border:1px solid rgba(136,136,136,.3)}
+.affix-tier-badge.tier-2{background:rgba(46,204,113,.15);color:#2ecc71;border:1px solid rgba(46,204,113,.3)}
+.affix-tier-badge.tier-3{background:rgba(52,152,219,.15);color:#3498db;border:1px solid rgba(52,152,219,.3)}
+.affix-tier-badge.tier-4{background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.3)}
+.affix-tier-badge.tier-5{background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3);box-shadow:0 0 6px rgba(245,158,11,.2)}
+.affix-value{font-size:11px;color:var(--gold);font-weight:bold;margin-top:1px}
+.affix-desc{font-size:10px;color:var(--text2);margin-top:1px}
+.affix-reroll-btn{background:rgba(52,152,219,.15);border:1px solid rgba(52,152,219,.3);color:var(--blue);padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer;transition:var(--transition);white-space:nowrap;flex-shrink:0}
+.affix-reroll-btn:hover{background:rgba(52,152,219,.25);border-color:rgba(52,152,219,.5)}
+.affix-reroll-btn:active{transform:scale(.95)}
+.synergy-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:linear-gradient(135deg,rgba(255,215,0,.1),rgba(255,165,0,.05));border:1px solid rgba(255,215,0,.3);border-radius:6px;font-size:11px;color:var(--gold);margin:3px 0;animation:synergyGlow 2s ease-in-out infinite}
+@keyframes synergyGlow{0%,100%{box-shadow:0 0 4px rgba(255,215,0,.1)}50%{box-shadow:0 0 12px rgba(255,215,0,.25)}}
+.synergy-name{font-weight:bold}
+.synergy-desc{font-size:10px;color:var(--text2)}
+.affix-section{background:linear-gradient(145deg,rgba(0,0,0,.15),rgba(0,0,0,.08));border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:12px;margin:10px 0}
+.affix-section-title{color:var(--gold);font-size:13px;font-weight:bold;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.affix-empty-slot{display:flex;align-items:center;justify-content:center;padding:8px;border:2px dashed rgba(255,255,255,.1);border-radius:8px;margin:4px 0;color:var(--text3);font-size:11px;cursor:pointer;transition:var(--transition)}
+.affix-empty-slot:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,162,39,.05)}
+.affix-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.affix-reroll-all-btn{background:linear-gradient(135deg,rgba(168,85,247,.15),rgba(168,85,247,.08));border:1px solid rgba(168,85,247,.3);color:#a855f7;padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer;transition:var(--transition);font-weight:bold}
+.affix-reroll-all-btn:hover{background:linear-gradient(135deg,rgba(168,85,247,.25),rgba(168,85,247,.15));box-shadow:0 0 10px rgba(168,85,247,.2)}
+.affix-reroll-all-btn:active{transform:scale(.95)}
+
 /* ===== 桌面端覆盖 ===== */
 @media(min-width:769px){
   #app{flex-direction:row}
@@ -1414,6 +1446,73 @@ const EQUIP_TEMPLATES = [
   {id:'doom_scythe',name:'末日镰刀',icon:'☠️',type:'weapon',quality:'mythic',stats:{atk:28,hp:30,spd:4},specialSkill:'sk_poison_mist',desc:'收割灵魂的镰刀，附带剧毒。'}
 
 ];
+
+// ==================== 装备词缀系统 ====================
+const AFFIX_TIERS = [
+  {id:1, name:'T1 粗糙', color:'#888', mult:0.6},
+  {id:2, name:'T2 精良', color:'#2ecc71', mult:0.8},
+  {id:3, name:'T3 稀世', color:'#3498db', mult:1.0},
+  {id:4, name:'T4 完美', color:'#a855f7', mult:1.3},
+  {id:5, name:'T5 传说', color:'#f59e0b', mult:1.7}
+];
+
+const AFFIX_POOL = {
+  attack: [
+    {id:'aff_crit_rate', name:'暴击率', icon:'💥', stat:'critRate', base:3, unit:'%', desc:'暴击率+{v}%'},
+    {id:'aff_crit_dmg', name:'暴击伤害', icon:'⚡', stat:'critDmg', base:5, unit:'%', desc:'暴击伤害+{v}%'},
+    {id:'aff_atk_spd', name:'攻击速度', icon:'⏩', stat:'atkSpd', base:2, unit:'%', desc:'攻击速度+{v}%'},
+    {id:'aff_armor_pen', name:'穿透', icon:'🎯', stat:'armorPen', base:3, unit:'%', desc:'无视目标{v}%防御'},
+    {id:'aff_life_steal', name:'吸血', icon:'🧛', stat:'lifeSteal', base:2, unit:'%', desc:'造成伤害的{v}%转化为生命'},
+    {id:'aff_hit_bonus', name:'命中', icon:'🎯', stat:'hitBonus', base:3, unit:'%', desc:'命中率+{v}%'},
+    {id:'aff_dodge_rate', name:'闪避', icon:'💨', stat:'dodgeRate', base:2, unit:'%', desc:'闪避率+{v}%'},
+  ],
+  defense: [
+    {id:'aff_block_rate', name:'格挡率', icon:'🛡️', stat:'blockRate', base:3, unit:'%', desc:'格挡率+{v}%'},
+    {id:'aff_dmg_reduce', name:'减伤', icon:'🔰', stat:'dmgReduce', base:2, unit:'%', desc:'受到伤害减少{v}%'},
+    {id:'aff_thorns', name:'反伤', icon:'🔥', stat:'thorns', base:2, unit:'%', desc:'反弹受到伤害的{v}%'},
+    {id:'aff_shield_boost', name:'护盾加成', icon:'💠', stat:'shieldBoost', base:3, unit:'%', desc:'获得护盾效果+{v}%'},
+    {id:'aff_hp_regen', name:'生命回复', icon:'💚', stat:'hpRegen', base:1, unit:'%', desc:'每回合恢复{v}%最大生命'},
+    {id:'aff_max_hp', name:'生命加成', icon:'❤️', stat:'maxHpBonus', base:3, unit:'%', desc:'最大生命+{v}%'},
+  ],
+  utility: [
+    {id:'aff_cdr', name:'技能冷却', icon:'⏳', stat:'cdr', base:3, unit:'%', desc:'技能冷却时间-{v}%'},
+    {id:'aff_mp_reduce', name:'MP消耗减少', icon:'💎', stat:'mpReduce', base:3, unit:'%', desc:'MP消耗减少{v}%'},
+    {id:'aff_exp_bonus', name:'经验加成', icon:'📖', stat:'expBonus', base:5, unit:'%', desc:'获得经验+{v}%'},
+    {id:'aff_gold_bonus', name:'金币加成', icon:'💰', stat:'goldBonus', base:5, unit:'%', desc:'获得金币+{v}%'},
+    {id:'aff_skill_boost', name:'技能增强', icon:'✨', stat:'skillBoost', base:3, unit:'%', desc:'技能伤害+{v}%'},
+    {id:'aff_heal_boost', name:'治疗增强', icon:'💖', stat:'healBoost', base:4, unit:'%', desc:'治疗效果+{v}%'},
+  ]
+};
+
+// 词缀协同组合
+const AFFIX_SYNERGIES = [
+  {name:'暴击流', icon:'💥', required:['aff_crit_rate','aff_crit_dmg'], bonus:{stat:'critDmg', value:10, desc:'暴击伤害额外+10%'}},
+  {name:'吸血续航', icon:'🧛', required:['aff_life_steal','aff_hp_regen'], bonus:{stat:'lifeSteal', value:3, desc:'吸血率额外+3%'}},
+  {name:'铁壁防御', icon:'🏰', required:['aff_block_rate','aff_dmg_reduce'], bonus:{stat:'dmgReduce', value:5, desc:'减伤额外+5%'}},
+  {name:'闪避大师', icon:'💨', required:['aff_dodge_rate','aff_hit_bonus'], bonus:{stat:'dodgeRate', value:4, desc:'闪避率额外+4%'}},
+  {name:'技能大师', icon:'✨', required:['aff_cdr','aff_skill_boost'], bonus:{stat:'skillBoost', value:5, desc:'技能伤害额外+5%'}},
+  {name:'治愈之心', icon:'💖', required:['aff_heal_boost','aff_hp_regen'], bonus:{stat:'healBoost', value:5, desc:'治疗效果额外+5%'}},
+  {name:'穿透打击', icon:'🎯', required:['aff_armor_pen','aff_atk_spd'], bonus:{stat:'armorPen', value:5, desc:'穿透额外+5%'}},
+  {name:'财富猎人', icon:'💰', required:['aff_gold_bonus','aff_exp_bonus'], bonus:{stat:'goldBonus', value:8, desc:'金币加成额外+8%'}},
+];
+
+// 品质对应的词缀数量和等级上限
+const QUALITY_AFFIX_CONFIG = {
+  common:   {minSlots:1, maxSlots:1, maxTier:2},
+  rare:     {minSlots:1, maxSlots:2, maxTier:3},
+  epic:     {minSlots:2, maxSlots:2, maxTier:4},
+  legendary:{minSlots:2, maxSlots:3, maxTier:4},
+  mythic:   {minSlots:3, maxSlots:3, maxTier:5}
+};
+
+// 洗练费用
+const REROLL_COSTS = {
+  common:   {gold:100, gems:0},
+  rare:     {gold:200, gems:1},
+  epic:     {gold:500, gems:3},
+  legendary:{gold:1000, gems:5},
+  mythic:   {gold:2000, gems:10}
+};
 
 
 
@@ -2716,6 +2815,38 @@ function getHeroStats(hero){
         for(var bi=0;bi<bKeys.length;bi++){
           var bk=bKeys[bi];
           if(s[bk]!==undefined) s[bk]+=bonus.stats[bk];
+        }
+      }
+    }
+  }
+  // 词缀加成
+  for(var ai=0;ai<slots.length;ai++){
+    var aslot=slots[ai];
+    var aeid=hero.equipment[aslot];
+    if(aeid!=null){
+      var aeq=G.equipment.find(function(e){return e.uid===aeid});
+      if(aeq && aeq.affixes && aeq.affixes.length>0){
+        for(var aj=0;aj<aeq.affixes.length;aj++){
+          var affix=aeq.affixes[aj];
+          var adef=getAffixDef(affix.id);
+          if(!adef)continue;
+          // 百分比类词缀用乘算
+          if(adef.stat==='critRate'||adef.stat==='critDmg'||adef.stat==='atkSpd'||
+             adef.stat==='armorPen'||adef.stat==='lifeSteal'||adef.stat==='hitBonus'||
+             adef.stat==='dodgeRate'||adef.stat==='blockRate'||adef.stat==='dmgReduce'||
+             adef.stat==='thorns'||adef.stat==='shieldBoost'||adef.stat==='hpRegen'||
+             adef.stat==='maxHpBonus'||adef.stat==='cdr'||adef.stat==='mpReduce'||
+             adef.stat==='expBonus'||adef.stat==='goldBonus'||adef.stat==='skillBoost'||
+             adef.stat==='healBoost'){
+            // 存储到特殊字段，战斗时使用
+            if(!s._affixEffects) s._affixEffects={};
+            s._affixEffects[adef.stat]=(s._affixEffects[adef.stat]||0)+affix.value;
+          }
+          // 固定值类词缀直接加
+          if(adef.stat==='maxHpBonus'){
+            s.maxHP=Math.floor(s.maxHP*(1+affix.value/100));
+            s.hp=Math.min(s.hp,s.maxHP);
+          }
         }
       }
     }
@@ -5243,7 +5374,192 @@ function executeMerge(heroUids){
 function createEquipment(templateId){
   const tpl=EQUIP_TEMPLATES.find(t=>t.id===templateId);
   if(!tpl)return null;
-  return{uid:++G.heroIdCounter,id:tpl.id,heroUid:null};
+  var eq={uid:++G.heroIdCounter,id:tpl.id,heroUid:null};
+  // 生成词缀
+  eq.affixes=generateAffixes(tpl.quality);
+  return eq;
+}
+
+// 生成装备词缀
+function generateAffixes(quality){
+  var config = QUALITY_AFFIX_CONFIG[quality] || QUALITY_AFFIX_CONFIG.common;
+  var numSlots = config.minSlots + Math.floor(Math.random() * (config.maxSlots - config.minSlots + 1));
+  var affixes = [];
+  var usedIds = {};
+  var categories = ['attack','defense','utility'];
+  
+  for(var i = 0; i < numSlots; i++){
+    var cat = categories[Math.floor(Math.random() * categories.length)];
+    var pool = AFFIX_POOL[cat];
+    // 避免重复词缀
+    var available = pool.filter(function(a){ return !usedIds[a.id]; });
+    if(available.length === 0){
+      available = pool;
+    }
+    var affixDef = available[Math.floor(Math.random() * available.length)];
+    usedIds[affixDef.id] = true;
+    
+    // 根据品质决定词缀等级
+    var maxTier = config.maxTier;
+    var tier;
+    if(maxTier <= 2){
+      tier = Math.random() < 0.7 ? 1 : 2;
+    } else if(maxTier <= 3){
+      var r = Math.random();
+      tier = r < 0.4 ? 1 : (r < 0.8 ? 2 : 3);
+    } else if(maxTier <= 4){
+      var r2 = Math.random();
+      tier = r2 < 0.2 ? 1 : (r2 < 0.5 ? 2 : (r2 < 0.8 ? 3 : 4));
+    } else {
+      var r3 = Math.random();
+      tier = r3 < 0.1 ? 1 : (r3 < 0.25 ? 2 : (r3 < 0.5 ? 3 : (r3 < 0.8 ? 4 : 5)));
+    }
+    tier = Math.min(tier, maxTier);
+    
+    var tierDef = AFFIX_TIERS[tier - 1];
+    var value = Math.max(1, Math.round(affixDef.base * tierDef.mult * (0.9 + Math.random() * 0.2)));
+    
+    affixes.push({
+      id: affixDef.id,
+      category: cat,
+      tier: tier,
+      value: value
+    });
+  }
+  
+  return affixes;
+}
+
+// 获取词缀定义
+function getAffixDef(affixId){
+  var cats = ['attack','defense','utility'];
+  for(var i = 0; i < cats.length; i++){
+    var pool = AFFIX_POOL[cats[i]];
+    for(var j = 0; j < pool.length; j++){
+      if(pool[j].id === affixId) return pool[j];
+    }
+  }
+  return null;
+}
+
+// 检测词缀协同
+function checkAffixSynergies(affixes){
+  var affixIds = affixes.map(function(a){ return a.id; });
+  var activeSynergies = [];
+  for(var i = 0; i < AFFIX_SYNERGIES.length; i++){
+    var syn = AFFIX_SYNERGIES[i];
+    var allMatch = true;
+    for(var j = 0; j < syn.required.length; j++){
+      if(affixIds.indexOf(syn.required[j]) === -1){
+        allMatch = false;
+        break;
+      }
+    }
+    if(allMatch) activeSynergies.push(syn);
+  }
+  return activeSynergies;
+}
+
+// 洗练词缀（替换指定槽位的词缀）
+function rerollAffix(equipUid, slotIndex){
+  var eq = G.equipment.find(function(e){ return e.uid === equipUid; });
+  if(!eq){ showToast('装备不存在'); return false; }
+  if(eq.heroUid){ showToast('请先卸下装备再洗练'); return false; }
+  
+  var tpl = EQUIP_TEMPLATES.find(function(t){ return t.id === eq.id; });
+  if(!tpl) return false;
+  
+  var cost = REROLL_COSTS[tpl.quality] || REROLL_COSTS.common;
+  if((G.resources.gold || 0) < cost.gold){ showToast('金币不足，需要' + cost.gold + '金币'); return false; }
+  if((G.resources.gems || 0) < cost.gems){ showToast('宝石不足，需要' + cost.gems + '宝石'); return false; }
+  
+  G.resources.gold -= cost.gold;
+  G.resources.gems -= cost.gems;
+  
+  if(!eq.affixes) eq.affixes = [];
+  if(slotIndex < 0 || slotIndex >= eq.affixes.length){
+    // 新增词缀槽位
+    var config = QUALITY_AFFIX_CONFIG[tpl.quality] || QUALITY_AFFIX_CONFIG.common;
+    if(eq.affixes.length >= config.maxSlots){ showToast('词缀槽位已满'); return false; }
+    var newAffix = generateSingleAffix(tpl.quality, eq.affixes);
+    if(newAffix) eq.affixes.push(newAffix);
+  } else {
+    // 替换现有词缀
+    var newAffix2 = generateSingleAffix(tpl.quality, eq.affixes, slotIndex);
+    if(newAffix2) eq.affixes[slotIndex] = newAffix2;
+  }
+  
+  saveGame();
+  updateResUI();
+  showToast('✨ 洗练成功！');
+  return true;
+}
+
+// 生成单个词缀（避免与现有词缀重复）
+function generateSingleAffix(quality, existingAffixes, excludeIndex){
+  var config = QUALITY_AFFIX_CONFIG[quality] || QUALITY_AFFIX_CONFIG.common;
+  var usedIds = {};
+  for(var i = 0; i < existingAffixes.length; i++){
+    if(i !== excludeIndex) usedIds[existingAffixes[i].id] = true;
+  }
+  var categories = ['attack','defense','utility'];
+  var cat = categories[Math.floor(Math.random() * categories.length)];
+  var pool = AFFIX_POOL[cat];
+  var available = pool.filter(function(a){ return !usedIds[a.id]; });
+  if(available.length === 0) available = pool;
+  var affixDef = available[Math.floor(Math.random() * available.length)];
+  
+  var maxTier = config.maxTier;
+  var tier;
+  if(maxTier <= 2){
+    tier = Math.random() < 0.7 ? 1 : 2;
+  } else if(maxTier <= 3){
+    var r = Math.random();
+    tier = r < 0.4 ? 1 : (r < 0.8 ? 2 : 3);
+  } else if(maxTier <= 4){
+    var r2 = Math.random();
+    tier = r2 < 0.2 ? 1 : (r2 < 0.5 ? 2 : (r2 < 0.8 ? 3 : 4));
+  } else {
+    var r3 = Math.random();
+    tier = r3 < 0.1 ? 1 : (r3 < 0.25 ? 2 : (r3 < 0.5 ? 3 : (r3 < 0.8 ? 4 : 5)));
+  }
+  tier = Math.min(tier, maxTier);
+  
+  var tierDef = AFFIX_TIERS[tier - 1];
+  var value = Math.max(1, Math.round(affixDef.base * tierDef.mult * (0.9 + Math.random() * 0.2)));
+  
+  return {
+    id: affixDef.id,
+    category: cat,
+    tier: tier,
+    value: value
+  };
+}
+
+// 一键洗练全部词缀
+function rerollAllAffixes(equipUid){
+  var eq = G.equipment.find(function(e){ return e.uid === equipUid; });
+  if(!eq){ showToast('装备不存在'); return false; }
+  if(eq.heroUid){ showToast('请先卸下装备再洗练'); return false; }
+  
+  var tpl = EQUIP_TEMPLATES.find(function(t){ return t.id === eq.id; });
+  if(!tpl) return false;
+  
+  var cost = REROLL_COSTS[tpl.quality] || REROLL_COSTS.common;
+  var totalGold = cost.gold * 3;
+  var totalGems = cost.gems * 3;
+  if((G.resources.gold || 0) < totalGold){ showToast('金币不足，需要' + totalGold + '金币'); return false; }
+  if((G.resources.gems || 0) < totalGems){ showToast('宝石不足，需要' + totalGems + '宝石'); return false; }
+  
+  G.resources.gold -= totalGold;
+  G.resources.gems -= totalGems;
+  
+  eq.affixes = generateAffixes(tpl.quality);
+  
+  saveGame();
+  updateResUI();
+  showToast('✨ 全部洗练成功！');
+  return true;
 }
 
 function equipItem(heroUid,equipUid){
@@ -5954,12 +6270,30 @@ function showHeroDetail(uid){
               var sk=EQUIP_SPECIAL_SKILLS[tpl.specialSkill];
               skillInfoHtml='<div style="margin-top:3px;font-size:10px;color:#70a1ff">✦ '+sk.icon+' '+sk.name+': '+sk.desc+'</div>';
             }
+            var affixBriefHtml='';
+            if(eq.affixes && eq.affixes.length>0){
+              affixBriefHtml='<div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:2px">';
+              for(var afi=0;afi<eq.affixes.length;afi++){
+                var afix=eq.affixes[afi];
+                var afixDef=getAffixDef(afix.id);
+                if(!afixDef)continue;
+                var tierColor=AFFIX_TIERS[afix.tier-1].color;
+                affixBriefHtml+='<span style="font-size:9px;padding:1px 4px;border-radius:3px;background:rgba(0,0,0,.3);border:1px solid '+tierColor+';color:'+tierColor+'">'+afixDef.icon+afix.value+afixDef.unit+'</span>';
+              }
+              affixBriefHtml+='</div>';
+              // 协同
+              var syns=checkAffixSynergies(eq.affixes);
+              if(syns.length>0){
+                affixBriefHtml+='<div style="margin-top:2px;font-size:9px;color:var(--gold)">🔗 '+syns.map(function(s){return s.icon+s.name}).join(' ')+'</div>';
+              }
+            }
             html+='<div class="hd-equip-slot">'
               +'<div class="hd-equip-icon">'+tpl.icon+'</div>'
               +'<div class="hd-equip-info">'
               +'<div class="hd-equip-name q-'+tpl.quality+'">'+tpl.name+'</div>'
               +'<div class="hd-equip-stats">'+statsStr+'</div>'
               +(enhanceLevel>0?'<div class="hd-equip-enhance">强化 +'+enhanceLevel+' (额外+'+Math.round(enhanceLevel*10)+'%)</div>':'')
+              +affixBriefHtml
               +skillInfoHtml
               +setInfoHtml
               +'</div>'
@@ -7375,9 +7709,20 @@ function renderEquip(el){
     if(tpl.setId && EQUIP_SETS[tpl.setId]){
       setBadge='<span class="equip-set-badge">'+EQUIP_SETS[tpl.setId].icon+'</span>';
     }
+    // 词缀数量标记
+    var affixCountHtml='';
+    if(eq.affixes && eq.affixes.length>0){
+      var bestTier=0;
+      for(var aci=0;aci<eq.affixes.length;aci++){
+        if(eq.affixes[aci].tier>bestTier) bestTier=eq.affixes[aci].tier;
+      }
+      var tierClr=AFFIX_TIERS[bestTier-1].color;
+      affixCountHtml='<span style="font-size:9px;color:'+tierClr+';margin-left:3px">🔮'+eq.affixes.length+'</span>';
+    }
     unequippedHTML+='<div class="equip-item quality-'+tpl.quality+'" onclick="showEquipDetail('+eq.uid+')">'
       +'<span class="equip-icon">'+tpl.icon+'</span>'
       +'<span class="equip-name q-'+tpl.quality+'">'+tpl.name+'<span class="equip-enhance">'+enhanceBonus+'</span></span>'
+      +affixCountHtml
       +setBadge
       +'</div>';
   });
@@ -7395,9 +7740,20 @@ function renderEquip(el){
     if(tpl.setId && EQUIP_SETS[tpl.setId]){
       setBadge='<span class="equip-set-badge">'+EQUIP_SETS[tpl.setId].icon+'</span>';
     }
+    // 词缀数量标记
+    var affixCountHtml2='';
+    if(eq.affixes && eq.affixes.length>0){
+      var bestTier2=0;
+      for(var aci2=0;aci2<eq.affixes.length;aci2++){
+        if(eq.affixes[aci2].tier>bestTier2) bestTier2=eq.affixes[aci2].tier;
+      }
+      var tierClr2=AFFIX_TIERS[bestTier2-1].color;
+      affixCountHtml2='<span style="font-size:9px;color:'+tierClr2+';margin-left:3px">🔮'+eq.affixes.length+'</span>';
+    }
     equippedHTML+='<div class="equip-item quality-'+tpl.quality+'" onclick="showEquipDetail('+eq.uid+')">'
       +'<span class="equip-icon">'+tpl.icon+'</span>'
       +'<span class="equip-name q-'+tpl.quality+'">'+tpl.name+'<span class="equip-enhance">'+enhanceBonus+'</span></span>'
+      +affixCountHtml2
       +setBadge
       +'<span class="equip-hero">→ '+hero.icon+hero.name+'</span>'
       +'</div>';
@@ -7506,6 +7862,59 @@ function showEquipDetail(equipUid){
       +'</div>';
   }
   
+  // 词缀信息
+  var affixHtml='';
+  if(eq.affixes && eq.affixes.length>0){
+    var tpl2=tpl;
+    var config=QUALITY_AFFIX_CONFIG[tpl2.quality]||QUALITY_AFFIX_CONFIG.common;
+    var cost=REROLL_COSTS[tpl2.quality]||REROLL_COSTS.common;
+    var synergies=checkAffixSynergies(eq.affixes);
+    
+    affixHtml='<div class="affix-section">'
+      +'<div class="affix-header">'
+      +'<div class="affix-section-title">🔮 词缀 <span style="font-size:10px;color:var(--text2);font-weight:normal">('+eq.affixes.length+'/'+config.maxSlots+'槽)</span></div>'
+      +'<button class="affix-reroll-all-btn" onclick="if(rerollAllAffixes('+equipUid+')){closeModal();showEquipDetail('+equipUid+')}">🔄 全部洗练 (💰'+(cost.gold*3)+' 💎'+(cost.gems*3)+')</button>'
+      +'</div>';
+    
+    for(var ai=0;ai<eq.affixes.length;ai++){
+      var affix=eq.affixes[ai];
+      var adef=getAffixDef(affix.id);
+      if(!adef)continue;
+      var tierInfo=AFFIX_TIERS[affix.tier-1];
+      var descText=adef.desc.replace('{v}',affix.value);
+      affixHtml+='<div class="affix-slot tier-'+affix.tier+'">'
+        +'<span class="affix-icon">'+adef.icon+'</span>'
+        +'<div class="affix-info">'
+        +'<div class="affix-name"><span style="color:'+tierInfo.color+'">'+adef.name+'</span> <span class="affix-tier-badge tier-'+affix.tier+'">'+tierInfo.name+'</span></div>'
+        +'<div class="affix-value" style="color:'+tierInfo.color+'">'+descText+'</div>'
+        +'</div>'
+        +'<button class="affix-reroll-btn" onclick="if(rerollAffix('+equipUid+','+ai+')){closeModal();showEquipDetail('+equipUid+')}">🔄 洗练</button>'
+        +'</div>';
+    }
+    
+    // 空槽位
+    if(eq.affixes.length<config.maxSlots){
+      affixHtml+='<div class="affix-empty-slot" onclick="if(rerollAffix('+equipUid+',-1)){closeModal();showEquipDetail('+equipUid+')}">+ 点击添加词缀 (💰'+cost.gold+' 💎'+cost.gems+')</div>';
+    }
+    
+    // 协同效果
+    if(synergies.length>0){
+      affixHtml+='<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,215,0,.15)">'
+        +'<div style="color:var(--gold);font-size:11px;font-weight:bold;margin-bottom:4px">🔗 协同效果</div>';
+      for(var si=0;si<synergies.length;si++){
+        var syn=synergies[si];
+        affixHtml+='<div class="synergy-badge">'
+          +'<span>'+syn.icon+'</span>'
+          +'<span class="synergy-name">'+syn.name+'</span>'
+          +'<span class="synergy-desc">: '+syn.bonus.desc+'</span>'
+          +'</div>';
+      }
+      affixHtml+='</div>';
+    }
+    
+    affixHtml+='</div>';
+  }
+  
   // 操作按钮
   let actionButtons='';
   if(hero){
@@ -7526,6 +7935,7 @@ function showEquipDetail(equipUid){
     +'</div>'
     +setHtml
     +skillHtml
+    +affixHtml
     +'<div style="display:flex;gap:8px;margin-top:16px">'
     +actionButtons
     +'</div>';
