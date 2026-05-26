@@ -7,6 +7,10 @@
 <meta name="x5-orientation" content="portrait">
 <meta name="screen-orientation" content="portrait">
 <title>暗影地牢 - 文字策略RPG</title>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0a12;--panel:#141428;--panel2:#1a1a35;--border:#252548;--gold:#c9a227;--gold2:#e8d44d;--red:#c0392b;--green:#27ae60;--blue:#2980b9;--purple:#8e44ad;--text:#d4c5a0;--text2:#8a7d6b;--text3:#5a5245;--hp-bar:#c0392b;--mp-bar:#2980b9;--exp-bar:#27ae60;--nav-h:56px;--top-h:42px}
@@ -428,6 +432,7 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
     <div class="nav-btn" data-tab="buildings" title="建筑">🏗️<div class="nav-label">建筑</div></div>
     <div class="nav-btn" data-tab="arena" title="竞技场">🏟️<div class="nav-label">竞技场</div></div>
     <div class="nav-btn" data-tab="codex" title="图鉴">📖<div class="nav-label">图鉴</div></div>
+    <div class="nav-btn" data-tab="leaderboard" title="排行">🏆<div class="nav-label">排行</div></div>
     <div class="nav-btn" data-tab="cheats" id="nav-cheats-btn" title="金手指" style="color:#c0392b">🔓<div class="nav-label">金手指</div></div>
   </div>
   <div id="main">
@@ -2310,6 +2315,13 @@ function showArenaResult(){
     var thisIdx=diffOrder.indexOf(difficulty);
     if(thisIdx>curIdx)G.arenaState.highestDifficulty=difficulty;
     // 奖励已在 finishArenaBattle 中发放，这里不再重复
+    
+    // 自动提交排行榜数据
+    if(isFirebaseReady){
+      var teamPower=G.team.filter(h=>h).reduce((sum,h)=>sum+calcHeroPower(h),0);
+      submitLeaderboard('arena',G.arenaState.totalWins,{winStreak:G.arenaState.winStreak});
+      submitLeaderboard('power',teamPower,{heroes:G.heroes?.length});
+    }
   }else{
     G.arenaState.winStreak=0;
     G.arenaState.totalLosses++;
@@ -3474,6 +3486,15 @@ async function runBattle(stageId){
         +'<div style="font-size:16px;font-weight:bold;margin-bottom:8px">'+(won?'🎉 战斗胜利！':'💀 战斗失败...')+'</div>'
         +'<button class="btn btn-primary" onclick="forceEndBattle()" style="font-size:14px;padding:8px 32px">返回关卡选择</button>'
         +'</div>';
+      
+      // 战斗胜利后提交排行榜
+      if(won && isFirebaseReady){
+        var teamPower=G.team.filter(h=>h).reduce((sum,h)=>sum+calcHeroPower(h),0);
+        submitLeaderboard('stage',G.stageProgress,{stageName:STAGES[G.stageProgress-1]?.name});
+        submitLeaderboard('power',teamPower,{heroes:G.heroes?.length});
+        // 同时保存到云端
+        saveToCloud();
+      }
     }
   }
 }
@@ -4185,6 +4206,7 @@ function renderCurrentTab(){
     case 'buildings': renderBuildings(contentEl);break;
     case 'arena': renderArena(contentEl);break;
     case 'codex': renderCodex(contentEl);break;
+    case 'leaderboard': renderLeaderboard(contentEl);break;
     case 'cheats': renderCheats(contentEl);break;
   }
 }
@@ -5934,6 +5956,165 @@ function renderCodex(el){
   `;
 }
 
+// ==================== 排行榜页面 ====================
+function renderLeaderboard(el){
+  // 计算玩家数据
+  var teamPower = G.team.filter(h => h).reduce((sum, h) => sum + calcHeroPower(h), 0);
+  var maxStage = G.stageProgress || 1;
+  var arenaWins = G.arenaState?.totalWins || 0;
+  var totalHeroes = G.heroes?.length || 0;
+  
+  el.innerHTML = `
+    <div class="panel">
+      <div class="panel-title"><span class="icon">🏆</span> 全服排行榜</div>
+      <div style="color:var(--text2);font-size:12px;margin-bottom:12px">
+        ${isFirebaseReady ? '☁️ 已连接云端，数据实时同步' : '⏳ 正在连接云端...'}
+      </div>
+      
+      <!-- 玩家信息卡片 -->
+      <div style="background:linear-gradient(135deg,rgba(201,162,39,.15),rgba(201,162,39,.05));border:1px solid rgba(201,162,39,.3);border-radius:10px;padding:14px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:36px">👤</div>
+          <div style="flex:1">
+            <div style="font-weight:bold;color:var(--gold)">我的排名</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:4px">
+              战力: <b>${teamPower}</b> | 最高关卡: <b>${maxStage}</b> | 竞技场胜场: <b>${arenaWins}</b>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="submitAllLeaderboards()">📤 上传成绩</button>
+        </div>
+      </div>
+      
+      <!-- 排行榜类型选择 -->
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="loadLeaderboardData('power')" style="flex:1;min-width:80px">⚔️ 战力榜</button>
+        <button class="btn btn-sm" onclick="loadLeaderboardData('stage')" style="flex:1;min-width:80px">💀 关卡榜</button>
+        <button class="btn btn-sm" onclick="loadLeaderboardData('arena')" style="flex:1;min-width:80px">🏟️ 竞技榜</button>
+        <button class="btn btn-sm" onclick="loadLeaderboardData('heroes')" style="flex:1;min-width:80px">🧙 英雄榜</button>
+      </div>
+      
+      <!-- 排行榜列表 -->
+      <div id="leaderboard-list" style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px;min-height:200px">
+        <div style="text-align:center;color:var(--text3);padding:40px 0">
+          <div style="font-size:24px;margin-bottom:8px">🏆</div>
+          <div>点击上方按钮查看排行榜</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 云存档功能 -->
+    <div class="panel">
+      <div class="panel-title"><span class="icon">☁️</span> 云存档</div>
+      <div style="color:var(--text2);font-size:12px;margin-bottom:12px">
+        自动同步游戏进度到云端，换设备不丢失
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="saveToCloud().then(()=>showToast('☁️ 已保存到云端'))">💾 保存到云端</button>
+        <button class="btn" onclick="loadCloudSave().then(()=>showToast('☁️ 已从云端恢复'))">📥 从云端恢复</button>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--text3)">
+        💡 提示：游戏会自动尝试同步云端存档，也可以手动操作
+      </div>
+    </div>
+  `;
+  
+  // 自动加载战力榜
+  setTimeout(() => loadLeaderboardData('power'), 100);
+}
+
+// 加载排行榜数据
+function loadLeaderboardData(type){
+  const listEl = document.getElementById('leaderboard-list');
+  if(!listEl) return;
+  
+  listEl.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--text3)">加载中...</div>';
+  
+  const typeNames = {
+    power: {name: '战力榜', icon: '⚔️', desc: '队伍总战力'},
+    stage: {name: '关卡榜', icon: '💀', desc: '最高通关关卡'},
+    arena: {name: '竞技榜', icon: '🏟️', desc: '竞技场胜场数'},
+    heroes: {name: '英雄榜', icon: '🧙', desc: '拥有英雄数量'}
+  };
+  
+  const typeInfo = typeNames[type] || typeNames.power;
+  
+  getLeaderboard(type, 50).then(entries => {
+    if(entries.length === 0){
+      listEl.innerHTML = `
+        <div style="text-align:center;color:var(--text3);padding:40px 0">
+          <div style="font-size:24px;margin-bottom:8px">📭</div>
+          <div>暂无数据，快来上传你的成绩吧！</div>
+        </div>
+      `;
+      return;
+    }
+    
+    // 获取玩家排名
+    getPlayerRank(type).then(playerRank => {
+      let html = `<div style="margin-bottom:10px;font-weight:bold;color:var(--gold)">${typeInfo.icon} ${typeInfo.name} - ${typeInfo.desc}</div>`;
+      
+      // 玩家排名提示
+      if(playerRank){
+        html += `<div style="background:rgba(201,162,39,.1);border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:12px">
+          🎯 你的排名: <b style="color:var(--gold)">第${playerRank.rank}名</b> / 共${playerRank.total}人 | 分数: <b>${playerRank.score}</b>
+        </div>`;
+      }
+      
+      // 排行榜列表
+      html += '<div style="display:flex;flex-direction:column;gap:6px">';
+      entries.slice(0, 20).forEach((entry, index) => {
+        const rank = index + 1;
+        const rankColor = rank === 1 ? '#ffd700' : rank === 2 ? '#c0c0c0' : rank === 3 ? '#cd7f32' : 'var(--text)';
+        const rankIcon = rank <= 3 ? ['🥇','🥈','🥉'][rank-1] : `<span style="display:inline-block;width:24px;text-align:center">${rank}</span>`;
+        const isMe = entry.uid === currentUser?.uid;
+        
+        html += `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:${isMe?'rgba(201,162,39,.15)':'rgba(255,255,255,.03)'};border-radius:6px;border:${isMe?'1px solid rgba(201,162,39,.3)':'none'}">
+            <div style="font-size:16px;color:${rankColor};min-width:28px">${rankIcon}</div>
+            <div style="flex:1;font-size:13px">
+              <div>${isMe?'<b style="color:var(--gold)">我</b>':'玩家 ' + entry.uid?.slice(-6)}</div>
+              <div style="font-size:11px;color:var(--text3)">${new Date(entry.timestamp).toLocaleDateString()}</div>
+            </div>
+            <div style="font-weight:bold;color:var(--gold);font-size:14px">${entry.score?.toLocaleString()}</div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      
+      listEl.innerHTML = html;
+    });
+  }).catch(err => {
+    listEl.innerHTML = `<div style="text-align:center;color:var(--red);padding:40px 0">加载失败: ${err.message}</div>`;
+  });
+}
+
+// 提交所有排行榜数据
+function submitAllLeaderboards(){
+  if(!isFirebaseReady){
+    showToast('⏳ 云端连接中，请稍后再试');
+    return;
+  }
+  
+  const teamPower = G.team.filter(h => h).reduce((sum, h) => sum + calcHeroPower(h), 0);
+  const maxStage = G.stageProgress || 1;
+  const arenaWins = G.arenaState?.totalWins || 0;
+  const totalHeroes = G.heroes?.length || 0;
+  
+  Promise.all([
+    submitLeaderboard('power', teamPower, {heroes: G.heroes?.length}),
+    submitLeaderboard('stage', maxStage, {stageName: STAGES[maxStage-1]?.name}),
+    submitLeaderboard('arena', arenaWins, {winStreak: G.arenaState?.winStreak}),
+    submitLeaderboard('heroes', totalHeroes, {quality: G.heroes?.map(h => h.quality)})
+  ]).then(() => {
+    showToast('☁️ 成绩已上传到云端！');
+    // 刷新当前显示的排行榜
+    const listEl = document.getElementById('leaderboard-list');
+    if(listEl) loadLeaderboardData('power');
+  }).catch(err => {
+    showToast('❌ 上传失败: ' + err.message);
+  });
+}
+
 
 // ==================== 英雄金手指功能 ====================
 
@@ -6258,8 +6439,193 @@ function updateCheatPanel(){
   }
 }
 
+// ==================== Firebase 云存档 & 排行榜 ====================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDummyKeyForShadowDungeon",
+  authDomain: "shadow-dungeon-rpg.firebaseapp.com",
+  databaseURL: "https://shadow-dungeon-rpg-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "shadow-dungeon-rpg",
+  storageBucket: "shadow-dungeon-rpg.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef123456"
+};
+
+// 初始化 Firebase
+let firebaseApp = null;
+let firebaseDB = null;
+let firebaseAuth = null;
+let currentUser = null;
+let isFirebaseReady = false;
+
+function initFirebase() {
+  try {
+    if (typeof firebase === 'undefined') {
+      console.log('Firebase SDK not loaded');
+      return false;
+    }
+    firebaseApp = firebase.initializeApp(FIREBASE_CONFIG);
+    firebaseDB = firebase.database();
+    firebaseAuth = firebase.auth();
+    
+    // 匿名登录
+    firebaseAuth.signInAnonymously().then((userCredential) => {
+      currentUser = userCredential.user;
+      isFirebaseReady = true;
+      console.log('Firebase ready, UID:', currentUser.uid);
+      // 登录成功后尝试加载云存档
+      loadCloudSave();
+    }).catch((error) => {
+      console.error('Firebase auth error:', error);
+    });
+    
+    return true;
+  } catch (e) {
+    console.error('Firebase init error:', e);
+    return false;
+  }
+}
+
+// 保存到云端
+function saveToCloud() {
+  if (!isFirebaseReady || !currentUser) {
+    console.log('Firebase not ready, skipping cloud save');
+    return Promise.resolve(false);
+  }
+  
+  const saveData = {
+    heroes: G.heroes,
+    team: G.team,
+    resources: G.resources,
+    buildings: G.buildings,
+    stageProgress: G.stageProgress,
+    equipment: G.equipment,
+    arenaState: G.arenaState,
+    lastSave: Date.now(),
+    version: '1.0'
+  };
+  
+  return firebaseDB.ref('saves/' + currentUser.uid).set(saveData)
+    .then(() => {
+      console.log('Cloud save successful');
+      showToast('☁️ 已同步到云端');
+      return true;
+    })
+    .catch((error) => {
+      console.error('Cloud save failed:', error);
+      return false;
+    });
+}
+
+// 从云端加载
+function loadCloudSave() {
+  if (!isFirebaseReady || !currentUser) {
+    return Promise.resolve(false);
+  }
+  
+  return firebaseDB.ref('saves/' + currentUser.uid).once('value')
+    .then((snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        // 合并云端数据到本地
+        if (data.heroes) G.heroes = data.heroes;
+        if (data.team) G.team = data.team;
+        if (data.resources) G.resources = {...G.resources, ...data.resources};
+        if (data.buildings) G.buildings = data.buildings;
+        if (data.stageProgress) G.stageProgress = data.stageProgress;
+        if (data.equipment) G.equipment = data.equipment;
+        if (data.arenaState) G.arenaState = {...G.arenaState, ...data.arenaState};
+        
+        updateResUI();
+        saveGame(); // 同时保存到本地
+        showToast('☁️ 已从云端恢复存档');
+        return true;
+      }
+      return false;
+    })
+    .catch((error) => {
+      console.error('Cloud load failed:', error);
+      return false;
+    });
+}
+
+// 提交排行榜分数
+function submitLeaderboard(scoreType, scoreValue, extraData = {}) {
+  if (!isFirebaseReady || !currentUser) {
+    console.log('Firebase not ready, skipping leaderboard');
+    return Promise.resolve(false);
+  }
+  
+  const entry = {
+    uid: currentUser.uid,
+    score: scoreValue,
+    timestamp: Date.now(),
+    ...extraData
+  };
+  
+  return firebaseDB.ref('leaderboard/' + scoreType + '/' + currentUser.uid).set(entry)
+    .then(() => {
+      console.log('Leaderboard submitted:', scoreType, scoreValue);
+      return true;
+    })
+    .catch((error) => {
+      console.error('Leaderboard submit failed:', error);
+      return false;
+    });
+}
+
+// 获取排行榜
+function getLeaderboard(scoreType, limit = 50) {
+  if (!isFirebaseReady) {
+    return Promise.resolve([]);
+  }
+  
+  return firebaseDB.ref('leaderboard/' + scoreType)
+    .orderByChild('score')
+    .limitToLast(limit)
+    .once('value')
+    .then((snapshot) => {
+      const data = snapshot.val();
+      if (!data) return [];
+      
+      const entries = Object.values(data).sort((a, b) => b.score - a.score);
+      return entries;
+    })
+    .catch((error) => {
+      console.error('Get leaderboard failed:', error);
+      return [];
+    });
+}
+
+// 获取玩家排名
+function getPlayerRank(scoreType) {
+  if (!isFirebaseReady || !currentUser) {
+    return Promise.resolve(null);
+  }
+  
+  return firebaseDB.ref('leaderboard/' + scoreType)
+    .orderByChild('score')
+    .once('value')
+    .then((snapshot) => {
+      const data = snapshot.val();
+      if (!data) return null;
+      
+      const entries = Object.values(data).sort((a, b) => b.score - a.score);
+      const rank = entries.findIndex(e => e.uid === currentUser.uid) + 1;
+      const playerEntry = entries.find(e => e.uid === currentUser.uid);
+      
+      return rank > 0 ? { rank, total: entries.length, score: playerEntry?.score || 0 } : null;
+    })
+    .catch((error) => {
+      console.error('Get player rank failed:', error);
+      return null;
+    });
+}
+
 // ==================== 初始化 ====================
 function initGame(){
+  // 初始化 Firebase
+  initFirebase();
+  
   // 尝试读档
   if(loadGame()){
     updateResUI();
