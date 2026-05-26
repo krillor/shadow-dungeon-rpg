@@ -2211,26 +2211,15 @@ async function runArenaBattle(teamHeroes,opponents,difficulty){
   
   // 【关键】立即保存胜负结果和奖励，防止用户在 await 间隙点退出
   G.arenaIsWin=isWin;
-  G.arenaReward=calculateArenaReward(G.arenaBattleInfo.opponents,G.arenaBattleInfo.difficulty,isWin);
+  var reward=calculateArenaReward(G.arenaBattleInfo.opponents,G.arenaBattleInfo.difficulty,isWin);
+  G.arenaReward=reward;
   
-  await finishArenaBattle(isWin,playerUnits,enemyUnits);
+  await finishArenaBattle(isWin,playerUnits,enemyUnits,reward);
 }
 
-async function finishArenaBattle(isWin,playerUnits,enemyUnits){
-  updateResUI();
-  saveGame();
-  renderTeams();
-  G_battleRunning=false;
-  G_battlePaused=false;
-  
+async function finishArenaBattle(isWin,playerUnits,enemyUnits,reward){
   // 保存胜负结果到全局
   G.arenaIsWin=isWin;
-  
-  // 计算奖励
-  var info=G.arenaBattleInfo;
-  var difficulty=info.difficulty;
-  var opponents=info.opponents;
-  var reward=calculateArenaReward(opponents,difficulty,isWin);
   G.arenaReward=reward;
   
   // 显示结算提示（通过Toast）
@@ -2284,6 +2273,13 @@ async function finishArenaBattle(isWin,playerUnits,enemyUnits){
     var streakText=isWin?'<div style="text-align:center;margin:8px 0;color:#2ed573">连胜: '+G.arenaState.winStreak+'</div>':'';
     btnArea.innerHTML='<div style="margin:20px 0;text-align:center;padding:20px;background:rgba(0,0,0,0.3);border-radius:10px">'+resultText+rewardText+streakText+'</div>';
   }
+  
+  // 【修复】奖励发放完毕后再存档，确保资源变化被正确保存
+  updateResUI();
+  saveGame();
+  renderTeams();
+  G_battleRunning=false;
+  G_battlePaused=false;
   
   // 自动结算（延迟后返回竞技场）
   G.arenaSettleTimer=setTimeout(function(){
