@@ -2537,6 +2537,8 @@ function createHero(templateId,level=1){
     lore: tpl.lore,
     bonusSkills:[],
     deathDefyUsed: false,
+    talents: {},           // 已分配的天赋点 {talentId: points}
+    talentPoints: 0,       // 可用天赋点
   };
   hero.hp=hero.maxHP;
   hero.mp=hero.maxMP;
@@ -2718,6 +2720,16 @@ function getHeroStats(hero){
       }
     }
   }
+  // 天赋加成
+  var talentEffects=getTalentEffects(hero);
+  if(talentEffects.hpMax) s.maxHP=Math.floor(s.maxHP*(1+talentEffects.hpMax));
+  if(talentEffects.atk) s.atk=Math.floor(s.atk*(1+talentEffects.atk));
+  if(talentEffects.def) s.def=Math.floor(s.def*(1+talentEffects.def));
+  if(talentEffects.spd) s.spd=Math.floor(s.spd*(1+talentEffects.spd));
+  if(talentEffects.mpMax) s.maxMP=Math.floor(s.maxMP*(1+talentEffects.mpMax));
+  // 确保当前HP/MP不超过最大值
+  if(s.hp>s.maxHP) s.hp=s.maxHP;
+  if(s.mp>s.maxMP) s.mp=s.maxMP;
   return s;
 }
 
@@ -3709,6 +3721,7 @@ function addHeroExp(hero,amount){
   if(hero.level>=levelCap)return false;
   hero.exp+=amount;
   let leveled=false;
+  let newTalentPoints=0;
   while(hero.exp>=getExpToLevel(hero.level)&&hero.level<levelCap){
     hero.exp-=getExpToLevel(hero.level);
     hero.level++;
@@ -3720,9 +3733,18 @@ function addHeroExp(hero,amount){
     hero.spd=calcStat(role.baseSPD, qm, hero.level);
     hero.maxMP=calcStat(role.baseMP, qm, hero.level);
     hero.hp=hero.maxHP;hero.mp=hero.maxMP;
+    // 升级获得天赋点
+    if(hero.level<=TALENT_CONFIG.maxPoints){
+      newTalentPoints++;
+    }
   }
   // 超出上限的经验清零
   if(hero.level>=levelCap)hero.exp=0;
+  // 如果有获得天赋点，显示提示
+  if(newTalentPoints>0){
+    hero.talentPoints=(hero.talentPoints||0)+newTalentPoints;
+    showToast(`🌟 ${hero.name} 获得 ${newTalentPoints} 点天赋点！`);
+  }
   return leveled;
 }
 
@@ -6179,6 +6201,7 @@ function showHeroDetail(uid){
       <div class="hd-actions">
         <button class="btn btn-primary btn-sm" onclick="closeModal();switchTab('team')">🛡️ 编队</button>
         <button class="btn btn-sm" onclick="closeModal();switchTab('equip')">🗡️ 装备</button>
+        <button class="btn btn-sm" style="background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.4);color:#b86eff" onclick="showTalentTree(${h.uid})">🌟 天赋${(h.talentPoints||0)-Object.values(h.talents||{}).reduce((s,p)=>s+p,0)>0?' ('+((h.talentPoints||0)-Object.values(h.talents||{}).reduce((s,p)=>s+p,0))+')':''}</button>
         <button class="btn btn-sm" onclick="showRenameHero(${h.uid})">✏️ 改名</button>
         <button class="btn btn-sm" style="color:${h.locked?'var(--gold)':'var(--text2)'}" onclick="toggleHeroLock(${h.uid})">${h.locked?'🔒 已锁定':'🔓 锁定'}</button>
         <button class="btn btn-sm" style="color:#ff6b6b" onclick="dismissHero(${h.uid})" ${h.locked?'disabled':''}>🗑️ 遣散</button>
@@ -6523,6 +6546,284 @@ function filterHeroes(filter,btn){
     else show=card.dataset.role===filter;
     card.style.display=show?'':'none';
   });
+}
+
+// ==================== 天赋树系统 ====================
+
+// 显示天赋树界面
+function showTalentTree(heroUid){
+  const hero=G.heroes.find(h=>h.uid===heroUid);
+  if(!hero)return;
+  
+  const tree=TALENT_TREES[hero.role];
+  if(!tree)return;
+  
+  // 初始化英雄天赋数据
+  if(!hero.talents)hero.talents={};
+  if(!hero.talentPoints)hero.talentPoints=0;
+  
+  // 计算已使用天赋点
+  const usedPoints=Object.values(hero.talents).reduce((sum,points)=>sum+points,0);
+  const availablePoints=hero.talentPoints-usedPoints;
+  
+  // 生成天赋树HTML
+  let branchesHtml='';
+  for(const[branchId,branch]of Object.entries(tree.branches)){
+    let talentsHtml='';
+    for(let i=0;i<branch.talents.length;i++){
+      const talent=branch.talents[i];
+      const currentPoints=hero.talents[talent.id]||0;
+      const isMaxed=currentPoints>=talent.maxPoints;
+      const canAdd=availablePoints>0&&!isMaxed&&canAddTalent(hero,talent);
+      
+      // 检查前置要求
+      let lockedReason='';
+      if(talent.requires){
+        const prereqsMet=talent.requires.every(reqId=>(hero.talents[reqId]||0)>0);
+        if(!prereqsMet)lockedReason='前置天赋未激活';
+      }
+      
+      const isLocked=!!lockedReason;
+      const statusClass=isMaxed?'maxed':canAdd?'available':isLocked?'locked':'disabled';
+      
+      talentsHtml+=`
+        <div class="talent-node ${statusClass}" style="grid-column:${i+1}">
+          <div class="talent-icon" onclick="addTalentPoint(${heroUid},'${talent.id}')">${isMaxed?'✦':branch.icon}</div>
+          <div class="talent-name">${talent.name}</div>
+          <div class="talent-points">${currentPoints}/${talent.maxPoints}</div>
+          ${isLocked?`<div class="talent-lock">🔒</div>`:''}
+          <div class="talent-tooltip">
+            <div class="talent-tooltip-name">${talent.name}</div>
+            <div class="talent-tooltip-desc">${talent.desc}</div>
+            ${isLocked?`<div class="talent-tooltip-lock">需要: ${lockedReason}</div>`:''}
+          </div>
+        </div>
+      `;
+    }
+    
+    // 连接线
+    const connectionsHtml=`
+      <div class="talent-connections">
+        <div class="connection" style="grid-column:1/3;grid-row:1"></div>
+        <div class="connection" style="grid-column:2/4;grid-row:1"></div>
+        <div class="connection" style="grid-column:3/5;grid-row:1"></div>
+      </div>
+    `;
+    
+    branchesHtml+=`
+      <div class="talent-branch">
+        <div class="talent-branch-header">
+          <span class="talent-branch-icon">${branch.icon}</span>
+          <span class="talent-branch-name">${branch.name}</span>
+          <span class="talent-branch-desc">${branch.desc}</span>
+        </div>
+        <div class="talent-grid">
+          ${connectionsHtml}
+          ${talentsHtml}
+        </div>
+      </div>
+    `;
+  }
+  
+  const html=`
+    <style>
+      .talent-panel{max-width:600px;margin:0 auto}
+      .talent-header{text-align:center;margin-bottom:20px;padding-bottom:15px;border-bottom:1px solid var(--border)}
+      .talent-hero-info{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:10px}
+      .talent-hero-icon{font-size:36px}
+      .talent-hero-name{font-size:18px;font-weight:bold;color:var(--gold)}
+      .talent-points-display{background:linear-gradient(135deg,var(--panel2),var(--panel));border:1px solid var(--gold);border-radius:20px;padding:8px 20px;display:inline-flex;align-items:center;gap:10px}
+      .talent-points-label{color:var(--text2);font-size:12px}
+      .talent-points-value{color:var(--gold);font-size:20px;font-weight:bold}
+      .talent-branch{margin-bottom:24px;background:rgba(0,0,0,.2);border-radius:12px;padding:15px}
+      .talent-branch-header{display:flex;align-items:center;gap:8px;margin-bottom:15px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.05)}
+      .talent-branch-icon{font-size:20px}
+      .talent-branch-name{font-size:14px;font-weight:bold;color:var(--gold)}
+      .talent-branch-desc{font-size:11px;color:var(--text2);margin-left:auto}
+      .talent-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;position:relative}
+      .talent-connections{position:absolute;inset:30px 0 0;pointer-events:none;z-index:0}
+      .connection{height:2px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin-top:15px}
+      .talent-node{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;z-index:1}
+      .talent-icon{width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;transition:all .2s;border:2px solid var(--border);background:var(--panel2)}
+      .talent-node.available .talent-icon{border-color:var(--gold);box-shadow:0 0 10px rgba(201,162,39,.3)}
+      .talent-node.available .talent-icon:hover{transform:scale(1.1);background:rgba(201,162,39,.1)}
+      .talent-node.maxed .talent-icon{border-color:var(--purple);background:rgba(168,85,247,.2);box-shadow:0 0 15px rgba(168,85,247,.4)}
+      .talent-node.locked .talent-icon{opacity:.4;cursor:not-allowed}
+      .talent-node.disabled .talent-icon{opacity:.3;cursor:not-allowed}
+      .talent-name{font-size:10px;color:var(--text);text-align:center;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .talent-points{font-size:9px;color:var(--text2)}
+      .talent-lock{position:absolute;top:-5px;right:-5px;font-size:12px}
+      .talent-tooltip{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px;width:180px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:100;margin-bottom:8px;box-shadow:var(--shadow-lg)}
+      .talent-node:hover .talent-tooltip{opacity:1}
+      .talent-tooltip-name{font-size:12px;font-weight:bold;color:var(--gold);margin-bottom:4px}
+      .talent-tooltip-desc{font-size:10px;color:var(--text2);line-height:1.4}
+      .talent-tooltip-lock{font-size:9px;color:var(--red);margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,107,107,.2)}
+      .talent-actions{display:flex;gap:10px;justify-content:center;margin-top:20px;padding-top:15px;border-top:1px solid var(--border)}
+    </style>
+    <div class="talent-panel">
+      <div class="talent-header">
+        <div class="talent-hero-info">
+          <span class="talent-hero-icon">${hero.icon}</span>
+          <span class="talent-hero-name">${hero.name}</span>
+        </div>
+        <div class="talent-points-display">
+          <span class="talent-points-label">可用天赋点</span>
+          <span class="talent-points-value">${availablePoints}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:8px">已使用: ${usedPoints} / 总计: ${hero.talentPoints}</div>
+      </div>
+      ${branchesHtml}
+      <div class="talent-actions">
+        <button class="btn" onclick="closeModal();showHeroDetail(${heroUid})">返回详情</button>
+        <button class="btn" style="background:rgba(255,107,107,.15);border-color:rgba(255,107,107,.4);color:#ff6b6b" onclick="resetTalents(${heroUid})">重置天赋 (💰${TALENT_CONFIG.resetCostGold} 💎${TALENT_CONFIG.resetCostGems})</button>
+      </div>
+    </div>
+  `;
+  
+  showModal('天赋树',html);
+}
+
+// 检查是否可以添加天赋点
+function canAddTalent(hero,talent){
+  // 检查前置要求
+  if(talent.requires){
+    for(const reqId of talent.requires){
+      if(!(hero.talents[reqId]>0))return false;
+    }
+  }
+  return true;
+}
+
+// 添加天赋点
+function addTalentPoint(heroUid,talentId){
+  const hero=G.heroes.find(h=>h.uid===heroUid);
+  if(!hero)return;
+  
+  const tree=TALENT_TREES[hero.role];
+  if(!tree)return;
+  
+  // 查找天赋
+  let talent=null;
+  for(const branch of Object.values(tree.branches)){
+    talent=branch.talents.find(t=>t.id===talentId);
+    if(talent)break;
+  }
+  if(!talent)return;
+  
+  // 检查可用点数
+  const usedPoints=Object.values(hero.talents).reduce((sum,p)=>sum+p,0);
+  const availablePoints=hero.talentPoints-usedPoints;
+  if(availablePoints<=0){
+    showToast('天赋点不足！');
+    return;
+  }
+  
+  // 检查是否已满
+  const currentPoints=hero.talents[talentId]||0;
+  if(currentPoints>=talent.maxPoints){
+    showToast('该天赋已满级！');
+    return;
+  }
+  
+  // 检查前置要求
+  if(!canAddTalent(hero,talent)){
+    showToast('前置天赋未激活！');
+    return;
+  }
+  
+  // 添加天赋点
+  hero.talents[talentId]=currentPoints+1;
+  saveGame();
+  
+  // 播放音效或特效（可选）
+  showToast(`✨ ${talent.name} +1！`);
+  
+  // 刷新界面
+  showTalentTree(heroUid);
+}
+
+// 重置天赋
+function resetTalents(heroUid){
+  const hero=G.heroes.find(h=>h.uid===heroUid);
+  if(!hero)return;
+  
+  // 检查资源
+  if((G.resources.gold||0)<TALENT_CONFIG.resetCostGold){
+    showToast('金币不足！');
+    return;
+  }
+  if((G.resources.gems||0)<TALENT_CONFIG.resetCostGems){
+    showToast('宝石不足！');
+    return;
+  }
+  
+  // 检查是否有天赋可重置
+  const usedPoints=Object.values(hero.talents||{}).reduce((sum,p)=>sum+p,0);
+  if(usedPoints===0){
+    showToast('该英雄没有分配天赋点！');
+    return;
+  }
+  
+  // 确认重置
+  const html=`
+    <div style="text-align:center;padding:10px">
+      <div style="font-size:48px;margin-bottom:10px">🔄</div>
+      <div style="color:#ff6b6b;font-weight:bold;margin-bottom:10px">确定要重置天赋吗？</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:15px">
+        将返还所有已使用的天赋点（${usedPoints}点）<br>
+        消耗：💰${TALENT_CONFIG.resetCostGold} 💎${TALENT_CONFIG.resetCostGems}
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn" style="flex:1" onclick="closeModal()">取消</button>
+        <button class="btn" style="flex:1;background:rgba(255,107,107,.2);border-color:rgba(255,107,107,.5);color:#ff6b6b" onclick="confirmResetTalents(${heroUid})">确认重置</button>
+      </div>
+    </div>
+  `;
+  showModal('重置天赋',html);
+}
+
+// 确认重置天赋
+function confirmResetTalents(heroUid){
+  const hero=G.heroes.find(h=>h.uid===heroUid);
+  if(!hero)return;
+  
+  // 扣除资源
+  G.resources.gold-=TALENT_CONFIG.resetCostGold;
+  G.resources.gems-=TALENT_CONFIG.resetCostGems;
+  
+  // 返还天赋点
+  const usedPoints=Object.values(hero.talents||{}).reduce((sum,p)=>sum+p,0);
+  hero.talentPoints+=usedPoints;
+  hero.talents={};
+  
+  saveGame();
+  updateResourceBar();
+  closeModal();
+  showToast(`🔄 天赋已重置，返还 ${usedPoints} 点天赋点！`);
+  showTalentTree(heroUid);
+}
+
+// 获取英雄天赋效果汇总
+function getTalentEffects(hero){
+  const effects={};
+  if(!hero||!hero.talents)return effects;
+  
+  const tree=TALENT_TREES[hero.role];
+  if(!tree)return effects;
+  
+  for(const[branchId,branch]of Object.entries(tree.branches)){
+    for(const talent of branch.talents){
+      const points=hero.talents[talent.id]||0;
+      if(points>0){
+        const effectType=talent.effect.type;
+        const effectValue=talent.effect.value*points;
+        if(!effects[effectType])effects[effectType]=0;
+        effects[effectType]+=effectValue;
+      }
+    }
+  }
+  
+  return effects;
 }
 
 function renderTeam(el){
