@@ -5495,6 +5495,17 @@ function renderEquip(el){
     +'<div class="text-xs text-dim" style="margin-top:6px">一键穿戴：高品质装备优先给高战力英雄 | 一键强化：优先强化高品质已穿戴装备</div>'
     +'</div>'
     +'<div class="panel">'
+    +'<div class="panel-title"><span class="icon">🗑️</span> 一键分解</div>'
+    +'<div class="text-xs text-dim mb-8">分解指定品质及以下的未装备装备，返还铁矿</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px">'
+    +'<button class="btn btn-sm" onclick="batchDecompose(\'common\')" style="background:rgba(136,136,136,.2);border-color:#888;color:#888">普通</button>'
+    +'<button class="btn btn-sm" onclick="batchDecompose(\'rare\')" style="background:rgba(74,154,255,.2);border-color:#4a9eff;color:#4a9eff">稀有↓</button>'
+    +'<button class="btn btn-sm" onclick="batchDecompose(\'epic\')" style="background:rgba(168,85,247,.2);border-color:#a855f7;color:#a855f7">史诗↓</button>'
+    +'<button class="btn btn-sm" onclick="batchDecompose(\'legendary\')" style="background:rgba(245,158,11,.2);border-color:#f59e0b;color:#f59e0b">传说↓</button>'
+    +'<button class="btn btn-sm" onclick="batchDecompose(\'mythic\')" style="background:rgba(239,68,68,.2);border-color:#ef4444;color:#ef4444">神话↓</button>'
+    +'</div>'
+    +'</div>'
+    +'<div class="panel">'
     +'<div class="panel-title"><span class="icon">🎒</span> 背包 ('+unequipped.length+'件)</div>'
     +(unequipped.length===0?'<div class="text-dim">背包为空</div>':unequippedHTML)
     +'</div>'
@@ -5698,6 +5709,104 @@ function decomposeEquipment(equipUid){
   saveGame();
   updateResUI();
   renderCurrentTab();
+}
+
+// 一键分解（分解指定品质及以下的所有未装备装备）
+function batchDecompose(maxQuality){
+  var maxIdx=QUALITIES.indexOf(maxQuality);
+  if(maxIdx<0){showToast('品质参数错误');return}
+  
+  // 获取符合条件的未装备装备
+  var toDecompose=G.equipment.filter(function(eq){
+    if(eq.heroUid!==null)return false;
+    var tpl=EQUIP_TEMPLATES.find(function(t){return t.id===eq.id});
+    if(!tpl)return false;
+    var eqIdx=QUALITIES.indexOf(tpl.quality);
+    return eqIdx>=0 && eqIdx<=maxIdx;
+  });
+  
+  if(toDecompose.length===0){
+    showToast('没有可分解的装备');
+    return;
+  }
+  
+  // 显示确认弹窗
+  var qualityNames={common:'普通',rare:'稀有',epic:'史诗',legendary:'传说',mythic:'神话'};
+  var qColor={common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444'};
+  
+  // 计算总返还
+  var totalIron=0;
+  toDecompose.forEach(function(eq){
+    var tpl=EQUIP_TEMPLATES.find(function(t){return t.id===eq.id});
+    if(tpl){
+      var qualityIdx=QUALITIES.indexOf(tpl.quality);
+      var baseIron=5+qualityIdx*10;
+      var enhanceBonus=(eq.enhance||0)*5;
+      totalIron+=baseIron+enhanceBonus;
+    }
+  });
+  
+  openModal(`
+    <div class="modal" style="max-width:320px;margin:auto">
+      <div style="text-align:center;padding:10px">
+        <div style="font-size:48px;margin-bottom:10px">🗑️</div>
+        <div style="font-size:18px;font-weight:bold;color:${qColor[maxQuality]}">${qualityNames[maxQuality]}及以下一键分解</div>
+        
+        <div style="background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);border-radius:8px;padding:12px;margin:15px 0">
+          <div style="color:#ff6b6b;font-weight:bold;margin-bottom:8px">⚠️ 确定要分解 ${toDecompose.length} 件装备吗？</div>
+          <div style="font-size:12px;color:var(--text2)">将分解以下品质的装备：</div>
+          <div style="margin-top:6px;font-size:13px;color:${qColor[maxQuality]}">
+            ${QUALITIES.slice(0,maxIdx+1).map(function(q){return qualityNames[q]}).join(' / ')}
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,107,107,.3)">
+            <div style="font-size:12px;color:var(--text2)">预计返还：</div>
+            <div style="font-size:18px;font-weight:bold;color:#4a9eff">⛏️ ${totalIron} 铁矿</div>
+          </div>
+        </div>
+        
+        <div style="display:flex;gap:10px">
+          <button class="btn" style="flex:1" onclick="closeModal()">取消</button>
+          <button class="btn" style="flex:1;background:rgba(255,107,107,.2);border-color:rgba(255,107,107,.5);color:#ff6b6b" onclick="confirmBatchDecompose('${maxQuality}')">确认分解</button>
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+// 确认一键分解
+function confirmBatchDecompose(maxQuality){
+  var maxIdx=QUALITIES.indexOf(maxQuality);
+  if(maxIdx<0){closeModal();return}
+  
+  var totalIron=0;
+  var count=0;
+  
+  // 收集要分解的装备UID
+  var uids=[];
+  G.equipment.forEach(function(eq){
+    if(eq.heroUid!==null)return;
+    var tpl=EQUIP_TEMPLATES.find(function(t){return t.id===eq.id});
+    if(!tpl)return;
+    var eqIdx=QUALITIES.indexOf(tpl.quality);
+    if(eqIdx>=0 && eqIdx<=maxIdx){
+      uids.push(eq.uid);
+      var baseIron=5+eqIdx*10;
+      var enhanceBonus=(eq.enhance||0)*5;
+      totalIron+=baseIron+enhanceBonus;
+      count++;
+    }
+  });
+  
+  // 执行分解
+  G.equipment=G.equipment.filter(function(e){return uids.indexOf(e.uid)<0});
+  G.resources.iron=(G.resources.iron||0)+totalIron;
+  
+  closeModal();
+  saveGame();
+  updateResUI();
+  renderCurrentTab();
+  
+  showToast('✅ 一键分解成功！分解 '+count+' 件装备，获得 ⛏️'+totalIron+' 铁矿');
 }
 
 function forgeEquipment(maxQuality){
