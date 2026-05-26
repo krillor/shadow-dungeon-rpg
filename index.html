@@ -6367,9 +6367,23 @@ function renderMerge(el){
   var usedUids=window._mergeSlots||[null,null,null];
   var usedSet=new Set(usedUids.filter(Boolean));
   
+  // 获取已上阵英雄UID列表
+  const teamUids=G.team.filter(h=>h!==null).map(h=>h.uid);
+  
   // 生成可用英雄列表HTML
   var heroesHTML=G.heroes.map(function(h){
     var isUsed=usedSet.has(h.uid);
+    var isInTeam=teamUids.includes(h.uid);
+    // 上阵英雄显示为禁用状态
+    if(isInTeam){
+      return '<div class="hero-card quality-'+h.quality+'" style="cursor:not-allowed;opacity:0.4;filter:grayscale(0.5)">'
+        +'<div class="hero-avatar">'+h.icon+'</div>'
+        +'<div class="hero-info">'
+        +'<div class="hero-name"><span class="q-'+h.quality+'">'+h.name+'</span> <span class="text-blue" style="font-size:10px">[上阵]</span></div>'
+        +'<div class="hero-meta">'+ROLES[h.role].icon+' '+ROLES[h.role].name+' · Lv.'+h.level+'</div>'
+        +'<div class="hero-stats text-xs text-dim">❤️'+h.maxHP+' ⚔️'+h.atk+' 🛡️'+h.def+'</div>'
+        +'</div></div>';
+    }
     return '<div class="hero-card quality-'+h.quality+(isUsed?' used':'')+'" onclick="'+(isUsed?'removeMergeHero':'addMergeHero')+'('+h.uid+')" style="cursor:pointer;opacity:'+(isUsed?'0.5':'1')+'">'
       +'<div class="hero-avatar">'+h.icon+'</div>'
       +'<div class="hero-info">'
@@ -6481,8 +6495,20 @@ function removeMergeHero(heroUid){
 
 function showMergePicker(slotIdx){
   const usedUids=window._mergeSlots.filter(Boolean);
-  const available=G.heroes.filter(h=>!usedUids.includes(h.uid));
-  if(available.length===0){showToast('没有可用英雄');return}
+  // 获取已上阵英雄UID列表
+  const teamUids=G.team.filter(h=>h!==null).map(h=>h.uid);
+  // 过滤：已使用的 + 已上阵的
+  const available=G.heroes.filter(h=>!usedUids.includes(h.uid)&&!teamUids.includes(h.uid));
+  if(available.length===0){
+    // 检查是否因为全部上阵了
+    const allInTeam=G.heroes.length>0&&G.heroes.every(h=>teamUids.includes(h.uid));
+    if(allInTeam){
+      showToast('所有英雄都已上阵，无法合成');
+    }else{
+      showToast('没有可用英雄');
+    }
+    return;
+  }
   const html=available.map(h=>`
     <div class="hero-card quality-${h.quality}" onclick="pickMergeHero(${slotIdx},${h.uid})" style="cursor:pointer">
       <div class="hero-avatar">${h.icon}</div>
