@@ -1624,7 +1624,7 @@ function checkOfflineEarnings(){
 }
 
 function deleteSave(){
-  if(!confirm('确定要删除存档吗？此操作不可撤销！'))return;
+  // showConfirm 已在按钮处处理
   localStorage.removeItem(SAVE_KEY);
   showToast('🗑️ 存档已删除');
 }
@@ -1650,20 +1650,48 @@ function showToast(msg,duration=2000){
   setTimeout(()=>t.remove(),duration);
 }
 
-function showModal(title,contentHTML,buttons=[]){
-  const root=document.getElementById('modal-root');
-  root.innerHTML=`<div class="modal-overlay" id="modal-overlay">
-    <div class="modal">
-      <div class="modal-title">${title}</div>
-      <div class="modal-body">${contentHTML}</div>
-      <div class="btn-group" style="margin-top:12px;justify-content:flex-end">
-        ${buttons.map(b=>`<button class="btn ${b.cls||''}" onclick="${b.action}">${b.text}</button>`).join('')}
-        <button class="btn" onclick="closeModal()">关闭</button>
-      </div>
-    </div>
-  </div>`;
+function showModal(title,contentHTML,buttons){
+  buttons=buttons||[];
+  var root=document.getElementById('modal-root');
+  var btnsHtml='';
+  for(var i=0;i<buttons.length;i++){
+    var b=buttons[i];
+    btnsHtml+='<button class="btn '+(b.cls||'')+'" onclick="'+b.action+'">'+b.text+'</button>';
+  }
+  btnsHtml+='<button class="btn" onclick="closeModal()">关闭</button>';
+  root.innerHTML='<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">' +
+    '<div class="modal" style="animation:cardPop .3s ease">' +
+      '<div class="modal-title" style="display:flex;align-items:center;justify-content:space-between">' +
+        '<span>'+title+'</span>' +
+        '<button class="btn btn-sm" onclick="closeModal()" style="padding:2px 8px;font-size:16px;color:var(--text3)">✕</button>' +
+      '</div>' +
+      '<div class="modal-body">'+contentHTML+'</div>' +
+      '<div class="btn-group" style="margin-top:12px;justify-content:flex-end">'+btnsHtml+'</div>' +
+    '</div>' +
+  '</div>';
 }
 function closeModal(){document.getElementById('modal-root').innerHTML=''}
+
+// 美化确认弹窗（替代原生confirm）
+function showConfirm(title,message,onConfirm,confirmText,cancelText){
+  confirmText=confirmText||'确定';
+  cancelText=cancelText||'取消';
+  var root=document.getElementById('modal-root');
+  root.innerHTML='<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">' +
+    '<div class="modal" style="max-width:360px;animation:cardPop .3s ease">' +
+      '<div class="modal-title" style="font-size:16px;text-align:center">'+title+'</div>' +
+      '<div style="text-align:center;padding:16px 0;font-size:14px;color:var(--text);line-height:1.6">'+message+'</div>' +
+      '<div class="btn-group" style="justify-content:center;gap:16px">' +
+        '<button class="btn" onclick="closeModal()">'+cancelText+'</button>' +
+        '<button class="btn btn-primary" id="confirm-btn">'+confirmText+'</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  document.getElementById('confirm-btn').onclick=function(){
+    closeModal();
+    if(onConfirm) onConfirm();
+  };
+}
 
 // openModal: 直接将HTML渲染到modal-root（用于showHeroDetail等）
 function openModal(html){
@@ -4803,7 +4831,7 @@ function renderTown(el){
       +'<div class="btn-group">'
         +'<button class="btn btn-primary" onclick="saveGame()">💾 保存</button>'
         +'<button class="btn" onclick="loadGame();updateResUI();renderCurrentTab();showToast(\'📂 已读档\')">📂 读取</button>'
-        +'<button class="btn" style="color:#ff6b6b" onclick="if(confirm(\'确定删除存档？\'))deleteSave()">🗑️ 删除</button>'
+        +'<button class="btn" style="color:#ff6b6b" onclick="showConfirm(\'删除存档\',\'确定要删除存档吗？此操作不可撤销！\',deleteSave,\'删除\',\'取消\')">🗑️ 删除</button>'
       +'</div>'
     +'</div>';
   }catch(htmlErr){
@@ -6203,7 +6231,12 @@ function decomposeEquipment(equipUid){
   var tpl=EQUIP_TEMPLATES.find(function(t){return t.id===eq.id});
   if(!tpl){showToast('装备数据错误！');return}
   
-  if(!confirm('确定要分解 '+tpl.name+' 吗？'))return;
+  showConfirm('分解装备','确定要分解 <b style="color:var(--gold)">'+tpl.icon+' '+tpl.name+'</b> 吗？<br><span style="font-size:12px;color:var(--text3)">将返还 ⛏️ 铁矿</span>',function(){ doDecompose(equipUid,tpl); });
+}
+
+function doDecompose(equipUid,tpl){
+  var eq=G.equipment.find(function(e){return e.uid===equipUid});
+  if(!eq) return;
   
   // 分解返还铁矿（基础返还+强化返还）
   var qualityIdx=QUALITIES.indexOf(tpl.quality);
