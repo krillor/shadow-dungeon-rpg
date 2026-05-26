@@ -5964,15 +5964,15 @@ function renderEquip(el){
     if(tpl.specialSkill && EQUIP_SPECIAL_SKILLS[tpl.specialSkill]){
       equipSkillTag='<span style="font-size:9px;color:#70a1ff">✦'+EQUIP_SPECIAL_SKILLS[tpl.specialSkill].name+'</span>';
     }
-    unequippedHTML+='<div class="equip-slot quality-'+tpl.quality+'">'
+    var tagsHtml=(equipSetTag||equipSkillTag)?'<div style="font-size:9px;margin-top:2px">'+equipSetTag+equipSkillTag+'</div>':'';
+    unequippedHTML+='<div class="equip-slot quality-'+tpl.quality+'" style="flex-wrap:wrap">'
       +'<span class="equip-icon">'+tpl.icon+'</span>'
-      +'<span class="equip-name q-'+tpl.quality+'">'+tpl.name+enhanceBonus+' <span class="text-dim text-xs">('+QUALITY_NAMES[tpl.quality]+')</span></span>'
+      +'<span class="equip-name q-'+tpl.quality+'">'+tpl.name+enhanceBonus+' <span class="text-dim text-xs">('+QUALITY_NAMES[tpl.quality]+')</span>'+tagsHtml+'</span>'
       +'<span class="equip-stats">'+statsStr+'</span>'
-      +(equipSetTag||equipSkillTag?'<div style="margin-top:2px">'+equipSetTag+equipSkillTag+'</div>':'')
-      +'<div style="display:flex;gap:4px">'
-      +'<button class="btn btn-sm" onclick="showEquipToHero('+eq.uid+')">装备</button>'
-      +'<button class="btn btn-sm" style="background:rgba(255,215,0,.2)" onclick="enhanceEquipment('+eq.uid+')">强化</button>'
-      +'<button class="btn btn-sm btn-danger" onclick="decomposeEquipment('+eq.uid+')">分解</button>'
+      +'<div style="display:flex;gap:4px;margin-left:auto">'
+      +'<button class="btn btn-sm" onclick="showEquipToHero('+eq.uid+');event.stopPropagation();">装备</button>'
+      +'<button class="btn btn-sm" style="background:rgba(255,215,0,.2)" onclick="enhanceEquipment('+eq.uid+');event.stopPropagation();">强化</button>'
+      +'<button class="btn btn-sm btn-danger" onclick="decomposeEquipment('+eq.uid+');event.stopPropagation();">分解</button>'
       +'</div>'
       +'</div>';
   });
