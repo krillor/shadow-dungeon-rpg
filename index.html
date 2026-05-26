@@ -466,6 +466,24 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 .affix-reroll-all-btn:hover{background:linear-gradient(135deg,rgba(168,85,247,.25),rgba(168,85,247,.15));box-shadow:0 0 10px rgba(168,85,247,.2)}
 .affix-reroll-all-btn:active{transform:scale(.95)}
 
+/* ===== 英雄羁绊系统样式 ===== */
+.bond-card{background:linear-gradient(145deg,rgba(0,0,0,.2),rgba(0,0,0,.1));border:1px solid;border-radius:10px;padding:10px 12px;margin:6px 0;transition:var(--transition);position:relative;overflow:hidden}
+.bond-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:.6}
+.bond-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+.bond-card-header{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.bond-card-icon{font-size:18px}
+.bond-card-name{font-size:13px;font-weight:bold;flex:1}
+.bond-card-type{font-size:9px;padding:1px 6px;border-radius:4px;font-weight:bold}
+.bond-card-desc{font-size:11px;color:var(--green);padding:2px 0}
+.bond-card-story{font-size:10px;color:var(--text3);font-style:italic;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,.04);line-height:1.5}
+.bond-tag-compact{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:bold;border:1px solid;margin:2px;background:rgba(0,0,0,.2);white-space:nowrap}
+.bond-preview-item{background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:4px 0;transition:var(--transition);cursor:default}
+.bond-preview-item:hover{border-color:var(--border-light);background:rgba(0,0,0,.2)}
+.bond-preview-item.active{animation:bondPulse 2s ease-in-out infinite}
+@keyframes bondPulse{0%,100%{box-shadow:0 0 4px rgba(201,162,39,.1)}50%{box-shadow:0 0 12px rgba(201,162,39,.2)}}
+.bond-section-title{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:bold;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.06)}
+#battle-bonds-display{display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px;background:rgba(0,0,0,.2);border-radius:8px;border:1px solid rgba(255,255,255,.05);margin-top:6px}
+
 /* ===== 桌面端覆盖 ===== */
 @media(min-width:769px){
   #app{flex-direction:row}
@@ -1513,6 +1531,279 @@ const REROLL_COSTS = {
   legendary:{gold:1000, gems:5},
   mythic:   {gold:2000, gems:10}
 };
+
+// ===== 英雄羁绊数据表 =====
+const HERO_BONDS = [
+  // ===== 职业羁绊 =====
+  {id:'bond_warrior', name:'战神军团', icon:'⚔️', type:'role', check:'role', key:'warrior',
+   thresholds:[{need:2,desc:'2名战士：全队攻击+8%',effect:{type:'teamBuff',stat:'atk',value:0.08}},
+               {need:3,desc:'3名战士：全队攻击+15%，暴击率+10%',effect:[{type:'teamBuff',stat:'atk',value:0.15},{type:'teamBuff',stat:'critRate',value:0.10}]}],
+   story:'上古战神阿瑞斯的遗产——当战士们并肩作战，他们的怒火将点燃整个战场。传说中，战神军团的冲锋曾让恶魔大军闻风丧胆。'},
+  {id:'bond_guardian', name:'铁壁同盟', icon:'🛡️', type:'role', check:'role', key:'guardian',
+   thresholds:[{need:2,desc:'2名守护者：全队防御+12%',effect:{type:'teamBuff',stat:'def',value:0.12}},
+               {need:3,desc:'3名守护者：全队防御+20%，受伤-10%',effect:[{type:'teamBuff',stat:'def',value:0.20},{type:'teamBuff',stat:'dmgReduce',value:0.10}]}],
+   story:'守护者誓言——"吾之身躯，即是最坚固的城墙。"千年前，五位守护者以肉身筑起城墙，挡住了灭世洪流。'},
+  {id:'bond_mage', name:'奥术议会', icon:'🔮', type:'role', check:'role', key:'mage',
+   thresholds:[{need:2,desc:'2名法师：全队技能伤害+12%',effect:{type:'teamBuff',stat:'skillDmg',value:0.12}},
+               {need:3,desc:'3名法师：全队技能伤害+25%，MP+20%',effect:[{type:'teamBuff',stat:'skillDmg',value:0.25},{type:'teamBuff',stat:'mp',value:0.20}]}],
+   story:'奥术议会由七位大法师创立，他们相信魔法的真谛在于分享。当法师们联合施法，魔力将产生共振，释放出超越个体的力量。'},
+  {id:'bond_healer', name:'生命圣殿', icon:'💚', type:'role', check:'role', key:'healer',
+   thresholds:[{need:2,desc:'2名治愈者：全队每回合恢复3%HP',effect:{type:'teamRegen',value:0.03}},
+               {need:3,desc:'3名治愈者：全队每回合恢复6%HP，治疗+20%',effect:[{type:'teamRegen',value:0.06},{type:'teamBuff',stat:'healBoost',value:0.20}]}],
+   story:'生命圣殿的祭司们传承着远古治愈之神的神力。传说中，三位大祭司联手曾让一整座城市的伤者在黎明前痊愈。'},
+  {id:'bond_assassin', name:'暗影兄弟会', icon:'🗡️', type:'role', check:'role', key:'assassin',
+   thresholds:[{need:2,desc:'2名刺客：全队暴击伤害+20%',effect:{type:'teamBuff',stat:'critDmg',value:0.20}},
+               {need:3,desc:'3名刺客：全队暴击伤害+40%，闪避+15%',effect:[{type:'teamBuff',stat:'critDmg',value:0.40},{type:'teamBuff',stat:'dodgeRate',value:0.15}]}],
+   story:'暗影兄弟会存在于光与暗的交界处。他们的信条是："暗影不是黑暗，而是自由。"当刺客们协同行动，连死神都会为之让路。'},
+  {id:'bond_ranger', name:'游侠联盟', icon:'🏹', type:'role', check:'role', key:'ranger',
+   thresholds:[{need:2,desc:'2名游侠：全队速度+10%',effect:{type:'teamBuff',stat:'spd',value:0.10}},
+               {need:3,desc:'3名游侠：全队速度+20%，命中+15%',effect:[{type:'teamBuff',stat:'spd',value:0.20},{type:'teamBuff',stat:'hitBonus',value:0.15}]}],
+   story:'游侠联盟的成员来自世界各地，他们以风为眼，以林为耳。传说联盟的创始人能在百步之外射穿飞鸟的双眼。'},
+  {id:'bond_warlock', name:'虚空教团', icon:'👁️', type:'role', check:'role', key:'warlock',
+   thresholds:[{need:2,desc:'2名术士：全队吸血+8%',effect:{type:'teamBuff',stat:'lifeSteal',value:0.08}},
+               {need:3,desc:'3名术士：全队吸血+15%，DOT伤害+25%',effect:[{type:'teamBuff',stat:'lifeSteal',value:0.15},{type:'teamBuff',stat:'dotBoost',value:0.25}]}],
+   story:'虚空教团窥视着维度的裂缝，从中汲取力量。教团的至高导师曾说："力量的本质是吞噬——吞噬痛苦，吞噬敌人，吞噬世界。"'},
+  {id:'bond_paladin', name:'圣光骑士团', icon:'✨', type:'role', check:'role', key:'paladin',
+   thresholds:[{need:2,desc:'2名圣骑士：全队HP+10%',effect:{type:'teamBuff',stat:'hp',value:0.10}},
+               {need:3,desc:'3名圣骑士：全队HP+20%，对亡灵伤害+30%',effect:[{type:'teamBuff',stat:'hp',value:0.20},{type:'teamBuff',stat:'undeadBonus',value:0.30}]}],
+   story:'圣光骑士团的誓言刻在每位骑士的灵魂上："以光明之名，守护至死。"传说骑士团曾以三人之力封印了一整支亡灵军团。'},
+
+  // ===== 主题羁绊 =====
+  {id:'bond_fire', name:'烈焰之心', icon:'🔥', type:'theme', check:'template', key:'fire',
+   heroes:['pyromancer','flame_sword','flame_armor','flame_ring','berserker','dragon_knight','dragon_emperor','phoenix_blade'],
+   checkFn:function(heroes){return heroes.filter(function(h){return ['pyromancer','berserker','dragon_knight','dragon_emperor'].indexOf(h.templateId)>=0;}).length;},
+   thresholds:[{need:2,desc:'2名火系英雄：攻击附带灼烧(每回合3%最大HP伤害)',effect:{type:'onHitDot',value:0.03,name:'灼烧'}},
+               {need:3,desc:'3名火系英雄：灼烧伤害翻倍，全队攻击+10%',effect:[{type:'onHitDot',value:0.06,name:'烈焰灼烧'},{type:'teamBuff',stat:'atk',value:0.10}]}],
+   story:'在世界的尽头燃烧着永恒之火，传说触碰它的人将获得焚尽一切的力量。火焰英雄们体内流淌着这远古的火焰之血。'},
+  {id:'bond_ice', name:'寒冰之息', icon:'❄️', type:'theme', check:'template', key:'ice',
+   heroes:['frost_mage','ice_staff','ice_shield','ice_pendant'],
+   checkFn:function(heroes){return heroes.filter(function(h){return ['frost_mage','ice_staff','ice_shield','ice_pendant'].indexOf(h.templateId)>=0 || (h.role==='mage' && h.name.indexOf('冰')>=0);}).length;},
+   thresholds:[{need:2,desc:'2名冰系英雄：攻击有20%概率冰冻敌人1回合',effect:{type:'onHitFreeze',chance:0.20}},
+               {need:3,desc:'3名冰系英雄：冰冻概率35%，全队防御+12%',effect:[{type:'onHitFreeze',chance:0.35},{type:'teamBuff',stat:'def',value:0.12}]}],
+   story:'北境永冻之地沉睡着冰霜巨人的遗产。寒冰英雄们继承了这份凛冽之力，他们的呼吸能让夏日结霜。'},
+  {id:'bond_shadow', name:'暗影议会', icon:'🌑', type:'theme', check:'template', key:'shadow',
+   checkFn:function(heroes){return heroes.filter(function(h){return h.role==='assassin'||h.role==='warlock';}).length;},
+   thresholds:[{need:2,desc:'2名暗系英雄(刺客/术士)：全队穿透+15%',effect:{type:'teamBuff',stat:'armorPen',value:0.15}},
+               {need:4,desc:'4名暗系英雄：全队穿透+25%，敌人被攻击时降低5%防御',effect:[{type:'teamBuff',stat:'armorPen',value:0.25},{type:'onHitDebuff',stat:'def',value:0.05,name:'暗蚀'}]}],
+   story:'暗影议会操控着世界的暗面。他们相信光明只是暗影的附属品——没有黑暗，光明便失去了意义。'},
+  {id:'bond_holy', name:'圣光信仰', icon:'☀️', type:'theme', check:'template', key:'holy',
+   checkFn:function(heroes){return heroes.filter(function(h){return h.role==='paladin'||h.role==='healer';}).length;},
+   thresholds:[{need:2,desc:'2名圣光英雄(圣骑士/治愈者)：全队每回合恢复2%HP',effect:{type:'teamRegen',value:0.02}},
+               {need:3,desc:'3名圣光英雄：全队每回合恢复4%HP，伤害+8%',effect:[{type:'teamRegen',value:0.04},{type:'teamBuff',stat:'atk',value:0.08}]}],
+   story:'圣光不是信仰，而是承诺。每一位圣光英雄都曾在最黑暗的时刻做出选择——他们选择了守护。'},
+  {id:'bond_dragon', name:'龙血传承', icon:'🐉', type:'theme', check:'template', key:'dragon',
+   checkFn:function(heroes){return heroes.filter(function(h){return ['dragon_knight','dragon_emperor','dragon_sword','dragon_scale','dragon_heart'].indexOf(h.templateId)>=0 || h.name.indexOf('龙')>=0;}).length;},
+   thresholds:[{need:2,desc:'2名龙血英雄：全队攻击+12%，HP+8%',effect:[{type:'teamBuff',stat:'atk',value:0.12},{type:'teamBuff',stat:'hp',value:0.08}]}],
+   story:'龙血是世界上最强大的力量之一。传说饮下龙血的战士将获得超越凡人的力量，代价是永远燃烧的龙之怒火。'},
+  {id:'bond_undead', name:'亡灵天灾', icon:'💀', type:'theme', check:'template', key:'undead',
+   checkFn:function(heroes){return heroes.filter(function(h){return ['lich_king','death_reaper','blood_warlock','chaos_lord'].indexOf(h.templateId)>=0;}).length;},
+   thresholds:[{need:2,desc:'2名亡灵英雄：击杀敌人后恢复10%HP',effect:{type:'killHeal',value:0.10}},
+               {need:3,desc:'3名亡灵英雄：击杀恢复20%HP，全队暴击+15%',effect:[{type:'killHeal',value:0.20},{type:'teamBuff',stat:'critRate',value:0.15}]}],
+   story:'死亡不是终点，而是另一种开始。亡灵英雄们跨越了生与死的界限，带着对世界的执念重返战场。'},
+  {id:'bond_nature', name:'自然之怒', icon:'🌿', type:'theme', check:'template', key:'nature',
+   checkFn:function(heroes){return heroes.filter(function(h){return ['nature_healer','world_tree','herbalist','hunter'].indexOf(h.templateId)>=0 || h.name.indexOf('自然')>=0 || h.name.indexOf('草')>=0;}).length;},
+   thresholds:[{need:2,desc:'2名自然英雄：全队每回合恢复3%MP',effect:{type:'teamMpRegen',value:0.03}},
+               {need:3,desc:'3名自然英雄：全队每回合恢复5%MP，HP+10%',effect:[{type:'teamMpRegen',value:0.05},{type:'teamBuff',stat:'hp',value:0.10}]}],
+   story:'世界之树连接着天与地，它的根须深入世界的每一个角落。自然英雄们聆听大地的声音，以万物之力守护生命。'},
+  {id:'bond_thunder', name:'雷霆之怒', icon:'⚡', type:'theme', check:'template', key:'thunder',
+   checkFn:function(heroes){return heroes.filter(function(h){return ['thunder_blade','thunder_armor','thunder_gloves','storm_ranger','chaos_blade','chaos_armor','chaos_orb2'].indexOf(h.templateId)>=0 || h.name.indexOf('雷')>=0 || h.name.indexOf('风暴')>=0;}).length;},
+   thresholds:[{need:2,desc:'2名雷系英雄：攻击有15%概率造成50%额外伤害',effect:{type:'onHitExtraDmg',chance:0.15,value:0.50,name:'雷击'}},
+               {need:3,desc:'3名雷系英雄：雷击概率25%，伤害80%',effect:{type:'onHitExtraDmg',chance:0.25,value:0.80,name:'雷霆一击'}},
+   story:'雷霆是天空的怒吼，是神明的审判。雷系英雄们承载着远古风暴的力量，每一击都如同天罚降临。'},
+
+  // ===== 趣味羁绊 =====
+  {id:'bond_rookie', name:'新手冒险团', icon:'🌟', type:'fun', check:'quality', key:'common',
+   checkFn:function(heroes){return heroes.filter(function(h){return h.quality==='common';}).length;},
+   thresholds:[{need:3,desc:'3名普通英雄：全队获得30%经验加成',effect:{type:'expBoost',value:0.30}},
+               {need:5,desc:'5名普通英雄：全队经验+50%，金币+30%，攻击+15%',effect:[{type:'expBoost',value:0.50},{type:'goldBoost',value:0.30},{type:'teamBuff',stat:'atk',value:0.15}]}],
+   story:'每个传奇都从零开始。新手冒险团的成员们或许平凡，但他们的勇气和团结，终将书写属于自己的传说。'},
+  {id:'bond_legend', name:'传奇聚首', icon:'👑', type:'fun', check:'quality', key:'legendary',
+   checkFn:function(heroes){return heroes.filter(function(h){return h.quality==='legendary'||h.quality==='mythic';}).length;},
+   thresholds:[{need:2,desc:'2名传说/神话英雄：全队全属性+10%',effect:{type:'teamAllBuff',value:0.10}},
+               {need:4,desc:'4名传说/神话英雄：全队全属性+20%，每回合恢复5%HP',effect:[{type:'teamAllBuff',value:0.20},{type:'teamRegen',value:0.05}]}],
+   story:'当传奇英雄们齐聚一堂，天地为之变色。他们的名字被刻在历史的丰碑上，他们的力量足以改写命运。'},
+  {id:'bond_meatshield', name:'肉盾联盟', icon:'🧱', type:'fun',
+   checkFn:function(heroes){return heroes.filter(function(h){return h.role==='guardian'||h.role==='paladin';}).length;},
+   thresholds:[{need:2,desc:'2名坦克(守护者/圣骑士)：全队受伤-15%',effect:{type:'teamBuff',stat:'dmgReduce',value:0.15}},
+               {need:3,desc:'3名坦克：全队受伤-25%，HP+15%',effect:[{type:'teamBuff',stat:'dmgReduce',value:0.25},{type:'teamBuff',stat:'hp',value:0.15}]}],
+   story:'"你只管输出，扛伤的事交给我们。"——肉盾联盟的座右铭。他们或许不是最强的输出，但绝对是最可靠的后盾。'},
+  {id:'bond_magic_cannon', name:'魔法炮台', icon:'💥', type:'fun',
+   checkFn:function(heroes){return heroes.filter(function(h){return h.role==='mage'||h.role==='warlock';}).length;},
+   thresholds:[{need:2,desc:'2名法师/术士：全队技能伤害+18%',effect:{type:'teamBuff',stat:'skillDmg',value:0.18}},
+               {need:3,desc:'3名法师/术士：全队技能伤害+30%，MP消耗-15%',effect:[{type:'teamBuff',stat:'skillDmg',value:0.30},{type:'teamBuff',stat:'mpReduce',value:0.15}]}],
+   story:'当法师和术士联手，战场就变成了他们的实验场。敌人还没靠近，就已经被各种魔法轰成了灰烬。'},
+  {id:'bond_speed_demon', name:'疾风迅雷', icon:'💨', type:'fun',
+   checkFn:function(heroes){return heroes.filter(function(h){return h.role==='assassin'||h.role==='ranger';}).length;},
+   thresholds:[{need:2,desc:'2名刺客/游侠：全队速度+15%，暴击率+10%',effect:[{type:'teamBuff',stat:'spd',value:0.15},{type:'teamBuff',stat:'critRate',value:0.10}]},
+               {need:4,desc:'4名刺客/游侠：全队速度+25%，先手攻击额外伤害30%',effect:[{type:'teamBuff',stat:'spd',value:0.25},{type:'firstStrike',value:0.30}]}],
+   story:'天下武功，唯快不破。疾风迅雷的成员们追求极致的速度，他们的信条是："在你看到我之前，战斗已经结束了。"'},
+  {id:'bond_balance', name:'均衡之道', icon:'☯️', type:'fun',
+   checkFn:function(heroes){
+     var roles={};
+     heroes.forEach(function(h){roles[h.role]=true;});
+     return Object.keys(roles).length;
+   },
+   thresholds:[{need:4,desc:'队伍包含4种不同职业：全队全属性+8%',effect:{type:'teamAllBuff',value:0.08}},
+               {need:6,desc:'队伍包含6种不同职业：全队全属性+15%',effect:{type:'teamAllBuff',value:0.15}}],
+   story:'万物平衡，方能长久。均衡之道讲究的是团队的多样性——当不同职业的英雄互相配合，将爆发出意想不到的力量。'},
+  {id:'bond_lone_wolf', name:'孤狼', icon:'🐺', type:'fun',
+   checkFn:function(heroes){return heroes.length<=1;},
+   thresholds:[{need:1,desc:'仅1人出战：攻击+50%，防御+30%，速度+20%',effect:[{type:'teamBuff',stat:'atk',value:0.50},{type:'teamBuff',stat:'def',value:0.30},{type:'teamBuff',stat:'spd',value:0.20}]}],
+   story:'真正的强者，从不需要同伴。孤狼独自面对一切，在孤独中磨砺出超越极限的力量。'},
+  {id:'bond_full_house', name:'全员集结', icon:'🏠', type:'fun',
+   checkFn:function(heroes){return heroes.length>=6;},
+   thresholds:[{need:6,desc:'6人满编队：全队全属性+12%，每回合恢复3%HP和MP',effect:[{type:'teamAllBuff',value:0.12},{type:'teamRegen',value:0.03},{type:'teamMpRegen',value:0.03}]}],
+   story:'当六位英雄齐聚，羁绊之力将达到顶峰。全员集结的队伍，如同一台精密的战争机器，每个零件都不可或缺。'},
+  {id:'bond_elemental', name:'元素共鸣', icon:'🌈', type:'fun',
+   checkFn:function(heroes){
+     var hasFire=heroes.some(function(h){return h.role==='mage'&&(h.name.indexOf('火')>=0||h.name.indexOf('烈焰')>=0||h.templateId==='pyromancer');});
+     var hasIce=heroes.some(function(h){return h.role==='mage'&&(h.name.indexOf('冰')>=0||h.name.indexOf('寒冰')>=0||h.templateId==='frost_mage');});
+     var hasThunder=heroes.some(function(h){return h.name.indexOf('雷')>=0||h.name.indexOf('风暴')>=0||h.templateId==='storm_ranger';});
+     return (hasFire?1:0)+(hasIce?1:0)+(hasThunder?1:0);
+   },
+   thresholds:[{need:2,desc:'拥有2种元素英雄：全队攻击+10%，技能伤害+10%',effect:[{type:'teamBuff',stat:'atk',value:0.10},{type:'teamBuff',stat:'skillDmg',value:0.10}]},
+               {need:3,desc:'拥有火+冰+雷三种元素：全队全属性+15%，攻击附带随机元素伤害',effect:[{type:'teamAllBuff',value:0.15},{type:'randomElementDmg',value:0.10}]}],
+   story:'火、冰、雷——三种原始元素是世界的基础。当它们产生共鸣，将释放出创世级别的力量。'},
+  {id:'bond_rival', name:'宿命对决', icon:'⚡', type:'fun',
+   checkFn:function(heroes){return (heroes.some(function(h){return h.role==='warrior';})&&heroes.some(function(h){return h.role==='assassin';}))?1:0;},
+   thresholds:[{need:1,desc:'同时拥有战士和刺客：双方攻击各+20%',effect:{type:'teamBuff',stat:'atk',value:0.20}}],
+   story:'战士与刺客，正面对决与暗影杀戮——两种截然不同的战斗之道，在碰撞中迸发出最耀眼的火花。这是宿命的对决，也是最强的搭档。'},
+];
+
+// 检测当前编队的激活羁绊
+function detectActiveBonds(teamHeroes){
+  var activeBonds=[];
+  for(var i=0;i<HERO_BONDS.length;i++){
+    var bond=HERO_BONDS[i];
+    var count=0;
+    if(bond.check==='role'){
+      count=teamHeroes.filter(function(h){return h.role===bond.key;}).length;
+    } else if(bond.checkFn){
+      count=bond.checkFn(teamHeroes);
+    }
+    // 找到最高满足的阈值
+    var activatedThreshold=null;
+    for(var t=0;t<bond.thresholds.length;t++){
+      if(count>=bond.thresholds[t].need){
+        activatedThreshold=bond.thresholds[t];
+      }
+    }
+    if(activatedThreshold){
+      activeBonds.push({bond:bond,count:count,threshold:activatedThreshold});
+    }
+  }
+  return activeBonds;
+}
+
+// 应用羁绊效果到战斗单位
+function applyBondEffects(playerUnits, activeBonds){
+  for(var i=0;i<activeBonds.length;i++){
+    var ab=activeBonds[i];
+    var effects=ab.threshold.effect;
+    if(!Array.isArray(effects)) effects=[effects];
+    for(var j=0;j<effects.length;j++){
+      var eff=effects[j];
+      switch(eff.type){
+        case 'teamBuff':
+          for(var u=0;u<playerUnits.length;u++){
+            applyBuffToUnit(playerUnits[u],eff);
+          }
+          break;
+        case 'teamAllBuff':
+          for(var u=0;u<playerUnits.length;u++){
+            playerUnits[u].maxHP=Math.floor(playerUnits[u].maxHP*(1+eff.value));
+            playerUnits[u].hp=Math.floor(playerUnits[u].hp*(1+eff.value));
+            playerUnits[u].atk=Math.floor(playerUnits[u].atk*(1+eff.value));
+            playerUnits[u].def=Math.floor(playerUnits[u].def*(1+eff.value));
+            playerUnits[u].spd=Math.floor(playerUnits[u].spd*(1+eff.value));
+            playerUnits[u].maxMP=Math.floor(playerUnits[u].maxMP*(1+eff.value));
+            playerUnits[u].mp=Math.floor(playerUnits[u].mp*(1+eff.value));
+          }
+          break;
+        case 'teamRegen':
+          for(var u=0;u<playerUnits.length;u++){
+            if(!playerUnits[u]._bondRegen) playerUnits[u]._bondRegen=0;
+            playerUnits[u]._bondRegen+=eff.value;
+          }
+          break;
+        case 'teamMpRegen':
+          for(var u=0;u<playerUnits.length;u++){
+            if(!playerUnits[u]._bondMpRegen) playerUnits[u]._bondMpRegen=0;
+            playerUnits[u]._bondMpRegen+=eff.value;
+          }
+          break;
+        case 'onHitDot':
+        case 'onHitFreeze':
+        case 'onHitExtraDmg':
+        case 'onHitDebuff':
+        case 'killHeal':
+        case 'firstStrike':
+        case 'expBoost':
+        case 'goldBoost':
+        case 'randomElementDmg':
+          // 存储到全局战斗标记
+          if(!window._battleBondEffects) window._battleBondEffects=[];
+          window._battleBondEffects.push(eff);
+          break;
+      }
+    }
+  }
+}
+
+function applyBuffToUnit(unit,eff){
+  switch(eff.stat){
+    case 'atk': unit.atk=Math.floor(unit.atk*(1+eff.value)); break;
+    case 'def': unit.def=Math.floor(unit.def*(1+eff.value)); break;
+    case 'spd': unit.spd=Math.floor(unit.spd*(1+eff.value)); break;
+    case 'hp':
+      unit.maxHP=Math.floor(unit.maxHP*(1+eff.value));
+      unit.hp=Math.min(unit.hp+Math.floor(unit.maxHP*eff.value),unit.maxHP);
+      break;
+    case 'mp':
+      unit.maxMP=Math.floor(unit.maxMP*(1+eff.value));
+      unit.mp=Math.min(unit.mp+Math.floor(unit.maxMP*eff.value),unit.maxMP);
+      break;
+    case 'critRate': if(!unit._bondCritRate)unit._bondCritRate=0; unit._bondCritRate+=eff.value; break;
+    case 'critDmg': if(!unit._bondCritDmg)unit._bondCritDmg=0; unit._bondCritDmg+=eff.value; break;
+    case 'dodgeRate': if(!unit._bondDodge)unit._bondDodge=0; unit._bondDodge+=eff.value; break;
+    case 'hitBonus': if(!unit._bondHit)unit._bondHit=0; unit._bondHit+=eff.value; break;
+    case 'armorPen': if(!unit._bondArmorPen)unit._bondArmorPen=0; unit._bondArmorPen+=eff.value; break;
+    case 'lifeSteal': if(!unit._bondLifeSteal)unit._bondLifeSteal=0; unit._bondLifeSteal+=eff.value; break;
+    case 'skillDmg': if(!unit._bondSkillDmg)unit._bondSkillDmg=0; unit._bondSkillDmg+=eff.value; break;
+    case 'healBoost': if(!unit._bondHealBoost)unit._bondHealBoost=0; unit._bondHealBoost+=eff.value; break;
+    case 'dmgReduce': if(!unit._bondDmgReduce)unit._bondDmgReduce=0; unit._bondDmgReduce+=eff.value; break;
+    case 'dotBoost': if(!unit._bondDotBoost)unit._bondDotBoost=0; unit._bondDotBoost+=eff.value; break;
+    case 'mpReduce': if(!unit._bondMpReduce)unit._bondMpReduce=0; unit._bondMpReduce+=eff.value; break;
+    case 'undeadBonus': if(!unit._bondUndeadBonus)unit._bondUndeadBonus=0; unit._bondUndeadBonus+=eff.value; break;
+    case 'shieldBoost': if(!unit._bondShieldBoost)unit._bondShieldBoost=0; unit._bondShieldBoost+=eff.value; break;
+  }
+}
+
+// 生成羁绊UI HTML
+function renderBondsHTML(activeBonds, compact){
+  if(!activeBonds||activeBonds.length===0) return '';
+  var html='';
+  for(var i=0;i<activeBonds.length;i++){
+    var ab=activeBonds[i];
+    var bond=ab.bond;
+    var typeColors={role:'#4a9eff',theme:'#a855f7',fun:'#f59e0b'};
+    var color=typeColors[bond.type]||'#888';
+    if(compact){
+      html+='<span class="bond-tag-compact" style="border-color:'+color+';color:'+color+'" title="'+ab.threshold.desc+'">'+bond.icon+bond.name+'</span>';
+    } else {
+      html+='<div class="bond-card" style="border-color:'+color+'">'
+        +'<div class="bond-card-header">'
+        +'<span class="bond-card-icon">'+bond.icon+'</span>'
+        +'<span class="bond-card-name" style="color:'+color+'">'+bond.name+'</span>'
+        +'<span class="bond-card-type" style="background:'+color+'22;color:'+color+';border:1px solid '+color+'44">'+({role:'职业',theme:'主题',fun:'趣味'}[bond.type])+'</span>'
+        +'</div>'
+        +'<div class="bond-card-desc">'+ab.threshold.desc+'</div>'
+        +'<div class="bond-card-story">📖 '+bond.story+'</div>'
+        +'</div>';
+    }
+  }
+  return html;
+}
 
 
 
@@ -3457,6 +3748,19 @@ async function runArenaBattle(teamHeroes,opponents,difficulty){
     log('=== 第 '+round+' 回合 ===','round');
     
     // 回合开始处理
+    // 羁绊回血回蓝
+    for(var bu=0;bu<playerUnits.length;bu++){
+      var pu=playerUnits[bu];
+      if(!pu.alive) continue;
+      if(pu._bondRegen && pu._bondRegen>0){
+        var regenHp=Math.floor(pu.maxHP*pu._bondRegen);
+        if(regenHp>0){pu.hp=Math.min(pu.hp+regenHp,pu.maxHP);}
+      }
+      if(pu._bondMpRegen && pu._bondMpRegen>0){
+        var regenMp=Math.floor(pu.maxMP*pu._bondMpRegen);
+        if(regenMp>0){pu.mp=Math.min(pu.mp+regenMp,pu.maxMP);}
+      }
+    }
     for(var i=0;i<allUnits.length;i++){
       var u=allUnits[i];
       if(!u.alive)continue;
@@ -3960,6 +4264,10 @@ function calcDamage(attacker,defender,skill=null){
   // 刺客：暗影步 - 暴击伤害+50%
   let critDmg=attackerRole&&attackerRole.critDmg?attackerRole.critDmg:1.8;
   
+  // 羁绊暴击加成
+  if(attacker._bondCritRate) critRate+=attacker._bondCritRate;
+  if(attacker._bondCritDmg) critDmg+=attacker._bondCritDmg;
+  
   if(Math.random()<critRate){dmg=Math.floor(dmg*critDmg);crit=true}
   
   // 闪避计算（考虑职业闪避率 + 英雄特质闪避率）
@@ -3967,6 +4275,8 @@ function calcDamage(attacker,defender,skill=null){
   defender.buffs.forEach(b=>{if(b.stat==='dodge')dodgeChance+=0.3});
   // 英雄特质：灵动 +8%闪避
   if(defender.traits) defender.traits.forEach(t=>{if(t.id==='nimble')dodgeChance+=0.08});
+  // 羁绊闪避加成
+  if(defender._bondDodge) dodgeChance+=defender._bondDodge;
   if(skill&&skill.alwaysHit)dodgeChance=0;
   if(Math.random()<dodgeChance)return{dmg:0,dodged:true,crit:false};
   
@@ -4509,6 +4819,12 @@ async function runBattle(stageId){
   if(teamHeroes.length===0){showToast('请先编队！');G_battleRunning=false;return;}
 
   let playerUnits=teamHeroes.map(h=>createBattleUnit(h,false));
+
+  // 羁绊系统
+  window._battleBondEffects=[];
+  var activeBonds=detectActiveBonds(teamHeroes);
+  applyBondEffects(playerUnits,activeBonds);
+
   let enemyUnits=stage.enemies.map(e=>{
     const tpl=HERO_TEMPLATES.find(t=>t.name===e.name)||HERO_TEMPLATES.find(t=>t.role===e.role&&t.quality===e.quality);
     const fakeHero=tpl?{...createHero(tpl.id,e.level),name:e.name,icon:e.icon,skills:e.skills,bonusSkills:[]}
@@ -4551,6 +4867,11 @@ async function runBattle(stageId){
   const roundBadge=document.getElementById('battle-round-badge');
   logEl.innerHTML='';
   battleInfoEl.innerHTML=`<div class="log-title">⚔️ 第${stage.id}章：${stage.name}</div><div class="text-dim text-sm">${stage.desc}</div>`;
+
+  // 显示激活的羁绊
+  if(activeBonds.length>0){
+    battleInfoEl.innerHTML+='<div style="margin-top:8px" id="battle-bonds-display">'+renderBondsHTML(activeBonds,true)+'</div>';
+  }
 
   function log(msg,cls){
     cls=cls||'info';
@@ -7220,6 +7541,57 @@ function renderTeam(el){
         `).join('')}
       </div>
     </div>
+    // 羁绊预览
+    ${(()=>{
+      var teamH=G.team.filter(t=>t!==null);
+      var bonds=detectActiveBonds(teamH);
+      var allBonds=HERO_BONDS.map(function(bond){
+        var count=0;
+        if(bond.check==='role'){count=teamH.filter(function(h){return h.role===bond.key;}).length;}
+        else if(bond.checkFn){count=bond.checkFn(teamH);}
+        var nextThreshold=null;
+        for(var t=0;t<bond.thresholds.length;t++){
+          if(count<bond.thresholds[t].need){nextThreshold=bond.thresholds[t];break;}
+        }
+        var isActive=bonds.some(function(ab){return ab.bond.id===bond.id;});
+        return {bond:bond,count:count,nextThreshold:nextThreshold,isActive:isActive};
+      });
+      var typeOrder={role:0,theme:1,fun:2};
+      allBonds.sort(function(a,b){return (typeOrder[a.bond.type]||9)-(typeOrder[b.bond.type]||9);});
+      var typeNames={role:'⚔️ 职业羁绊',theme:'🌟 主题羁绊',fun:'🎉 趣味羁绊'};
+      var typeColors={role:'#4a9eff',theme:'#a855f7',fun:'#f59e0b'};
+      var html='<div class="panel"><div class="panel-title"><span class="icon">🔗</span> 英雄羁绊</div>';
+      var lastType='';
+      for(var i=0;i<allBonds.length;i++){
+        var item=allBonds[i];
+        if(item.count===0 && !item.nextThreshold) continue;
+        if(item.bond.type!==lastType){
+          lastType=item.bond.type;
+          html+='<div style="color:'+typeColors[lastType]+';font-size:12px;font-weight:bold;margin:8px 0 4px;padding-top:6px;border-top:1px solid rgba(255,255,255,.05)">'+typeNames[lastType]+'</div>';
+        }
+        var tc=typeColors[item.bond.type];
+        var progress=item.isActive?'✅':'⬜';
+        var countText=item.count+'/'+(item.nextThreshold?item.nextThreshold.need:item.bond.thresholds[item.bond.thresholds.length-1].need);
+        var nextDesc=item.nextThreshold?'<div style="font-size:10px;color:var(--text3);margin-top:2px">→ '+item.nextThreshold.desc+'</div>':'<div style="font-size:10px;color:var(--gold);margin-top:2px">已满级!</div>';
+        var activeDesc=item.isActive?'<div style="font-size:10px;color:var(--green);margin-top:2px">✨ '+item.threshold.desc+'</div>':'';
+        html+='<div class="bond-preview-item" style="border-color:'+(item.isActive?tc:'var(--border)')+';'+(item.isActive?'background:linear-gradient(135deg,'+tc+'08,'+tc+'03)':'')+'">'
+          +'<div style="display:flex;align-items:center;gap:6px">'
+          +'<span style="font-size:16px">'+item.bond.icon+'</span>'
+          +'<span style="font-weight:bold;color:'+(item.isActive?tc:'var(--text)')+';font-size:12px">'+item.bond.name+'</span>'
+          +'<span style="font-size:10px;color:var(--text2);margin-left:auto">'+progress+' '+countText+'</span>'
+          +'</div>'
+          +activeDesc+nextDesc
+          +'</div>';
+      }
+      if(bonds.length>0){
+        html+='<div style="margin-top:10px;padding:8px;background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.2);border-radius:8px">'
+          +'<div style="color:var(--gold);font-size:12px;font-weight:bold;margin-bottom:4px">✨ 当前激活羁绊 ('+bonds.length+'个)</div>'
+          +bonds.map(function(ab){return '<div style="font-size:11px;color:var(--green);padding:2px 0">'+ab.bond.icon+' '+ab.bond.name+': '+ab.threshold.desc+'</div>';}).join('')
+          +'</div>';
+      }
+      html+='</div>';
+      return html;
+    })()}
     <div class="panel">
       <div class="panel-title"><span class="icon">📋</span> 可用英雄</div>
       ${available.length===0?'<div class="text-dim">没有可用的英雄</div>':''}
