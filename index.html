@@ -6618,7 +6618,7 @@ function renderCodex(el){
     </div>
     
     <div class="panel">
-      <div class="panel-title"><span class="icon">🗡️</span> 装备图鉴 (${equipFound}/${equipTotal})</div>
+      <div class="panel-title"><span class="icon">🗡️</span> 装备图鉴 (${equipFound}/${equipTotal}) <button class="btn btn-sm" onclick="showEquipmentGallery()">📋 查看全部</button></div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">${equipHTML}</div>
     </div>
     
@@ -6627,6 +6627,52 @@ function renderCodex(el){
       <div style="margin-top:10px">${monsterHTML}</div>
     </div>
   `;
+}
+
+function showEquipmentGallery(){
+  var qualityOrder={mythic:5,legendary:4,epic:3,rare:2,common:1};
+  var sortedTemplates=EQUIP_TEMPLATES.slice().sort(function(a,b){
+    var qa=qualityOrder[a.quality]||0,qb=qualityOrder[b.quality]||0;
+    if(qa!==qb)return qb-qa;
+    return (a.name||'').localeCompare(b.name||'');
+  });
+  
+  var html='<div style="max-height:70vh;overflow-y:auto;padding:10px">';
+  html+='<div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center">';
+  
+  for(var i=0;i<sortedTemplates.length;i++){
+    var tpl=sortedTemplates[i];
+    var statsHtml='';
+    for(var k in tpl.stats){
+      var icon=RESOURCE_DEFS[k]?RESOURCE_DEFS[k].icon:k;
+      statsHtml+='<span style="margin-right:8px">'+icon+tpl.stats[k]+'</span>';
+    }
+    
+    var setInfo='';
+    if(tpl.setId && EQUIP_SETS[tpl.setId]){
+      var setDef=EQUIP_SETS[tpl.setId];
+      setInfo='<div style="margin-top:6px;padding:4px 8px;background:rgba(201,162,39,.15);border-radius:4px;font-size:11px;color:var(--gold)">'+setDef.icon+' '+setDef.name+'</div>';
+    }
+    
+    var skillInfo='';
+    if(tpl.specialSkill && EQUIP_SPECIAL_SKILLS[tpl.specialSkill]){
+      var sk=EQUIP_SPECIAL_SKILLS[tpl.specialSkill];
+      skillInfo='<div style="margin-top:4px;padding:4px 8px;background:rgba(142,68,173,.15);border-radius:4px;font-size:10px;color:#b86eff">'+sk.icon+' '+sk.name+'</div>';
+    }
+    
+    html+='<div class="quality-'+tpl.quality+'" style="width:160px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center">';
+    html+='<div style="font-size:32px;margin-bottom:8px">'+(tpl.icon||'🗡️')+'</div>';
+    html+='<div style="font-weight:bold;font-size:13px;color:var(--gold);margin-bottom:4px">'+tpl.name+'</div>';
+    html+='<div style="font-size:10px;color:var(--text2);margin-bottom:6px">'+QUALITY_NAMES[tpl.quality]+' · '+slotNames[tpl.type]+'</div>';
+    html+='<div style="font-size:11px;color:var(--text);margin-bottom:6px">'+statsHtml+'</div>';
+    html+='<div style="font-size:10px;color:var(--text3);line-height:1.4">'+tpl.desc+'</div>';
+    html+=setInfo;
+    html+=skillInfo;
+    html+='</div>';
+  }
+  
+  html+='</div></div>';
+  showModal('📋 装备展示 ('+EQUIP_TEMPLATES.length+'件)',html,[{text:'关闭',action:'closeModal()',cls:'btn-primary'}]);
 }
 
 // ==================== 排行榜页面 ====================
@@ -6984,6 +7030,10 @@ function renderCheats(el){
             <button class="btn ${G_cheats.infiniteRecruit?'btn-primary':''}" onclick="cheatInfiniteRecruit()">${G_cheats.infiniteRecruit?'🍺 无限招募[开]':'🍺 无限招募[关]'}</button>
             <button class="btn ${G_cheats.freeEnhance?'btn-primary':''}" onclick="cheatFreeEnhance()">${G_cheats.freeEnhance?'🔨 免费强化[开]':'🔨 免费强化[关]'}</button>
           </div>
+          <div class="btn-group mt-8">
+            <button class="btn" onclick="cheatGenerateAllEquipment()">🗡️ 生成所有装备</button>
+            <button class="btn" onclick="cheatMaxEnhanceAll()">⬆️ 所有装备+10</button>
+          </div>
         </div>
         <div class="panel" style="background:rgba(39,174,96,.1);border-color:rgba(39,174,96,.3)">
           <div class="panel-title">⏭️ 关卡修改</div>
@@ -7312,6 +7362,32 @@ function cheatSkipStage(){
   if(!G_cheats.enabled){showToast('请先开启金手指');return;}
   G.stageProgress++;
   showToast('⏭️ 已跳过当前关卡');
+}
+
+function cheatGenerateAllEquipment(){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  var count=0;
+  for(var i=0;i<EQUIP_TEMPLATES.length;i++){
+    var tpl=EQUIP_TEMPLATES[i];
+    var eq=createEquipment(tpl.id);
+    G.equipment.push(eq);
+    count++;
+  }
+  saveGame();
+  updateResUI();
+  showToast('🗡️ 已生成 '+count+' 件装备！');
+}
+
+function cheatMaxEnhanceAll(){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  var count=0;
+  for(var i=0;i<G.equipment.length;i++){
+    G.equipment[i].enhance=10;
+    count++;
+  }
+  saveGame();
+  updateResUI();
+  showToast('⬆️ 已将 '+count+' 件装备强化至+10！');
 }
 
 function cheatUnlockAll(){
