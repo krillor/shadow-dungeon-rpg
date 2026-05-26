@@ -7,8 +7,8 @@
 <meta name="x5-orientation" content="portrait">
 <meta name="screen-orientation" content="portrait">
 <title>暗影地牢 - 文字策略RPG</title>
-<!-- LeanCloud SDK -->
-<script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-live-query-min.js"></script>
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0a12;--panel:#141428;--panel2:#1a1a35;--border:#252548;--gold:#c9a227;--gold2:#e8d44d;--red:#c0392b;--green:#27ae60;--blue:#2980b9;--purple:#8e44ad;--text:#d4c5a0;--text2:#8a7d6b;--text3:#5a5245;--hp-bar:#c0392b;--mp-bar:#2980b9;--exp-bar:#27ae60;--nav-h:56px;--top-h:42px}
@@ -6431,102 +6431,79 @@ function updateCheatPanel(){
   }
 }
 
-// ==================== LeanCloud 云存档 & 排行榜 ====================
-// LeanCloud 配置 - 使用国内节点，访问稳定
-const LEANCLOUD_CONFIG = {
-  appId: "YOUR_APP_ID",      // 请在 LeanCloud 控制台获取
-  appKey: "YOUR_APP_KEY",    // 请在 LeanCloud 控制台获取
-  serverURL: "https://YOUR_APP_ID.lc-cn-n1-shared.com"  // 国内节点
-};
+// ==================== Supabase 云存档 & 排行榜 ====================
+// Supabase 配置 - 请在 https://supabase.com 创建项目后替换
+var SUPABASE_URL = 'YOUR_SUPABASE_URL';       // 例如: https://xxxxx.supabase.co
+var SUPABASE_ANON_KEY = 'YOUR_SUPABASE_KEY';  // 在 Settings > API 中找到
 
-// LeanCloud 初始化状态
-var lcApp = null;
+// Supabase 客户端
+var sb = null;
 var currentUser = null;
 var isCloudReady = false;
 
-// 初始化 LeanCloud
-function initLeanCloud() {
+// 初始化 Supabase
+function initSupabase() {
   try {
-    if (typeof AV === 'undefined') {
-      console.log('LeanCloud SDK not loaded');
+    if (typeof supabase === 'undefined' || !supabase.createClient) {
+      console.log('Supabase SDK not loaded');
       return false;
     }
     
-    // 检查配置是否已设置
-    if (LEANCLOUD_CONFIG.appId === 'YOUR_APP_ID') {
-      console.log('LeanCloud not configured yet');
+    if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+      console.log('Supabase not configured yet');
       return false;
     }
     
-    AV.init({
-      appId: LEANCLOUD_CONFIG.appId,
-      appKey: LEANCLOUD_CONFIG.appKey,
-      serverURL: LEANCLOUD_CONFIG.serverURL
-    });
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    lcApp = AV;
-    
-    // 匿名登录（使用临时用户）
-    AV.User.loginWithAuthData({
-      uid: 'anonymous_' + getOrCreateDeviceId()
-    }, 'anonymous').then(function(user) {
-      currentUser = user;
-      isCloudReady = true;
-      console.log('LeanCloud ready, UID:', user.id);
-      loadCloudSave();
+    // 匿名登录
+    sb.auth.signInAnonymously().then(function(result) {
+      if (result.data && result.data.user) {
+        currentUser = result.data.user;
+        isCloudReady = true;
+        console.log('Supabase ready, UID:', currentUser.id);
+        loadCloudSave();
+      }
     }).catch(function(error) {
-      console.error('LeanCloud auth error:', error);
+      console.error('Supabase auth error:', error);
     });
     
     return true;
   } catch (e) {
-    console.error('LeanCloud init error:', e);
+    console.error('Supabase init error:', e);
     return false;
   }
-}
-
-// 获取或创建设备ID
-function getOrCreateDeviceId() {
-  var deviceId = localStorage.getItem('device_id');
-  if (!deviceId) {
-    deviceId = 'd_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('device_id', deviceId);
-  }
-  return deviceId;
 }
 
 // 保存到云端
 function saveToCloud() {
   if (!isCloudReady || !currentUser) {
-    console.log('LeanCloud not ready, skipping cloud save');
     return Promise.resolve(false);
   }
   
-  var SaveData = AV.Object.extend('SaveData');
-  var query = new AV.Query('SaveData');
-  query.equalTo('userId', currentUser.id);
+  var saveData = {
+    user_id: currentUser.id,
+    heroes: G.heroes,
+    team: G.team,
+    resources: G.resources,
+    buildings: G.buildings,
+    stageProgress: G.stageProgress,
+    equipment: G.equipment,
+    arenaState: G.arenaState,
+    lastSave: Date.now(),
+    version: '1.0'
+  };
   
-  return query.first().then(function(existing) {
-    var saveObj = existing || new SaveData();
-    saveObj.set('userId', currentUser.id);
-    saveObj.set('heroes', G.heroes);
-    saveObj.set('team', G.team);
-    saveObj.set('resources', G.resources);
-    saveObj.set('buildings', G.buildings);
-    saveObj.set('stageProgress', G.stageProgress);
-    saveObj.set('equipment', G.equipment);
-    saveObj.set('arenaState', G.arenaState);
-    saveObj.set('lastSave', Date.now());
-    saveObj.set('version', '1.0');
-    return saveObj.save();
-  }).then(function() {
-    console.log('Cloud save successful');
-    showToast('☁️ 已同步到云端');
-    return true;
-  }).catch(function(error) {
-    console.error('Cloud save failed:', error);
-    return false;
-  });
+  return sb.from('saves').upsert(saveData, { onConflict: 'user_id' })
+    .then(function(result) {
+      console.log('Cloud save successful');
+      showToast('☁️ 已同步到云端');
+      return true;
+    })
+    .catch(function(error) {
+      console.error('Cloud save failed:', error);
+      return false;
+    });
 }
 
 // 从云端加载
@@ -6535,72 +6512,58 @@ function loadCloudSave() {
     return Promise.resolve(false);
   }
   
-  var query = new AV.Query('SaveData');
-  query.equalTo('userId', currentUser.id);
-  
-  return query.first().then(function(data) {
-    if (data) {
-      if (data.get('heroes')) G.heroes = data.get('heroes');
-      if (data.get('team')) G.team = data.get('team');
-      if (data.get('resources')) {
-        var res = data.get('resources');
-        for (var key in res) {
-          G.resources[key] = res[key];
+  return sb.from('saves').select('*').eq('user_id', currentUser.id).single()
+    .then(function(result) {
+      var data = result.data;
+      if (data) {
+        if (data.heroes) G.heroes = data.heroes;
+        if (data.team) G.team = data.team;
+        if (data.resources) {
+          var res = data.resources;
+          for (var key in res) { G.resources[key] = res[key]; }
         }
-      }
-      if (data.get('buildings')) G.buildings = data.get('buildings');
-      if (data.get('stageProgress')) G.stageProgress = data.get('stageProgress');
-      if (data.get('equipment')) G.equipment = data.get('equipment');
-      if (data.get('arenaState')) {
-        var arena = data.get('arenaState');
-        for (var key in arena) {
-          G.arenaState[key] = arena[key];
+        if (data.buildings) G.buildings = data.buildings;
+        if (data.stageProgress) G.stageProgress = data.stageProgress;
+        if (data.equipment) G.equipment = data.equipment;
+        if (data.arenaState) {
+          var arena = data.arenaState;
+          for (var key in arena) { G.arenaState[key] = arena[key]; }
         }
+        updateResUI();
+        saveGame();
+        showToast('☁️ 已从云端恢复存档');
+        return true;
       }
-      
-      updateResUI();
-      saveGame();
-      showToast('☁️ 已从云端恢复存档');
-      return true;
-    }
-    return false;
-  }).catch(function(error) {
-    console.error('Cloud load failed:', error);
-    return false;
-  });
+      return false;
+    })
+    .catch(function(error) {
+      console.error('Cloud load failed:', error);
+      return false;
+    });
 }
 
 // 提交排行榜分数
 function submitLeaderboard(scoreType, scoreValue, extraData) {
   if (!isCloudReady || !currentUser) {
-    console.log('LeanCloud not ready, skipping leaderboard');
     return Promise.resolve(false);
   }
   
   extraData = extraData || {};
   
-  var Leaderboard = AV.Object.extend('Leaderboard');
-  var query = new AV.Query('Leaderboard');
-  query.equalTo('userId', currentUser.id);
-  query.equalTo('type', scoreType);
-  
-  return query.first().then(function(existing) {
-    var entry = existing || new Leaderboard();
-    entry.set('userId', currentUser.id);
-    entry.set('type', scoreType);
-    entry.set('score', scoreValue);
-    entry.set('timestamp', Date.now());
-    for (var key in extraData) {
-      entry.set(key, extraData[key]);
-    }
-    return entry.save();
-  }).then(function() {
-    console.log('Leaderboard submitted:', scoreType, scoreValue);
-    return true;
-  }).catch(function(error) {
-    console.error('Leaderboard submit failed:', error);
-    return false;
-  });
+  return sb.from('leaderboard').upsert({
+    user_id: currentUser.id,
+    type: scoreType,
+    score: scoreValue,
+    timestamp: Date.now()
+  }, { onConflict: 'user_id,type' })
+    .then(function() {
+      console.log('Leaderboard submitted:', scoreType, scoreValue);
+      return true;
+    })
+    .catch(function(error) {
+      console.error('Leaderboard submit failed:', error);
+      return false;
+    });
 }
 
 // 获取排行榜
@@ -6611,26 +6574,25 @@ function getLeaderboard(scoreType, limit) {
     return Promise.resolve([]);
   }
   
-  var query = new AV.Query('Leaderboard');
-  query.equalTo('type', scoreType);
-  query.descending('score');
-  query.limit(limit);
-  
-  return query.find().then(function(results) {
-    var entries = [];
-    for (var i = 0; i < results.length; i++) {
-      var obj = results[i];
-      entries.push({
-        uid: obj.get('userId'),
-        score: obj.get('score'),
-        timestamp: obj.get('timestamp')
-      });
-    }
-    return entries;
-  }).catch(function(error) {
-    console.error('Get leaderboard failed:', error);
-    return [];
-  });
+  return sb.from('leaderboard').select('*').eq('type', scoreType).order('score', { ascending: false }).limit(limit)
+    .then(function(result) {
+      var entries = [];
+      if (result.data) {
+        for (var i = 0; i < result.data.length; i++) {
+          var row = result.data[i];
+          entries.push({
+            uid: row.user_id,
+            score: row.score,
+            timestamp: row.timestamp
+          });
+        }
+      }
+      return entries;
+    })
+    .catch(function(error) {
+      console.error('Get leaderboard failed:', error);
+      return [];
+    });
 }
 
 // 获取玩家排名
@@ -6639,41 +6601,35 @@ function getPlayerRank(scoreType) {
     return Promise.resolve(null);
   }
   
-  var query = new AV.Query('Leaderboard');
-  query.equalTo('type', scoreType);
-  query.descending('score');
-  
-  return query.find().then(function(results) {
-    if (!results || results.length === 0) return null;
-    
-    var rank = 0;
-    var playerEntry = null;
-    for (var i = 0; i < results.length; i++) {
-      if (results[i].get('userId') === currentUser.id) {
-        rank = i + 1;
-        playerEntry = results[i];
-        break;
+  return sb.from('leaderboard').select('*').eq('type', scoreType).order('score', { ascending: false })
+    .then(function(result) {
+      if (!result.data || result.data.length === 0) return null;
+      
+      var rank = 0;
+      var playerScore = 0;
+      for (var i = 0; i < result.data.length; i++) {
+        if (result.data[i].user_id === currentUser.id) {
+          rank = i + 1;
+          playerScore = result.data[i].score;
+          break;
+        }
       }
-    }
-    
-    if (rank > 0) {
-      return {
-        rank: rank,
-        total: results.length,
-        score: playerEntry ? playerEntry.get('score') : 0
-      };
-    }
-    return null;
-  }).catch(function(error) {
-    console.error('Get player rank failed:', error);
-    return null;
-  });
+      
+      if (rank > 0) {
+        return { rank: rank, total: result.data.length, score: playerScore };
+      }
+      return null;
+    })
+    .catch(function(error) {
+      console.error('Get player rank failed:', error);
+      return null;
+    });
 }
 
 // ==================== 初始化 ====================
 function initGame(){
-  // 初始化 LeanCloud
-  initLeanCloud();
+  // 初始化 Supabase
+  initSupabase();
   
   // 尝试读档
   if(loadGame()){
