@@ -6566,121 +6566,160 @@ function showTalentTree(heroUid){
   const usedPoints=Object.values(hero.talents).reduce((sum,points)=>sum+points,0);
   const availablePoints=hero.talentPoints-usedPoints;
   
-  // 生成天赋树HTML
-  let branchesHtml='';
-  for(const[branchId,branch]of Object.entries(tree.branches)){
-    let talentsHtml='';
+  // 分支Tab
+  const branchKeys=Object.keys(tree.branches);
+  const branchTabs=branchKeys.map((key,i)=>{
+    const b=tree.branches[key];
+    const branchUsed=Object.values(hero.talents).reduce((s,p)=>s+p,0);
+    return `<button class="tt-tab ${i===0?'active':''}" onclick="switchTalentBranch(${heroUid},'${key}',this)">${b.icon} ${b.name}</button>`;
+  }).join('');
+  
+  // 生成天赋节点HTML（垂直布局）
+  function renderBranch(branchId){
+    const branch=tree.branches[branchId];
+    let nodesHtml='';
     for(let i=0;i<branch.talents.length;i++){
       const talent=branch.talents[i];
       const currentPoints=hero.talents[talent.id]||0;
       const isMaxed=currentPoints>=talent.maxPoints;
       const canAdd=availablePoints>0&&!isMaxed&&canAddTalent(hero,talent);
       
-      // 检查前置要求
       let lockedReason='';
       if(talent.requires){
         const prereqsMet=talent.requires.every(reqId=>(hero.talents[reqId]||0)>0);
-        if(!prereqsMet)lockedReason='前置天赋未激活';
+        if(!prereqsMet)lockedReason='需要先解锁前置天赋';
       }
       
       const isLocked=!!lockedReason;
-      const statusClass=isMaxed?'maxed':canAdd?'available':isLocked?'locked':'disabled';
+      const statusClass=isMaxed?'tt-maxed':canAdd?'tt-can-add':isLocked?'tt-locked':'tt-empty';
+      const isUltimate=talent.maxPoints===1&&i>=3;
       
-      talentsHtml+=`
-        <div class="talent-node ${statusClass}" style="grid-column:${i+1}">
-          <div class="talent-icon" onclick="addTalentPoint(${heroUid},'${talent.id}')">${isMaxed?'✦':branch.icon}</div>
-          <div class="talent-name">${talent.name}</div>
-          <div class="talent-points">${currentPoints}/${talent.maxPoints}</div>
-          ${isLocked?`<div class="talent-lock">🔒</div>`:''}
-          <div class="talent-tooltip">
-            <div class="talent-tooltip-name">${talent.name}</div>
-            <div class="talent-tooltip-desc">${talent.desc}</div>
-            ${isLocked?`<div class="talent-tooltip-lock">需要: ${lockedReason}</div>`:''}
+      // 进度点
+      let dotsHtml='';
+      for(let d=0;d<talent.maxPoints;d++){
+        dotsHtml+=`<span class="tt-dot ${d<currentPoints?'tt-dot-filled':''}"></span>`;
+      }
+      
+      nodesHtml+=`
+        <div class="tt-node ${statusClass} ${isUltimate?'tt-ultimate':''}" onclick="addTalentPoint(${heroUid},'${talent.id}')">
+          <div class="tt-node-left">
+            <div class="tt-node-icon">${isMaxed?'✦':isLocked?'🔒':branch.icon}</div>
+          </div>
+          <div class="tt-node-center">
+            <div class="tt-node-name">${talent.name}</div>
+            <div class="tt-node-desc">${talent.desc}</div>
+            <div class="tt-node-dots">${dotsHtml}</div>
+          </div>
+          <div class="tt-node-right">
+            <div class="tt-node-level">${currentPoints}/${talent.maxPoints}</div>
+            ${isUltimate?'<div class="tt-node-tag">终极</div>':''}
           </div>
         </div>
       `;
+      
+      // 连接线（非最后一个）
+      if(i<branch.talents.length-1){
+        const nextTalent=branch.talents[i+1];
+        const nextPoints=hero.talents[nextTalent.id]||0;
+        const nextMaxed=nextPoints>=nextTalent.maxPoints;
+        const nextCanAdd=availablePoints>0&&!nextMaxed&&canAddTalent(hero,nextTalent);
+        const nextLocked=nextTalent.requires&&!nextTalent.requires.every(rid=>(hero.talents[rid]||0)>0);
+        const lineClass=nextMaxed?'tt-line-active':nextCanAdd?'tt-line-ready':nextLocked?'tt-line-locked':'tt-line';
+        nodesHtml+=`<div class="tt-line ${lineClass}"><div class="tt-line-inner"></div></div>`;
+      }
     }
-    
-    // 连接线
-    const connectionsHtml=`
-      <div class="talent-connections">
-        <div class="connection" style="grid-column:1/3;grid-row:1"></div>
-        <div class="connection" style="grid-column:2/4;grid-row:1"></div>
-        <div class="connection" style="grid-column:3/5;grid-row:1"></div>
-      </div>
-    `;
-    
-    branchesHtml+=`
-      <div class="talent-branch">
-        <div class="talent-branch-header">
-          <span class="talent-branch-icon">${branch.icon}</span>
-          <span class="talent-branch-name">${branch.name}</span>
-          <span class="talent-branch-desc">${branch.desc}</span>
-        </div>
-        <div class="talent-grid">
-          ${connectionsHtml}
-          ${talentsHtml}
-        </div>
-      </div>
-    `;
+    return nodesHtml;
   }
   
   const html=`
     <style>
-      .talent-panel{max-width:600px;margin:0 auto}
-      .talent-header{text-align:center;margin-bottom:20px;padding-bottom:15px;border-bottom:1px solid var(--border)}
-      .talent-hero-info{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:10px}
-      .talent-hero-icon{font-size:36px}
-      .talent-hero-name{font-size:18px;font-weight:bold;color:var(--gold)}
-      .talent-points-display{background:linear-gradient(135deg,var(--panel2),var(--panel));border:1px solid var(--gold);border-radius:20px;padding:8px 20px;display:inline-flex;align-items:center;gap:10px}
-      .talent-points-label{color:var(--text2);font-size:12px}
-      .talent-points-value{color:var(--gold);font-size:20px;font-weight:bold}
-      .talent-branch{margin-bottom:24px;background:rgba(0,0,0,.2);border-radius:12px;padding:15px}
-      .talent-branch-header{display:flex;align-items:center;gap:8px;margin-bottom:15px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.05)}
-      .talent-branch-icon{font-size:20px}
-      .talent-branch-name{font-size:14px;font-weight:bold;color:var(--gold)}
-      .talent-branch-desc{font-size:11px;color:var(--text2);margin-left:auto}
-      .talent-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;position:relative}
-      .talent-connections{position:absolute;inset:30px 0 0;pointer-events:none;z-index:0}
-      .connection{height:2px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin-top:15px}
-      .talent-node{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;z-index:1}
-      .talent-icon{width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;transition:all .2s;border:2px solid var(--border);background:var(--panel2)}
-      .talent-node.available .talent-icon{border-color:var(--gold);box-shadow:0 0 10px rgba(201,162,39,.3)}
-      .talent-node.available .talent-icon:hover{transform:scale(1.1);background:rgba(201,162,39,.1)}
-      .talent-node.maxed .talent-icon{border-color:var(--purple);background:rgba(168,85,247,.2);box-shadow:0 0 15px rgba(168,85,247,.4)}
-      .talent-node.locked .talent-icon{opacity:.4;cursor:not-allowed}
-      .talent-node.disabled .talent-icon{opacity:.3;cursor:not-allowed}
-      .talent-name{font-size:10px;color:var(--text);text-align:center;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-      .talent-points{font-size:9px;color:var(--text2)}
-      .talent-lock{position:absolute;top:-5px;right:-5px;font-size:12px}
-      .talent-tooltip{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px;width:180px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:100;margin-bottom:8px;box-shadow:var(--shadow-lg)}
-      .talent-node:hover .talent-tooltip{opacity:1}
-      .talent-tooltip-name{font-size:12px;font-weight:bold;color:var(--gold);margin-bottom:4px}
-      .talent-tooltip-desc{font-size:10px;color:var(--text2);line-height:1.4}
-      .talent-tooltip-lock{font-size:9px;color:var(--red);margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,107,107,.2)}
-      .talent-actions{display:flex;gap:10px;justify-content:center;margin-top:20px;padding-top:15px;border-top:1px solid var(--border)}
+      .tt-panel{max-width:480px;margin:0 auto;padding:4px}
+      .tt-header{text-align:center;margin-bottom:16px;padding:12px;background:linear-gradient(135deg,rgba(168,85,247,.08),rgba(201,162,39,.08));border-radius:var(--radius-md);border:1px solid rgba(168,85,247,.15)}
+      .tt-hero{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px}
+      .tt-hero-icon{font-size:32px}
+      .tt-hero-name{font-size:16px;font-weight:bold;color:var(--gold)}
+      .tt-points-bar{display:flex;align-items:center;justify-content:center;gap:16px}
+      .tt-points-item{text-align:center}
+      .tt-points-val{font-size:18px;font-weight:bold}
+      .tt-points-val.available{color:var(--gold)}
+      .tt-points-val.used{color:var(--purple)}
+      .tt-points-val.total{color:var(--text2)}
+      .tt-points-lbl{font-size:10px;color:var(--text3)}
+      .tt-tabs{display:flex;gap:4px;margin-bottom:16px}
+      .tt-tab{flex:1;padding:8px 4px;border:1px solid var(--border);background:var(--panel2);color:var(--text2);cursor:pointer;border-radius:var(--radius-sm);font-size:12px;font-family:inherit;text-align:center;transition:var(--transition)}
+      .tt-tab.active{background:rgba(168,85,247,.15);border-color:var(--purple);color:var(--purple);font-weight:bold}
+      .tt-tab:hover{border-color:var(--border-light)}
+      .tt-branch{display:none}
+      .tt-branch.active{display:block}
+      .tt-node{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);position:relative}
+      .tt-node:hover{border-color:var(--border-light);background:var(--panel3)}
+      .tt-node.tt-can-add{border-color:rgba(201,162,39,.3)}
+      .tt-node.tt-can-add:hover{border-color:var(--gold);box-shadow:0 0 12px rgba(201,162,39,.15);transform:translateX(3px)}
+      .tt-node.tt-maxed{border-color:rgba(168,85,247,.3);background:rgba(168,85,247,.06)}
+      .tt-node.tt-locked{opacity:.45;cursor:not-allowed}
+      .tt-node.tt-locked:hover{transform:none;border-color:var(--border);box-shadow:none}
+      .tt-node.tt-empty{opacity:.5;cursor:not-allowed}
+      .tt-node.tt-empty:hover{transform:none;border-color:var(--border);box-shadow:none}
+      .tt-node.tt-ultimate{border-color:rgba(201,162,39,.25);background:linear-gradient(135deg,rgba(201,162,39,.06),rgba(168,85,247,.06))}
+      .tt-node.tt-ultimate.tt-maxed{border-color:rgba(201,162,39,.5);box-shadow:0 0 16px rgba(201,162,39,.2)}
+      .tt-node-left{flex-shrink:0}
+      .tt-node-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid var(--border);background:rgba(0,0,0,.2);transition:var(--transition)}
+      .tt-can-add .tt-node-icon{border-color:var(--gold);box-shadow:0 0 8px rgba(201,162,39,.25)}
+      .tt-maxed .tt-node-icon{border-color:var(--purple);background:rgba(168,85,247,.15);box-shadow:0 0 10px rgba(168,85,247,.3)}
+      .tt-node-center{flex:1;min-width:0}
+      .tt-node-name{font-size:13px;font-weight:bold;color:var(--text);margin-bottom:2px}
+      .tt-maxed .tt-node-name{color:var(--purple)}
+      .tt-can-add .tt-node-name{color:var(--gold)}
+      .tt-node-desc{font-size:10px;color:var(--text2);line-height:1.3;margin-bottom:4px}
+      .tt-node-dots{display:flex;gap:3px}
+      .tt-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid var(--border)}
+      .tt-dot-filled{background:var(--purple);border-color:var(--purple);box-shadow:0 0 4px rgba(168,85,247,.4)}
+      .tt-can-add .tt-dot-filled{background:var(--gold);border-color:var(--gold);box-shadow:0 0 4px rgba(201,162,39,.4)}
+      .tt-node-right{flex-shrink:0;text-align:right}
+      .tt-node-level{font-size:12px;font-weight:bold;color:var(--text2)}
+      .tt-maxed .tt-node-level{color:var(--purple)}
+      .tt-can-add .tt-node-level{color:var(--gold)}
+      .tt-node-tag{font-size:9px;color:var(--gold);background:rgba(201,162,39,.15);padding:1px 6px;border-radius:3px;margin-top:2px;display:inline-block}
+      .tt-line{text-align:center;padding:2px 0}
+      .tt-line-inner{width:2px;height:16px;margin:0 auto;background:var(--border);border-radius:1px;transition:var(--transition)}
+      .tt-line-active .tt-line-inner{background:var(--purple);box-shadow:0 0 4px rgba(168,85,247,.3)}
+      .tt-line-ready .tt-line-inner{background:var(--gold);opacity:.5}
+      .tt-line-locked .tt-line-inner{background:var(--border);opacity:.3}
+      .tt-actions{display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
+      .tt-actions .btn{flex:1}
     </style>
-    <div class="talent-panel">
-      <div class="talent-header">
-        <div class="talent-hero-info">
-          <span class="talent-hero-icon">${hero.icon}</span>
-          <span class="talent-hero-name">${hero.name}</span>
+    <div class="tt-panel">
+      <div class="tt-header">
+        <div class="tt-hero">
+          <span class="tt-hero-icon">${hero.icon}</span>
+          <span class="tt-hero-name">${hero.name}</span>
+          <span style="font-size:11px;color:var(--text3)">Lv.${hero.level}</span>
         </div>
-        <div class="talent-points-display">
-          <span class="talent-points-label">可用天赋点</span>
-          <span class="talent-points-value">${availablePoints}</span>
+        <div class="tt-points-bar">
+          <div class="tt-points-item"><div class="tt-points-val available">${availablePoints}</div><div class="tt-points-lbl">可用</div></div>
+          <div class="tt-points-item"><div class="tt-points-val used">${usedPoints}</div><div class="tt-points-lbl">已用</div></div>
+          <div class="tt-points-item"><div class="tt-points-val total">${hero.talentPoints}</div><div class="tt-points-lbl">总计</div></div>
         </div>
-        <div style="font-size:11px;color:var(--text2);margin-top:8px">已使用: ${usedPoints} / 总计: ${hero.talentPoints}</div>
       </div>
-      ${branchesHtml}
-      <div class="talent-actions">
-        <button class="btn" onclick="closeModal();showHeroDetail(${heroUid})">返回详情</button>
-        <button class="btn" style="background:rgba(255,107,107,.15);border-color:rgba(255,107,107,.4);color:#ff6b6b" onclick="resetTalents(${heroUid})">重置天赋 (💰${TALENT_CONFIG.resetCostGold} 💎${TALENT_CONFIG.resetCostGems})</button>
+      <div class="tt-tabs">${branchTabs}</div>
+      ${branchKeys.map((key,i)=>`<div class="tt-branch ${i===0?'active':''}" id="tt-branch-${key}">${renderBranch(key)}</div>`).join('')}
+      <div class="tt-actions">
+        <button class="btn" onclick="closeModal();showHeroDetail(${heroUid})">← 返回</button>
+        <button class="btn" style="background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.3);color:#ff6b6b" onclick="resetTalents(${heroUid})">🔄 重置</button>
       </div>
     </div>
   `;
   
   showModal('天赋树',html);
+}
+
+// 切换天赋分支Tab
+function switchTalentBranch(heroUid,branchKey,btn){
+  document.querySelectorAll('.tt-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tt-branch').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const branchEl=document.getElementById('tt-branch-'+branchKey);
+  if(branchEl)branchEl.classList.add('active');
 }
 
 // 检查是否可以添加天赋点
