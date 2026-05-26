@@ -984,7 +984,339 @@ const EQUIP_TEMPLATES = [
   {id:'excalibur',name:'王者之剑',icon:'⚔️',type:'weapon',quality:'legendary',stats:{atk:20,hp:30,spd:3},desc:'传说中的圣剑，只有被选中的勇者才能 wield。'},
   {id:'abyss_shield',name:'深渊之盾',icon:'🔰',type:'armor',quality:'legendary',stats:{def:18,hp:60,mp:20},desc:'来自深渊的盾牌，能抵御一切邪恶。'},
   {id:'chaos_orb',name:'混沌之珠',icon:'🔮',type:'accessory',quality:'mythic',stats:{atk:10,def:10,hp:50,mp:30,spd:5},desc:'混沌力量的结晶，蕴含无限可能。'},
+  // ===== 新增装备 - 普通品质 =====
+  {id:'wooden_club',name:'木棒',icon:'🏏',type:'weapon',quality:'common',stats:{atk:2},desc:'粗糙的木棒，聊胜于无。'},
+  {id:'cloth_robe',name:'布衣',icon:'👘',type:'armor',quality:'common',stats:{def:1,hp:5},desc:'普通的布衣，提供微弱防护。'},
+  {id:'bone_necklace',name:'骨项链',icon:'🦴',type:'accessory',quality:'common',stats:{hp:15},desc:'用兽骨串成的项链，据说能驱邪。'},
+  {id:'stone_axe',name:'石斧',icon:'🪓',type:'weapon',quality:'common',stats:{atk:4},desc:'打磨锋利的石斧，适合新手。'},
+  {id:'straw_hat',name:'草帽',icon:'👒',type:'accessory',quality:'common',stats:{def:1,spd:1},desc:'轻便的草帽，遮阳挡雨。'},
+  // ===== 新增装备 - 稀有品质 =====
+  {id:'flame_sword',name:'烈焰之剑',icon:'🗡️',type:'weapon',quality:'rare',stats:{atk:8,spd:1},setId:'set_flame',specialSkill:'sk_fire_enchant',desc:'附着火焰的利剑，灼烧一切。'},
+  {id:'flame_armor',name:'烈焰战甲',icon:'🦺',type:'armor',quality:'rare',stats:{def:5,hp:25,atk:2},setId:'set_flame',desc:'以火焰锻造的战甲，散发灼热气息。'},
+  {id:'flame_ring',name:'烈焰指环',icon:'💍',type:'accessory',quality:'rare',stats:{atk:5,mp:5},setId:'set_flame',specialSkill:'sk_fire_enchant',desc:'燃烧着永恒火焰的指环。'},
+  {id:'ice_staff',name:'寒冰法杖',icon:'🪄',type:'weapon',quality:'rare',stats:{atk:5,mp:15,def:2},setId:'set_ice',specialSkill:'sk_frost_armor',desc:'凝结冰霜之力的法杖。'},
+  {id:'ice_shield',name:'寒冰之盾',icon:'🛡️',type:'armor',quality:'rare',stats:{def:7,hp:20},setId:'set_ice',specialSkill:'sk_frost_armor',desc:'坚冰铸成的盾牌，寒气逼人。'},
+  {id:'ice_pendant',name:'寒冰吊坠',icon:'❄️',type:'accessory',quality:'rare',stats:{def:4,mp:10,spd:1},setId:'set_ice',desc:'蕴含寒冰魔力的吊坠。'},
+  {id:'war_hammer',name:'战锤',icon:'🔨',type:'weapon',quality:'rare',stats:{atk:7,hp:10},desc:'沉重的战锤，一击致命。'},
+  {id:'chain_mail',name:'锁子甲',icon:'🛡️',type:'armor',quality:'rare',stats:{def:5,hp:20,spd:-1},desc:'环环相扣的锁子甲，防御可靠。'},
+  {id:'ranger_boots',name:'游侠之靴',icon:'👢',type:'accessory',quality:'rare',stats:{spd:4,atk:2},desc:'轻便的皮靴，提升移动速度。'},
+  {id:'silver_sword',name:'银剑',icon:'⚔️',type:'weapon',quality:'rare',stats:{atk:7,def:1},desc:'纯银打造的剑，对亡灵有特效。'},
+  // ===== 新增装备 - 史诗品质 =====
+  {id:'thunder_blade',name:'雷霆之刃',icon:'⚡',type:'weapon',quality:'epic',stats:{atk:14,spd:3},setId:'set_thunder',specialSkill:'sk_thunder_power',desc:'蕴含雷霆之力的神兵。'},
+  {id:'thunder_armor',name:'雷霆铠甲',icon:'🛡️',type:'armor',quality:'epic',stats:{def:10,hp:35,spd:2},setId:'set_thunder',desc:'以雷电淬炼的铠甲，迅捷无比。'},
+  {id:'thunder_gloves',name:'雷霆手套',icon:'🧤',type:'accessory',quality:'epic',stats:{atk:8,spd:4,mp:10},setId:'set_thunder',specialSkill:'sk_thunder_power',desc:'缠绕闪电的手套，攻击迅猛。'},
+  {id:'shadow_dagger',name:'暗影匕首',icon:'🗡️',type:'weapon',quality:'epic',stats:{atk:13,spd:5},setId:'set_shadow',specialSkill:'sk_shadow_dodge',desc:'暗影中闪烁的匕首，致命无声。'},
+  {id:'shadow_cloak',name:'暗影斗篷',icon:'🧥',type:'armor',quality:'epic',stats:{def:8,hp:30,spd:3},setId:'set_shadow',specialSkill:'sk_shadow_dodge',desc:'融入暗影的斗篷，难以被察觉。'},
+  {id:'shadow_mask',name:'暗影面具',icon:'🎭',type:'accessory',quality:'epic',stats:{atk:7,spd:4,crit:10},setId:'set_shadow',desc:'遮掩身份的面具，赋予暗杀之力。'},
+  {id:'holy_staff',name:'圣光权杖',icon:'✨',type:'weapon',quality:'epic',stats:{atk:8,mp:25,hp:20},setId:'set_holy',specialSkill:'sk_holy_protection',desc:'圣光教廷的权杖，治愈众生。'},
+  {id:'holy_plate',name:'圣光板甲',icon:'🛡️',type:'armor',quality:'epic',stats:{def:14,hp:50},setId:'set_holy',specialSkill:'sk_holy_protection',desc:'圣光祝福的板甲，坚不可摧。'},
+  {id:'holy_amulet',name:'圣光护符',icon:'📿',type:'accessory',quality:'epic',stats:{hp:30,mp:15,def:5},setId:'set_holy',specialSkill:'sk_holy_protection',desc:'圣光庇佑的护符，恢复生命。'},
+  {id:'war_axe',name:'狂战之斧',icon:'🪓',type:'weapon',quality:'epic',stats:{atk:15,hp:15},desc:'狂战士的巨斧，越战越勇。'},
+  {id:'moon_staff',name:'月光法杖',icon:'🌙',type:'weapon',quality:'epic',stats:{atk:10,mp:30,spd:1},desc:'月光照耀的法杖，魔力充沛。'},
+  {id:'knight_shield',name:'骑士盾',icon:'🔰',type:'armor',quality:'epic',stats:{def:15,hp:40,mp:10},desc:'骑士团的圣盾，守护同伴。'},
+  // ===== 新增装备 - 传说品质 =====
+  {id:'dragon_sword',name:'龙牙剑',icon:'🐉',type:'weapon',quality:'legendary',stats:{atk:22,hp:40,spd:3},setId:'set_dragon',specialSkill:'sk_dragon_breath',desc:'以龙牙锻造的神剑，威力无穷。'},
+  {id:'dragon_scale',name:'龙鳞铠',icon:'🐉',type:'armor',quality:'legendary',stats:{def:18,hp:70,spd:2},setId:'set_dragon',desc:'以真龙之鳞打造的铠甲。'},
+  {id:'dragon_heart',name:'龙心宝石',icon:'💎',type:'accessory',quality:'legendary',stats:{atk:10,def:10,hp:50,spd:3},setId:'set_dragon',specialSkill:'sk_dragon_breath',desc:'蕴含龙之力量的宝石。'},
+  {id:'abyss_plate',name:'深渊重甲',icon:'🌑',type:'armor',quality:'legendary',stats:{def:22,hp:80,mp:15},setId:'set_abyss',specialSkill:'sk_abyss_shield',desc:'深渊魔铁铸造的重甲。'},
+  {id:'abyss_helm',name:'深渊头盔',icon:'⛑️',type:'weapon',quality:'legendary',stats:{atk:16,hp:50,def:8},setId:'set_abyss',desc:'深渊将军的头盔，攻守兼备。'},
+  {id:'abyss_ring',name:'深渊之戒',icon:'💍',type:'accessory',quality:'legendary',stats:{def:12,hp:60,mp:20},setId:'set_abyss',specialSkill:'sk_abyss_shield',desc:'封印深渊之力的戒指。'},
+  {id:'phoenix_blade',name:'凤凰之刃',icon:'🔥',type:'weapon',quality:'legendary',stats:{atk:20,spd:5,mp:10},specialSkill:'sk_life_steal',desc:'凤凰涅槃之火铸成的神刃。'},
+  {id:'titan_armor',name:'泰坦铠甲',icon:'🛡️',type:'armor',quality:'legendary',stats:{def:20,hp:90},desc:'远古泰坦遗留的铠甲，厚重无比。'},
+  {id:'storm_bow',name:'风暴之弓',icon:'🏹',type:'weapon',quality:'legendary',stats:{atk:18,spd:6},specialSkill:'sk_poison_mist',desc:'召唤风暴的弓箭，箭无虚发。'},
+  // ===== 新增装备 - 神话品质 =====
+  {id:'oracle_staff',name:'神谕权杖',icon:'🌟',type:'weapon',quality:'mythic',stats:{atk:15,def:10,hp:60,mp:40,spd:5},setId:'set_oracle',specialSkill:'sk_divine_judgment',desc:'神谕者传承的神器，掌控命运。'},
+  {id:'oracle_robe',name:'神谕法袍',icon:'🧥',type:'armor',quality:'mythic',stats:{def:15,hp:80,mp:30,spd:3},setId:'set_oracle',specialSkill:'sk_divine_judgment',desc:'神谕者的法袍，蕴含神力。'},
+  {id:'oracle_crown',name:'神谕之冠',icon:'👑',type:'accessory',quality:'mythic',stats:{atk:12,def:12,hp:60,mp:35,spd:5},setId:'set_oracle',specialSkill:'sk_holy_protection',desc:'神谕者的王冠，洞察万物。'},
+  {id:'chaos_blade',name:'混沌魔刃',icon:'⚡',type:'weapon',quality:'mythic',stats:{atk:25,hp:40,spd:6},setId:'set_chaos',specialSkill:'sk_chaos_fury',desc:'混沌之力凝聚的魔刃，毁灭一切。'},
+  {id:'chaos_armor',name:'混沌战甲',icon:'🔥',type:'armor',quality:'mythic',stats:{def:18,hp:70,atk:10,spd:2},setId:'set_chaos',specialSkill:'sk_berserker_soul',desc:'混沌之力灌注的战甲，狂暴无比。'},
+  {id:'chaos_orb2',name:'混沌核心',icon:'🔮',type:'accessory',quality:'mythic',stats:{atk:15,def:10,hp:50,mp:25,spd:6},setId:'set_chaos',specialSkill:'sk_chaos_fury',desc:'混沌力量的核心，蕴含毁灭之力。'},
+  {id:'eternal_sword',name:'永恒之剑',icon:'⚔️',type:'weapon',quality:'mythic',stats:{atk:22,def:8,hp:50,spd:5},specialSkill:'sk_life_steal',desc:'超越时间的神剑，永恒不灭。'},
+  {id:'world_tree_branch',name:'世界树枝',icon:'🌿',type:'weapon',quality:'mythic',stats:{atk:12,hp:80,mp:40,spd:3},specialSkill:'sk_holy_protection',desc:'世界树的一截枝条，生机盎然。'},
+  {id:'star_ring',name:'星辰之戒',icon:'💫',type:'accessory',quality:'mythic',stats:{atk:8,def:8,hp:40,mp:30,spd:8},specialSkill:'sk_thunder_power',desc:'镶嵌星辰碎片的戒指，速度极快。'},
+  {id:'doom_scythe',name:'末日镰刀',icon:'☠️',type:'weapon',quality:'mythic',stats:{atk:28,hp:30,spd:4},specialSkill:'sk_poison_mist',desc:'收割灵魂的镰刀，附带剧毒。'}
+
 ];
+
+
+
+// 装备特殊技能定义
+const EQUIP_SPECIAL_SKILLS = {
+  'sk_fire_enchant': {
+    name: '烈焰附魔',
+    icon: '🔥',
+    desc: '攻击时30%概率附加灼烧效果',
+    trigger: 'onAttack',
+    chance: 0.3,
+    effect: {
+      type: 'dot',
+      target: 'single_enemy',
+      value: 0.08,
+      duration: 3
+    }
+  },
+  'sk_frost_armor': {
+    name: '冰霜护甲',
+    icon: '❄️',
+    desc: '被攻击时25%概率冰冻攻击者1回合',
+    trigger: 'onHit',
+    chance: 0.25,
+    effect: {
+      type: 'debuff',
+      target: 'single_enemy',
+      value: 0.5,
+      stat: 'atk',
+      duration: 1
+    }
+  },
+  'sk_thunder_power': {
+    name: '雷霆之力',
+    icon: '⚡',
+    desc: '回合开始时20%概率对随机敌人造成攻击力50%伤害',
+    trigger: 'turnStart',
+    chance: 0.2,
+    effect: {
+      type: 'damage',
+      target: 'single_enemy',
+      value: 0.5
+    }
+  },
+  'sk_shadow_dodge': {
+    name: '暗影闪避',
+    icon: '👤',
+    desc: '被攻击时15%概率完全闪避本次攻击',
+    trigger: 'onHit',
+    chance: 0.15,
+    effect: {
+      type: 'dodge',
+      target: 'self',
+      value: 1.0,
+      duration: 1
+    }
+  },
+  'sk_holy_protection': {
+    name: '圣光庇护',
+    icon: '✨',
+    desc: '回合开始时恢复自身5%最大生命值',
+    trigger: 'turnStart',
+    chance: 1.0,
+    effect: {
+      type: 'heal',
+      target: 'self',
+      value: 0.05
+    }
+  },
+  'sk_dragon_breath': {
+    name: '龙息',
+    icon: '🐉',
+    desc: '击杀敌人时40%概率对全体敌人造成攻击力40%伤害',
+    trigger: 'onKill',
+    chance: 0.4,
+    effect: {
+      type: 'damage',
+      target: 'all_enemies',
+      value: 0.4
+    }
+  },
+  'sk_abyss_shield': {
+    name: '深渊护盾',
+    icon: '🌑',
+    desc: '回合开始时获得最大生命值10%的护盾',
+    trigger: 'turnStart',
+    chance: 1.0,
+    effect: {
+      type: 'shield',
+      target: 'self',
+      value: 0.1
+    }
+  },
+  'sk_chaos_fury': {
+    name: '混沌之怒',
+    icon: '⚡',
+    desc: '攻击时25%概率对全体敌人造成攻击力30%伤害',
+    trigger: 'onAttack',
+    chance: 0.25,
+    effect: {
+      type: 'damage',
+      target: 'all_enemies',
+      value: 0.3
+    }
+  },
+  'sk_life_steal': {
+    name: '生命汲取',
+    icon: '🧛',
+    desc: '攻击时20%概率恢复造成伤害30%的生命',
+    trigger: 'onAttack',
+    chance: 0.2,
+    effect: {
+      type: 'heal',
+      target: 'self',
+      value: 0.15
+    }
+  },
+  'sk_poison_mist': {
+    name: '毒雾',
+    icon: '☠️',
+    desc: '回合开始时对全体敌人附加中毒，每回合5%攻击力伤害',
+    trigger: 'turnStart',
+    chance: 0.25,
+    effect: {
+      type: 'dot',
+      target: 'all_enemies',
+      value: 0.05,
+      duration: 3
+    }
+  },
+  'sk_divine_judgment': {
+    name: '神圣审判',
+    icon: '🌟',
+    desc: '击杀敌人时50%概率恢复全队10%最大生命',
+    trigger: 'onKill',
+    chance: 0.5,
+    effect: {
+      type: 'heal',
+      target: 'all_allies',
+      value: 0.1
+    }
+  },
+  'sk_berserker_soul': {
+    name: '狂战之魂',
+    icon: '💢',
+    desc: '被攻击时若生命低于30%，攻击力提升50%持续2回合',
+    trigger: 'onHit',
+    chance: 1.0,
+    effect: {
+      type: 'buff',
+      target: 'self',
+      value: 0.5,
+      stat: 'atk',
+      duration: 2
+    }
+  },
+  'sk_flame_aura': {
+    name: '烈焰光环',
+    icon: '🔥',
+    desc: '攻击时对全体敌人造成攻击力20%伤害',
+    trigger: 'onAttack',
+    chance: 0.35,
+    effect: {
+      type: 'damage',
+      target: 'all_enemies',
+      value: 0.2
+    }
+  },
+  'sk_ice_prison': {
+    name: '冰牢',
+    icon: '🧊',
+    desc: '被攻击时20%概率冰冻攻击者并降低攻击力',
+    trigger: 'onHit',
+    chance: 0.2,
+    effect: {
+      type: 'debuff',
+      target: 'single_enemy',
+      value: 0.6,
+      stat: 'atk',
+      duration: 2
+    }
+  },
+  'sk_thunder_storm': {
+    name: '雷暴',
+    icon: '⛈️',
+    desc: '击杀敌人时35%概率对全体敌人造成攻击力35%伤害',
+    trigger: 'onKill',
+    chance: 0.35,
+    effect: {
+      type: 'damage',
+      target: 'all_enemies',
+      value: 0.35
+    }
+  }
+};
+
+// 装备套装定义
+const EQUIP_SETS = {
+  'set_flame': {
+    name: '烈焰套装',
+    icon: '🔥',
+    pieces: ['flame_sword', 'flame_armor', 'flame_ring'],
+    bonuses: {
+      2: {desc: '攻击力+5，生命+20', stats: {atk: 5, hp: 20}},
+      3: {desc: '攻击力+12，生命+50，攻击时附带烈焰光环', stats: {atk: 12, hp: 50}, specialEffect: 'sk_flame_aura'}
+    }
+  },
+  'set_ice': {
+    name: '寒冰套装',
+    icon: '❄️',
+    pieces: ['ice_staff', 'ice_shield', 'ice_pendant'],
+    bonuses: {
+      2: {desc: '防御+5，魔法+15', stats: {def: 5, mp: 15}},
+      3: {desc: '防御+12，魔法+30，被攻击时触发冰牢', stats: {def: 12, mp: 30}, specialEffect: 'sk_ice_prison'}
+    }
+  },
+  'set_thunder': {
+    name: '雷霆套装',
+    icon: '⚡',
+    pieces: ['thunder_blade', 'thunder_armor', 'thunder_gloves'],
+    bonuses: {
+      2: {desc: '攻击+6，速度+2', stats: {atk: 6, spd: 2}},
+      3: {desc: '攻击+12，速度+5，击杀时触发雷暴', stats: {atk: 12, spd: 5}, specialEffect: 'sk_thunder_storm'}
+    }
+  },
+  'set_shadow': {
+    name: '暗影套装',
+    icon: '👤',
+    pieces: ['shadow_dagger', 'shadow_cloak', 'shadow_mask'],
+    bonuses: {
+      2: {desc: '攻击+8，速度+3', stats: {atk: 8, spd: 3}},
+      3: {desc: '攻击+15，速度+6，被攻击时触发暗影闪避', stats: {atk: 15, spd: 6}, specialEffect: 'sk_shadow_dodge'}
+    }
+  },
+  'set_holy': {
+    name: '圣光套装',
+    icon: '✨',
+    pieces: ['holy_staff', 'holy_plate', 'holy_amulet'],
+    bonuses: {
+      2: {desc: '防御+6，生命+30', stats: {def: 6, hp: 30}},
+      3: {desc: '防御+12，生命+60，回合开始恢复生命', stats: {def: 12, hp: 60}, specialEffect: 'sk_holy_protection'}
+    }
+  },
+  'set_dragon': {
+    name: '龙族套装',
+    icon: '🐉',
+    pieces: ['dragon_sword', 'dragon_scale', 'dragon_heart'],
+    bonuses: {
+      2: {desc: '攻击+10，防御+8，生命+40', stats: {atk: 10, def: 8, hp: 40}},
+      3: {desc: '全属性+15，击杀时触发龙息', stats: {atk: 15, def: 15, hp: 80, spd: 3}, specialEffect: 'sk_dragon_breath'}
+    }
+  },
+  'set_abyss': {
+    name: '深渊套装',
+    icon: '🌑',
+    pieces: ['abyss_helm', 'abyss_plate', 'abyss_ring'],
+    bonuses: {
+      2: {desc: '防御+10，生命+50', stats: {def: 10, hp: 50}},
+      3: {desc: '防御+20，生命+100，回合开始获得护盾', stats: {def: 20, hp: 100}, specialEffect: 'sk_abyss_shield'}
+    }
+  },
+  'set_oracle': {
+    name: '神谕套装',
+    icon: '🌟',
+    pieces: ['oracle_staff', 'oracle_robe', 'oracle_crown'],
+    bonuses: {
+      2: {desc: '攻击+8，防御+8，魔法+20', stats: {atk: 8, def: 8, mp: 20}},
+      3: {desc: '全属性+12，击杀时触发神圣审判', stats: {atk: 12, def: 12, hp: 60, mp: 30, spd: 3}, specialEffect: 'sk_divine_judgment'}
+    }
+  },
+  'set_chaos': {
+    name: '混沌套装',
+    icon: '⚡',
+    pieces: ['chaos_blade', 'chaos_armor', 'chaos_orb2'],
+    bonuses: {
+      2: {desc: '攻击+12，生命+30', stats: {atk: 12, hp: 30}},
+      3: {desc: '攻击+20，生命+60，攻击时触发混沌之怒', stats: {atk: 20, hp: 60, spd: 3}, specialEffect: 'sk_chaos_fury'}
+    }
+  }
+};
 
 // 资源定义
 const RESOURCE_DEFS = {
@@ -1552,20 +1884,25 @@ function recordMonsterCodex(enemies){
 }
 
 function getHeroStats(hero){
-  let s={hp:hero.hp,maxHP:hero.maxHP,atk:hero.atk,def:hero.def,spd:hero.spd,mp:hero.mp,maxMP:hero.maxMP};
+  var s={hp:hero.hp,maxHP:hero.maxHP,atk:hero.atk,def:hero.def,spd:hero.spd,mp:hero.mp,maxMP:hero.maxMP};
   // 装备加成（含强化加成）
-  for(let slot of ['weapon','armor','accessory']){
-    const eid=hero.equipment[slot];
+  var slots=['weapon','armor','accessory'];
+  for(var si=0;si<slots.length;si++){
+    var slot=slots[si];
+    var eid=hero.equipment[slot];
     if(eid!=null){
-      const eq=G.equipment.find(e=>e.uid===eid);
+      var eq=G.equipment.find(function(e){return e.uid===eid});
       if(eq){
-        const tpl=EQUIP_TEMPLATES.find(t=>t.id===eq.id);
+        var tpl=EQUIP_TEMPLATES.find(function(t){return t.id===eq.id});
         if(tpl){
-          const enhanceLevel=eq.enhance||0;
-          const enhanceMult=1+enhanceLevel*0.1; // 每级+10%
-          for(let[k,v]of Object.entries(tpl.stats)){
+          var enhanceLevel=eq.enhance||0;
+          var enhanceMult=1+enhanceLevel*0.1;
+          var statKeys=Object.keys(tpl.stats);
+          for(var ki=0;ki<statKeys.length;ki++){
+            var k=statKeys[ki];
+            var v=tpl.stats[k];
             if(s[k]!==undefined){
-              const finalValue=Math.floor(v*enhanceMult);
+              var finalValue=Math.floor(v*enhanceMult);
               s[k]+=finalValue;
             }
           }
@@ -1573,7 +1910,133 @@ function getHeroStats(hero){
       }
     }
   }
+  // 套装加成
+  var setCounts={};
+  for(var si2=0;si2<slots.length;si2++){
+    var slot2=slots[si2];
+    var eId=hero.equipment[slot2];
+    if(eId!=null){
+      var eq2=G.equipment.find(function(e){return e.uid===eId});
+      if(eq2){
+        var tpl2=EQUIP_TEMPLATES.find(function(t){return t.id===eq2.id});
+        if(tpl2 && tpl2.setId && EQUIP_SETS[tpl2.setId]){
+          setCounts[tpl2.setId]=(setCounts[tpl2.setId]||0)+1;
+        }
+      }
+    }
+  }
+  for(var setId in setCounts){
+    var count=setCounts[setId];
+    var setDef=EQUIP_SETS[setId];
+    if(setDef && setDef.bonuses[count]){
+      var bonus=setDef.bonuses[count];
+      if(bonus.stats){
+        var bKeys=Object.keys(bonus.stats);
+        for(var bi=0;bi<bKeys.length;bi++){
+          var bk=bKeys[bi];
+          if(s[bk]!==undefined) s[bk]+=bonus.stats[bk];
+        }
+      }
+    }
+  }
   return s;
+}
+
+
+// ==================== 装备特殊技能系统 ====================
+function checkEquipSpecialSkill(unit, triggerType, target, allUnits){
+  if(!unit.hero || unit.isEnemy) return;
+  var hero=unit.hero;
+  var triggeredSkills=[];
+  for(var slot in hero.equipment){
+    var eUid=hero.equipment[slot];
+    if(eUid==null) continue;
+    var eq=G.equipment.find(function(e){return e.uid===eUid});
+    if(!eq) continue;
+    var tpl=EQUIP_TEMPLATES.find(function(t){return t.id===eq.id});
+    if(!tpl || !tpl.specialSkill) continue;
+    var skill=EQUIP_SPECIAL_SKILLS[tpl.specialSkill];
+    if(!skill || skill.trigger!==triggerType) continue;
+    // 狂战之魂特殊条件：生命低于30%才触发
+    if(tpl.specialSkill==='sk_berserker_soul' && unit.hp/unit.maxHP>0.3) continue;
+    if(Math.random()<(skill.chance||0.2)){
+      triggeredSkills.push({skill:skill, tpl:tpl});
+    }
+  }
+  // 检查套装3件激活的特殊效果
+  var setCounts={};
+  for(var s in hero.equipment){
+    var eId2=hero.equipment[s];
+    if(eId2==null) continue;
+    var eq2=G.equipment.find(function(e){return e.uid===eId2});
+    if(!eq2) continue;
+    var tpl2=EQUIP_TEMPLATES.find(function(t){return t.id===eq2.id});
+    if(tpl2 && tpl2.setId) setCounts[tpl2.setId]=(setCounts[tpl2.setId]||0)+1;
+  }
+  for(var setId in setCounts){
+    if(setCounts[setId]>=3){
+      var setDef=EQUIP_SETS[setId];
+      if(setDef && setDef.bonuses[3] && setDef.bonuses[3].specialEffect){
+        var se=EQUIP_SPECIAL_SKILLS[setDef.bonuses[3].specialEffect];
+        if(se && se.trigger===triggerType && Math.random()<(se.chance||0.2)){
+          triggeredSkills.push({skill:se, tpl:{name:setDef.name, icon:setDef.icon}});
+        }
+      }
+    }
+  }
+  // 执行触发的技能效果
+  for(var i=0;i<triggeredSkills.length;i++){
+    applyEquipSpecialEffect(unit, triggeredSkills[i].skill, triggeredSkills[i].tpl, target, allUnits);
+  }
+}
+
+function applyEquipSpecialEffect(unit, skill, sourceTpl, target, allUnits){
+  var eff=skill.effect;
+  if(!eff) return;
+  showFloat(unit, sourceTpl.icon+' '+skill.name, 'skill-name');
+
+  if(eff.type==='damage'){
+    var dmgTargets=eff.target==='all_enemies' ? allUnits.filter(function(u){return u.isEnemy && u.alive}) : (target && target.alive ? [target] : []);
+    for(var i=0;i<dmgTargets.length;i++){
+      var dmg=Math.floor(unit.atk*(eff.value||0.3));
+      dmgTargets[i].hp-=dmg;
+      showFloat(dmgTargets[i], '-'+dmg, 'damage');
+      recordBattleStat(unit, 'damage', dmg);
+      if(dmgTargets[i].hp<=0){dmgTargets[i].alive=false; showFloat(dmgTargets[i], '倒下', 'death');}
+    }
+  } else if(eff.type==='heal'){
+    var healTargets=eff.target==='all_allies' ? allUnits.filter(function(u){return !u.isEnemy && u.alive}) : [unit];
+    for(var i=0;i<healTargets.length;i++){
+      var healAmt=Math.floor(healTargets[i].maxHP*(eff.value||0.1));
+      healTargets[i].hp=Math.min(healTargets[i].hp+healAmt, healTargets[i].maxHP);
+      showFloat(healTargets[i], '+'+healAmt, 'heal');
+      recordBattleStat(unit, 'heal', healAmt);
+    }
+  } else if(eff.type==='buff'){
+    unit.buffs.push({name:skill.name, stat:eff.stat||'atk', mult:1+(eff.value||0.2), duration:eff.duration||2});
+  } else if(eff.type==='debuff'){
+    var debuffTargets=eff.target==='all_enemies' ? allUnits.filter(function(u){return u.isEnemy && u.alive}) : (target && target.alive ? [target] : []);
+    for(var i=0;i<debuffTargets.length;i++){
+      debuffTargets[i].buffs.push({name:skill.name, stat:eff.stat||'atk', mult:eff.value||0.8, duration:eff.duration||2});
+      showFloat(debuffTargets[i], '▼'+skill.name, 'debuff-text');
+    }
+  } else if(eff.type==='shield'){
+    var shieldTargets=eff.target==='all_allies' ? allUnits.filter(function(u){return !u.isEnemy && u.alive}) : [unit];
+    for(var i=0;i<shieldTargets.length;i++){
+      var shieldAmt=Math.floor(shieldTargets[i].maxHP*(eff.value||0.1));
+      shieldTargets[i].shield=(shieldTargets[i].shield||0)+shieldAmt;
+      showFloat(shieldTargets[i], '🛡+'+shieldAmt, 'buff-text');
+    }
+  } else if(eff.type==='dot'){
+    var dotTargets=eff.target==='all_enemies' ? allUnits.filter(function(u){return u.isEnemy && u.alive}) : (target && target.alive ? [target] : []);
+    for(var i=0;i<dotTargets.length;i++){
+      dotTargets[i].dot.push({name:skill.name, dmg:Math.floor(unit.atk*(eff.value||0.05)), duration:eff.duration||3, sourceRole:unit.role});
+      showFloat(dotTargets[i], '☠'+skill.name, 'debuff-text');
+    }
+  } else if(eff.type==='dodge'){
+    unit.buffs.push({name:skill.name, stat:'dodge', mult:1+(eff.value||0.5), duration:eff.duration||1});
+    showFloat(unit, '💨'+skill.name, 'buff-text');
+  }
 }
 
 // ==================== 资源生产系统 ====================
@@ -2101,6 +2564,8 @@ async function runArenaBattle(teamHeroes,opponents,difficulty){
           if(u.cooldowns[skillId]>0)u.cooldowns[skillId]--;
         }
       }
+      // 装备特殊技能触发 - 回合开始 turnStart
+      checkEquipSpecialSkill(u,'turnStart',null,allUnits);
     }
     
     // 按速度排序行动
@@ -2178,18 +2643,25 @@ async function runArenaBattle(teamHeroes,opponents,difficulty){
             recordBattleStat(unit,'damage',dmg);
             recordBattleStat(target,'damageTaken',dmg);
             if(r.crit)recordBattleStat(unit,'crit',1);
-            if(target.hp<=0){target.alive=false;log(target.icon+' '+target.name+' 倒下了...','death');animUnit(target,'dying',700)}
+            // 装备特殊技能触发
+            checkEquipSpecialSkill(unit,'onAttack',target,allUnits);
+            if(target.hp<=0){
+              target.alive=false;log(target.icon+' '+target.name+' 倒下了...','death');animUnit(target,'dying',700);
+              checkEquipSpecialSkill(unit,'onKill',target,allUnits);
+            } else {
+              checkEquipSpecialSkill(target,'onHit',unit,allUnits);
+            }
           }
         }
       }
-      
+
       renderTeams();
       updateBattleStatsBoard();
       await sleep(500/G_battleSpeed);
     }
-    
+
     renderTeams();
-    
+
     // 检查胜负
     var playerAlive=playerUnits.filter(function(u){return u.alive}).length;
     var enemyAlive=enemyUnits.filter(function(u){return u.alive}).length;
@@ -3220,14 +3692,17 @@ async function runBattle(stageId){
     }
     await sleep(300);
 
-    allUnits.filter(u=>u.alive).forEach(u=>{
+    allUnits.filter(u=>u.alive).forEach(function(u){
       // 治愈者：生命链接 - 每回合自动恢复5%生命值
       if(u.role==='healer' && !u.isEnemy){
         const regen=Math.floor(u.maxHP*0.05);
         u.hp=Math.min(u.maxHP,u.hp+regen);
         showFloat(u,'+'+regen+' 生命恢复','heal');
       }
-      
+
+      // 装备特殊技能触发 - 回合开始 turnStart
+      checkEquipSpecialSkill(u,'turnStart',null,allUnits);
+
       u.dot=u.dot.filter(d=>{
         // 术士：DOT伤害+50%
         let dotDmg=d.dmg;
@@ -3358,6 +3833,8 @@ async function runBattle(stageId){
             if(r.crit)recordBattleStat(unit,'crit',1);
             // 连击计数
             addCombo(unit);
+            // 装备特殊技能触发 - 攻击者 onAttack
+            checkEquipSpecialSkill(unit,'onAttack',target,allUnits);
             // 反击机制：防御者有10%概率反击（守护者20%）
             if(target.alive && Math.random()<(target.role==='guardian'?0.2:0.1)){
               var counterDmg=Math.floor(calcDamage(target,unit,null).dmg*0.5);
@@ -3368,7 +3845,14 @@ async function runBattle(stageId){
               recordBattleStat(target,'damage',counterDmg);
               if(unit.hp<=0){unit.alive=false;log(unit.icon+' '+unit.name+' 倒下了...','death');animUnit(unit,'dying',700)}
             }
-            if(target.hp<=0){target.alive=false;log(target.icon+' '+target.name+' 倒下了...','death');animUnit(target,'dying',700)}
+            if(target.hp<=0){
+              target.alive=false;log(target.icon+' '+target.name+' 倒下了...','death');animUnit(target,'dying',700);
+              // 装备特殊技能触发 - 击杀 onKill
+              checkEquipSpecialSkill(unit,'onKill',target,allUnits);
+            } else {
+              // 装备特殊技能触发 - 被攻击者 onHit
+              checkEquipSpecialSkill(target,'onHit',unit,allUnits);
+            }
           }
           updateBattleStatsBoard();
         }
@@ -4580,15 +5064,31 @@ function showHeroDetail(uid){
               const statNames={atk:'攻击',def:'防御',hp:'生命',mp:'魔法',spd:'速度'};
               return (statNames[k]||k)+'+'+finalVal;
             }).join(' ');
-            html+=`<div class="hd-equip-slot">
-              <div class="hd-equip-icon">${tpl.icon}</div>
-              <div class="hd-equip-info">
-                <div class="hd-equip-name q-${tpl.quality}">${tpl.name}</div>
-                <div class="hd-equip-stats">${statsStr}</div>
-                ${enhanceLevel>0?`<div class="hd-equip-enhance">强化 +${enhanceLevel} (额外+${Math.round(enhanceLevel*10)}%)</div>`:''}
-              </div>
-              <span class="text-xs text-dim">${slotIcons[slot]} ${slotNames[slot]}</span>
-            </div>`;
+            var setInfoHtml='';
+            if(tpl.setId && EQUIP_SETS[tpl.setId]){
+              var setDef=EQUIP_SETS[tpl.setId];
+              setInfoHtml='<div style="margin-top:4px;padding:4px 6px;background:rgba(201,162,39,.1);border-radius:4px;border:1px solid rgba(201,162,39,.2)">';
+              setInfoHtml+='<div style="color:var(--gold);font-size:11px;font-weight:bold">'+setDef.icon+' '+setDef.name+'</div>';
+              if(setDef.bonuses[2]) setInfoHtml+='<div style="font-size:10px;color:var(--text2)">2件: '+setDef.bonuses[2].desc+'</div>';
+              if(setDef.bonuses[3]) setInfoHtml+='<div style="font-size:10px;color:var(--gold)">3件: '+setDef.bonuses[3].desc+'</div>';
+              setInfoHtml+='</div>';
+            }
+            var skillInfoHtml='';
+            if(tpl.specialSkill && EQUIP_SPECIAL_SKILLS[tpl.specialSkill]){
+              var sk=EQUIP_SPECIAL_SKILLS[tpl.specialSkill];
+              skillInfoHtml='<div style="margin-top:3px;font-size:10px;color:#70a1ff">✦ '+sk.icon+' '+sk.name+': '+sk.desc+'</div>';
+            }
+            html+='<div class="hd-equip-slot">'
+              +'<div class="hd-equip-icon">'+tpl.icon+'</div>'
+              +'<div class="hd-equip-info">'
+              +'<div class="hd-equip-name q-'+tpl.quality+'">'+tpl.name+'</div>'
+              +'<div class="hd-equip-stats">'+statsStr+'</div>'
+              +(enhanceLevel>0?'<div class="hd-equip-enhance">强化 +'+enhanceLevel+' (额外+'+Math.round(enhanceLevel*10)+'%)</div>':'')
+              +skillInfoHtml
+              +setInfoHtml
+              +'</div>'
+              +'<span class="text-xs text-dim">'+slotIcons[slot]+' '+slotNames[slot]+'</span>'
+              +'</div>';
             continue;
           }
         }
@@ -5456,10 +5956,19 @@ function renderEquip(el){
       const bonus=enhanceLevel>0?Math.floor(v*enhanceLevel*0.1):0;
       return(icons[k]||'')+v+(bonus>0?'<span class="text-green">+'+bonus+'</span>':'');
     }).join(' ');
+    var equipSetTag='';
+    if(tpl.setId && EQUIP_SETS[tpl.setId]){
+      equipSetTag='<span style="font-size:9px;color:var(--gold);background:rgba(201,162,39,.15);padding:1px 4px;border-radius:3px">'+EQUIP_SETS[tpl.setId].icon+EQUIP_SETS[tpl.setId].name+'</span> ';
+    }
+    var equipSkillTag='';
+    if(tpl.specialSkill && EQUIP_SPECIAL_SKILLS[tpl.specialSkill]){
+      equipSkillTag='<span style="font-size:9px;color:#70a1ff">✦'+EQUIP_SPECIAL_SKILLS[tpl.specialSkill].name+'</span>';
+    }
     unequippedHTML+='<div class="equip-slot quality-'+tpl.quality+'">'
       +'<span class="equip-icon">'+tpl.icon+'</span>'
       +'<span class="equip-name q-'+tpl.quality+'">'+tpl.name+enhanceBonus+' <span class="text-dim text-xs">('+QUALITY_NAMES[tpl.quality]+')</span></span>'
       +'<span class="equip-stats">'+statsStr+'</span>'
+      +(equipSetTag||equipSkillTag?'<div style="margin-top:2px">'+equipSetTag+equipSkillTag+'</div>':'')
       +'<div style="display:flex;gap:4px">'
       +'<button class="btn btn-sm" onclick="showEquipToHero('+eq.uid+')">装备</button>'
       +'<button class="btn btn-sm" style="background:rgba(255,215,0,.2)" onclick="enhanceEquipment('+eq.uid+')">强化</button>'
@@ -5476,9 +5985,13 @@ function renderEquip(el){
     const slotKey=tpl.type==='weapon'?'weapon':tpl.type==='armor'?'armor':'accessory';
     const enhanceLevel=eq.enhance||0;
     const enhanceBonus=enhanceLevel>0?' <span class="text-blue">+'+enhanceLevel+'</span>':'';
+    var eqSetTag='';
+    if(tpl.setId && EQUIP_SETS[tpl.setId]){
+      eqSetTag=' <span style="font-size:9px;color:var(--gold)">'+EQUIP_SETS[tpl.setId].icon+EQUIP_SETS[tpl.setId].name+'</span>';
+    }
     equippedHTML+='<div class="equip-slot quality-'+tpl.quality+'">'
       +'<span class="equip-icon">'+tpl.icon+'</span>'
-      +'<span class="equip-name"><span class="q-'+tpl.quality+'">'+tpl.name+enhanceBonus+'</span> → '+hero.icon+hero.name+' <span class="text-dim text-xs">['+slotName+']</span></span>'
+      +'<span class="equip-name"><span class="q-'+tpl.quality+'">'+tpl.name+enhanceBonus+'</span>'+eqSetTag+' → '+hero.icon+hero.name+' <span class="text-dim text-xs">['+slotName+']</span></span>'
       +'<button class="btn btn-sm btn-danger" onclick="unequipFromHero('+eq.heroUid+',\''+slotKey+'\')">卸下</button>'
       +'</div>';
   });
