@@ -6086,6 +6086,12 @@ function submitAllLeaderboards(){
     return;
   }
   
+  // 需要玩家名字才能提交
+  if (!G.playerName || G.playerName.trim() === '') {
+    showPlayerNameInput();
+    return;
+  }
+  
   var teamPower = 0;
   for(var i=0;i<G.team.length;i++){
     if(G.team[i]) teamPower += calcHeroPower(G.team[i]);
