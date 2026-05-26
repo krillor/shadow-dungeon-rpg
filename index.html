@@ -4816,7 +4816,7 @@ function showHeroDetail(uid){
       <div class="hd-actions">
         <button class="btn btn-primary btn-sm" onclick="closeModal();switchTab('team')">🛡️ 编队</button>
         <button class="btn btn-sm" onclick="closeModal();switchTab('equip')">🗡️ 装备</button>
-        <button class="btn btn-sm" style="color:#ff6b6b" onclick="dismissHero('${h.uid}')">🗑️ 遣散</button>
+        <button class="btn btn-sm" style="color:#ff6b6b" onclick="dismissHero(${h.uid})">🗑️ 遣散</button>
       </div>
     </div>
   </div>`;
@@ -4935,7 +4935,7 @@ function dismissHero(uid){
         
         <div style="display:flex;gap:10px">
           <button class="btn" style="flex:1" onclick="closeModal()">取消</button>
-          <button class="btn" style="flex:1;background:rgba(255,107,107,.2);border-color:rgba(255,107,107,.5);color:#ff6b6b" onclick="confirmDismiss('${uid}')">确认遣散</button>
+          <button class="btn" style="flex:1;background:rgba(255,107,107,.2);border-color:rgba(255,107,107,.5);color:#ff6b6b" onclick="confirmDismiss(${uid})">确认遣散</button>
         </div>
       </div>
     </div>
