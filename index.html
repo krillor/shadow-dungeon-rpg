@@ -6661,7 +6661,7 @@ function confirmPlayerName() {
 
 // 提交排行榜分数
 function submitLeaderboard(scoreType, scoreValue, extraData) {
-  if (!isCloudReady || !currentUser) {
+  if (!isCloudReady || !deviceId) {
     return Promise.resolve(false);
   }
   
