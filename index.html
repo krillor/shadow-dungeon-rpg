@@ -6339,6 +6339,7 @@ function forgeEquipment(maxQuality){
   var pool=EQUIP_TEMPLATES.filter(t=>QUALITIES.indexOf(t.quality)<=maxQIdx);
   var tpl=pool.length>0?pick(pool):EQUIP_TEMPLATES[0];
   var eq=createEquipment(tpl.id);
+  recordCodex('equipment',tpl.id);
   G.equipment.push(eq);
   updateResUI();
   showToast('锻造成功！获得 '+tpl.icon+' '+tpl.name+' ('+QUALITY_NAMES[tpl.quality]+')');
@@ -7370,6 +7371,18 @@ function cheatGenerateAllEquipment(){
   for(var i=0;i<EQUIP_TEMPLATES.length;i++){
     var tpl=EQUIP_TEMPLATES[i];
     var eq=createEquipment(tpl.id);
+    // 记录图鉴
+    recordCodex('equipment',tpl.id);
+    // 自动穿戴到对应类型的空槽位英雄
+    var slot=tpl.type==='weapon'?'weapon':tpl.type==='armor'?'armor':'accessory';
+    for(var h=0;h<G.heroes.length;h++){
+      var hero=G.heroes[h];
+      if(hero && hero.equipment[slot]==null){
+        hero.equipment[slot]=eq.uid;
+        eq.heroUid=hero.uid;
+        break;
+      }
+    }
     G.equipment.push(eq);
     count++;
   }
