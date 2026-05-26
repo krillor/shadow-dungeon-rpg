@@ -6573,57 +6573,59 @@ function clearMerge(){
 function renderEquip(el){
   const unequipped=G.equipment.filter(e=>e.heroUid===null);
   const equipped=G.equipment.filter(e=>e.heroUid!==null);
+  
+  // 简化版装备列表 - 只显示名字和套装标记
   let unequippedHTML='';
   unequipped.forEach(eq=>{
     const tpl=EQUIP_TEMPLATES.find(t=>t.id===eq.id);
     if(!tpl)return;
     const enhanceLevel=eq.enhance||0;
-    const enhanceBonus=enhanceLevel>0?' <span class="text-blue">+'+enhanceLevel+'</span>':'';
-    const statsStr=Object.entries(tpl.stats).map(([k,v])=>{
-      const icons={atk:'⚔️',def:'🛡️',hp:'❤️',mp:'💎',spd:'💨'};
-      const bonus=enhanceLevel>0?Math.floor(v*enhanceLevel*0.1):0;
-      return(icons[k]||'')+v+(bonus>0?'<span class="text-green">+'+bonus+'</span>':'');
-    }).join(' ');
-    var equipSetTag='';
+    const enhanceBonus=enhanceLevel>0?'+'+enhanceLevel:'';
+    // 套装标记
+    let setBadge='';
     if(tpl.setId && EQUIP_SETS[tpl.setId]){
-      equipSetTag='<span style="font-size:9px;color:var(--gold);background:rgba(201,162,39,.15);padding:1px 4px;border-radius:3px">'+EQUIP_SETS[tpl.setId].icon+EQUIP_SETS[tpl.setId].name+'</span> ';
+      setBadge='<span class="equip-set-badge">'+EQUIP_SETS[tpl.setId].icon+'</span>';
     }
-    var equipSkillTag='';
-    if(tpl.specialSkill && EQUIP_SPECIAL_SKILLS[tpl.specialSkill]){
-      equipSkillTag='<span style="font-size:9px;color:#70a1ff">✦'+EQUIP_SPECIAL_SKILLS[tpl.specialSkill].name+'</span>';
-    }
-    var tagsHtml=(equipSetTag||equipSkillTag)?'<div style="font-size:9px;margin-top:2px">'+equipSetTag+equipSkillTag+'</div>':'';
-    unequippedHTML+='<div class="equip-slot quality-'+tpl.quality+'" style="flex-wrap:wrap">'
+    unequippedHTML+='<div class="equip-item quality-'+tpl.quality+'" onclick="showEquipDetail('+eq.uid+')">'
       +'<span class="equip-icon">'+tpl.icon+'</span>'
-      +'<span class="equip-name q-'+tpl.quality+'">'+tpl.name+enhanceBonus+' <span class="text-dim text-xs">('+QUALITY_NAMES[tpl.quality]+')</span>'+tagsHtml+'</span>'
-      +'<span class="equip-stats">'+statsStr+'</span>'
-      +'<div style="display:flex;gap:4px;margin-left:auto">'
-      +'<button class="btn btn-sm" onclick="showEquipToHero('+eq.uid+');event.stopPropagation();">装备</button>'
-      +'<button class="btn btn-sm" style="background:rgba(255,215,0,.2)" onclick="enhanceEquipment('+eq.uid+');event.stopPropagation();">强化</button>'
-      +'<button class="btn btn-sm btn-danger" onclick="decomposeEquipment('+eq.uid+');event.stopPropagation();">分解</button>'
-      +'</div>'
+      +'<span class="equip-name q-'+tpl.quality+'">'+tpl.name+'<span class="equip-enhance">'+enhanceBonus+'</span></span>'
+      +setBadge
       +'</div>';
   });
+  
+  // 已装备列表 - 简化展示
   let equippedHTML='';
   equipped.forEach(eq=>{
     const tpl=EQUIP_TEMPLATES.find(t=>t.id===eq.id);
     const hero=G.heroes.find(h=>h.uid===eq.heroUid);
     if(!tpl||!hero)return;
-    const slotName=tpl.type==='weapon'?'武器':tpl.type==='armor'?'护甲':'饰品';
-    const slotKey=tpl.type==='weapon'?'weapon':tpl.type==='armor'?'armor':'accessory';
     const enhanceLevel=eq.enhance||0;
-    const enhanceBonus=enhanceLevel>0?' <span class="text-blue">+'+enhanceLevel+'</span>':'';
-    var eqSetTag='';
+    const enhanceBonus=enhanceLevel>0?'+'+enhanceLevel:'';
+    // 套装标记
+    let setBadge='';
     if(tpl.setId && EQUIP_SETS[tpl.setId]){
-      eqSetTag=' <span style="font-size:9px;color:var(--gold)">'+EQUIP_SETS[tpl.setId].icon+EQUIP_SETS[tpl.setId].name+'</span>';
+      setBadge='<span class="equip-set-badge">'+EQUIP_SETS[tpl.setId].icon+'</span>';
     }
-    equippedHTML+='<div class="equip-slot quality-'+tpl.quality+'">'
+    equippedHTML+='<div class="equip-item quality-'+tpl.quality+'" onclick="showEquipDetail('+eq.uid+')">'
       +'<span class="equip-icon">'+tpl.icon+'</span>'
-      +'<span class="equip-name"><span class="q-'+tpl.quality+'">'+tpl.name+enhanceBonus+'</span>'+eqSetTag+' → '+hero.icon+hero.name+' <span class="text-dim text-xs">['+slotName+']</span></span>'
-      +'<button class="btn btn-sm btn-danger" onclick="unequipFromHero('+eq.heroUid+',\''+slotKey+'\')">卸下</button>'
+      +'<span class="equip-name q-'+tpl.quality+'">'+tpl.name+'<span class="equip-enhance">'+enhanceBonus+'</span></span>'
+      +setBadge
+      +'<span class="equip-hero">→ '+hero.icon+hero.name+'</span>'
       +'</div>';
   });
-  el.innerHTML='<div class="panel">'
+  
+  el.innerHTML='<style>'
+    +'.equip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}'
+    +'.equip-item{display:flex;align-items:center;gap:6px;padding:8px 10px;background:linear-gradient(145deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);position:relative}'
+    +'.equip-item:hover{transform:translateY(-2px);border-color:var(--border-light);box-shadow:var(--shadow-sm)}'
+    +'.equip-item:active{transform:translateY(0)}'
+    +'.equip-item .equip-icon{font-size:18px}'
+    +'.equip-item .equip-name{font-size:12px;font-weight:bold;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+    +'.equip-item .equip-enhance{color:var(--blue);font-size:10px;margin-left:2px}'
+    +'.equip-item .equip-set-badge{position:absolute;top:-4px;right:-4px;font-size:10px;background:var(--panel);border:1px solid var(--gold);border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)}'
+    +'.equip-item .equip-hero{font-size:10px;color:var(--text2);margin-left:auto}'
+    +'</style>'
+    +'<div class="panel">'
     +'<div class="panel-title"><span class="icon">⚡</span> 快捷操作</div>'
     +'<div class="btn-group">'
     +'<button class="btn btn-primary" onclick="autoEquipAll()" style="flex:1">🤖 一键穿戴</button>'
@@ -6644,11 +6646,11 @@ function renderEquip(el){
     +'</div>'
     +'<div class="panel">'
     +'<div class="panel-title"><span class="icon">🎒</span> 背包 ('+unequipped.length+'件)</div>'
-    +(unequipped.length===0?'<div class="text-dim">背包为空</div>':unequippedHTML)
+    +(unequipped.length===0?'<div class="text-dim">背包为空</div>':'<div class="equip-grid">'+unequippedHTML+'</div>')
     +'</div>'
     +'<div class="panel">'
-    +'<div class="panel-title"><span class="icon">👤</span> 已装备</div>'
-    +(equipped.length===0?'<div class="text-dim">没有已装备的物品</div>':equippedHTML)
+    +'<div class="panel-title"><span class="icon">👤</span> 已装备 ('+equipped.length+'件)</div>'
+    +(equipped.length===0?'<div class="text-dim">没有已装备的物品</div>':'<div class="equip-grid">'+equippedHTML+'</div>')
     +'</div>'
     +'<div class="panel">'
     +'<div class="panel-title"><span class="icon">🔨</span> 铁匠铺 <span class="text-blue">Lv.'+(G.buildings.blacksmith||0)+'</span></div>'
@@ -6665,6 +6667,81 @@ function renderEquip(el){
     +'<div class="text-xs text-dim">强化消耗铁矿，每级+10%属性，最高+10。分解装备返还部分铁矿。</div>'
     +'</div>'
     +'</div>';
+}
+
+// 显示装备详情弹窗
+function showEquipDetail(equipUid){
+  const eq=G.equipment.find(e=>e.uid===equipUid);
+  if(!eq)return;
+  const tpl=EQUIP_TEMPLATES.find(t=>t.id===eq.id);
+  if(!tpl)return;
+  
+  const enhanceLevel=eq.enhance||0;
+  const enhanceBonus=enhanceLevel>0?Math.floor(enhanceLevel*10):0;
+  const hero=eq.heroUid?G.heroes.find(h=>h.uid===eq.heroUid):null;
+  const slotName=tpl.type==='weapon'?'武器':tpl.type==='armor'?'护甲':'饰品';
+  
+  // 属性计算
+  let statsHtml='';
+  if(tpl.stats){
+    const icons={atk:'⚔️ 攻击',def:'🛡️ 防御',hp:'❤️ 生命',mp:'💎 魔法',spd:'💨 速度'};
+    statsHtml=Object.entries(tpl.stats).map(([k,v])=>{
+      const base=v;
+      const bonus=enhanceLevel>0?Math.floor(v*enhanceLevel*0.1):0;
+      return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)">'
+        +'<span style="color:var(--text2)">'+(icons[k]||k)+'</span>'
+        +'<span><b style="color:var(--gold)">'+(base+bonus)+'</b>'+(bonus>0?' <span style="color:var(--green);font-size:11px">+'+bonus+'</span>':'')+'</span>'
+        +'</div>';
+    }).join('');
+  }
+  
+  // 套装信息
+  let setHtml='';
+  if(tpl.setId && EQUIP_SETS[tpl.setId]){
+    const set=EQUIP_SETS[tpl.setId];
+    const ownedPieces=set.pieces.filter(p=>G.equipment.some(e=>e.templateId===p||EQUIP_TEMPLATES.find(t=>t.id===e.id)?.id===p)).length;
+    setHtml='<div style="background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.2);border-radius:8px;padding:10px;margin:12px 0">'
+      +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:16px">'+set.icon+'</span><span style="color:var(--gold);font-weight:bold">'+set.name+'</span></div>'
+      +'<div style="font-size:11px;color:var(--text2);margin-bottom:6px">'+set.pieces.length+'件套 ('+ownedPieces+'/'+set.pieces.length+'件)</div>'
+      +Object.entries(set.bonuses).map(([num,bonus])=>'<div style="font-size:11px;padding:4px 0;color:'+(ownedPieces>=parseInt(num)?'var(--green)':'var(--text3)')+'">'+num+'件: '+bonus.desc+'</div>').join('')
+      +'</div>';
+  }
+  
+  // 特殊技能
+  let skillHtml='';
+  if(tpl.specialSkill && EQUIP_SPECIAL_SKILLS[tpl.specialSkill]){
+    const skill=EQUIP_SPECIAL_SKILLS[tpl.specialSkill];
+    skillHtml='<div style="background:rgba(52,152,219,.08);border:1px solid rgba(52,152,219,.2);border-radius:8px;padding:10px;margin:12px 0">'
+      +'<div style="color:var(--blue);font-weight:bold;margin-bottom:4px">✦ '+skill.name+'</div>'
+      +'<div style="font-size:11px;color:var(--text2)">'+skill.desc+'</div>'
+      +'</div>';
+  }
+  
+  // 操作按钮
+  let actionButtons='';
+  if(hero){
+    actionButtons='<button class="btn btn-danger" onclick="unequipFromHero('+hero.uid+',\''+tpl.type+'\');closeModal();" style="flex:1">卸下装备</button>';
+  }else{
+    actionButtons='<button class="btn btn-primary" onclick="showEquipToHero('+equipUid+');closeModal();" style="flex:1">装备给英雄</button>'
+      +'<button class="btn" onclick="enhanceEquipment('+equipUid+');closeModal();" style="flex:1;background:rgba(255,215,0,.15);border-color:var(--gold);color:var(--gold)">强化</button>'
+      +'<button class="btn btn-danger" onclick="decomposeEquipment('+equipUid+');closeModal();" style="flex:1">分解</button>';
+  }
+  
+  const html='<div style="text-align:center;margin-bottom:16px">'
+    +'<div style="font-size:48px;margin-bottom:8px">'+tpl.icon+'</div>'
+    +'<div style="font-size:18px;font-weight:bold;color:var(--gold);margin-bottom:4px">'+tpl.name+(enhanceLevel>0?' <span style="color:var(--blue)">+'+enhanceLevel+'</span>':'')+'</div>'
+    +'<div style="font-size:12px;color:var(--text2)">'+QUALITY_NAMES[tpl.quality]+' · '+slotName+(hero?' · 装备于 '+hero.icon+hero.name:'')+'</div>'
+    +'</div>'
+    +'<div style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px;margin-bottom:12px">'
+    +statsHtml
+    +'</div>'
+    +setHtml
+    +skillHtml
+    +'<div style="display:flex;gap:8px;margin-top:16px">'
+    +actionButtons
+    +'</div>';
+  
+  showModal('装备详情',html);
 }
 
 function showEquipToHero(equipUid){
