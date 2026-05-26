@@ -7,10 +7,8 @@
 <meta name="x5-orientation" content="portrait">
 <meta name="screen-orientation" content="portrait">
 <title>暗影地牢 - 文字策略RPG</title>
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<!-- LeanCloud SDK -->
+<script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-live-query-min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--bg:#0a0a12;--panel:#141428;--panel2:#1a1a35;--border:#252548;--gold:#c9a227;--gold2:#e8d44d;--red:#c0392b;--green:#27ae60;--blue:#2980b9;--purple:#8e44ad;--text:#d4c5a0;--text2:#8a7d6b;--text3:#5a5245;--hp-bar:#c0392b;--mp-bar:#2980b9;--exp-bar:#27ae60;--nav-h:56px;--top-h:42px}
@@ -2317,10 +2315,13 @@ function showArenaResult(){
     // 奖励已在 finishArenaBattle 中发放，这里不再重复
     
     // 自动提交排行榜数据
-    if(isFirebaseReady){
-      var teamPower=G.team.filter(h=>h).reduce((sum,h)=>sum+calcHeroPower(h),0);
+    if(isCloudReady){
+      var teamPower=0;
+      for(var i=0;i<G.team.length;i++){
+        if(G.team[i]) teamPower += calcHeroPower(G.team[i]);
+      }
       submitLeaderboard('arena',G.arenaState.totalWins,{winStreak:G.arenaState.winStreak});
-      submitLeaderboard('power',teamPower,{heroes:G.heroes?.length});
+      submitLeaderboard('power',teamPower,{heroes:G.heroes?G.heroes.length:0});
     }
   }else{
     G.arenaState.winStreak=0;
@@ -3488,10 +3489,14 @@ async function runBattle(stageId){
         +'</div>';
       
       // 战斗胜利后提交排行榜
-      if(won && isFirebaseReady){
-        var teamPower=G.team.filter(h=>h).reduce((sum,h)=>sum+calcHeroPower(h),0);
-        submitLeaderboard('stage',G.stageProgress,{stageName:STAGES[G.stageProgress-1]?.name});
-        submitLeaderboard('power',teamPower,{heroes:G.heroes?.length});
+      if(won && isCloudReady){
+        var teamPower=0;
+        for(var i=0;i<G.team.length;i++){
+          if(G.team[i]) teamPower += calcHeroPower(G.team[i]);
+        }
+        var stageName = STAGES[G.stageProgress-1] ? STAGES[G.stageProgress-1].name : '';
+        submitLeaderboard('stage',G.stageProgress,{stageName:stageName});
+        submitLeaderboard('power',teamPower,{heroes:G.heroes?G.heroes.length:0});
         // 同时保存到云端
         saveToCloud();
       }
@@ -5967,7 +5972,7 @@ function renderLeaderboard(el){
   var arenaWins = (G.arenaState && G.arenaState.totalWins) ? G.arenaState.totalWins : 0;
   var totalHeroes = G.heroes ? G.heroes.length : 0;
   
-  var connectionStatus = isFirebaseReady ? '☁️ 已连接云端，数据实时同步' : '⏳ 正在连接云端...';
+  var connectionStatus = isCloudReady ? '☁️ 已连接云端，数据实时同步' : '⏳ 正在连接云端...';
   
   el.innerHTML = '<div class="panel">' +
     '<div class="panel-title"><span class="icon">🏆</span> 全服排行榜</div>' +
@@ -6075,7 +6080,7 @@ function loadLeaderboardData(type){
 
 // 提交所有排行榜数据
 function submitAllLeaderboards(){
-  if(!isFirebaseReady){
+  if(!isCloudReady){
     showToast('⏳ 云端连接中，请稍后再试');
     return;
   }
@@ -6426,192 +6431,249 @@ function updateCheatPanel(){
   }
 }
 
-// ==================== Firebase 云存档 & 排行榜 ====================
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBQRH6TPlXqm4qiq1rxRwdqEu-S2NNU39Q",
-  authDomain: "dark-c08c1.firebaseapp.com",
-  databaseURL: "https://dark-c08c1-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "dark-c08c1",
-  storageBucket: "dark-c08c1.firebasestorage.app",
-  messagingSenderId: "604773335131",
-  appId: "1:604773335131:web:038375807a4585ebeaff7e"
+// ==================== LeanCloud 云存档 & 排行榜 ====================
+// LeanCloud 配置 - 使用国内节点，访问稳定
+const LEANCLOUD_CONFIG = {
+  appId: "YOUR_APP_ID",      // 请在 LeanCloud 控制台获取
+  appKey: "YOUR_APP_KEY",    // 请在 LeanCloud 控制台获取
+  serverURL: "https://YOUR_APP_ID.lc-cn-n1-shared.com"  // 国内节点
 };
 
-// 初始化 Firebase
-let firebaseApp = null;
-let firebaseDB = null;
-let firebaseAuth = null;
-let currentUser = null;
-let isFirebaseReady = false;
+// LeanCloud 初始化状态
+var lcApp = null;
+var currentUser = null;
+var isCloudReady = false;
 
-function initFirebase() {
+// 初始化 LeanCloud
+function initLeanCloud() {
   try {
-    if (typeof firebase === 'undefined') {
-      console.log('Firebase SDK not loaded');
+    if (typeof AV === 'undefined') {
+      console.log('LeanCloud SDK not loaded');
       return false;
     }
-    firebaseApp = firebase.initializeApp(FIREBASE_CONFIG);
-    firebaseDB = firebase.database();
-    firebaseAuth = firebase.auth();
     
-    // 匿名登录
-    firebaseAuth.signInAnonymously().then((userCredential) => {
-      currentUser = userCredential.user;
-      isFirebaseReady = true;
-      console.log('Firebase ready, UID:', currentUser.uid);
-      // 登录成功后尝试加载云存档
+    // 检查配置是否已设置
+    if (LEANCLOUD_CONFIG.appId === 'YOUR_APP_ID') {
+      console.log('LeanCloud not configured yet');
+      return false;
+    }
+    
+    AV.init({
+      appId: LEANCLOUD_CONFIG.appId,
+      appKey: LEANCLOUD_CONFIG.appKey,
+      serverURL: LEANCLOUD_CONFIG.serverURL
+    });
+    
+    lcApp = AV;
+    
+    // 匿名登录（使用临时用户）
+    AV.User.loginWithAuthData({
+      uid: 'anonymous_' + getOrCreateDeviceId()
+    }, 'anonymous').then(function(user) {
+      currentUser = user;
+      isCloudReady = true;
+      console.log('LeanCloud ready, UID:', user.id);
       loadCloudSave();
-    }).catch((error) => {
-      console.error('Firebase auth error:', error);
+    }).catch(function(error) {
+      console.error('LeanCloud auth error:', error);
     });
     
     return true;
   } catch (e) {
-    console.error('Firebase init error:', e);
+    console.error('LeanCloud init error:', e);
     return false;
   }
 }
 
+// 获取或创建设备ID
+function getOrCreateDeviceId() {
+  var deviceId = localStorage.getItem('device_id');
+  if (!deviceId) {
+    deviceId = 'd_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('device_id', deviceId);
+  }
+  return deviceId;
+}
+
 // 保存到云端
 function saveToCloud() {
-  if (!isFirebaseReady || !currentUser) {
-    console.log('Firebase not ready, skipping cloud save');
+  if (!isCloudReady || !currentUser) {
+    console.log('LeanCloud not ready, skipping cloud save');
     return Promise.resolve(false);
   }
   
-  const saveData = {
-    heroes: G.heroes,
-    team: G.team,
-    resources: G.resources,
-    buildings: G.buildings,
-    stageProgress: G.stageProgress,
-    equipment: G.equipment,
-    arenaState: G.arenaState,
-    lastSave: Date.now(),
-    version: '1.0'
-  };
+  var SaveData = AV.Object.extend('SaveData');
+  var query = new AV.Query('SaveData');
+  query.equalTo('userId', currentUser.id);
   
-  return firebaseDB.ref('saves/' + currentUser.uid).set(saveData)
-    .then(() => {
-      console.log('Cloud save successful');
-      showToast('☁️ 已同步到云端');
-      return true;
-    })
-    .catch((error) => {
-      console.error('Cloud save failed:', error);
-      return false;
-    });
+  return query.first().then(function(existing) {
+    var saveObj = existing || new SaveData();
+    saveObj.set('userId', currentUser.id);
+    saveObj.set('heroes', G.heroes);
+    saveObj.set('team', G.team);
+    saveObj.set('resources', G.resources);
+    saveObj.set('buildings', G.buildings);
+    saveObj.set('stageProgress', G.stageProgress);
+    saveObj.set('equipment', G.equipment);
+    saveObj.set('arenaState', G.arenaState);
+    saveObj.set('lastSave', Date.now());
+    saveObj.set('version', '1.0');
+    return saveObj.save();
+  }).then(function() {
+    console.log('Cloud save successful');
+    showToast('☁️ 已同步到云端');
+    return true;
+  }).catch(function(error) {
+    console.error('Cloud save failed:', error);
+    return false;
+  });
 }
 
 // 从云端加载
 function loadCloudSave() {
-  if (!isFirebaseReady || !currentUser) {
+  if (!isCloudReady || !currentUser) {
     return Promise.resolve(false);
   }
   
-  return firebaseDB.ref('saves/' + currentUser.uid).once('value')
-    .then((snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        // 合并云端数据到本地
-        if (data.heroes) G.heroes = data.heroes;
-        if (data.team) G.team = data.team;
-        if (data.resources) G.resources = {...G.resources, ...data.resources};
-        if (data.buildings) G.buildings = data.buildings;
-        if (data.stageProgress) G.stageProgress = data.stageProgress;
-        if (data.equipment) G.equipment = data.equipment;
-        if (data.arenaState) G.arenaState = {...G.arenaState, ...data.arenaState};
-        
-        updateResUI();
-        saveGame(); // 同时保存到本地
-        showToast('☁️ 已从云端恢复存档');
-        return true;
+  var query = new AV.Query('SaveData');
+  query.equalTo('userId', currentUser.id);
+  
+  return query.first().then(function(data) {
+    if (data) {
+      if (data.get('heroes')) G.heroes = data.get('heroes');
+      if (data.get('team')) G.team = data.get('team');
+      if (data.get('resources')) {
+        var res = data.get('resources');
+        for (var key in res) {
+          G.resources[key] = res[key];
+        }
       }
-      return false;
-    })
-    .catch((error) => {
-      console.error('Cloud load failed:', error);
-      return false;
-    });
+      if (data.get('buildings')) G.buildings = data.get('buildings');
+      if (data.get('stageProgress')) G.stageProgress = data.get('stageProgress');
+      if (data.get('equipment')) G.equipment = data.get('equipment');
+      if (data.get('arenaState')) {
+        var arena = data.get('arenaState');
+        for (var key in arena) {
+          G.arenaState[key] = arena[key];
+        }
+      }
+      
+      updateResUI();
+      saveGame();
+      showToast('☁️ 已从云端恢复存档');
+      return true;
+    }
+    return false;
+  }).catch(function(error) {
+    console.error('Cloud load failed:', error);
+    return false;
+  });
 }
 
 // 提交排行榜分数
-function submitLeaderboard(scoreType, scoreValue, extraData = {}) {
-  if (!isFirebaseReady || !currentUser) {
-    console.log('Firebase not ready, skipping leaderboard');
+function submitLeaderboard(scoreType, scoreValue, extraData) {
+  if (!isCloudReady || !currentUser) {
+    console.log('LeanCloud not ready, skipping leaderboard');
     return Promise.resolve(false);
   }
   
-  const entry = {
-    uid: currentUser.uid,
-    score: scoreValue,
-    timestamp: Date.now(),
-    ...extraData
-  };
+  extraData = extraData || {};
   
-  return firebaseDB.ref('leaderboard/' + scoreType + '/' + currentUser.uid).set(entry)
-    .then(() => {
-      console.log('Leaderboard submitted:', scoreType, scoreValue);
-      return true;
-    })
-    .catch((error) => {
-      console.error('Leaderboard submit failed:', error);
-      return false;
-    });
+  var Leaderboard = AV.Object.extend('Leaderboard');
+  var query = new AV.Query('Leaderboard');
+  query.equalTo('userId', currentUser.id);
+  query.equalTo('type', scoreType);
+  
+  return query.first().then(function(existing) {
+    var entry = existing || new Leaderboard();
+    entry.set('userId', currentUser.id);
+    entry.set('type', scoreType);
+    entry.set('score', scoreValue);
+    entry.set('timestamp', Date.now());
+    for (var key in extraData) {
+      entry.set(key, extraData[key]);
+    }
+    return entry.save();
+  }).then(function() {
+    console.log('Leaderboard submitted:', scoreType, scoreValue);
+    return true;
+  }).catch(function(error) {
+    console.error('Leaderboard submit failed:', error);
+    return false;
+  });
 }
 
 // 获取排行榜
-function getLeaderboard(scoreType, limit = 50) {
-  if (!isFirebaseReady) {
+function getLeaderboard(scoreType, limit) {
+  limit = limit || 50;
+  
+  if (!isCloudReady) {
     return Promise.resolve([]);
   }
   
-  return firebaseDB.ref('leaderboard/' + scoreType)
-    .orderByChild('score')
-    .limitToLast(limit)
-    .once('value')
-    .then((snapshot) => {
-      const data = snapshot.val();
-      if (!data) return [];
-      
-      const entries = Object.values(data).sort((a, b) => b.score - a.score);
-      return entries;
-    })
-    .catch((error) => {
-      console.error('Get leaderboard failed:', error);
-      return [];
-    });
+  var query = new AV.Query('Leaderboard');
+  query.equalTo('type', scoreType);
+  query.descending('score');
+  query.limit(limit);
+  
+  return query.find().then(function(results) {
+    var entries = [];
+    for (var i = 0; i < results.length; i++) {
+      var obj = results[i];
+      entries.push({
+        uid: obj.get('userId'),
+        score: obj.get('score'),
+        timestamp: obj.get('timestamp')
+      });
+    }
+    return entries;
+  }).catch(function(error) {
+    console.error('Get leaderboard failed:', error);
+    return [];
+  });
 }
 
 // 获取玩家排名
 function getPlayerRank(scoreType) {
-  if (!isFirebaseReady || !currentUser) {
+  if (!isCloudReady || !currentUser) {
     return Promise.resolve(null);
   }
   
-  return firebaseDB.ref('leaderboard/' + scoreType)
-    .orderByChild('score')
-    .once('value')
-    .then((snapshot) => {
-      const data = snapshot.val();
-      if (!data) return null;
-      
-      const entries = Object.values(data).sort((a, b) => b.score - a.score);
-      const rank = entries.findIndex(e => e.uid === currentUser.uid) + 1;
-      const playerEntry = entries.find(e => e.uid === currentUser.uid);
-      
-      return rank > 0 ? { rank, total: entries.length, score: playerEntry?.score || 0 } : null;
-    })
-    .catch((error) => {
-      console.error('Get player rank failed:', error);
-      return null;
-    });
+  var query = new AV.Query('Leaderboard');
+  query.equalTo('type', scoreType);
+  query.descending('score');
+  
+  return query.find().then(function(results) {
+    if (!results || results.length === 0) return null;
+    
+    var rank = 0;
+    var playerEntry = null;
+    for (var i = 0; i < results.length; i++) {
+      if (results[i].get('userId') === currentUser.id) {
+        rank = i + 1;
+        playerEntry = results[i];
+        break;
+      }
+    }
+    
+    if (rank > 0) {
+      return {
+        rank: rank,
+        total: results.length,
+        score: playerEntry ? playerEntry.get('score') : 0
+      };
+    }
+    return null;
+  }).catch(function(error) {
+    console.error('Get player rank failed:', error);
+    return null;
+  });
 }
 
 // ==================== 初始化 ====================
 function initGame(){
-  // 初始化 Firebase
-  initFirebase();
+  // 初始化 LeanCloud
+  initLeanCloud();
   
   // 尝试读档
   if(loadGame()){
