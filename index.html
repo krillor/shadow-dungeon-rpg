@@ -5959,132 +5959,117 @@ function renderCodex(el){
 // ==================== 排行榜页面 ====================
 function renderLeaderboard(el){
   // 计算玩家数据
-  var teamPower = G.team.filter(h => h).reduce((sum, h) => sum + calcHeroPower(h), 0);
+  var teamPower = 0;
+  for(var i=0;i<G.team.length;i++){
+    if(G.team[i]) teamPower += calcHeroPower(G.team[i]);
+  }
   var maxStage = G.stageProgress || 1;
-  var arenaWins = G.arenaState?.totalWins || 0;
-  var totalHeroes = G.heroes?.length || 0;
+  var arenaWins = (G.arenaState && G.arenaState.totalWins) ? G.arenaState.totalWins : 0;
+  var totalHeroes = G.heroes ? G.heroes.length : 0;
   
-  el.innerHTML = `
-    <div class="panel">
-      <div class="panel-title"><span class="icon">🏆</span> 全服排行榜</div>
-      <div style="color:var(--text2);font-size:12px;margin-bottom:12px">
-        ${isFirebaseReady ? '☁️ 已连接云端，数据实时同步' : '⏳ 正在连接云端...'}
-      </div>
-      
-      <!-- 玩家信息卡片 -->
-      <div style="background:linear-gradient(135deg,rgba(201,162,39,.15),rgba(201,162,39,.05));border:1px solid rgba(201,162,39,.3);border-radius:10px;padding:14px;margin-bottom:14px">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="font-size:36px">👤</div>
-          <div style="flex:1">
-            <div style="font-weight:bold;color:var(--gold)">我的排名</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:4px">
-              战力: <b>${teamPower}</b> | 最高关卡: <b>${maxStage}</b> | 竞技场胜场: <b>${arenaWins}</b>
-            </div>
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="submitAllLeaderboards()">📤 上传成绩</button>
-        </div>
-      </div>
-      
-      <!-- 排行榜类型选择 -->
-      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-        <button class="btn btn-sm" onclick="loadLeaderboardData('power')" style="flex:1;min-width:80px">⚔️ 战力榜</button>
-        <button class="btn btn-sm" onclick="loadLeaderboardData('stage')" style="flex:1;min-width:80px">💀 关卡榜</button>
-        <button class="btn btn-sm" onclick="loadLeaderboardData('arena')" style="flex:1;min-width:80px">🏟️ 竞技榜</button>
-        <button class="btn btn-sm" onclick="loadLeaderboardData('heroes')" style="flex:1;min-width:80px">🧙 英雄榜</button>
-      </div>
-      
-      <!-- 排行榜列表 -->
-      <div id="leaderboard-list" style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px;min-height:200px">
-        <div style="text-align:center;color:var(--text3);padding:40px 0">
-          <div style="font-size:24px;margin-bottom:8px">🏆</div>
-          <div>点击上方按钮查看排行榜</div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- 云存档功能 -->
-    <div class="panel">
-      <div class="panel-title"><span class="icon">☁️</span> 云存档</div>
-      <div style="color:var(--text2);font-size:12px;margin-bottom:12px">
-        自动同步游戏进度到云端，换设备不丢失
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="saveToCloud().then(()=>showToast('☁️ 已保存到云端'))">💾 保存到云端</button>
-        <button class="btn" onclick="loadCloudSave().then(()=>showToast('☁️ 已从云端恢复'))">📥 从云端恢复</button>
-      </div>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3)">
-        💡 提示：游戏会自动尝试同步云端存档，也可以手动操作
-      </div>
-    </div>
-  `;
+  var connectionStatus = isFirebaseReady ? '☁️ 已连接云端，数据实时同步' : '⏳ 正在连接云端...';
   
-  // 自动加载战力榜
-  setTimeout(() => loadLeaderboardData('power'), 100);
+  el.innerHTML = '<div class="panel">' +
+    '<div class="panel-title"><span class="icon">🏆</span> 全服排行榜</div>' +
+    '<div style="color:var(--text2);font-size:12px;margin-bottom:12px">' + connectionStatus + '</div>' +
+    '<div style="background:linear-gradient(135deg,rgba(201,162,39,.15),rgba(201,162,39,.05));border:1px solid rgba(201,162,39,.3);border-radius:10px;padding:14px;margin-bottom:14px">' +
+      '<div style="display:flex;align-items:center;gap:12px">' +
+        '<div style="font-size:36px">👤</div>' +
+        '<div style="flex:1">' +
+          '<div style="font-weight:bold;color:var(--gold)">我的排名</div>' +
+          '<div style="font-size:12px;color:var(--text2);margin-top:4px">' +
+            '战力: <b>' + teamPower + '</b> | 最高关卡: <b>' + maxStage + '</b> | 竞技场胜场: <b>' + arenaWins + '</b>' +
+          '</div>' +
+        '</div>' +
+        '<button class="btn btn-primary btn-sm" onclick="submitAllLeaderboards()">📤 上传成绩</button>' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">' +
+      '<button class="btn btn-sm" onclick="loadLeaderboardData(\'power\')" style="flex:1;min-width:80px">⚔️ 战力榜</button>' +
+      '<button class="btn btn-sm" onclick="loadLeaderboardData(\'stage\')" style="flex:1;min-width:80px">💀 关卡榜</button>' +
+      '<button class="btn btn-sm" onclick="loadLeaderboardData(\'arena\')" style="flex:1;min-width:80px">🏟️ 竞技榜</button>' +
+      '<button class="btn btn-sm" onclick="loadLeaderboardData(\'heroes\')" style="flex:1;min-width:80px">🧙 英雄榜</button>' +
+    '</div>' +
+    '<div id="leaderboard-list" style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px;min-height:200px">' +
+      '<div style="text-align:center;color:var(--text3);padding:40px 0">' +
+        '<div style="font-size:24px;margin-bottom:8px">🏆</div>' +
+        '<div>点击上方按钮查看排行榜</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>' +
+  '<div class="panel">' +
+    '<div class="panel-title"><span class="icon">☁️</span> 云存档</div>' +
+    '<div style="color:var(--text2);font-size:12px;margin-bottom:12px">自动同步游戏进度到云端，换设备不丢失</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      '<button class="btn btn-primary" onclick="saveToCloud().then(function(){showToast(\'☁️ 已保存到云端\')})">💾 保存到云端</button>' +
+      '<button class="btn" onclick="loadCloudSave().then(function(){showToast(\'☁️ 已从云端恢复\')})">📥 从云端恢复</button>' +
+    '</div>' +
+    '<div style="margin-top:10px;font-size:11px;color:var(--text3)">💡 提示：游戏会自动尝试同步云端存档，也可以手动操作</div>' +
+  '</div>';
+  
+  setTimeout(function(){ loadLeaderboardData('power'); }, 100);
 }
 
 // 加载排行榜数据
 function loadLeaderboardData(type){
-  const listEl = document.getElementById('leaderboard-list');
+  var listEl = document.getElementById('leaderboard-list');
   if(!listEl) return;
   
   listEl.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--text3)">加载中...</div>';
   
-  const typeNames = {
+  var typeNames = {
     power: {name: '战力榜', icon: '⚔️', desc: '队伍总战力'},
     stage: {name: '关卡榜', icon: '💀', desc: '最高通关关卡'},
     arena: {name: '竞技榜', icon: '🏟️', desc: '竞技场胜场数'},
     heroes: {name: '英雄榜', icon: '🧙', desc: '拥有英雄数量'}
   };
   
-  const typeInfo = typeNames[type] || typeNames.power;
+  var typeInfo = typeNames[type] || typeNames.power;
   
-  getLeaderboard(type, 50).then(entries => {
+  getLeaderboard(type, 50).then(function(entries) {
     if(entries.length === 0){
-      listEl.innerHTML = `
-        <div style="text-align:center;color:var(--text3);padding:40px 0">
-          <div style="font-size:24px;margin-bottom:8px">📭</div>
-          <div>暂无数据，快来上传你的成绩吧！</div>
-        </div>
-      `;
+      listEl.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px 0">' +
+        '<div style="font-size:24px;margin-bottom:8px">📭</div>' +
+        '<div>暂无数据，快来上传你的成绩吧！</div>' +
+      '</div>';
       return;
     }
     
-    // 获取玩家排名
-    getPlayerRank(type).then(playerRank => {
-      let html = `<div style="margin-bottom:10px;font-weight:bold;color:var(--gold)">${typeInfo.icon} ${typeInfo.name} - ${typeInfo.desc}</div>`;
+    getPlayerRank(type).then(function(playerRank) {
+      var html = '<div style="margin-bottom:10px;font-weight:bold;color:var(--gold)">' + typeInfo.icon + ' ' + typeInfo.name + ' - ' + typeInfo.desc + '</div>';
       
-      // 玩家排名提示
       if(playerRank){
-        html += `<div style="background:rgba(201,162,39,.1);border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:12px">
-          🎯 你的排名: <b style="color:var(--gold)">第${playerRank.rank}名</b> / 共${playerRank.total}人 | 分数: <b>${playerRank.score}</b>
-        </div>`;
+        html += '<div style="background:rgba(201,162,39,.1);border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:12px">' +
+          '🎯 你的排名: <b style="color:var(--gold)">第' + playerRank.rank + '名</b> / 共' + playerRank.total + '人 | 分数: <b>' + playerRank.score + '</b>' +
+        '</div>';
       }
       
-      // 排行榜列表
       html += '<div style="display:flex;flex-direction:column;gap:6px">';
-      entries.slice(0, 20).forEach((entry, index) => {
-        const rank = index + 1;
-        const rankColor = rank === 1 ? '#ffd700' : rank === 2 ? '#c0c0c0' : rank === 3 ? '#cd7f32' : 'var(--text)';
-        const rankIcon = rank <= 3 ? ['🥇','🥈','🥉'][rank-1] : `<span style="display:inline-block;width:24px;text-align:center">${rank}</span>`;
-        const isMe = entry.uid === currentUser?.uid;
+      for(var i=0;i<Math.min(entries.length,20);i++){
+        var entry = entries[i];
+        var rank = i + 1;
+        var rankColor = rank === 1 ? '#ffd700' : rank === 2 ? '#c0c0c0' : rank === 3 ? '#cd7f32' : 'var(--text)';
+        var rankIcon = rank <= 3 ? ['🥇','🥈','🥉'][rank-1] : '<span style="display:inline-block;width:24px;text-align:center">' + rank + '</span>';
+        var isMe = currentUser && entry.uid === currentUser.uid;
+        var playerName = isMe ? '<b style="color:var(--gold)">我</b>' : '玩家 ' + (entry.uid ? entry.uid.slice(-6) : '???');
+        var dateStr = entry.timestamp ? new Date(entry.timestamp).toLocaleDateString() : '-';
+        var scoreStr = entry.score ? entry.score.toLocaleString() : '0';
         
-        html += `
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:${isMe?'rgba(201,162,39,.15)':'rgba(255,255,255,.03)'};border-radius:6px;border:${isMe?'1px solid rgba(201,162,39,.3)':'none'}">
-            <div style="font-size:16px;color:${rankColor};min-width:28px">${rankIcon}</div>
-            <div style="flex:1;font-size:13px">
-              <div>${isMe?'<b style="color:var(--gold)">我</b>':'玩家 ' + entry.uid?.slice(-6)}</div>
-              <div style="font-size:11px;color:var(--text3)">${new Date(entry.timestamp).toLocaleDateString()}</div>
-            </div>
-            <div style="font-weight:bold;color:var(--gold);font-size:14px">${entry.score?.toLocaleString()}</div>
-          </div>
-        `;
-      });
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:' + (isMe?'rgba(201,162,39,.15)':'rgba(255,255,255,.03)') + ';border-radius:6px;border:' + (isMe?'1px solid rgba(201,162,39,.3)':'none') + '">' +
+          '<div style="font-size:16px;color:' + rankColor + ';min-width:28px">' + rankIcon + '</div>' +
+          '<div style="flex:1;font-size:13px">' +
+            '<div>' + playerName + '</div>' +
+            '<div style="font-size:11px;color:var(--text3)">' + dateStr + '</div>' +
+          '</div>' +
+          '<div style="font-weight:bold;color:var(--gold);font-size:14px">' + scoreStr + '</div>' +
+        '</div>';
+      }
       html += '</div>';
       
       listEl.innerHTML = html;
     });
-  }).catch(err => {
-    listEl.innerHTML = `<div style="text-align:center;color:var(--red);padding:40px 0">加载失败: ${err.message}</div>`;
+  }).catch(function(err) {
+    listEl.innerHTML = '<div style="text-align:center;color:var(--red);padding:40px 0">加载失败: ' + (err.message || '未知错误') + '</div>';
   });
 }
 
@@ -6095,23 +6080,25 @@ function submitAllLeaderboards(){
     return;
   }
   
-  const teamPower = G.team.filter(h => h).reduce((sum, h) => sum + calcHeroPower(h), 0);
-  const maxStage = G.stageProgress || 1;
-  const arenaWins = G.arenaState?.totalWins || 0;
-  const totalHeroes = G.heroes?.length || 0;
+  var teamPower = 0;
+  for(var i=0;i<G.team.length;i++){
+    if(G.team[i]) teamPower += calcHeroPower(G.team[i]);
+  }
+  var maxStage = G.stageProgress || 1;
+  var arenaWins = (G.arenaState && G.arenaState.totalWins) ? G.arenaState.totalWins : 0;
+  var totalHeroes = G.heroes ? G.heroes.length : 0;
   
   Promise.all([
-    submitLeaderboard('power', teamPower, {heroes: G.heroes?.length}),
-    submitLeaderboard('stage', maxStage, {stageName: STAGES[maxStage-1]?.name}),
-    submitLeaderboard('arena', arenaWins, {winStreak: G.arenaState?.winStreak}),
-    submitLeaderboard('heroes', totalHeroes, {quality: G.heroes?.map(h => h.quality)})
-  ]).then(() => {
+    submitLeaderboard('power', teamPower, {heroes: G.heroes ? G.heroes.length : 0}),
+    submitLeaderboard('stage', maxStage, {stageName: STAGES[maxStage-1] ? STAGES[maxStage-1].name : ''}),
+    submitLeaderboard('arena', arenaWins, {winStreak: G.arenaState ? G.arenaState.winStreak : 0}),
+    submitLeaderboard('heroes', totalHeroes, {})
+  ]).then(function() {
     showToast('☁️ 成绩已上传到云端！');
-    // 刷新当前显示的排行榜
-    const listEl = document.getElementById('leaderboard-list');
+    var listEl = document.getElementById('leaderboard-list');
     if(listEl) loadLeaderboardData('power');
-  }).catch(err => {
-    showToast('❌ 上传失败: ' + err.message);
+  }).catch(function(err) {
+    showToast('❌ 上传失败: ' + (err.message || '未知错误'));
   });
 }
 
