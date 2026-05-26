@@ -5070,21 +5070,13 @@ function getRecruitOptions(){
   
   // 保底机制：每10次刷新，最后一个位置必出当前最高品质英雄
   if(getPity() >= 10 && options.length > 0){
-    // 保底基于当前最高可解锁品质（而非固定史诗）
+    // 保底必出当前最高可解锁品质
     const pityPool = HERO_TEMPLATES.filter(t => 
-      QUALITIES.indexOf(t.quality) >= maxQIdx - 1 && // 最高品质或次高品质
-      QUALITIES.indexOf(t.quality) <= maxQIdx
+      QUALITIES.indexOf(t.quality) === maxQIdx // 只选最高品质
     );
     if(pityPool.length > 0){
       options[options.length - 1] = pick(pityPool);
       setPity(0); // 重置保底计数
-    }else{
-      // 如果池子为空（极端情况），直接从全池中选最高品质
-      const highPool = pool.filter(t => QUALITIES.indexOf(t.quality) === maxQIdx);
-      if(highPool.length > 0){
-        options[options.length - 1] = pick(highPool);
-        setPity(0);
-      }
     }
   }
   
