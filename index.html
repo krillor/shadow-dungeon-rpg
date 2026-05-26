@@ -430,6 +430,7 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
     <div class="nav-btn" data-tab="buildings" title="建筑">🏗️<div class="nav-label">建筑</div></div>
     <div class="nav-btn" data-tab="arena" title="竞技场">🏟️<div class="nav-label">竞技场</div></div>
     <div class="nav-btn" data-tab="codex" title="图鉴">📖<div class="nav-label">图鉴</div></div>
+    <div class="nav-btn" data-tab="achievements" title="成就">🏅<div class="nav-label">成就</div></div>
     <div class="nav-btn" data-tab="leaderboard" title="排行">🏆<div class="nav-label">排行</div></div>
     <div class="nav-btn" data-tab="cheats" id="nav-cheats-btn" title="金手指" style="color:#c0392b">🔓<div class="nav-label">金手指</div></div>
   </div>
@@ -1382,6 +1383,78 @@ const BUILDING_DEFS = {
   },
 };
 
+// 成就配置
+const ACHIEVEMENT_CATEGORIES = {
+  battle: { name: '战斗成就', icon: '⚔️', color: '#c0392b' },
+  hero: { name: '英雄成就', icon: '👤', color: '#2980b9' },
+  equip: { name: '装备成就', icon: '🛡️', color: '#27ae60' },
+  build: { name: '建设成就', icon: '🏗️', color: '#8e44ad' },
+  arena: { name: '竞技成就', icon: '🏟️', color: '#f39c12' },
+  special: { name: '特殊成就', icon: '⭐', color: '#e74c3c' }
+};
+
+// 成就定义
+const ACHIEVEMENTS = {
+  // 战斗成就
+  'battle_1': { id: 'battle_1', name: '初出茅庐', desc: '累计击败10个敌人', category: 'battle', target: 10, reward: { gold: 500 }, icon: '💀' },
+  'battle_2': { id: 'battle_2', name: '战场新手', desc: '累计击败50个敌人', category: 'battle', target: 50, reward: { gold: 2000 }, icon: '💀' },
+  'battle_3': { id: 'battle_3', name: '杀戮机器', desc: '累计击败200个敌人', category: 'battle', target: 200, reward: { gold: 5000, gems: 10 }, icon: '💀' },
+  'battle_4': { id: 'battle_4', name: '战场主宰', desc: '累计击败500个敌人', category: 'battle', target: 500, reward: { gold: 15000, gems: 30 }, icon: '💀' },
+  'battle_5': { id: 'battle_5', name: '连胜大师', desc: 'PVE连胜达到10场', category: 'battle', target: 10, reward: { gems: 20 }, icon: '🔥' },
+  'battle_6': { id: 'battle_6', name: '连胜传说', desc: 'PVE连胜达到30场', category: 'battle', target: 30, reward: { gems: 50 }, icon: '🔥' },
+  'battle_7': { id: 'battle_7', name: '首通关卡', desc: '通关第1关', category: 'battle', target: 1, reward: { gold: 300 }, icon: '🚩' },
+  'battle_8': { id: 'battle_8', name: '深入探索', desc: '通关第10关', category: 'battle', target: 10, reward: { gold: 1000, gems: 5 }, icon: '🚩' },
+  'battle_9': { id: 'battle_9', name: '地牢探险家', desc: '通关第30关', category: 'battle', target: 30, reward: { gold: 3000, gems: 15 }, icon: '🚩' },
+  'battle_10': { id: 'battle_10', name: '地牢征服者', desc: '通关第50关', category: 'battle', target: 50, reward: { gold: 10000, gems: 50 }, icon: '🚩' },
+  
+  // 英雄成就
+  'hero_1': { id: 'hero_1', name: '首次招募', desc: '招募第一个英雄', category: 'hero', target: 1, reward: { gold: 200 }, icon: '🤝' },
+  'hero_2': { id: 'hero_2', name: '英雄收集者', desc: '累计招募10个英雄', category: 'hero', target: 10, reward: { gold: 1000 }, icon: '🤝' },
+  'hero_3': { id: 'hero_3', name: '英雄大师', desc: '累计招募50个英雄', category: 'hero', target: 50, reward: { gold: 5000, gems: 10 }, icon: '🤝' },
+  'hero_4': { id: 'hero_4', name: '稀有发现', desc: '招募到稀有品质英雄', category: 'hero', target: 1, reward: { gold: 500 }, icon: '💎' },
+  'hero_5': { id: 'hero_5', name: '史诗时刻', desc: '招募到史诗品质英雄', category: 'hero', target: 1, reward: { gold: 1500, gems: 5 }, icon: '💎' },
+  'hero_6': { id: 'hero_6', name: '传说降临', desc: '招募到传说品质英雄', category: 'hero', target: 1, reward: { gold: 5000, gems: 20 }, icon: '💎' },
+  'hero_7': { id: 'hero_7', name: '神话现世', desc: '招募到神话品质英雄', category: 'hero', target: 1, reward: { gold: 10000, gems: 50 }, icon: '💎' },
+  'hero_8': { id: 'hero_8', name: '等级突破', desc: '拥有一个30级英雄', category: 'hero', target: 1, reward: { expPotion: 500 }, icon: '📈' },
+  'hero_9': { id: 'hero_9', name: '满级强者', desc: '拥有一个60级英雄', category: 'hero', target: 1, reward: { expPotion: 2000, gems: 10 }, icon: '📈' },
+  'hero_10': { id: 'hero_10', name: '满编队伍', desc: '队伍中有6个英雄', category: 'hero', target: 6, reward: { gold: 2000 }, icon: '👥' },
+  
+  // 装备成就
+  'equip_1': { id: 'equip_1', name: '首次锻造', desc: '在铁匠铺锻造第一件装备', category: 'equip', target: 1, reward: { gold: 300 }, icon: '🔨' },
+  'equip_2': { id: 'equip_2', name: '锻造学徒', desc: '累计锻造10件装备', category: 'equip', target: 10, reward: { gold: 1000, iron: 50 }, icon: '🔨' },
+  'equip_3': { id: 'equip_3', name: '锻造大师', desc: '累计锻造50件装备', category: 'equip', target: 50, reward: { gold: 5000, iron: 200 }, icon: '🔨' },
+  'equip_4': { id: 'equip_4', name: '装备收集', desc: '拥有20件装备', category: 'equip', target: 20, reward: { gold: 1500 }, icon: '🎒' },
+  'equip_5': { id: 'equip_5', name: '首次合成', desc: '合成一件装备', category: 'equip', target: 1, reward: { gold: 500 }, icon: '⚗️' },
+  'equip_6': { id: 'equip_6', name: '合成专家', desc: '累计合成20件装备', category: 'equip', target: 20, reward: { gold: 3000, gems: 10 }, icon: '⚗️' },
+  'equip_7': { id: 'equip_7', name: '套装收集者', desc: '集齐任意一套3件套装', category: 'equip', target: 1, reward: { gems: 30 }, icon: '🎁' },
+  
+  // 建设成就
+  'build_1': { id: 'build_1', name: '酒馆开业', desc: '将酒馆升级到2级', category: 'build', target: 2, reward: { gold: 500 }, icon: '🍺' },
+  'build_2': { id: 'build_2', name: '酒馆大亨', desc: '将酒馆升级到5级', category: 'build', target: 5, reward: { gold: 3000, gems: 10 }, icon: '🍺' },
+  'build_3': { id: 'build_3', name: '农场主', desc: '将农场升级到3级', category: 'build', target: 3, reward: { gold: 1000 }, icon: '🌾' },
+  'build_4': { id: 'build_4', name: '矿业巨头', desc: '将矿场升级到3级', category: 'build', target: 3, reward: { gold: 1500, stone: 100 }, icon: '⛏️' },
+  'build_5': { id: 'build_5', name: '铁匠铺开业', desc: '建造铁匠铺', category: 'build', target: 1, reward: { iron: 50 }, icon: '🔨' },
+  'build_6': { id: 'build_6', name: '神殿建立', desc: '建造神殿', category: 'build', target: 1, reward: { gems: 10 }, icon: '⛪' },
+  'build_7': { id: 'build_7', name: '竞技场开启', desc: '建造竞技场', category: 'build', target: 1, reward: { fame: 20 }, icon: '🏟️' },
+  'build_8': { id: 'build_8', name: '全面发展', desc: '所有建筑至少1级', category: 'build', target: 1, reward: { gold: 5000, gems: 20 }, icon: '🏰' },
+  
+  // 竞技成就
+  'arena_1': { id: 'arena_1', name: '首次挑战', desc: '完成第一次竞技场挑战', category: 'arena', target: 1, reward: { gold: 500 }, icon: '🥊' },
+  'arena_2': { id: 'arena_2', name: '竞技新手', desc: '累计获胜5场', category: 'arena', target: 5, reward: { gold: 1500, fame: 10 }, icon: '🏆' },
+  'arena_3': { id: 'arena_3', name: '竞技高手', desc: '累计获胜20场', category: 'arena', target: 20, reward: { gold: 5000, fame: 30 }, icon: '🏆' },
+  'arena_4': { id: 'arena_4', name: '竞技王者', desc: '累计获胜50场', category: 'arena', target: 50, reward: { gold: 15000, fame: 100, gems: 30 }, icon: '🏆' },
+  'arena_5': { id: 'arena_5', name: '连胜之星', desc: '竞技场连胜5场', category: 'arena', target: 5, reward: { gems: 15 }, icon: '🔥' },
+  'arena_6': { id: 'arena_6', name: '困难挑战', desc: '在困难难度获胜', category: 'arena', target: 1, reward: { gold: 2000, fame: 15 }, icon: '💪' },
+  'arena_7': { id: 'arena_7', name: '噩梦挑战', desc: '在噩梦难度获胜', category: 'arena', target: 1, reward: { gold: 5000, fame: 30, gems: 15 }, icon: '👹' },
+  
+  // 特殊成就
+  'special_1': { id: 'special_1', name: '每日签到', desc: '领取每日奖励', category: 'special', target: 1, reward: { gems: 5 }, icon: '📅' },
+  'special_2': { id: 'special_2', name: '资源大亨', desc: '累计获得10000金币', category: 'special', target: 10000, reward: { gems: 10 }, icon: '💰' },
+  'special_3': { id: 'special_3', name: '宝石收藏家', desc: '累计获得100宝石', category: 'special', target: 100, reward: { gems: 20 }, icon: '💎' },
+  'special_4': { id: 'special_4', name: '图鉴开启', desc: '解锁图鉴中的第一个条目', category: 'special', target: 1, reward: { gold: 300 }, icon: '📖' },
+  'special_5': { id: 'special_5', name: '异变惊喜', desc: '合成时触发异变', category: 'special', target: 1, reward: { gems: 10 }, icon: '✨' },
+};
+
 // 竞技场配置
 const ARENA_CONFIG = {
   // 每日挑战次数
@@ -1484,6 +1557,23 @@ let G = {
     totalGoldEarned:0,
     totalFameEarned:0,
   },
+  // 成就系统
+  achievements: {
+    unlocked: {},      // 已解锁成就 { achievementId: unlockTimestamp }
+    progress: {},      // 进度数据 { battle_kills: 50, hero_recruited: 10, ... }
+    totalClaimed: 0,   // 已领取奖励的成就数量
+  },
+  // 累计统计数据（用于成就检测）
+  stats: {
+    totalKills: 0,           // 累计击败敌人
+    totalHeroesRecruited: 0, // 累计招募英雄
+    totalEquipmentForged: 0, // 累计锻造装备
+    totalEquipmentMerged: 0, // 累计合成装备
+    totalGoldEarned: 0,      // 累计获得金币
+    totalGemsEarned: 0,      // 累计获得宝石
+    maxStageReached: 1,      // 到达的最高关卡
+    maxHeroLevel: 0,         // 英雄最高等级
+  },
 };
 
 // ==================== 存档系统 ====================
@@ -1521,6 +1611,11 @@ function loadGame(){
     // 初始化连胜计数
     if(G.pveWinStreak===undefined) G.pveWinStreak=0;
     if(G.pveMaxStreak===undefined) G.pveMaxStreak=0;
+    // 初始化成就系统数据
+    if(!G.achievements) G.achievements={unlocked:{},progress:{},totalClaimed:0};
+    if(!G.stats) G.stats={totalKills:0,totalHeroesRecruited:0,totalEquipmentForged:0,totalEquipmentMerged:0,totalGoldEarned:0,totalGemsEarned:0,maxStageReached:1,maxHeroLevel:0};
+    // 加载后检查所有成就
+    setTimeout(function(){checkAllAchievements();},1000);
     return true;
   }catch(e){console.error('读档失败',e);return false;}
 }
@@ -1543,6 +1638,10 @@ function claimDailyBonus(){
   G.lastLoginDate=today;
   saveGame();
   showToast('🎁 每日奖励已领取！💰'+goldR+' 🍞'+foodR+' 🪨'+stoneR+' ⛏️'+ironR);
+  
+  // 检查每日签到成就
+  checkAchievement('special_1');
+  
   updateResUI();
   renderCurrentTab();
 }
@@ -1648,6 +1747,282 @@ function showToast(msg,duration=2000){
   const t=document.createElement('div');t.className='toast';t.textContent=msg;
   root.appendChild(t);
   setTimeout(()=>t.remove(),duration);
+}
+
+// ==================== 成就系统 ====================
+
+// 检查并解锁成就
+function checkAchievement(achievementId) {
+  if (!ACHIEVEMENTS[achievementId]) return false;
+  if (G.achievements.unlocked[achievementId]) return false; // 已解锁
+  
+  const ach = ACHIEVEMENTS[achievementId];
+  let progress = 0;
+  
+  // 根据成就类型获取进度
+  switch(achievementId) {
+    // 战斗成就
+    case 'battle_1': case 'battle_2': case 'battle_3': case 'battle_4':
+      progress = G.stats.totalKills;
+      break;
+    case 'battle_5': case 'battle_6':
+      progress = G.pveMaxStreak || 0;
+      break;
+    case 'battle_7': case 'battle_8': case 'battle_9': case 'battle_10':
+      progress = G.stats.maxStageReached;
+      break;
+    // 英雄成就
+    case 'hero_1': case 'hero_2': case 'hero_3':
+      progress = G.stats.totalHeroesRecruited;
+      break;
+    case 'hero_4':
+      progress = G.heroes.some(h => h.quality === 'rare') ? 1 : 0;
+      break;
+    case 'hero_5':
+      progress = G.heroes.some(h => h.quality === 'epic') ? 1 : 0;
+      break;
+    case 'hero_6':
+      progress = G.heroes.some(h => h.quality === 'legendary') ? 1 : 0;
+      break;
+    case 'hero_7':
+      progress = G.heroes.some(h => h.quality === 'mythic') ? 1 : 0;
+      break;
+    case 'hero_8':
+      progress = G.heroes.some(h => h.level >= 30) ? 1 : 0;
+      break;
+    case 'hero_9':
+      progress = G.heroes.some(h => h.level >= 60) ? 1 : 0;
+      break;
+    case 'hero_10':
+      progress = G.team.filter(s => s !== null).length;
+      break;
+    // 装备成就
+    case 'equip_1': case 'equip_2': case 'equip_3':
+      progress = G.stats.totalEquipmentForged;
+      break;
+    case 'equip_4':
+      progress = G.equipment.length;
+      break;
+    case 'equip_5': case 'equip_6':
+      progress = G.stats.totalEquipmentMerged;
+      break;
+    case 'equip_7':
+      progress = checkSetCollection() ? 1 : 0;
+      break;
+    // 建设成就
+    case 'build_1': case 'build_2':
+      progress = G.buildings.tavern || 0;
+      break;
+    case 'build_3':
+      progress = G.buildings.farm || 0;
+      break;
+    case 'build_4':
+      progress = G.buildings.mine || 0;
+      break;
+    case 'build_5':
+      progress = (G.buildings.blacksmith || 0) >= 1 ? 1 : 0;
+      break;
+    case 'build_6':
+      progress = (G.buildings.temple || 0) >= 1 ? 1 : 0;
+      break;
+    case 'build_7':
+      progress = (G.buildings.arena || 0) >= 1 ? 1 : 0;
+      break;
+    case 'build_8':
+      const hasAll = ['tavern', 'farm', 'mine', 'blacksmith', 'temple', 'arena'].every(b => (G.buildings[b] || 0) >= 1);
+      progress = hasAll ? 1 : 0;
+      break;
+    // 竞技成就
+    case 'arena_1':
+      progress = (G.arenaState.totalWins + G.arenaState.totalLosses) > 0 ? 1 : 0;
+      break;
+    case 'arena_2': case 'arena_3': case 'arena_4':
+      progress = G.arenaState.totalWins || 0;
+      break;
+    case 'arena_5':
+      progress = G.arenaState.maxWinStreak || 0;
+      break;
+    case 'arena_6':
+      progress = G.arenaState.highestDifficulty === 'hard' || G.arenaState.highestDifficulty === 'nightmare' || G.arenaState.highestDifficulty === 'mythic' ? 1 : 0;
+      break;
+    case 'arena_7':
+      progress = G.arenaState.highestDifficulty === 'nightmare' || G.arenaState.highestDifficulty === 'mythic' ? 1 : 0;
+      break;
+    // 特殊成就
+    case 'special_1':
+      progress = G.dailyBonusClaimed ? 1 : 0;
+      break;
+    case 'special_2':
+      progress = G.stats.totalGoldEarned;
+      break;
+    case 'special_3':
+      progress = G.stats.totalGemsEarned;
+      break;
+    case 'special_4':
+      const hasCodex = Object.keys(G.codex.heroes).length > 0 || Object.keys(G.codex.equipment).length > 0 || Object.keys(G.codex.monsters).length > 0;
+      progress = hasCodex ? 1 : 0;
+      break;
+    case 'special_5':
+      progress = G.achievements.progress.mutationTriggered ? 1 : 0;
+      break;
+  }
+  
+  // 保存进度
+  G.achievements.progress[achievementId] = progress;
+  
+  // 检查是否达成
+  if (progress >= ach.target) {
+    unlockAchievement(achievementId);
+    return true;
+  }
+  return false;
+}
+
+// 检查是否集齐任意套装
+function checkSetCollection() {
+  for (const setId in EQUIP_SETS) {
+    const set = EQUIP_SETS[setId];
+    const ownedPieces = set.pieces.filter(pieceId => 
+      G.equipment.some(e => e.templateId === pieceId)
+    ).length;
+    if (ownedPieces >= 3) return true;
+  }
+  return false;
+}
+
+// 解锁成就
+function unlockAchievement(achievementId) {
+  if (G.achievements.unlocked[achievementId]) return;
+  
+  G.achievements.unlocked[achievementId] = Date.now();
+  const ach = ACHIEVEMENTS[achievementId];
+  
+  // 显示解锁提示
+  showAchievementUnlock(ach);
+  
+  saveGame();
+}
+
+// 显示成就解锁动画
+function showAchievementUnlock(ach) {
+  const cat = ACHIEVEMENT_CATEGORIES[ach.category];
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:400;display:flex;align-items:center;justify-content:center;animation:fadeIn .3s ease';
+  overlay.innerHTML = `
+    <div style="background:var(--panel);border:2px solid ${cat.color};border-radius:16px;padding:24px;max-width:320px;width:90%;text-align:center;animation:cardPop .5s cubic-bezier(.34,1.56,.64,1)">
+      <div style="font-size:48px;margin-bottom:12px">${ach.icon}</div>
+      <div style="color:${cat.color};font-size:12px;font-weight:bold;margin-bottom:8px">🏆 成就解锁</div>
+      <div style="font-size:20px;font-weight:bold;color:var(--gold);margin-bottom:8px">${ach.name}</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">${ach.desc}</div>
+      <div style="background:rgba(0,0,0,.3);border-radius:8px;padding:12px;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">奖励</div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+          ${formatReward(ach.reward)}
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="this.closest('.achievement-unlock-overlay').remove();claimAchievementReward('${ach.id}')">领取奖励</button>
+    </div>
+  `;
+  overlay.className = 'achievement-unlock-overlay';
+  document.body.appendChild(overlay);
+  
+  // 点击背景关闭
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+}
+
+// 格式化奖励显示
+function formatReward(reward) {
+  const icons = { gold: '💰', gems: '💎', expPotion: '🧪', iron: '⛏️', stone: '🪨', fame: '🏆' };
+  return Object.entries(reward).map(([type, amount]) => 
+    `<span style="color:var(--gold);font-weight:bold">${icons[type] || ''} ${amount}</span>`
+  ).join('');
+}
+
+// 领取成就奖励
+function claimAchievementReward(achievementId) {
+  const ach = ACHIEVEMENTS[achievementId];
+  if (!ach || !G.achievements.unlocked[achievementId]) return;
+  
+  // 标记已领取（使用特殊标记）
+  if (typeof G.achievements.unlocked[achievementId] === 'number') {
+    G.achievements.unlocked[achievementId] = { unlockedAt: G.achievements.unlocked[achievementId], claimed: true };
+  }
+  
+  // 发放奖励
+  const r = ach.reward;
+  if (r.gold) G.resources.gold = Math.min((G.resources.gold || 0) + r.gold, RESOURCE_LIMITS.gold);
+  if (r.gems) G.resources.gems = Math.min((G.resources.gems || 0) + r.gems, RESOURCE_LIMITS.gems);
+  if (r.expPotion) G.resources.expPotion = Math.min((G.resources.expPotion || 0) + r.expPotion, RESOURCE_LIMITS.expPotion);
+  if (r.iron) G.resources.iron = Math.min((G.resources.iron || 0) + r.iron, RESOURCE_LIMITS.iron);
+  if (r.stone) G.resources.stone = Math.min((G.resources.stone || 0) + r.stone, RESOURCE_LIMITS.stone);
+  if (r.fame) G.resources.fame = (G.resources.fame || 0) + r.fame;
+  
+  G.achievements.totalClaimed++;
+  updateResourceBar();
+  saveGame();
+  
+  showToast(`🎉 领取奖励: ${formatRewardText(r)}`);
+}
+
+// 格式化奖励文本
+function formatRewardText(reward) {
+  const names = { gold: '金币', gems: '宝石', expPotion: '经验药水', iron: '铁矿', stone: '石材', fame: '声望' };
+  return Object.entries(reward).map(([type, amount]) => `${names[type] || type}×${amount}`).join(', ');
+}
+
+// 批量检查所有成就（用于初始化或重大事件后）
+function checkAllAchievements() {
+  let unlockedCount = 0;
+  for (const id in ACHIEVEMENTS) {
+    if (checkAchievement(id)) unlockedCount++;
+  }
+  if (unlockedCount > 0) {
+    showToast(`🎉 解锁了 ${unlockedCount} 个新成就！`);
+  }
+  return unlockedCount;
+}
+
+// 更新统计数据（在相关操作时调用）
+function updateStat(type, value) {
+  if (!G.stats) G.stats = {};
+  switch(type) {
+    case 'kills':
+      G.stats.totalKills = (G.stats.totalKills || 0) + value;
+      checkAchievement('battle_1'); checkAchievement('battle_2'); checkAchievement('battle_3'); checkAchievement('battle_4');
+      break;
+    case 'heroRecruited':
+      G.stats.totalHeroesRecruited = (G.stats.totalHeroesRecruited || 0) + value;
+      checkAchievement('hero_1'); checkAchievement('hero_2'); checkAchievement('hero_3');
+      break;
+    case 'equipmentForged':
+      G.stats.totalEquipmentForged = (G.stats.totalEquipmentForged || 0) + value;
+      checkAchievement('equip_1'); checkAchievement('equip_2'); checkAchievement('equip_3');
+      break;
+    case 'equipmentMerged':
+      G.stats.totalEquipmentMerged = (G.stats.totalEquipmentMerged || 0) + value;
+      checkAchievement('equip_5'); checkAchievement('equip_6');
+      break;
+    case 'goldEarned':
+      G.stats.totalGoldEarned = (G.stats.totalGoldEarned || 0) + value;
+      checkAchievement('special_2');
+      break;
+    case 'gemsEarned':
+      G.stats.totalGemsEarned = (G.stats.totalGemsEarned || 0) + value;
+      checkAchievement('special_3');
+      break;
+    case 'stageReached':
+      if (value > (G.stats.maxStageReached || 1)) {
+        G.stats.maxStageReached = value;
+        checkAchievement('battle_7'); checkAchievement('battle_8'); checkAchievement('battle_9'); checkAchievement('battle_10');
+      }
+      break;
+    case 'mutation':
+      G.achievements.progress.mutationTriggered = true;
+      checkAchievement('special_5');
+      break;
+  }
 }
 
 function showModal(title,contentHTML,buttons){
@@ -2820,6 +3195,15 @@ function showArenaResult(){
       submitLeaderboard('arena',G.arenaState.totalWins,{winStreak:G.arenaState.winStreak});
       submitLeaderboard('power',teamPower,{heroes:G.heroes?G.heroes.length:0});
     }
+    
+    // 检查竞技场成就
+    checkAchievement('arena_1');
+    checkAchievement('arena_2');
+    checkAchievement('arena_3');
+    checkAchievement('arena_4');
+    checkAchievement('arena_5');
+    checkAchievement('arena_6');
+    checkAchievement('arena_7');
   }else{
     G.arenaState.winStreak=0;
     G.arenaState.totalLosses++;
@@ -3962,6 +4346,16 @@ async function runBattle(stageId){
     }
     if(luckyBonus>1) log('🍀 幸运加成 +'+Math.round((luckyBonus-1)*100)+'%','info');
     showToast('战斗胜利！'+(G.pveWinStreak>=3?G.pveWinStreak+'连胜！':''));
+    
+    // 更新成就统计
+    updateStat('kills', stage.enemies.length);
+    updateStat('goldEarned', finalGold);
+    updateStat('gemsEarned', rw.gems || 0);
+    updateStat('stageReached', stage.id + 1);
+    
+    // 检查战斗相关成就
+    checkAchievement('battle_5');
+    checkAchievement('battle_6');
   }else{
     showToast('战斗失败...');
   }
@@ -4428,6 +4822,15 @@ function executeMerge(heroUids){
   showMergeResult(newHero,isQualityUp,oldQuality);
   
   showToast('融合成功！获得 '+QUALITY_NAMES[newHero.quality]+' 英雄：'+newHero.icon+' '+newHero.name);
+  
+  // 更新成就统计
+  updateStat('equipmentMerged', 1);
+  
+  // 检查合成相关成就
+  checkAchievement('equip_5');
+  checkAchievement('equip_6');
+  checkAchievement('equip_7');
+  
   return true;
 }
 
@@ -4523,6 +4926,17 @@ function upgradeBuilding(buildingId){
   updateResUI();
   const effectText=def.effects&&def.effects[newLevel-1]?def.effects[newLevel-1]:'';
   showToast(`${def.name} 升级到 ${newLevel} 级！${effectText}`);
+  
+  // 检查建筑相关成就
+  checkAchievement('build_1');
+  checkAchievement('build_2');
+  checkAchievement('build_3');
+  checkAchievement('build_4');
+  checkAchievement('build_5');
+  checkAchievement('build_6');
+  checkAchievement('build_7');
+  checkAchievement('build_8');
+  
   saveGame();
   renderCurrentTab();
 }
@@ -4675,6 +5089,17 @@ function recruitHero(templateId){
   
   const costStr=goldCost>0?`${goldCost}金币`:gemCost>0?`${gemCost}宝石`:`${goldCost}金币+${gemCost}宝石`;
   showToast(`招募成功！消耗 ${costStr}，获得 ${hero.icon} ${hero.name}`);
+  
+  // 更新成就统计
+  updateStat('heroRecruited', 1);
+  
+  // 检查英雄相关成就
+  checkAchievement('hero_4');
+  checkAchievement('hero_5');
+  checkAchievement('hero_6');
+  checkAchievement('hero_7');
+  checkAchievement('hero_10');
+  
   // 招募后保持在酒馆，已招募的显示为灰色禁用
   renderTavernRecruit();
 }
@@ -4720,6 +5145,7 @@ function renderCurrentTab(){
     case 'buildings': renderBuildings(contentEl);break;
     case 'arena': renderArena(contentEl);break;
     case 'codex': renderCodex(contentEl);break;
+    case 'achievements': renderAchievements(contentEl);break;
     case 'leaderboard': renderLeaderboard(contentEl);break;
     case 'cheats': renderCheats(contentEl);break;
   }
@@ -6514,6 +6940,17 @@ function forgeEquipment(maxQuality){
   G.equipment.push(eq);
   updateResUI();
   showToast('锻造成功！获得 '+tpl.icon+' '+tpl.name+' ('+QUALITY_NAMES[tpl.quality]+')');
+  
+  // 更新成就统计
+  updateStat('equipmentForged', 1);
+  
+  // 检查装备相关成就
+  checkAchievement('equip_1');
+  checkAchievement('equip_2');
+  checkAchievement('equip_3');
+  checkAchievement('equip_4');
+  checkAchievement('equip_7');
+  
   renderCurrentTab();
 }
 
@@ -6799,6 +7236,158 @@ function renderCodex(el){
       <div style="margin-top:10px">${monsterHTML}</div>
     </div>
   `;
+}
+
+// ==================== 成就系统UI ====================
+function renderAchievements(el){
+  // 初始化成就数据
+  if(!G.achievements) G.achievements={unlocked:{},progress:{},totalClaimed:0};
+  if(!G.stats) G.stats={totalKills:0,totalHeroesRecruited:0,totalEquipmentForged:0,totalEquipmentMerged:0,totalGoldEarned:0,totalGemsEarned:0,maxStageReached:1,maxHeroLevel:0};
+  
+  // 计算统计
+  var totalAchievements=Object.keys(ACHIEVEMENTS).length;
+  var unlockedCount=Object.keys(G.achievements.unlocked).length;
+  var claimedCount=G.achievements.totalClaimed||0;
+  var completionRate=Math.round(unlockedCount/totalAchievements*100);
+  
+  // 按分类分组成就
+  var achievementsByCategory={};
+  for(var cat in ACHIEVEMENT_CATEGORIES){
+    achievementsByCategory[cat]=[];
+  }
+  for(var id in ACHIEVEMENTS){
+    var ach=ACHIEVEMENTS[id];
+    achievementsByCategory[ach.category].push(ach);
+  }
+  
+  // 渲染分类标签
+  var categoryTabs=Object.entries(ACHIEVEMENT_CATEGORIES).map(function([catKey,catInfo]){
+    var count=achievementsByCategory[catKey].filter(function(a){return G.achievements.unlocked[a.id]}).length;
+    var total=achievementsByCategory[catKey].length;
+    return `<button class="tab-btn" onclick="switchAchievementCategory('${catKey}')" data-cat="${catKey}">${catInfo.icon} ${catInfo.name} (${count}/${total})</button>`;
+  }).join('');
+  
+  // 渲染成就列表
+  function renderAchievementList(category){
+    var achs=achievementsByCategory[category]||[];
+    return achs.map(function(ach){
+      var unlocked=!!G.achievements.unlocked[ach.id];
+      var claimed=unlocked&&G.achievements.unlocked[ach.id].claimed;
+      var progress=G.achievements.progress[ach.id]||0;
+      var pct=Math.min(100,Math.round(progress/ach.target*100));
+      var catInfo=ACHIEVEMENT_CATEGORIES[ach.category];
+      
+      return `<div class="achievement-item ${unlocked?'unlocked':''} ${claimed?'claimed':''}" style="background:var(--panel);border:1px solid ${unlocked?catInfo.color:'var(--border)'};border-radius:10px;padding:12px;margin-bottom:8px;opacity:${unlocked?1:0.7}">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:32px;width:50px;text-align:center">${ach.icon}</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <span style="font-weight:bold;color:${unlocked?catInfo.color:'var(--text)'};font-size:15px">${ach.name}</span>
+              ${unlocked?'<span style="background:'+catInfo.color+';color:#fff;font-size:10px;padding:2px 6px;border-radius:4px">已解锁</span>':''}
+              ${claimed?'<span style="background:var(--green);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px">已领取</span>':''}
+            </div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:6px">${ach.desc}</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="flex:1;background:rgba(255,255,255,.1);border-radius:4px;height:6px;overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:${unlocked?catInfo.color:'var(--text3)'};border-radius:4px;transition:width .3s"></div>
+              </div>
+              <span style="font-size:11px;color:var(--text3);white-space:nowrap">${progress}/${ach.target}</span>
+            </div>
+          </div>
+          <div style="text-align:right;min-width:80px">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">奖励</div>
+            <div style="font-size:12px;color:var(--gold)">${formatReward(ach.reward)}</div>
+            ${unlocked&&!claimed?`<button class="btn btn-primary btn-sm" onclick="claimAchievementReward('${ach.id}');renderAchievements(document.getElementById('content'))" style="margin-top:6px;font-size:11px;padding:4px 10px">领取</button>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  
+  el.innerHTML=`<div class="panel">
+    <div class="panel-title"><span class="icon">🏆</span> 成就系统</div>
+    <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+        <div style="text-align:center">
+          <div style="font-size:28px;font-weight:bold;color:var(--gold)">${unlockedCount}</div>
+          <div style="font-size:11px;color:var(--text3)">已解锁</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:28px;font-weight:bold;color:var(--green)">${claimedCount}</div>
+          <div style="font-size:11px;color:var(--text3)">已领取</div>
+        </div>
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:12px">总进度</span>
+            <span style="font-size:12px;color:var(--gold)">${completionRate}%</span>
+          </div>
+          <div style="background:rgba(255,255,255,.1);border-radius:4px;height:10px;overflow:hidden">
+            <div style="height:100%;width:${completionRate}%;background:linear-gradient(90deg,var(--gold),#ff6b00);border-radius:4px;transition:width .3s"></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${categoryTabs}
+      </div>
+    </div>
+    <div id="achievement-list">
+      ${renderAchievementList('battle')}
+    </div>
+  </div>`;
+  
+  // 默认选中第一个分类
+  setTimeout(function(){
+    var firstBtn=document.querySelector('[data-cat="battle"]');
+    if(firstBtn) firstBtn.classList.add('active');
+  },0);
+}
+
+// 切换成就分类
+function switchAchievementCategory(cat){
+  document.querySelectorAll('#achievement-list').forEach(function(el){
+    var achs=[];
+    for(var id in ACHIEVEMENTS){
+      if(ACHIEVEMENTS[id].category===cat) achs.push(ACHIEVEMENTS[id]);
+    }
+    
+    el.innerHTML=achs.map(function(ach){
+      var unlocked=!!G.achievements.unlocked[ach.id];
+      var claimed=unlocked&&G.achievements.unlocked[ach.id].claimed;
+      var progress=G.achievements.progress[ach.id]||0;
+      var pct=Math.min(100,Math.round(progress/ach.target*100));
+      var catInfo=ACHIEVEMENT_CATEGORIES[ach.category];
+      
+      return `<div class="achievement-item ${unlocked?'unlocked':''} ${claimed?'claimed':''}" style="background:var(--panel);border:1px solid ${unlocked?catInfo.color:'var(--border)'};border-radius:10px;padding:12px;margin-bottom:8px;opacity:${unlocked?1:0.7}">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:32px;width:50px;text-align:center">${ach.icon}</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <span style="font-weight:bold;color:${unlocked?catInfo.color:'var(--text)'};font-size:15px">${ach.name}</span>
+              ${unlocked?'<span style="background:'+catInfo.color+';color:#fff;font-size:10px;padding:2px 6px;border-radius:4px">已解锁</span>':''}
+              ${claimed?'<span style="background:var(--green);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px">已领取</span>':''}
+            </div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:6px">${ach.desc}</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="flex:1;background:rgba(255,255,255,.1);border-radius:4px;height:6px;overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:${unlocked?catInfo.color:'var(--text3)'};border-radius:4px;transition:width .3s"></div>
+              </div>
+              <span style="font-size:11px;color:var(--text3);white-space:nowrap">${progress}/${ach.target}</span>
+            </div>
+          </div>
+          <div style="text-align:right;min-width:80px">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px">奖励</div>
+            <div style="font-size:12px;color:var(--gold)">${formatReward(ach.reward)}</div>
+            ${unlocked&&!claimed?`<button class="btn btn-primary btn-sm" onclick="claimAchievementReward('${ach.id}');switchAchievementCategory('${cat}')" style="margin-top:6px;font-size:11px;padding:4px 10px">领取</button>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  });
+  
+  // 更新按钮状态
+  document.querySelectorAll('[data-cat]').forEach(function(btn){
+    btn.classList.toggle('active',btn.dataset.cat===cat);
+  });
 }
 
 function showEquipmentGallery(){
