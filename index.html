@@ -6233,24 +6233,31 @@ function cheatCloneHero(uid){
 
 function renderCheats(el){
   if(!G_cheats.unlocked){
-    el.innerHTML=`
-      <div class="panel">
-        <div class="panel-title"><span class="icon">🔒</span> 金手指系统</div>
-        <div style="text-align:center;padding:20px 0">
-          <div style="font-size:48px;margin-bottom:16px">🔒</div>
-          <div style="font-size:16px;font-weight:bold;color:var(--gold);margin-bottom:8px">金手指已锁定</div>
-          <div class="text-dim text-sm mb-8">请输入解锁密码</div>
-          <div style="max-width:280px;margin:0 auto">
-            <input type="password" id="cheat-password-input" style="width:100%;padding:10px 14px;border:1px solid var(--gold);background:var(--panel2);color:var(--text);border-radius:6px;font-size:16px;text-align:center;font-family:inherit;outline:none" placeholder="请输入密码" autocomplete="off">
-            <div class="text-dim text-xs mt-8">💡 提示：联系QQ741929749获取密码</div>
-            <div class="btn-group" style="justify-content:center;margin-top:12px">
-              <button class="btn btn-primary" onclick="unlockCheats()" style="padding:10px 40px;font-size:15px">🔓 解锁</button>
-            </div>
-            <div id="cheat-error" class="text-red text-sm mt-8" style="display:none"></div>
-          </div>
-        </div>
-      </div>
-    `;
+    el.innerHTML='<div class="panel">' +
+      '<div class="panel-title"><span class="icon">🔒</span> 金手指系统</div>' +
+      '<div style="text-align:center;padding:20px 0">' +
+        '<div style="font-size:48px;margin-bottom:16px">🔒</div>' +
+        '<div style="font-size:16px;font-weight:bold;color:var(--gold);margin-bottom:8px">金手指已锁定</div>' +
+        '<div class="text-dim text-sm mb-8">请输入解锁密码</div>' +
+        '<div style="max-width:280px;margin:0 auto">' +
+          '<input type="password" id="cheat-password-input" style="width:100%;padding:10px 14px;border:1px solid var(--gold);background:var(--panel2);color:var(--text);border-radius:6px;font-size:16px;text-align:center;font-family:inherit;outline:none" placeholder="请输入密码" autocomplete="off">' +
+          '<div class="btn-group" style="justify-content:center;margin-top:12px">' +
+            '<button class="btn btn-primary" onclick="unlockCheats()" style="padding:10px 40px;font-size:15px">🔓 解锁</button>' +
+          '</div>' +
+          '<div id="cheat-error" class="text-red text-sm mt-8" style="display:none"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="panel" style="background:rgba(39,174,96,.1);border-color:rgba(39,174,96,.3);margin-top:12px">' +
+        '<div class="panel-title">🎁 兑换码</div>' +
+        '<div style="max-width:280px;margin:0 auto">' +
+          '<input type="text" id="redeem-code-input" style="width:100%;padding:10px 14px;border:1px solid rgba(39,174,96,.5);background:var(--panel2);color:var(--text);border-radius:6px;font-size:14px;text-align:center;font-family:inherit;outline:none;text-transform:uppercase" placeholder="输入兑换码" autocomplete="off">' +
+          '<div class="btn-group" style="justify-content:center;margin-top:12px">' +
+            '<button class="btn btn-primary" onclick="redeemCode()" style="padding:10px 30px;font-size:14px">🎁 兑换</button>' +
+          '</div>' +
+          '<div id="redeem-result" class="text-sm mt-8" style="display:none"></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
     return;
   }
   el.innerHTML=`
@@ -6326,16 +6333,88 @@ function unlockCheats(){
   var err=document.getElementById('cheat-error');
   if(!input||!err)return;
   var pwd=input.value.trim();
-  if(pwd==='741929749'){
+  if(pwd==='lxl'){
     G_cheats.unlocked=true;
     G_cheats.enabled=true;
     showToast('🔓 金手指已解锁！');
     renderCurrentTab();
   }else{
-    err.textContent='❌ 密码错误，请联系QQ741929749获取正确密码';
+    err.textContent='❌ 密码错误';
     err.style.display='block';
+    err.style.color='var(--red)';
     input.value='';
     input.focus();
+  }
+}
+
+// 兑换码功能
+function redeemCode(){
+  var input=document.getElementById('redeem-code-input');
+  var resultEl=document.getElementById('redeem-result');
+  if(!input||!resultEl)return;
+  var code=input.value.trim().toUpperCase();
+  
+  if(!code){
+    resultEl.textContent='请输入兑换码';
+    resultEl.style.display='block';
+    resultEl.style.color='var(--red)';
+    return;
+  }
+  
+  // 检查兑换码
+  if(code==='DARK001'){
+    // 新手大礼包
+    if(G.redeemedCodes && G.redeemedCodes['DARK001']){
+      resultEl.textContent='⚠️ 该兑换码已使用过';
+      resultEl.style.display='block';
+      resultEl.style.color='var(--yellow)';
+      return;
+    }
+    
+    // 发放奖励
+    G.resources.gold=(G.resources.gold||0)+50000;
+    G.resources.gems=(G.resources.gems||0)+100;
+    G.resources.food=(G.resources.food||0)+500;
+    G.resources.stone=(G.resources.stone||0)+300;
+    G.resources.iron=(G.resources.iron||0)+200;
+    G.resources.fame=(G.resources.fame||0)+50;
+    
+    // 给一个史诗英雄
+    var tpl=HERO_TEMPLATES.filter(function(t){return t.quality==='epic'})[0];
+    if(tpl){
+      var hero=createHero(tpl.id);
+      G.heroes.push(hero);
+    }
+    
+    // 给一件传说装备
+    var equipTpl=EQUIP_TEMPLATES.filter(function(e){return e.quality==='legendary'})[0];
+    if(equipTpl){
+      var equip=createEquipment(equipTpl.id);
+      equip.level=20;
+      G.equipment.push(equip);
+    }
+    
+    // 记录已兑换
+    if(!G.redeemedCodes)G.redeemedCodes={};
+    G.redeemedCodes['DARK001']=Date.now();
+    
+    saveGame();
+    updateResUI();
+    
+    resultEl.innerHTML='<span style="color:#2ecc71">✅ 兑换成功！</span><br>' +
+      '<span style="font-size:12px;color:var(--text2)">' +
+      '金币+50000 | 宝石+100 | 食物+500<br>' +
+      '石头+300 | 铁矿+200 | 声望+50<br>' +
+      '史诗英雄×1 | 传说装备×1' +
+      '</span>';
+    resultEl.style.display='block';
+    input.value='';
+    
+    showToast('🎁 新手大礼包兑换成功！');
+  }else{
+    resultEl.textContent='❌ 兑换码无效';
+    resultEl.style.display='block';
+    resultEl.style.color='var(--red)';
   }
 }
 
