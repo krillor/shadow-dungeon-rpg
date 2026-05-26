@@ -6720,11 +6720,11 @@ function showEquipDetail(equipUid){
   // 操作按钮
   let actionButtons='';
   if(hero){
-    actionButtons='<button class="btn btn-danger" onclick="unequipFromHero('+hero.uid+',\''+tpl.type+'\');closeModal();" style="flex:1">卸下装备</button>';
+    actionButtons='<button class="btn btn-danger" onclick="closeModal();unequipFromHero('+hero.uid+',\''+tpl.type+'\');" style="flex:1">卸下装备</button>';
   }else{
-    actionButtons='<button class="btn btn-primary" onclick="showEquipToHero('+equipUid+');closeModal();" style="flex:1">装备给英雄</button>'
-      +'<button class="btn" onclick="enhanceEquipment('+equipUid+');closeModal();" style="flex:1;background:rgba(255,215,0,.15);border-color:var(--gold);color:var(--gold)">强化</button>'
-      +'<button class="btn btn-danger" onclick="decomposeEquipment('+equipUid+');closeModal();" style="flex:1">分解</button>';
+    actionButtons='<button class="btn btn-primary" onclick="closeModal();showEquipToHero('+equipUid+');" style="flex:1">装备给英雄</button>'
+      +'<button class="btn" onclick="closeModal();enhanceEquipment('+equipUid+');" style="flex:1;background:rgba(255,215,0,.15);border-color:var(--gold);color:var(--gold)">强化</button>'
+      +'<button class="btn btn-danger" onclick="closeModal();decomposeEquipment('+equipUid+');" style="flex:1">分解</button>';
   }
   
   const html='<div style="text-align:center;margin-bottom:16px">'
