@@ -573,6 +573,346 @@ const ROLES = {
     passive:{name:'圣光庇护',desc:'受到致命伤害时保留1点生命（每场战斗1次），对亡灵伤害+50%'},undeadBonus:0.5,deathDefy:true}
 };
 
+// 天赋树配置 - 每个职业3个分支，每个分支5个天赋（3基础+1进阶+1终极）
+const TALENT_TREES = {
+  warrior: {
+    name: '战士',
+    branches: {
+      fury: {
+        name: '狂怒',
+        icon: '😤',
+        desc: '强化低生命值时的爆发能力',
+        talents: [
+          {id: 'fury_1', name: '狂怒之心', desc: '生命值低于50%时，攻击力+8%', effect: {type: 'hpThresholdAtk', threshold: 0.5, value: 0.08}, maxPoints: 3},
+          {id: 'fury_2', name: '嗜血', desc: '击杀敌人后恢复10%最大生命', effect: {type: 'killHeal', value: 0.1}, maxPoints: 3},
+          {id: 'fury_3', name: '暴怒', desc: '暴击率+4%', effect: {type: 'critChance', value: 0.04}, maxPoints: 3},
+          {id: 'fury_4', name: '无尽怒火', desc: '生命值低于30%时，攻击力额外+15%', effect: {type: 'hpThresholdAtk2', threshold: 0.3, value: 0.15}, maxPoints: 1, requires: ['fury_1', 'fury_2', 'fury_3']},
+          {id: 'fury_5', name: '不屈战魂', desc: '受到致命伤害时，保留1点生命并免疫伤害1回合（每场战斗1次）', effect: {type: 'deathDefy', value: true}, maxPoints: 1, requires: ['fury_4']}
+        ]
+      },
+      defense: {
+        name: '铁壁',
+        icon: '🛡️',
+        desc: '强化防御和生存能力',
+        talents: [
+          {id: 'def_1', name: '坚韧', desc: '最大生命值+6%', effect: {type: 'hpMax', value: 0.06}, maxPoints: 3},
+          {id: 'def_2', name: '格挡', desc: '受到的伤害-5%', effect: {type: 'damageReduce', value: 0.05}, maxPoints: 3},
+          {id: 'def_3', name: '复苏', desc: '每回合开始时恢复3%最大生命', effect: {type: 'hpRegen', value: 0.03}, maxPoints: 3},
+          {id: 'def_4', name: '钢铁意志', desc: '受到控制效果持续时间-50%', effect: {type: 'ccReduce', value: 0.5}, maxPoints: 1, requires: ['def_1', 'def_2', 'def_3']},
+          {id: 'def_5', name: '守护之魂', desc: '为全队分担15%伤害', effect: {type: 'damageShare', value: 0.15}, maxPoints: 1, requires: ['def_4']}
+        ]
+      },
+      tactics: {
+        name: '战术',
+        icon: '📖',
+        desc: '强化团队辅助能力',
+        talents: [
+          {id: 'tac_1', name: '战吼', desc: '战斗开始时，全队攻击力+5%（持续3回合）', effect: {type: 'battleStartBuff', stat: 'atk', value: 0.05, duration: 3}, maxPoints: 3},
+          {id: 'tac_2', name: '指挥', desc: '全队暴击率+2%', effect: {type: 'teamCrit', value: 0.02}, maxPoints: 3},
+          {id: 'tac_3', name: '激励', desc: '队友击杀敌人时，你获得1点怒气（下次攻击+20%）', effect: {type: 'allyKillBoost', value: 0.2}, maxPoints: 3},
+          {id: 'tac_4', name: '战术大师', desc: '所有技能冷却时间-1回合', effect: {type: 'cdReduce', value: 1}, maxPoints: 1, requires: ['tac_1', 'tac_2', 'tac_3']},
+          {id: 'tac_5', name: '军团之力', desc: '全队伤害+10%', effect: {type: 'teamDamage', value: 0.1}, maxPoints: 1, requires: ['tac_4']}
+        ]
+      }
+    }
+  },
+  guardian: {
+    name: '守护者',
+    branches: {
+      fortress: {
+        name: '要塞',
+        icon: '🏰',
+        desc: '极致防御，成为不可撼动的堡垒',
+        talents: [
+          {id: 'fort_1', name: '铜墙铁壁', desc: '防御力+8%', effect: {type: 'def', value: 0.08}, maxPoints: 3},
+          {id: 'fort_2', name: '护盾强化', desc: '获得的护盾效果+15%', effect: {type: 'shieldBoost', value: 0.15}, maxPoints: 3},
+          {id: 'fort_3', name: '坚守', desc: '生命值低于30%时，防御力+20%', effect: {type: 'hpThresholdDef', threshold: 0.3, value: 0.2}, maxPoints: 3},
+          {id: 'fort_4', name: '绝对防御', desc: '受到的单次伤害不会超过最大生命的30%', effect: {type: 'damageCap', value: 0.3}, maxPoints: 1, requires: ['fort_1', 'fort_2', 'fort_3']},
+          {id: 'fort_5', name: '不朽堡垒', desc: '受到致命伤害时，保留1点生命并获得50%最大生命的护盾（每场战斗1次）', effect: {type: 'deathShield', value: 0.5}, maxPoints: 1, requires: ['fort_4']}
+        ]
+      },
+      vanguard: {
+        name: '先锋',
+        icon: '⚔️',
+        desc: '攻守兼备的前排输出',
+        talents: [
+          {id: 'van_1', name: '反击', desc: '受到攻击时，20%概率反击（造成50%攻击伤害）', effect: {type: 'counter', chance: 0.2, value: 0.5}, maxPoints: 3},
+          {id: 'van_2', name: '破甲', desc: '攻击时无视目标15%防御', effect: {type: 'defPen', value: 0.15}, maxPoints: 3},
+          {id: 'van_3', name: '战意', desc: '每次受到伤害，攻击力+2%（最多叠加5层）', effect: {type: 'damageAtkStack', value: 0.02, maxStack: 5}, maxPoints: 3},
+          {id: 'van_4', name: '雷霆反击', desc: '反击伤害提升至100%，且必定暴击', effect: {type: 'counterEnhance', value: 1.0}, maxPoints: 1, requires: ['van_1', 'van_2', 'van_3']},
+          {id: 'van_5', name: '先锋之怒', desc: '生命值高于70%时，伤害+25%', effect: {type: 'hpAboveDamage', threshold: 0.7, value: 0.25}, maxPoints: 1, requires: ['van_4']}
+        ]
+      },
+      protector: {
+        name: '守护',
+        icon: '💚',
+        desc: '保护队友，团队之盾',
+        talents: [
+          {id: 'prot_1', name: '掩护', desc: '为生命值最低的队友分担10%伤害', effect: {type: 'protectAlly', value: 0.1}, maxPoints: 3},
+          {id: 'prot_2', name: '援护', desc: '受到致命伤害的队友，你为其承受该次伤害（每场战斗2次）', effect: {type: 'sacrifice', value: 2}, maxPoints: 3},
+          {id: 'prot_3', name: '鼓舞', desc: '队友受到你保护时，攻击力+5%', effect: {type: 'protectedBuff', value: 0.05}, maxPoints: 3},
+          {id: 'prot_4', name: '圣盾庇护', desc: '战斗开始时，为全队提供15%最大生命的护盾', effect: {type: 'startShield', value: 0.15}, maxPoints: 1, requires: ['prot_1', 'prot_2', 'prot_3']},
+          {id: 'prot_5', name: '守护天使', desc: '队友受到致命伤害时，使其保留1点生命（每场战斗1次）', effect: {type: 'allyDeathDefy', value: 1}, maxPoints: 1, requires: ['prot_4']}
+        ]
+      }
+    }
+  },
+  mage: {
+    name: '法师',
+    branches: {
+      fire: {
+        name: '火焰',
+        icon: '🔥',
+        desc: '极致的爆发伤害',
+        talents: [
+          {id: 'fire_1', name: '烈焰强化', desc: '火焰技能伤害+10%', effect: {type: 'fireBoost', value: 0.1}, maxPoints: 3},
+          {id: 'fire_2', name: '灼烧', desc: '技能有30%概率附加灼烧（3回合，每回合5%攻击）', effect: {type: 'burnChance', chance: 0.3, value: 0.05}, maxPoints: 3},
+          {id: 'fire_3', name: '法力燃烧', desc: '技能消耗MP-10%', effect: {type: 'mpCostReduce', value: 0.1}, maxPoints: 3},
+          {id: 'fire_4', name: '爆燃', desc: '对灼烧目标伤害+25%', effect: {type: 'burnBonus', value: 0.25}, maxPoints: 1, requires: ['fire_1', 'fire_2', 'fire_3']},
+          {id: 'fire_5', name: '末日烈焰', desc: '击杀敌人时，对全体敌人造成50%攻击的火焰伤害', effect: {type: 'killFireAOE', value: 0.5}, maxPoints: 1, requires: ['fire_4']}
+        ]
+      },
+      ice: {
+        name: '冰霜',
+        icon: '❄️',
+        desc: '控制与持续输出',
+        talents: [
+          {id: 'ice_1', name: '冰冻强化', desc: '冰冻持续时间+1回合', effect: {type: 'freezeExtend', value: 1}, maxPoints: 3},
+          {id: 'ice_2', name: '严寒', desc: '技能有25%概率冰冻目标', effect: {type: 'freezeChance', chance: 0.25}, maxPoints: 3},
+          {id: 'ice_3', name: '冰冷智慧', desc: '每有一个被冰冻的敌人，你的伤害+5%', effect: {type: 'freezeDamage', value: 0.05}, maxPoints: 3},
+          {id: 'ice_4', name: '绝对零度', desc: '冰冻效果结束时，目标受到10%最大生命的伤害', effect: {type: 'freezeEndDamage', value: 0.1}, maxPoints: 1, requires: ['ice_1', 'ice_2', 'ice_3']},
+          {id: 'ice_5', name: '冰封王座', desc: '战斗开始时，冰冻随机2个敌人1回合', effect: {type: 'startFreeze', value: 2}, maxPoints: 1, requires: ['ice_4']}
+        ]
+      },
+      arcane: {
+        name: '奥术',
+        icon: '✨',
+        desc: '法力与暴击的极致',
+        talents: [
+          {id: 'arc_1', name: '奥术精通', desc: '最大MP+15%', effect: {type: 'mpMax', value: 0.15}, maxPoints: 3},
+          {id: 'arc_2', name: '法力回复', desc: '每回合恢复5%最大MP', effect: {type: 'mpRegen', value: 0.05}, maxPoints: 3},
+          {id: 'arc_3', name: '奥术暴击', desc: '技能暴击率+8%', effect: {type: 'skillCrit', value: 0.08}, maxPoints: 3},
+          {id: 'arc_4', name: '法术连击', desc: '技能有20%概率触发连击（不消耗MP）', effect: {type: 'spellDouble', chance: 0.2}, maxPoints: 1, requires: ['arc_1', 'arc_2', 'arc_3']},
+          {id: 'arc_5', name: '奥术洪流', desc: 'MP高于70%时，技能伤害+30%', effect: {type: 'mpAboveDamage', threshold: 0.7, value: 0.3}, maxPoints: 1, requires: ['arc_4']}
+        ]
+      }
+    }
+  },
+  healer: {
+    name: '治愈者',
+    branches: {
+      restoration: {
+        name: '恢复',
+        icon: '💚',
+        desc: '极致的治疗能力',
+        talents: [
+          {id: 'rest_1', name: '治疗强化', desc: '治疗效果+10%', effect: {type: 'healBoost', value: 0.1}, maxPoints: 3},
+          {id: 'rest_2', name: '快速治疗', desc: '治疗技能冷却-1回合', effect: {type: 'healCdReduce', value: 1}, maxPoints: 3},
+          {id: 'rest_3', name: '治疗之泉', desc: '治疗时为目标附加持续恢复（3回合，每回合3%）', effect: {type: 'healHot', value: 0.03, duration: 3}, maxPoints: 3},
+          {id: 'rest_4', name: '圣光普照', desc: '治疗技能同时影响全体队友（50%效果）', effect: {type: 'healAOE', value: 0.5}, maxPoints: 1, requires: ['rest_1', 'rest_2', 'rest_3']},
+          {id: 'rest_5', name: '生命之泉', desc: '队友生命低于20%时，自动为其恢复30%生命（每场战斗3次）', effect: {type: 'autoHeal', threshold: 0.2, value: 0.3, count: 3}, maxPoints: 1, requires: ['rest_4']}
+        ]
+      },
+      holy: {
+        name: '神圣',
+        icon: '✨',
+        desc: '伤害与治疗并存',
+        talents: [
+          {id: 'holy_1', name: '神圣之怒', desc: '对亡灵伤害+20%', effect: {type: 'undeadBonus', value: 0.2}, maxPoints: 3},
+          {id: 'holy_2', name: '惩击', desc: '攻击时附加等同于治疗强度的神圣伤害', effect: {type: 'healToDamage', value: 1}, maxPoints: 3},
+          {id: 'holy_3', name: '神圣护盾', desc: '治疗时为目标附加护盾（吸收量=治疗量的20%）', effect: {type: 'healShield', value: 0.2}, maxPoints: 3},
+          {id: 'holy_4', name: '神圣化身', desc: '你的攻击同时治疗生命值最低的队友（治疗量=伤害的30%）', effect: {type: 'damageToHeal', value: 0.3}, maxPoints: 1, requires: ['holy_1', 'holy_2', 'holy_3']},
+          {id: 'holy_5', name: '神圣审判', desc: '击杀敌人时，为全队恢复15%最大生命', effect: {type: 'killTeamHeal', value: 0.15}, maxPoints: 1, requires: ['holy_4']}
+        ]
+      },
+      nature: {
+        name: '自然',
+        icon: '🌿',
+        desc: '持续恢复与增益',
+        talents: [
+          {id: 'nat_1', name: '自然之力', desc: '持续恢复效果+15%', effect: {type: 'hotBoost', value: 0.15}, maxPoints: 3},
+          {id: 'nat_2', name: '净化', desc: '治疗时50%概率移除目标1个负面效果', effect: {type: 'cleanseChance', chance: 0.5}, maxPoints: 3},
+          {id: 'nat_3', name: '生命链接', desc: '全队每回合恢复2%最大生命', effect: {type: 'teamRegen', value: 0.02}, maxPoints: 3},
+          {id: 'nat_4', name: '自然祝福', desc: '战斗开始时，全队获得10%最大生命的护盾和持续恢复', effect: {type: 'natureBlessing', value: 0.1}, maxPoints: 1, requires: ['nat_1', 'nat_2', 'nat_3']},
+          {id: 'nat_5', name: '万物复苏', desc: '队友死亡时，使其复活并恢复30%生命（每场战斗1次）', effect: {type: 'revive', value: 0.3}, maxPoints: 1, requires: ['nat_4']}
+        ]
+      }
+    }
+  },
+  assassin: {
+    name: '刺客',
+    branches: {
+      shadow: {
+        name: '暗影',
+        icon: '🌑',
+        desc: '极致的爆发与闪避',
+        talents: [
+          {id: 'shad_1', name: '暗影步', desc: '闪避率+5%', effect: {type: 'dodge', value: 0.05}, maxPoints: 3},
+          {id: 'shad_2', name: '背刺', desc: '攻击生命值高于70%的目标时，伤害+15%', effect: {type: 'hpAboveBonus', threshold: 0.7, value: 0.15}, maxPoints: 3},
+          {id: 'shad_3', name: '致命', desc: '暴击伤害+15%', effect: {type: 'critDamage', value: 0.15}, maxPoints: 3},
+          {id: 'shad_4', name: '暗影之舞', desc: '闪避后下次攻击必定暴击且伤害+50%', effect: {type: 'dodgeCrit', value: 0.5}, maxPoints: 1, requires: ['shad_1', 'shad_2', 'shad_3']},
+          {id: 'shad_5', name: '死亡标记', desc: '战斗开始时，标记生命值最低的敌人，对其伤害+40%', effect: {type: 'markLowest', value: 0.4}, maxPoints: 1, requires: ['shad_4']}
+        ]
+      },
+      poison: {
+        name: '剧毒',
+        icon: '🐍',
+        desc: '持续伤害与削弱',
+        talents: [
+          {id: 'pois_1', name: '剧毒武器', desc: '攻击有40%概率使目标中毒（3回合，每回合8%攻击）', effect: {type: 'poisonChance', chance: 0.4, value: 0.08}, maxPoints: 3},
+          {id: 'pois_2', name: '腐蚀', desc: '中毒目标防御力-15%', effect: {type: 'poisonDefReduce', value: 0.15}, maxPoints: 3},
+          {id: 'pois_3', name: '蔓延', desc: '中毒目标死亡时，中毒效果转移给随机敌人', effect: {type: 'poisonSpread'}, maxPoints: 3},
+          {id: 'pois_4', name: '致命毒素', desc: '中毒伤害翻倍，且可以叠加2层', effect: {type: 'poisonEnhance', value: 2}, maxPoints: 1, requires: ['pois_1', 'pois_2', 'pois_3']},
+          {id: 'pois_5', name: '瘟疫之源', desc: '战斗开始时，使全体敌人中毒（5回合，每回合5%攻击）', effect: {type: 'startPoison', value: 0.05, duration: 5}, maxPoints: 1, requires: ['pois_4']}
+        ]
+      },
+      bleed: {
+        name: '流血',
+        icon: '🩸',
+        desc: '连击与流血伤害',
+        talents: [
+          {id: 'bleed_1', name: '撕裂', desc: '攻击有35%概率使目标流血（3回合，每回合10%攻击）', effect: {type: 'bleedChance', chance: 0.35, value: 0.1}, maxPoints: 3},
+          {id: 'bleed_2', name: '连击', desc: '攻击时有15%概率额外攻击1次（50%伤害）', effect: {type: 'doubleAttack', chance: 0.15, value: 0.5}, maxPoints: 3},
+          {id: 'bleed_3', name: '血怒', desc: '目标每有一层流血，你对其伤害+5%', effect: {type: 'bleedBonus', value: 0.05}, maxPoints: 3},
+          {id: 'bleed_4', name: '血之狂暴', desc: '击杀流血目标时，立即行动1次', effect: {type: 'killExtraTurn'}, maxPoints: 1, requires: ['bleed_1', 'bleed_2', 'bleed_3']},
+          {id: 'bleed_5', name: '血祭', desc: '消耗10%当前生命，下次攻击伤害+80%', effect: {type: 'bloodSacrifice', hpCost: 0.1, value: 0.8}, maxPoints: 1, requires: ['bleed_4']}
+        ]
+      }
+    }
+  },
+  ranger: {
+    name: '游侠',
+    branches: {
+      precision: {
+        name: '精准',
+        icon: '🎯',
+        desc: '极致的命中与暴击',
+        talents: [
+          {id: 'prec_1', name: '神射手', desc: '命中率+10%', effect: {type: 'hitChance', value: 0.1}, maxPoints: 3},
+          {id: 'prec_2', name: '弱点洞察', desc: '暴击率+5%', effect: {type: 'critChance', value: 0.05}, maxPoints: 3},
+          {id: 'prec_3', name: '穿透', desc: '无视目标20%防御', effect: {type: 'defPen', value: 0.2}, maxPoints: 3},
+          {id: 'prec_4', name: '致命一击', desc: '对生命低于30%的目标，暴击率+30%', effect: {type: 'lowHpCrit', threshold: 0.3, value: 0.3}, maxPoints: 1, requires: ['prec_1', 'prec_2', 'prec_3']},
+          {id: 'prec_5', name: '百步穿杨', desc: '攻击必定命中且无视闪避，暴击伤害+40%', effect: {type: 'trueHit', critBonus: 0.4}, maxPoints: 1, requires: ['prec_4']}
+        ]
+      },
+      trap: {
+        name: '陷阱',
+        icon: '🕸️',
+        desc: '控制与区域伤害',
+        talents: [
+          {id: 'trap_1', name: '陷阱大师', desc: '陷阱触发伤害+20%', effect: {type: 'trapDamage', value: 0.2}, maxPoints: 3},
+          {id: 'trap_2', name: '束缚', desc: '陷阱有30%概率束缚目标1回合', effect: {type: 'trapRoot', chance: 0.3}, maxPoints: 3},
+          {id: 'trap_3', name: '连环陷阱', desc: '可同时布置2个陷阱', effect: {type: 'extraTrap', value: 1}, maxPoints: 3},
+          {id: 'trap_4', name: '诱捕', desc: '战斗开始时，在敌方区域布置陷阱（触发时束缚并造成100%攻击伤害）', effect: {type: 'startTrap', value: 1.0}, maxPoints: 1, requires: ['trap_1', 'trap_2', 'trap_3']},
+          {id: 'trap_5', name: '天罗地网', desc: '陷阱触发时，对全体敌人造成50%攻击伤害并30%概率束缚', effect: {type: 'trapAOE', value: 0.5}, maxPoints: 1, requires: ['trap_4']}
+        ]
+      },
+      beast: {
+        name: '兽王',
+        icon: '🐺',
+        desc: '召唤与协同作战',
+        talents: [
+          {id: 'beast_1', name: '野兽伙伴', desc: '召唤物攻击力+15%', effect: {type: 'petAtk', value: 0.15}, maxPoints: 3},
+          {id: 'beast_2', name: '协同', desc: '召唤物攻击时，你有30%概率协攻（50%伤害）', effect: {type: 'petSynergy', chance: 0.3, value: 0.5}, maxPoints: 3},
+          {id: 'beast_3', name: '兽性', desc: '每有一个召唤物，你的伤害+5%', effect: {type: 'petDamage', value: 0.05}, maxPoints: 3},
+          {id: 'beast_4', name: '召唤大师', desc: '召唤物数量上限+1', effect: {type: 'extraPet', value: 1}, maxPoints: 1, requires: ['beast_1', 'beast_2', 'beast_3']},
+          {id: 'beast_5', name: '兽群奔腾', desc: '战斗开始时，召唤2只狼（攻击力=你的50%，持续5回合）', effect: {type: 'startPet', count: 2, value: 0.5}, maxPoints: 1, requires: ['beast_4']}
+        ]
+      }
+    }
+  },
+  warlock: {
+    name: '术士',
+    branches: {
+      drain: {
+        name: '吸血',
+        icon: '🩸',
+        desc: '生命汲取与回复',
+        talents: [
+          {id: 'drain_1', name: '生命汲取', desc: '造成伤害的10%转化为生命恢复', effect: {type: 'lifeSteal', value: 0.1}, maxPoints: 3},
+          {id: 'drain_2', name: '灵魂吞噬', desc: '击杀敌人时，恢复20%最大生命', effect: {type: 'killHeal', value: 0.2}, maxPoints: 3},
+          {id: 'drain_3', name: '血之契约', desc: '消耗生命释放的技能，伤害+20%', effect: {type: 'hpCostBonus', value: 0.2}, maxPoints: 3},
+          {id: 'drain_4', name: '吸血鬼之触', desc: '攻击时附加吸血效果（3回合，造成伤害的15%恢复生命）', effect: {type: 'vampiricTouch', value: 0.15}, maxPoints: 1, requires: ['drain_1', 'drain_2', 'drain_3']},
+          {id: 'drain_5', name: '不朽之身', desc: '生命恢复可以超出上限（最多150%），超出部分转化为护盾', effect: {type: 'overHeal', value: 1.5}, maxPoints: 1, requires: ['drain_4']}
+        ]
+      },
+      curse: {
+        name: '诅咒',
+        icon: '💀',
+        desc: '削弱敌人与DOT',
+        talents: [
+          {id: 'curse_1', name: '虚弱诅咒', desc: '诅咒使目标攻击力-15%', effect: {type: 'curseAtk', value: 0.15}, maxPoints: 3},
+          {id: 'curse_2', name: '痛苦诅咒', desc: '诅咒使目标每回合受到8%攻击的伤害', effect: {type: 'curseDot', value: 0.08}, maxPoints: 3},
+          {id: 'curse_3', name: '蔓延', desc: '诅咒有30%概率扩散给相邻敌人', effect: {type: 'curseSpread', chance: 0.3}, maxPoints: 3},
+          {id: 'curse_4', name: '厄运', desc: '被诅咒的目标暴击率-20%，命中率-20%', effect: {type: 'curseBadLuck', value: 0.2}, maxPoints: 1, requires: ['curse_1', 'curse_2', 'curse_3']},
+          {id: 'curse_5', name: '死亡诅咒', desc: '诅咒的目标死亡时爆炸，对全体敌人造成30%最大生命的伤害', effect: {type: 'curseExplode', value: 0.3}, maxPoints: 1, requires: ['curse_4']}
+        ]
+      },
+      summon: {
+        name: '召唤',
+        icon: '👻',
+        desc: '召唤亡灵作战',
+        talents: [
+          {id: 'summ_1', name: '亡灵强化', desc: '召唤物生命值和攻击力+15%', effect: {type: 'undeadBoost', value: 0.15}, maxPoints: 3},
+          {id: 'summ_2', name: '亡者复生', desc: '击杀敌人时，30%概率将其复活为骷髅战士（持续3回合）', effect: {type: 'raiseDead', chance: 0.3}, maxPoints: 3},
+          {id: 'summ_3', name: '亡灵大军', desc: '每有一个召唤物，你的伤害+4%', effect: {type: 'undeadDamage', value: 0.04}, maxPoints: 3},
+          {id: 'summ_4', name: '黑暗仪式', desc: '可以献祭召唤物，立即恢复50%生命并获得其50%攻击力（持续2回合）', effect: {type: 'sacrifice', value: 0.5}, maxPoints: 1, requires: ['summ_1', 'summ_2', 'summ_3']},
+          {id: 'summ_5', name: '死亡骑士', desc: '战斗开始时，召唤1个死亡骑士（攻击力=你的80%，有嘲讽）', effect: {type: 'startDeathKnight', value: 0.8}, maxPoints: 1, requires: ['summ_4']}
+        ]
+      }
+    }
+  },
+  paladin: {
+    name: '圣骑士',
+    branches: {
+      light: {
+        name: '圣光',
+        icon: '✨',
+        desc: '治疗与保护的平衡',
+        talents: [
+          {id: 'light_1', name: '圣光术', desc: '治疗效果+10%', effect: {type: 'healBoost', value: 0.1}, maxPoints: 3},
+          {id: 'light_2', name: '神圣护盾', desc: '护盾效果+20%', effect: {type: 'shieldBoost', value: 0.2}, maxPoints: 3},
+          {id: 'light_3', name: '圣光打击', desc: '对亡灵伤害+25%', effect: {type: 'undeadBonus', value: 0.25}, maxPoints: 3},
+          {id: 'light_4', name: '神圣化身', desc: '你的攻击同时治疗生命值最低的队友（治疗量=伤害的25%）', effect: {type: 'damageToHeal', value: 0.25}, maxPoints: 1, requires: ['light_1', 'light_2', 'light_3']},
+          {id: 'light_5', name: '神圣庇护', desc: '全队受到的伤害-15%，且免疫控制效果', effect: {type: 'teamDamageReduce', value: 0.15}, maxPoints: 1, requires: ['light_4']}
+        ]
+      },
+      judgment: {
+        name: '审判',
+        icon: '⚖️',
+        desc: '对邪恶的制裁',
+        talents: [
+          {id: 'judge_1', name: '审判之锤', desc: '攻击有20%概率眩晕目标1回合', effect: {type: 'stunChance', chance: 0.2}, maxPoints: 3},
+          {id: 'judge_2', name: '正义', desc: '对生命值低于50%的敌人，伤害+15%', effect: {type: 'lowHpBonus', threshold: 0.5, value: 0.15}, maxPoints: 3},
+          {id: 'judge_3', name: '制裁', desc: '眩晕目标受到的伤害+25%', effect: {type: 'stunBonus', value: 0.25}, maxPoints: 3},
+          {id: 'judge_4', name: '神圣审判', desc: '击杀敌人时，对全体敌人造成30%攻击的神圣伤害并30%概率眩晕', effect: {type: 'killHolyAOE', value: 0.3}, maxPoints: 1, requires: ['judge_1', 'judge_2', 'judge_3']},
+          {id: 'judge_5', name: '天罚', desc: '战斗开始时，对所有敌人造成50%攻击的神圣伤害并眩晕1回合', effect: {type: 'startHolyStun', value: 0.5}, maxPoints: 1, requires: ['judge_4']}
+        ]
+      },
+      aegis: {
+        name: '神盾',
+        icon: '🛡️',
+        desc: '极致的守护',
+        talents: [
+          {id: 'aeg_1', name: '盾墙', desc: '防御力+10%', effect: {type: 'def', value: 0.1}, maxPoints: 3},
+          {id: 'aeg_2', name: '守护誓言', desc: '为生命值最低的队友分担15%伤害', effect: {type: 'protectAlly', value: 0.15}, maxPoints: 3},
+          {id: 'aeg_3', name: '牺牲', desc: '队友受到致命伤害时，你为其承受该伤害（每场战斗2次）', effect: {type: 'sacrifice', value: 2}, maxPoints: 3},
+          {id: 'aeg_4', name: '圣盾术', desc: '可以为队友施加护盾（吸收量=你的30%最大生命）', effect: {type: 'allyShield', value: 0.3}, maxPoints: 1, requires: ['aeg_1', 'aeg_2', 'aeg_3']},
+          {id: 'aeg_5', name: '守护天使', desc: '队友受到致命伤害时，使其保留1点生命并获得50%最大生命的护盾（每场战斗1次）', effect: {type: 'allyDeathShield', value: 0.5}, maxPoints: 1, requires: ['aeg_4']}
+        ]
+      }
+    }
+  }
+};
+
+// 天赋点获取配置
+const TALENT_CONFIG = {
+  pointsPerLevel: 1,        // 每升1级获得1点天赋点
+  maxPoints: 15,            // 最多15点天赋点（对应15级后不再获得）
+  resetCostGold: 500,       // 重置天赋消耗金币
+  resetCostGems: 5          // 重置天赋消耗宝石
+};
+
 const SKILLS = {
   // 战士技能
   cleave:      {name:'旋风斩',icon:'🌀',desc:'对敌方全体造成60%攻击力的伤害',type:'damage',target:'all_enemies',mult:0.6,mpCost:15,cooldown:2},
