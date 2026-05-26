@@ -6583,6 +6583,18 @@ function showPlayerNameInput() {
   }, 100);
 }
 
+// 检查名字是否已存在
+function checkPlayerNameExists(name) {
+  if (!isCloudReady) return Promise.resolve(false);
+  return sb.from('saves').select('player_name').eq('player_name', name).limit(1)
+    .then(function(result) {
+      return result.data && result.data.length > 0;
+    })
+    .catch(function() {
+      return false;
+    });
+}
+
 // 确认玩家名字
 function confirmPlayerName() {
   var input = document.getElementById('player-name-input');
@@ -6598,17 +6610,40 @@ function confirmPlayerName() {
     return;
   }
   
-  G.playerName = name;
-  saveGame();
-  
-  // 移除弹窗
-  var overlay = document.getElementById('player-name-overlay');
-  if (overlay) overlay.remove();
-  
-  showToast('✅ 名字设置成功：' + name);
-  
-  // 继续保存到云端
-  saveToCloud();
+  // 检查是否同名
+  checkPlayerNameExists(name).then(function(exists) {
+    if (exists) {
+      // 生成建议名字
+      var suggestedName = name + Math.floor(Math.random() * 100);
+      if (suggestedName.length > 12) {
+        suggestedName = name.slice(0, 10) + Math.floor(Math.random() * 10);
+      }
+      
+      // 更新输入框显示建议
+      input.value = suggestedName;
+      showToast('⚠️ 名字 "' + name + '" 已被使用，建议使用 "' + suggestedName + '"');
+      
+      // 高亮输入框提示
+      input.style.borderColor = '#ff6b6b';
+      setTimeout(function() {
+        input.style.borderColor = '';
+      }, 2000);
+      return;
+    }
+    
+    // 名字可用，继续设置
+    G.playerName = name;
+    saveGame();
+    
+    // 移除弹窗
+    var overlay = document.getElementById('player-name-overlay');
+    if (overlay) overlay.remove();
+    
+    showToast('✅ 名字设置成功：' + name);
+    
+    // 继续保存到云端
+    saveToCloud();
+  });
 }
 
 // 提交排行榜分数
