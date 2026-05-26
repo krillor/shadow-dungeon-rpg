@@ -6056,8 +6056,8 @@ function loadLeaderboardData(type){
         var rank = i + 1;
         var rankColor = rank === 1 ? '#ffd700' : rank === 2 ? '#c0c0c0' : rank === 3 ? '#cd7f32' : 'var(--text)';
         var rankIcon = rank <= 3 ? ['🥇','🥈','🥉'][rank-1] : '<span style="display:inline-block;width:24px;text-align:center">' + rank + '</span>';
-        var isMe = currentUser && entry.uid === currentUser.id;
-        var playerName = isMe ? '<b style="color:var(--gold)">' + (G.playerName || '我') + '</b>' : (entry.name || ('玩家' + (entry.uid ? entry.uid.slice(-6) : '???')));
+        var isMe = entry.device_id === deviceId;
+        var playerName = isMe ? '<b style="color:var(--gold)">' + (G.playerName || '我') + '</b>' : (entry.name || ('玩家' + (entry.device_id ? entry.device_id.slice(-6) : '???')));
         var dateStr = entry.timestamp ? new Date(entry.timestamp).toLocaleDateString() : '-';
         var scoreStr = entry.score ? entry.score.toLocaleString() : '0';
         
@@ -6445,8 +6445,18 @@ var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 // Supabase 客户端
 var sb = null;
-var currentUser = null;
+var deviceId = null;
 var isCloudReady = false;
+
+// 获取或创建设备ID
+function getOrCreateDeviceId() {
+  var id = localStorage.getItem('shadow_dungeon_device_id');
+  if (!id) {
+    id = 'd_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('shadow_dungeon_device_id', id);
+  }
+  return id;
+}
 
 // 初始化 Supabase
 function initSupabase() {
@@ -6462,13 +6472,13 @@ function initSupabase() {
     }
     
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    deviceId = getOrCreateDeviceId();
     
-    // 匿名登录
+    // 匿名登录（仅用于认证，实际使用 deviceId 作为标识）
     sb.auth.signInAnonymously().then(function(result) {
       if (result.data && result.data.user) {
-        currentUser = result.data.user;
         isCloudReady = true;
-        console.log('Supabase ready, UID:', currentUser.id);
+        console.log('Supabase ready, Device ID:', deviceId);
         loadCloudSave();
       }
     }).catch(function(error) {
@@ -6484,7 +6494,7 @@ function initSupabase() {
 
 // 保存到云端
 function saveToCloud() {
-  if (!isCloudReady || !currentUser) {
+  if (!isCloudReady || !deviceId) {
     return Promise.resolve(false);
   }
   
@@ -6495,7 +6505,7 @@ function saveToCloud() {
   }
   
   var saveData = {
-    user_id: currentUser.id,
+    device_id: deviceId,
     player_name: G.playerName,
     heroes: G.heroes,
     team: G.team,
@@ -6522,11 +6532,11 @@ function saveToCloud() {
 
 // 从云端加载
 function loadCloudSave() {
-  if (!isCloudReady || !currentUser) {
+  if (!isCloudReady || !deviceId) {
     return Promise.resolve(false);
   }
   
-  return sb.from('saves').select('*').eq('user_id', currentUser.id).single()
+  return sb.from('saves').select('*').eq('device_id', deviceId).single()
     .then(function(result) {
       var data = result.data;
       if (data) {
@@ -6660,12 +6670,12 @@ function submitLeaderboard(scoreType, scoreValue, extraData) {
   extraData = extraData || {};
   
   return sb.from('leaderboard').upsert({
-    user_id: currentUser.id,
+    device_id: deviceId,
     player_name: G.playerName,
     type: scoreType,
     score: scoreValue,
     timestamp: Date.now()
-  }, { onConflict: 'user_id,type' })
+  }, { onConflict: 'device_id,type' })
     .then(function() {
       console.log('Leaderboard submitted:', scoreType, scoreValue);
       return true;
@@ -6691,8 +6701,8 @@ function getLeaderboard(scoreType, limit) {
         for (var i = 0; i < result.data.length; i++) {
           var row = result.data[i];
           entries.push({
-            uid: row.user_id,
-            name: row.player_name || ('玩家' + row.user_id.slice(-6)),
+            device_id: row.device_id,
+            name: row.player_name || ('玩家' + row.device_id.slice(-6)),
             score: row.score,
             timestamp: row.timestamp
           });
@@ -6719,7 +6729,7 @@ function getPlayerRank(scoreType) {
       var rank = 0;
       var playerScore = 0;
       for (var i = 0; i < result.data.length; i++) {
-        if (result.data[i].user_id === currentUser.id) {
+        if (result.data[i].device_id === deviceId) {
           rank = i + 1;
           playerScore = result.data[i].score;
           break;
