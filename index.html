@@ -6596,12 +6596,19 @@ function showPlayerNameInput() {
   }, 100);
 }
 
-// 检查名字是否已存在
+// 检查名字是否已存在（所有设备）
 function checkPlayerNameExists(name) {
   if (!isCloudReady) return Promise.resolve(false);
-  return sb.from('saves').select('player_name').eq('player_name', name).limit(1)
-    .then(function(result) {
-      return result.data && result.data.length > 0;
+  
+  // 同时检查 saves 和 leaderboard 两个表
+  var promise1 = sb.from('saves').select('device_id').eq('player_name', name).limit(1);
+  var promise2 = sb.from('leaderboard').select('device_id').eq('player_name', name).limit(1);
+  
+  return Promise.all([promise1, promise2])
+    .then(function(results) {
+      var inSaves = results[0].data && results[0].data.length > 0;
+      var inLeaderboard = results[1].data && results[1].data.length > 0;
+      return inSaves || inLeaderboard;
     })
     .catch(function() {
       return false;
