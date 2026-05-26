@@ -4830,6 +4830,13 @@ function executeMerge(heroUids){
   const heroes=heroUids.map(uid=>G.heroes.find(h=>h.uid===uid)).filter(Boolean);
   if(heroes.length<2){showToast('请至少选择2个英雄！');return false}
   
+  // 检查是否有锁定的英雄
+  const lockedHeroes=heroes.filter(h=>h.locked);
+  if(lockedHeroes.length>0){
+    showToast(`🔒 ${lockedHeroes[0].name} 已锁定，无法作为合成材料！请先解锁。`);
+    return false;
+  }
+  
   // 记录最高品质用于判断品质提升
   var qualities=heroes.map(function(h){return QUALITIES.indexOf(h.quality)});
   var maxQIdx=Math.max.apply(null,qualities);
@@ -5832,7 +5839,9 @@ function showHeroDetail(uid){
       <div class="hd-actions">
         <button class="btn btn-primary btn-sm" onclick="closeModal();switchTab('team')">🛡️ 编队</button>
         <button class="btn btn-sm" onclick="closeModal();switchTab('equip')">🗡️ 装备</button>
-        <button class="btn btn-sm" style="color:#ff6b6b" onclick="dismissHero(${h.uid})">🗑️ 遣散</button>
+        <button class="btn btn-sm" onclick="showRenameHero(${h.uid})">✏️ 改名</button>
+        <button class="btn btn-sm" style="color:${h.locked?'var(--gold)':'var(--text2)'}" onclick="toggleHeroLock(${h.uid})">${h.locked?'🔒 已锁定':'🔓 锁定'}</button>
+        <button class="btn btn-sm" style="color:#ff6b6b" onclick="dismissHero(${h.uid})" ${h.locked?'disabled':''}>🗑️ 遣散</button>
       </div>
     </div>
   </div>`;
@@ -6011,11 +6020,80 @@ function useExpPotionCustom(heroUid){
   useExpPotion(heroUid,count);
 }
 
+// 显示英雄改名弹窗
+function showRenameHero(uid){
+  const h=G.heroes.find(x=>x.uid===uid);
+  if(!h)return;
+  
+  const html=`
+    <div style="text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">${h.icon}</div>
+      <div style="font-size:14px;color:var(--text2);margin-bottom:12px">为英雄设置新名字</div>
+      <input type="text" id="rename-input" value="${h.name}" maxlength="12" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--panel2);color:var(--text);font-size:14px;text-align:center;margin-bottom:16px" placeholder="输入新名字（最多12字）">
+      <div style="display:flex;gap:8px">
+        <button class="btn" style="flex:1" onclick="closeModal();showHeroDetail(${uid})">取消</button>
+        <button class="btn btn-primary" style="flex:1" onclick="confirmRenameHero(${uid})">确认改名</button>
+      </div>
+    </div>
+  `;
+  showModal('英雄改名',html);
+  // 自动聚焦输入框
+  setTimeout(()=>{
+    const input=document.getElementById('rename-input');
+    if(input){
+      input.focus();
+      input.select();
+    }
+  },100);
+}
+
+// 确认改名
+function confirmRenameHero(uid){
+  const input=document.getElementById('rename-input');
+  if(!input)return;
+  const newName=input.value.trim();
+  if(!newName){
+    showToast('名字不能为空！');
+    return;
+  }
+  if(newName.length>12){
+    showToast('名字不能超过12个字符！');
+    return;
+  }
+  const h=G.heroes.find(x=>x.uid===uid);
+  if(!h)return;
+  const oldName=h.name;
+  h.name=newName;
+  h.isRenamed=true; // 标记为已改名
+  saveGame();
+  closeModal();
+  showToast(`${h.icon} ${oldName} 改名为 ${newName}`);
+  // 刷新详情弹窗
+  setTimeout(()=>showHeroDetail(uid),200);
+}
+
+// 切换英雄锁定状态
+function toggleHeroLock(uid){
+  const h=G.heroes.find(x=>x.uid===uid);
+  if(!h)return;
+  h.locked=!h.locked;
+  saveGame();
+  showToast(`${h.icon} ${h.name} ${h.locked?'已锁定 🔒':'已解锁 🔓'}`);
+  // 刷新详情弹窗
+  showHeroDetail(uid);
+}
+
 // 遣散英雄（先显示确认，返回资源）
 function dismissHero(uid){
   var idx=G.heroes.findIndex(h=>h.uid===uid);
   if(idx<0)return;
   var h=G.heroes[idx];
+  
+  // 检查是否锁定
+  if(h.locked){
+    showToast('该英雄已锁定，无法遣散！请先解锁。');
+    return;
+  }
   
   // 计算返还资源
   var totalExp=0;
@@ -6384,6 +6462,16 @@ function renderMerge(el){
         +'<div class="hero-stats text-xs text-dim">❤️'+h.maxHP+' ⚔️'+h.atk+' 🛡️'+h.def+'</div>'
         +'</div></div>';
     }
+    // 锁定英雄显示为禁用状态
+    if(h.locked){
+      return '<div class="hero-card quality-'+h.quality+'" style="cursor:not-allowed;opacity:0.4;filter:grayscale(0.5)">'
+        +'<div class="hero-avatar">'+h.icon+'</div>'
+        +'<div class="hero-info">'
+        +'<div class="hero-name"><span class="q-'+h.quality+'">'+h.name+'</span> <span class="text-gold" style="font-size:10px">🔒锁定</span></div>'
+        +'<div class="hero-meta">'+ROLES[h.role].icon+' '+ROLES[h.role].name+' · Lv.'+h.level+'</div>'
+        +'<div class="hero-stats text-xs text-dim">❤️'+h.maxHP+' ⚔️'+h.atk+' 🛡️'+h.def+'</div>'
+        +'</div></div>';
+    }
     return '<div class="hero-card quality-'+h.quality+(isUsed?' used':'')+'" onclick="'+(isUsed?'removeMergeHero':'addMergeHero')+'('+h.uid+')" style="cursor:pointer;opacity:'+(isUsed?'0.5':'1')+'">'
       +'<div class="hero-avatar">'+h.icon+'</div>'
       +'<div class="hero-info">'
@@ -6497,13 +6585,16 @@ function showMergePicker(slotIdx){
   const usedUids=window._mergeSlots.filter(Boolean);
   // 获取已上阵英雄UID列表
   const teamUids=G.team.filter(h=>h!==null).map(h=>h.uid);
-  // 过滤：已使用的 + 已上阵的
-  const available=G.heroes.filter(h=>!usedUids.includes(h.uid)&&!teamUids.includes(h.uid));
+  // 过滤：已使用的 + 已上阵的 + 已锁定的
+  const available=G.heroes.filter(h=>!usedUids.includes(h.uid)&&!teamUids.includes(h.uid)&&!h.locked);
   if(available.length===0){
-    // 检查是否因为全部上阵了
+    // 检查是否因为全部上阵或锁定了
     const allInTeam=G.heroes.length>0&&G.heroes.every(h=>teamUids.includes(h.uid));
+    const allLocked=G.heroes.length>0&&G.heroes.every(h=>h.locked||teamUids.includes(h.uid));
     if(allInTeam){
       showToast('所有英雄都已上阵，无法合成');
+    }else if(allLocked){
+      showToast('所有英雄都已锁定，无法合成');
     }else{
       showToast('没有可用英雄');
     }
