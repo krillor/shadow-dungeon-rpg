@@ -6659,65 +6659,98 @@ function renderTown(el){
       +'<span style="font-size:16px">🎁</span> 点击领取每日登录奖励！<br>'
       +'<span class="text-xs text-dim">随进度提升：约'+(200+G.stageProgress*30)+'💰 '+(100+G.stageProgress*10)+'🍞 '+(30+G.stageProgress*5)+'🪨 '+(15+G.stageProgress*3)+'⛏️</span>'
     +'</div>':'')
-    +'<div class="panel">'
+    +'<div class="panel" style="background:linear-gradient(135deg,rgba(30,30,40,.8),rgba(20,20,30,.9))">'
       +'<div class="panel-title"><span class="icon">💾</span> 存档管理</div>'
       +(function(){
         var meta=getSaveMeta();
-        var html='<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.05);padding-top:10px">';
+        var html='<div style="margin-top:10px">';
+        
+        // 当前存档状态摘要
+        html+='<div style="background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.2);border-radius:8px;padding:10px 12px;margin-bottom:12px">';
+        html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
+        html+='<span style="font-size:12px;font-weight:bold;color:var(--gold)">📂 当前存档</span>';
+        html+='<span style="font-size:10px;color:var(--text3)">'+formatSaveTime(meta.slots&&meta.slots[0]?meta.slots[0].timestamp:null)+'</span>';
+        html+='</div>';
+        html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">';
+        html+='<div><div style="font-size:16px;font-weight:bold;color:var(--text)">'+(G.stageProgress||1)+'</div><div style="font-size:9px;color:var(--text3)">关卡</div></div>';
+        html+='<div><div style="font-size:16px;font-weight:bold;color:var(--text)">'+(G.heroes?G.heroes.length:0)+'</div><div style="font-size:9px;color:var(--text3)">英雄</div></div>';
+        html+='<div><div style="font-size:16px;font-weight:bold;color:var(--gold)">⚔️'+(calcTotalPower())+'</div><div style="font-size:9px;color:var(--text3)">战力</div></div>';
+        html+='</div></div>';
+        
         // 手动备份区
+        html+='<div style="background:rgba(0,0,0,.2);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:10px;margin-bottom:10px">';
         html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
-          +'<div style="font-size:12px;font-weight:bold;color:var(--blue)">📌 手动备份</div>'
-          +'<button class="btn btn-sm btn-primary" onclick="createManualBackup()">+ 创建备份</button>'
+          +'<div style="display:flex;align-items:center;gap:6px">'
+          +'<span style="font-size:14px">📌</span>'
+          +'<span style="font-size:12px;font-weight:bold;color:#3b82f6">手动备份</span>'
+          +'<span style="font-size:10px;color:var(--text3);background:rgba(59,130,246,.15);padding:1px 6px;border-radius:10px">'+((meta.manualBackups&&meta.manualBackups.length)||0)+'/'+MAX_MANUAL_BACKUPS+'</span>'
+          +'</div>'
+          +'<button class="btn btn-sm" style="background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;font-size:10px" onclick="createManualBackup()">+ 新建</button>'
           +'</div>';
         if(meta.manualBackups&&meta.manualBackups.length>0){
-          html+='<div style="font-size:10px;color:var(--text3);margin-bottom:6px">'+meta.manualBackups.length+'/'+MAX_MANUAL_BACKUPS+' 个</div>';
           for(var mi=0;mi<meta.manualBackups.length;mi++){
             var mbk=meta.manualBackups[mi];
             var isRestoreBackup=mbk.note&&mbk.note.indexOf('恢复')>=0;
-            html+='<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:'+(isRestoreBackup?'rgba(255,165,0,.08)':'rgba(0,0,0,.15)')+';border-radius:6px;margin:3px 0;font-size:11px;border-left:2px solid '+(isRestoreBackup?'#ffa500':'var(--blue)')+'">'
+            html+='<div style="display:flex;align-items:center;gap:8px;padding:8px;background:'+(isRestoreBackup?'rgba(255,165,0,.1)':'rgba(0,0,0,.2)')+';border-radius:6px;margin:4px 0;font-size:11px;border-left:3px solid '+(isRestoreBackup?'#ffa500':'#3b82f6')+'">'
               +'<div style="flex:1;min-width:0">'
-              +'<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">'
-              +'<span style="color:var(--text3)">'+formatSaveTime(mbk.timestamp)+'</span>'
-              +'<span style="color:var(--text2)">关卡'+mbk.stageProgress+'</span>'
-              +'<span style="color:var(--gold)">⚔️'+(mbk.totalPower||'?')+'</span>'
-              +'<span style="color:var(--text3)">'+mbk.heroCount+'英雄</span>'
-              +(mbk.note?'<span style="color:var(--text3);font-size:10px">·'+mbk.note+'</span>':'')
-              +'</div></div>'
-              +'<span style="display:flex;gap:4px">'
-              +'<button class="btn" style="font-size:9px;padding:2px 8px;color:var(--blue)" onclick="restoreBackup(\'manual\','+mi+')">恢复</button>'
-              +'<button class="btn" style="font-size:9px;padding:2px 8px;color:#ff6b6b" onclick="showConfirm(\'删除备份\',\'确定删除此手动备份？关卡'+mbk.stageProgress+' · '+(mbk.heroCount||0)+'英雄\',function(){deleteManualBackup('+mi+')},\'删除\',\'取消\')">🗑️</button>'
-              +'</span></div>';
+              +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
+              +'<span style="color:var(--text3);font-size:10px;min-width:50px">'+formatSaveTime(mbk.timestamp)+'</span>'
+              +'<span style="background:rgba(255,255,255,.05);padding:1px 6px;border-radius:3px;font-size:10px">💀'+mbk.stageProgress+'</span>'
+              +'<span style="background:rgba(201,162,39,.15);padding:1px 6px;border-radius:3px;font-size:10px;color:var(--gold)">⚔️'+(mbk.totalPower||'?')+'</span>'
+              +'<span style="background:rgba(255,255,255,.05);padding:1px 6px;border-radius:3px;font-size:10px">🧙'+mbk.heroCount+'</span>'
+              +'</div>'
+              +(mbk.note?'<div style="font-size:9px;color:var(--text3)">'+mbk.note+'</div>':'')
+              +'</div>'
+              +'<div style="display:flex;gap:4px">'
+              +'<button class="btn" style="font-size:9px;padding:3px 8px;background:rgba(59,130,246,.2);border:none;color:#60a5fa" onclick="restoreBackup(\'manual\','+mi+')">恢复</button>'
+              +'<button class="btn" style="font-size:9px;padding:3px 8px;background:rgba(255,107,107,.15);border:none;color:#f87171" onclick="showConfirm(\'删除备份\',\'确定删除此备份？\n\n关卡'+mbk.stageProgress+' · '+mbk.heroCount+'英雄 · ⚔️'+(mbk.totalPower||'?')+'\',function(){deleteManualBackup('+mi+')},\'删除\',\'取消\')">删除</button>'
+              +'</div></div>';
           }
-          html+='<button class="btn" style="width:100%;margin-top:8px;font-size:10px" onclick="showConfirm(\'清理全部手动备份\',\'确定删除所有手动备份？共'+meta.manualBackups.length+'个\',clearManualBackups,\'删除\',\'取消\')">🗑️ 清理全部</button>';
+          html+='<button class="btn" style="width:100%;margin-top:8px;font-size:10px;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.2);color:#f87171" onclick="showConfirm(\'清理全部手动备份\',\'确定删除所有手动备份？共'+meta.manualBackups.length+'个\',clearManualBackups,\'删除全部\',\'取消\')">🗑️ 清理全部</button>';
         }else{
-          html+='<div style="text-align:center;padding:10px;color:var(--text3);font-size:11px">暂无手动备份</div>';
+          html+='<div style="text-align:center;padding:16px;color:var(--text3);font-size:11px">'
+            +'<div style="font-size:20px;margin-bottom:4px">📭</div>'
+            +'<div>暂无手动备份</div>'
+            +'<div style="font-size:9px;margin-top:2px">点击上方按钮创建</div>'
+            +'</div>';
         }
+        html+='</div>';
+        
         // 自动备份区
-        html+='<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05)">';
-        html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
-          +'<div style="font-size:12px;font-weight:bold;color:var(--text2)">🔄 自动备份</div>'
-          +'<div style="font-size:10px;color:var(--text3)">'+((meta.autoBackups&&meta.autoBackups.length)||0)+'/'+MAX_AUTO_BACKUPS+'</div>'
+        html+='<div style="background:rgba(0,0,0,.15);border-radius:8px;padding:10px">';
+        html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+          +'<div style="display:flex;align-items:center;gap:6px">'
+          +'<span style="font-size:14px">🔄</span>'
+          +'<span style="font-size:12px;font-weight:bold;color:var(--text2)">自动备份</span>'
+          +'<span style="font-size:10px;color:var(--text3);background:rgba(255,255,255,.05);padding:1px 6px;border-radius:10px">'+((meta.autoBackups&&meta.autoBackups.length)||0)+'/'+MAX_AUTO_BACKUPS+'</span>'
+          +'</div>'
+          +'<span style="font-size:9px;color:var(--text3)">保存时自动创建</span>'
           +'</div>';
         if(meta.autoBackups&&meta.autoBackups.length>0){
+          html+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">';
           for(var ai=0;ai<meta.autoBackups.length;ai++){
             var abk=meta.autoBackups[ai];
-            html+='<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;background:rgba(0,0,0,.15);border-radius:6px;margin:2px 0;font-size:11px">'
-              +'<span style="color:var(--text3)">'+formatSaveTime(abk.timestamp)+'</span>'
-              +'<span style="color:var(--text2);flex:1">关卡'+abk.stageProgress+'</span>'
+            html+='<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:rgba(0,0,0,.2);border-radius:6px;font-size:10px">'
+              +'<span style="color:var(--text3);min-width:45px">'+formatSaveTime(abk.timestamp)+'</span>'
+              +'<span style="color:var(--text2)">💀'+abk.stageProgress+'</span>'
               +'<span style="color:var(--gold)">⚔️'+(abk.totalPower||'?')+'</span>'
-              +'<span style="color:var(--text3)">'+abk.heroCount+'英雄</span>'
-              +'<button class="btn" style="font-size:9px;padding:2px 6px;color:var(--blue)" onclick="restoreBackup(\'auto\','+ai+')">恢复</button>'
-              +'<button class="btn" style="font-size:9px;padding:2px 6px;color:#ff6b6b" onclick="showConfirm(\'删除备份\',\'确定删除此自动备份？关卡'+abk.stageProgress+' · '+(abk.heroCount||0)+'英雄\',function(){deleteAutoBackup('+ai+')},\'删除\',\'取消\')">🗑️</button>'
-              +'</div>';
+              +'<div style="margin-left:auto;display:flex;gap:2px">'
+              +'<button class="btn" style="font-size:8px;padding:2px 4px;background:rgba(59,130,246,.2);border:none;color:#60a5fa" onclick="restoreBackup(\'auto\','+ai+')">↩️</button>'
+              +'<button class="btn" style="font-size:8px;padding:2px 4px;background:rgba(255,107,107,.1);border:none;color:#f87171" onclick="showConfirm(\'删除\',\'删除此自动备份？\',function(){deleteAutoBackup('+ai+')},\'删除\',\'取消\')">×</button>'
+              +'</div></div>';
           }
-          html+='<button class="btn" style="width:100%;margin-top:8px;font-size:10px" onclick="showConfirm(\'清理全部自动备份\',\'确定删除所有自动备份？共'+meta.autoBackups.length+'个\',clearAutoBackups,\'删除\',\'取消\')">🗑️ 清理全部</button>';
+          html+='</div>';
+          html+='<button class="btn" style="width:100%;margin-top:8px;font-size:10px;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.15);color:var(--text3)" onclick="showConfirm(\'清理全部自动备份\',\'确定删除所有自动备份？共'+meta.autoBackups.length+'个\',clearAutoBackups,\'删除全部\',\'取消\')">🗑️ 清理全部</button>';
         }else{
-          html+='<div style="text-align:center;padding:8px;color:var(--text3);font-size:10px">保存时自动创建</div>';
+          html+='<div style="text-align:center;padding:10px;color:var(--text3);font-size:10px">保存游戏时自动创建</div>';
         }
-        html+='</div></div>';
+        html+='</div>';
+        
         // 重置游戏按钮
-        html+='<div style="margin-top:16px;padding-top:12px;border-top:2px solid rgba(255,107,107,.3)">';
-        html+='<button class="btn" style="width:100%;color:#ff6b6b;border-color:rgba(255,107,107,.3)" onclick="showConfirm(\'⚠️ 重置游戏\',\'确定要重置游戏吗？所有数据将被清除且不可恢复！\',resetGame,\'确认重置\',\'取消\')">⚠️ 重置游戏</button>';
+        html+='<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,107,107,.2)">';
+        html+='<button class="btn" style="width:100%;padding:10px;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.2);color:#f87171;font-size:11px" onclick="showConfirm(\'⚠️ 重置游戏\',\'确定要重置游戏吗？\\n\\n所有数据将被清除且不可恢复！\\n\\n建议先创建手动备份！\',resetGame,\'确认重置\',\'取消\')">⚠️ 重置游戏</button>';
+        html+='</div>';
+        
         html+='</div>';
         return html;
       })()
