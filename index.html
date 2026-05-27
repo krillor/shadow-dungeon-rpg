@@ -2392,18 +2392,19 @@ let G = {
   },
 };
 
-// ==================== 存档系统（多存档+自动备份+回溯） ====================
+// ==================== 存档系统（多存档+备份管理） ====================
 var SAVE_KEY='shadow_dungeon_save';
 var SAVE_META_KEY='shadow_dungeon_meta';
 var MAX_SAVE_SLOTS=3;
-var MAX_BACKUPS=10;
+var MAX_AUTO_BACKUPS=5;
+var MAX_MANUAL_BACKUPS=10;
 
 // 获取存档元数据
 function getSaveMeta(){
   try{
     var raw=localStorage.getItem(SAVE_META_KEY);
-    return raw?JSON.parse(raw):{currentSlot:0,slots:{},backups:[]};
-  }catch(e){return {currentSlot:0,slots:{},backups:[]};}
+    return raw?JSON.parse(raw):{currentSlot:0,slots:{},autoBackups:[],manualBackups:[]};
+  }catch(e){return {currentSlot:0,slots:{},autoBackups:[],manualBackups:[]};}
 }
 
 // 保存存档元数据
@@ -2414,6 +2415,16 @@ function saveSaveMeta(meta){
 // 获取当前存档槽位键名
 function getSlotKey(slotIdx){
   return 'shadow_dungeon_slot_'+slotIdx;
+}
+
+// 获取当前槽位数据
+function getCurrentSlotData(){
+  var meta=getSaveMeta();
+  var slotIdx=meta.currentSlot||0;
+  try{
+    var raw=localStorage.getItem(getSlotKey(slotIdx));
+    return raw?JSON.parse(raw):null;
+  }catch(e){return null;}
 }
 
 // 保存游戏（到当前槽位+自动备份）
@@ -2434,14 +2445,14 @@ function saveGame(){
     meta.slots[slotIdx].stageProgress=G.stageProgress||1;
     meta.slots[slotIdx].heroCount=G.heroes?G.heroes.length:0;
     meta.slots[slotIdx].playTime=G.totalPlayTime||0;
-    // 自动备份（每次保存前先备份当前槽位）
-    var backupKey='shadow_dungeon_backup_'+Date.now();
+    // 自动备份（每次保存前创建自动备份）
+    var backupKey='shadow_dungeon_auto_'+Date.now();
     localStorage.setItem(backupKey,jsonStr);
-    if(!meta.backups) meta.backups=[];
-    meta.backups.unshift({key:backupKey,slotIdx:slotIdx,timestamp:Date.now(),stageProgress:G.stageProgress||1});
-    // 限制备份数量
-    while(meta.backups.length>MAX_BACKUPS){
-      var old=meta.backups.pop();
+    if(!meta.autoBackups) meta.autoBackups=[];
+    meta.autoBackups.unshift({key:backupKey,slotIdx:slotIdx,timestamp:Date.now(),stageProgress:G.stageProgress||1});
+    // 限制自动备份数量
+    while(meta.autoBackups.length>MAX_AUTO_BACKUPS){
+      var old=meta.autoBackups.pop();
       try{localStorage.removeItem(old.key);}catch(e){}
     }
     saveSaveMeta(meta);
@@ -2452,6 +2463,36 @@ function saveGame(){
     }else{
       showToast('存档失败');
     }
+  }
+}
+
+// 手动备份（玩家主动创建）
+function createManualBackup(){
+  try{
+    var meta=getSaveMeta();
+    var slotIdx=meta.currentSlot||0;
+    var data={g:G,heroIdCounter:G.heroIdCounter};
+    var jsonStr=JSON.stringify(data);
+    var backupKey='shadow_dungeon_manual_'+Date.now();
+    localStorage.setItem(backupKey,jsonStr);
+    if(!meta.manualBackups) meta.manualBackups=[];
+    meta.manualBackups.unshift({
+      key:backupKey,
+      slotIdx:slotIdx,
+      timestamp:Date.now(),
+      stageProgress:G.stageProgress||1,
+      heroCount:G.heroes?G.heroes.length:0,
+      note:'手动备份'
+    });
+    // 限制手动备份数量
+    while(meta.manualBackups.length>MAX_MANUAL_BACKUPS){
+      var old=meta.manualBackups.pop();
+      try{localStorage.removeItem(old.key);}catch(e){}
+    }
+    saveSaveMeta(meta);
+    showToast('📌 手动备份已创建');
+  }catch(e){
+    showToast('备份失败');
   }
 }
 
@@ -2516,19 +2557,28 @@ function switchSaveSlot(slotIdx){
 }
 
 // 从备份恢复
-function restoreBackup(backupIdx){
+function restoreBackup(type, backupIdx){
   var meta=getSaveMeta();
-  if(!meta.backups||!meta.backups[backupIdx]){showToast('备份不存在');return;}
-  var backup=meta.backups[backupIdx];
+  var backups=type==='auto'?meta.autoBackups:meta.manualBackups;
+  if(!backups||!backups[backupIdx]){showToast('备份不存在');return;}
+  var backup=backups[backupIdx];
   var raw=localStorage.getItem(backup.key);
   if(!raw){showToast('备份数据已丢失');return;}
-  // 恢复前先备份当前状态
+  // 恢复前先备份当前状态（作为手动备份）
   var currentData={g:G,heroIdCounter:G.heroIdCounter};
-  var currentBackupKey='shadow_dungeon_backup_'+Date.now();
+  var currentBackupKey='shadow_dungeon_manual_'+Date.now();
   localStorage.setItem(currentBackupKey,JSON.stringify(currentData));
-  meta.backups.unshift({key:currentBackupKey,slotIdx:meta.currentSlot,timestamp:Date.now(),stageProgress:G.stageProgress||1,note:'恢复前自动备份'});
-  while(meta.backups.length>MAX_BACKUPS){
-    var old=meta.backups.pop();
+  if(!meta.manualBackups) meta.manualBackups=[];
+  meta.manualBackups.unshift({
+    key:currentBackupKey,
+    slotIdx:meta.currentSlot,
+    timestamp:Date.now(),
+    stageProgress:G.stageProgress||1,
+    heroCount:G.heroes?G.heroes.length:0,
+    note:'恢复前自动保存'
+  });
+  while(meta.manualBackups.length>MAX_MANUAL_BACKUPS){
+    var old=meta.manualBackups.pop();
     try{localStorage.removeItem(old.key);}catch(e){}
   }
   // 写入当前槽位
@@ -2565,27 +2615,51 @@ function deleteSaveSlot(slotIdx){
   }
 }
 
-// 删除指定备份
-function deleteBackup(backupIdx){
+// 删除自动备份
+function deleteAutoBackup(backupIdx){
   var meta=getSaveMeta();
-  if(!meta.backups||!meta.backups[backupIdx])return;
-  var backup=meta.backups[backupIdx];
+  if(!meta.autoBackups||!meta.autoBackups[backupIdx])return;
+  var backup=meta.autoBackups[backupIdx];
   try{localStorage.removeItem(backup.key);}catch(e){}
-  meta.backups.splice(backupIdx,1);
+  meta.autoBackups.splice(backupIdx,1);
   saveSaveMeta(meta);
-  showToast('🗑️ 备份已删除');
+  showToast('🗑️ 自动备份已删除');
   renderCurrentTab();
 }
 
-// 清理所有备份
-function clearAllBackups(){
+// 删除手动备份
+function deleteManualBackup(backupIdx){
   var meta=getSaveMeta();
-  if(meta.backups){
-    meta.backups.forEach(function(b){try{localStorage.removeItem(b.key);}catch(e){}});
-  }
-  meta.backups=[];
+  if(!meta.manualBackups||!meta.manualBackups[backupIdx])return;
+  var backup=meta.manualBackups[backupIdx];
+  try{localStorage.removeItem(backup.key);}catch(e){}
+  meta.manualBackups.splice(backupIdx,1);
   saveSaveMeta(meta);
-  showToast('🗑️ 所有备份已清理');
+  showToast('🗑️ 手动备份已删除');
+  renderCurrentTab();
+}
+
+// 清理所有自动备份
+function clearAutoBackups(){
+  var meta=getSaveMeta();
+  if(meta.autoBackups){
+    meta.autoBackups.forEach(function(b){try{localStorage.removeItem(b.key);}catch(e){}});
+  }
+  meta.autoBackups=[];
+  saveSaveMeta(meta);
+  showToast('🗑️ 自动备份已清理');
+  renderCurrentTab();
+}
+
+// 清理所有手动备份
+function clearManualBackups(){
+  var meta=getSaveMeta();
+  if(meta.manualBackups){
+    meta.manualBackups.forEach(function(b){try{localStorage.removeItem(b.key);}catch(e){}});
+  }
+  meta.manualBackups=[];
+  saveSaveMeta(meta);
+  showToast('🗑️ 手动备份已清理');
   renderCurrentTab();
 }
 
@@ -6534,6 +6608,7 @@ function renderTown(el){
         var meta=getSaveMeta();
         var currentSlot=meta.currentSlot||0;
         var html='<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.05);padding-top:10px">';
+        // 存档槽位
         html+='<div style="font-size:12px;font-weight:bold;color:var(--gold);margin-bottom:8px">📂 存档槽位</div>';
         for(var si=0;si<MAX_SAVE_SLOTS;si++){
           var slot=meta.slots[si];
@@ -6550,27 +6625,62 @@ function renderTown(el){
             +(slot&&!isCurrent?'<button class="btn" style="font-size:9px;padding:3px 8px;color:#ff6b6b" onclick="event.stopPropagation();showConfirm(\'删除存档\',\'确定删除槽位'+(si+1)+'？\',function(){deleteSaveSlot('+si+')},\'删除\',\'取消\')">🗑️</button>':'')
             +'</div>';
         }
-        // 备份列表
-        if(meta.backups&&meta.backups.length>0){
-          html+='<div style="font-size:12px;font-weight:bold;color:var(--blue);margin:12px 0 8px;display:flex;align-items:center;justify-content:space-between">'
-            +'<span>🔄 自动备份 ('+meta.backups.length+'/'+MAX_BACKUPS+')</span>'
-            +'<button class="btn" style="font-size:9px;padding:2px 8px" onclick="clearAllBackups()">清理全部</button>'
-            +'</div>';
-          var showCount=Math.min(meta.backups.length,5);
-          for(var bi=0;bi<showCount;bi++){
-            var bk=meta.backups[bi];
-            html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(0,0,0,.15);border-radius:6px;margin:3px 0;font-size:11px">'
-              +'<span style="color:var(--text3)">'+formatSaveTime(bk.timestamp)+'</span>'
-              +'<span style="color:var(--text2)">关卡'+bk.stageProgress+(bk.note?' · '+bk.note:'')+'</span>'
-              +'<span style="margin-left:auto;display:flex;gap:4px">'
-              +'<button class="btn" style="font-size:9px;padding:2px 8px;color:var(--blue)" onclick="restoreBackup('+bi+')">恢复</button>'
-              +'<button class="btn" style="font-size:9px;padding:2px 8px;color:#ff6b6b" onclick="deleteBackup('+bi+')">🗑️</button>'
+        
+        // 手动备份区
+        html+='<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.05)">';
+        html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+          +'<div style="font-size:12px;font-weight:bold;color:var(--blue)">📌 手动备份</div>'
+          +'<button class="btn btn-sm btn-primary" onclick="createManualBackup()">+ 创建备份</button>'
+          +'</div>';
+        if(meta.manualBackups&&meta.manualBackups.length>0){
+          html+='<div style="font-size:10px;color:var(--text3);margin-bottom:6px">'+meta.manualBackups.length+'/'+MAX_MANUAL_BACKUPS+' 个 (恢复前自动保存)</div>';
+          var showCount=Math.min(meta.manualBackups.length,8);
+          for(var mi=0;mi<showCount;mi++){
+            var mbk=meta.manualBackups[mi];
+            var isRestoreBackup=mbk.note&&mbk.note.indexOf('恢复')>=0;
+            html+='<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:'+(isRestoreBackup?'rgba(255,165,0,.08)':'rgba(0,0,0,.15)')+';border-radius:6px;margin:3px 0;font-size:11px;border-left:2px solid '+(isRestoreBackup?'#ffa500':'var(--blue)')+'">'
+              +'<div style="flex:1;min-width:0">'
+              +'<div style="display:flex;align-items:center;gap:4px">'
+              +'<span style="color:var(--text3)">'+formatSaveTime(mbk.timestamp)+'</span>'
+              +'<span style="color:var(--text2)">关卡'+mbk.stageProgress+'</span>'
+              +(mbk.note?'<span style="color:var(--text3);font-size:10px">·'+mbk.note+'</span>':'')
+              +'</div></div>'
+              +'<span style="display:flex;gap:4px">'
+              +'<button class="btn" style="font-size:9px;padding:2px 8px;color:var(--blue)" onclick="restoreBackup(\'manual\','+mi+')">恢复</button>'
+              +'<button class="btn" style="font-size:9px;padding:2px 8px;color:#ff6b6b" onclick="deleteManualBackup('+mi+')">🗑️</button>'
               +'</span></div>';
           }
-          if(meta.backups.length>5){
-            html+='<div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px">还有 '+(meta.backups.length-5)+' 个更早的备份</div>';
+          if(meta.manualBackups.length>8){
+            html+='<div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px">还有 '+(meta.manualBackups.length-8)+' 个更早的备份</div>';
           }
+          html+='<button class="btn" style="width:100%;margin-top:8px;font-size:10px" onclick="clearManualBackups()">🗑️ 清理全部手动备份</button>';
+        }else{
+          html+='<div style="text-align:center;padding:12px;color:var(--text3);font-size:11px">暂无手动备份<br><span style="font-size:10px">点击上方按钮创建</span></div>';
         }
+        html+='</div>';
+        
+        // 自动备份区
+        html+='<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.05)">';
+        html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+          +'<div style="font-size:12px;font-weight:bold;color:var(--text2)">🔄 自动备份</div>'
+          +'<div style="font-size:10px;color:var(--text3)">'+((meta.autoBackups&&meta.autoBackups.length)||0)+'/'+MAX_AUTO_BACKUPS+' 个</div>'
+          +'</div>';
+        if(meta.autoBackups&&meta.autoBackups.length>0){
+          for(var ai=0;ai<meta.autoBackups.length;ai++){
+            var abk=meta.autoBackups[ai];
+            html+='<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;background:rgba(0,0,0,.15);border-radius:6px;margin:2px 0;font-size:11px">'
+              +'<span style="color:var(--text3)">'+formatSaveTime(abk.timestamp)+'</span>'
+              +'<span style="color:var(--text2);flex:1">关卡'+abk.stageProgress+'</span>'
+              +'<button class="btn" style="font-size:9px;padding:2px 6px;color:var(--blue)" onclick="restoreBackup(\'auto\','+ai+')">恢复</button>'
+              +'<button class="btn" style="font-size:9px;padding:2px 6px;color:#ff6b6b" onclick="deleteAutoBackup('+ai+')">🗑️</button>'
+              +'</div>';
+          }
+          html+='<button class="btn" style="width:100%;margin-top:8px;font-size:10px" onclick="clearAutoBackups()">🗑️ 清理全部自动备份</button>';
+        }else{
+          html+='<div style="text-align:center;padding:8px;color:var(--text3);font-size:10px">保存时自动创建</div>';
+        }
+        html+='</div>';
+        
         html+='</div>';
         return html;
       })()
