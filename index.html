@@ -2412,6 +2412,24 @@ function loadGame(){
     // 恢复游戏状态（保留引用）
     var saved=data.g;
     Object.keys(saved).forEach(function(k){G[k]=saved[k]});
+    // 修复：重新建立G.team和G.heroes之间的引用关系
+    // 存档后team和heroes中的英雄变成独立对象，需要重新关联
+    if(G.team && G.heroes){
+      for(var i=0;i<G.team.length;i++){
+        if(G.team[i]){
+          var heroInTeam=G.team[i];
+          // 在G.heroes中查找对应的英雄（通过uid匹配）
+          var matchedHero=G.heroes.find(function(h){return h&&h.uid===heroInTeam.uid;});
+          if(matchedHero){
+            // 用G.heroes中的英雄替换G.team中的副本，保持引用一致
+            G.team[i]=matchedHero;
+          }else{
+            // 如果找不到对应英雄（可能已被删除），清空该位置
+            G.team[i]=null;
+          }
+        }
+      }
+    }
     // 恢复竞技场每日重置
     var today=new Date().toDateString();
     if(G.arenaState&&G.arenaState.lastChallengeDate!==today){
@@ -4204,19 +4222,25 @@ function addHeroExp(hero,amount){
   var levelCap=getHeroLevelCap();
   if(hero.level>=levelCap)return false;
   hero.exp+=amount;
-  let leveled=false;
-  let newTalentPoints=0;
+  var leveled=false;
+  var newTalentPoints=0;
   while(hero.exp>=getExpToLevel(hero.level)&&hero.level<levelCap){
     hero.exp-=getExpToLevel(hero.level);
     hero.level++;
     leveled=true;
     const role=ROLES[hero.role];const qm=QUALITY_MULT[hero.quality];
+    // 记录升级前的比例
+    var hpRatio=hero.hp/hero.maxHP;
+    var mpRatio=hero.mp/hero.maxMP;
+    // 重新计算基础属性
     hero.maxHP=calcStat(role.baseHP, qm, hero.level);
     hero.atk=calcStat(role.baseATK, qm, hero.level);
     hero.def=calcStat(role.baseDEF, qm, hero.level);
     hero.spd=calcStat(role.baseSPD, qm, hero.level);
     hero.maxMP=calcStat(role.baseMP, qm, hero.level);
-    hero.hp=hero.maxHP;hero.mp=hero.maxMP;
+    // 保持HP/MP比例（满血升级保持满血，残血升级按比例恢复）
+    hero.hp=Math.max(1,Math.floor(hero.maxHP*hpRatio));
+    hero.mp=Math.floor(hero.maxMP*mpRatio);
     // 升级获得天赋点
     if(hero.level<=TALENT_CONFIG.maxPoints){
       newTalentPoints++;
@@ -4227,7 +4251,7 @@ function addHeroExp(hero,amount){
   // 如果有获得天赋点，显示提示
   if(newTalentPoints>0){
     hero.talentPoints=(hero.talentPoints||0)+newTalentPoints;
-    showToast(`🌟 ${hero.name} 获得 ${newTalentPoints} 点天赋点！`);
+    showToast('🌟 '+hero.name+' 获得 '+newTalentPoints+' 点天赋点！');
   }
   return leveled;
 }
