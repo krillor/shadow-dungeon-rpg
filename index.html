@@ -674,8 +674,16 @@ const QUALITY_COLORS = {common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#
 // 等级成长：对数衰减曲线，前期快后期慢，避免无限膨胀
 // 公式: stat = baseStat * qualityMult * (1 + GROWTH_RATE * ln(1 + level))
 const GROWTH_RATE = 0.35;
-function calcStat(base, qualityMult, level){
-  return Math.floor(base * qualityMult * (1 + GROWTH_RATE * Math.log(1 + level)));
+// 满属性保护上限
+const STAT_HARD_CAP={maxHP:99999,atk:9999,def:9999,spd:999,maxMP:9999};
+
+function calcStat(base, qualityMult, level, statType){
+  var value=Math.floor(base * qualityMult * (1 + GROWTH_RATE * Math.log(1 + level)));
+  // 满属性保护：如果指定了属性类型且超过硬上限，则限制在上限
+  if(statType && STAT_HARD_CAP[statType] && value>STAT_HARD_CAP[statType]){
+    return STAT_HARD_CAP[statType];
+  }
+  return value;
 }
 
 const ROLES = {
@@ -3312,12 +3320,12 @@ function createHero(templateId,level=1){
     id:tpl.id, name:tpl.name, icon:tpl.icon,
     role:tpl.role, quality:tpl.quality,
     level:level, exp:0,
-    maxHP: calcStat(role.baseHP, qm, level),
+    maxHP: calcStat(role.baseHP, qm, level, 'maxHP'),
     hp:0,
-    atk: calcStat(role.baseATK, qm, level),
-    def: calcStat(role.baseDEF, qm, level),
-    spd: calcStat(role.baseSPD, qm, level),
-    maxMP: calcStat(role.baseMP, qm, level),
+    atk: calcStat(role.baseATK, qm, level, 'atk'),
+    def: calcStat(role.baseDEF, qm, level, 'def'),
+    spd: calcStat(role.baseSPD, qm, level, 'spd'),
+    maxMP: calcStat(role.baseMP, qm, level, 'maxMP'),
     mp:0,
     skills: [...tpl.skills],
     equipment:{weapon:null,armor:null,accessory:null},
@@ -4562,12 +4570,12 @@ function addHeroExp(hero,amount){
     // 记录升级前的比例
     var hpRatio=hero.hp/hero.maxHP;
     var mpRatio=hero.mp/hero.maxMP;
-    // 重新计算基础属性
-    hero.maxHP=calcStat(role.baseHP, qm, hero.level);
-    hero.atk=calcStat(role.baseATK, qm, hero.level);
-    hero.def=calcStat(role.baseDEF, qm, hero.level);
-    hero.spd=calcStat(role.baseSPD, qm, hero.level);
-    hero.maxMP=calcStat(role.baseMP, qm, hero.level);
+    // 重新计算基础属性（带满属性保护）
+    hero.maxHP=calcStat(role.baseHP, qm, hero.level, 'maxHP');
+    hero.atk=calcStat(role.baseATK, qm, hero.level, 'atk');
+    hero.def=calcStat(role.baseDEF, qm, hero.level, 'def');
+    hero.spd=calcStat(role.baseSPD, qm, hero.level, 'spd');
+    hero.maxMP=calcStat(role.baseMP, qm, hero.level, 'maxMP');
     // 保持HP/MP比例（满血升级保持满血，残血升级按比例恢复）
     hero.hp=Math.max(1,Math.floor(hero.maxHP*hpRatio));
     hero.mp=Math.floor(hero.maxMP*mpRatio);
@@ -5888,13 +5896,13 @@ function generateFusedHero(heroes){
   // 取材料最高等级
   var maxLevel=Math.max.apply(null,heroes.map(function(h){return h.level}));
   
-  // 基于新职业和新品质计算标准值
+  // 基于新职业和新品质计算标准值（带满属性保护）
   var qm=QUALITY_MULT[newQuality];
-  var stdHP=calcStat(baseHP,qm,maxLevel);
-  var stdATK=calcStat(baseATK,qm,maxLevel);
-  var stdDEF=calcStat(baseDEF,qm,maxLevel);
-  var stdSPD=calcStat(baseSPD,qm,maxLevel);
-  var stdMP=calcStat(baseMP,qm,maxLevel);
+  var stdHP=calcStat(baseHP,qm,maxLevel,'maxHP');
+  var stdATK=calcStat(baseATK,qm,maxLevel,'atk');
+  var stdDEF=calcStat(baseDEF,qm,maxLevel,'def');
+  var stdSPD=calcStat(baseSPD,qm,maxLevel,'spd');
+  var stdMP=calcStat(baseMP,qm,maxLevel,'maxMP');
   
   // 取材料中各属性的最高值
   var maxMaterialHP=Math.max.apply(null,heroes.map(function(h){return h.maxHP}));
@@ -7042,8 +7050,10 @@ function showHeroDetail(uid){
     hidden:'✦隐藏品质，属性加成+220%，集所有素材技能于一身'
   };
 
-  // 属性上限参考（用于进度条百分比）
-  const statMaxRef={maxHP:8000,atk:500,def:350,spd:120,maxMP:500};
+  // 属性上限参考（用于进度条百分比）- 大幅提升上限
+  const statMaxRef={maxHP:99999,atk:9999,def:9999,spd:999,maxMP:9999};
+  // 满属性保护上限（超过此值不再增长）
+  const STAT_HARD_CAP={maxHP:99999,atk:9999,def:9999,spd:999,maxMP:9999};
   const statColors={maxHP:'#c0392b',atk:'#e74c3c',def:'#2980b9',spd:'#27ae60',maxMP:'#8e44ad'};
 
   // 技能类型标签
@@ -7058,11 +7068,11 @@ function showHeroDetail(uid){
   const nextLevelStats={};
   if(h.level<levelCap){
     const qm=QUALITY_MULT[h.quality];
-    nextLevelStats.maxHP=calcStat(role.baseHP,qm,h.level+1);
-    nextLevelStats.atk=calcStat(role.baseATK,qm,h.level+1);
-    nextLevelStats.def=calcStat(role.baseDEF,qm,h.level+1);
-    nextLevelStats.spd=calcStat(role.baseSPD,qm,h.level+1);
-    nextLevelStats.maxMP=calcStat(role.baseMP,qm,h.level+1);
+    nextLevelStats.maxHP=calcStat(role.baseHP,qm,h.level+1,'maxHP');
+    nextLevelStats.atk=calcStat(role.baseATK,qm,h.level+1,'atk');
+    nextLevelStats.def=calcStat(role.baseDEF,qm,h.level+1,'def');
+    nextLevelStats.spd=calcStat(role.baseSPD,qm,h.level+1,'spd');
+    nextLevelStats.maxMP=calcStat(role.baseMP,qm,h.level+1,'maxMP');
   }
 
   // 构建装备HTML
