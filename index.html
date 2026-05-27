@@ -10109,6 +10109,7 @@ function cheatForceQuality(quality){
   G_cheats.forceQuality = quality;
   G_cheats.forceLegendary = (quality==='legendary');
   G_cheats.forceMythic = (quality==='mythic');
+  G_cheats.forceHidden = (quality==='hidden');
   showToast(quality ? '⚗️ 已强制合成结果为: ' + QUALITY_NAMES[quality] : '⚗️ 已取消强制品质');
 }
 
@@ -10234,6 +10235,7 @@ function renderCheats(el){
           <div class="btn-group mt-8">
             <button class="btn ${G_cheats.forceQuality==='legendary'?'btn-primary':''}" onclick="cheatForceQuality(${G_cheats.forceQuality==='legendary'?'null':"'legendary'"})">${G_cheats.forceQuality==='legendary'?'⚡ 强制传说[开]':'⚡ 强制传说[关]'}</button>
             <button class="btn ${G_cheats.forceQuality==='mythic'?'btn-primary':''}" onclick="cheatForceQuality(${G_cheats.forceQuality==='mythic'?'null':"'mythic'"})">${G_cheats.forceQuality==='mythic'?'🔥 强制神话[开]':'🔥 强制神话[关]'}</button>
+            <button class="btn ${G_cheats.forceQuality==='hidden'?'btn-primary':''}" onclick="cheatForceQuality(${G_cheats.forceQuality==='hidden'?'null':"'hidden'"})">${G_cheats.forceQuality==='hidden'?'✦ 强制隐藏[开]':'✦ 强制隐藏[关]'}</button>
           </div>
         </div>
         <div class="panel" style="background:rgba(230,126,34,.1);border-color:rgba(230,126,34,.3)">
