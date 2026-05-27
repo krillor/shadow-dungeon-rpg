@@ -2449,7 +2449,14 @@ function saveGame(){
     var backupKey='shadow_dungeon_auto_'+Date.now();
     localStorage.setItem(backupKey,jsonStr);
     if(!meta.autoBackups) meta.autoBackups=[];
-    meta.autoBackups.unshift({key:backupKey,slotIdx:slotIdx,timestamp:Date.now(),stageProgress:G.stageProgress||1});
+    meta.autoBackups.unshift({
+      key:backupKey,
+      slotIdx:slotIdx,
+      timestamp:Date.now(),
+      stageProgress:G.stageProgress||1,
+      heroCount:G.heroes?G.heroes.length:0,
+      totalPower:calcTotalPower()
+    });
     // 限制自动备份数量
     while(meta.autoBackups.length>MAX_AUTO_BACKUPS){
       var old=meta.autoBackups.pop();
@@ -2464,6 +2471,20 @@ function saveGame(){
       showToast('存档失败');
     }
   }
+}
+
+// 计算队伍总战力
+function calcTotalPower(){
+  var total=0;
+  if(G.heroes){
+    for(var i=0;i<G.heroes.length;i++){
+      var h=G.heroes[i];
+      if(h){
+        total+=h.atk+h.def+h.maxHP+h.spd;
+      }
+    }
+  }
+  return total;
 }
 
 // 手动备份（玩家主动创建）
@@ -2482,6 +2503,7 @@ function createManualBackup(){
       timestamp:Date.now(),
       stageProgress:G.stageProgress||1,
       heroCount:G.heroes?G.heroes.length:0,
+      totalPower:calcTotalPower(),
       note:'手动备份'
     });
     // 限制手动备份数量
@@ -6619,17 +6641,19 @@ function renderTown(el){
             var isRestoreBackup=mbk.note&&mbk.note.indexOf('恢复')>=0;
             html+='<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:'+(isRestoreBackup?'rgba(255,165,0,.08)':'rgba(0,0,0,.15)')+';border-radius:6px;margin:3px 0;font-size:11px;border-left:2px solid '+(isRestoreBackup?'#ffa500':'var(--blue)')+'">'
               +'<div style="flex:1;min-width:0">'
-              +'<div style="display:flex;align-items:center;gap:4px">'
+              +'<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">'
               +'<span style="color:var(--text3)">'+formatSaveTime(mbk.timestamp)+'</span>'
               +'<span style="color:var(--text2)">关卡'+mbk.stageProgress+'</span>'
+              +'<span style="color:var(--gold)">⚔️'+(mbk.totalPower||'?')+'</span>'
+              +'<span style="color:var(--text3)">'+mbk.heroCount+'英雄</span>'
               +(mbk.note?'<span style="color:var(--text3);font-size:10px">·'+mbk.note+'</span>':'')
               +'</div></div>'
               +'<span style="display:flex;gap:4px">'
               +'<button class="btn" style="font-size:9px;padding:2px 8px;color:var(--blue)" onclick="restoreBackup(\'manual\','+mi+')">恢复</button>'
-              +'<button class="btn" style="font-size:9px;padding:2px 8px;color:#ff6b6b" onclick="deleteManualBackup('+mi+')">🗑️</button>'
+              +'<button class="btn" style="font-size:9px;padding:2px 8px;color:#ff6b6b" onclick="showConfirm(\'删除备份\',\'确定删除此手动备份？关卡'+mbk.stageProgress+' · '+(mbk.heroCount||0)+'英雄\',function(){deleteManualBackup('+mi+')},\'删除\',\'取消\')">🗑️</button>'
               +'</span></div>';
           }
-          html+='<button class="btn" style="width:100%;margin-top:8px;font-size:10px" onclick="clearManualBackups()">🗑️ 清理全部</button>';
+          html+='<button class="btn" style="width:100%;margin-top:8px;font-size:10px" onclick="showConfirm(\'清理全部手动备份\',\'确定删除所有手动备份？共'+meta.manualBackups.length+'个\',clearManualBackups,\'删除\',\'取消\')">🗑️ 清理全部</button>';
         }else{
           html+='<div style="text-align:center;padding:10px;color:var(--text3);font-size:11px">暂无手动备份</div>';
         }
@@ -6645,11 +6669,13 @@ function renderTown(el){
             html+='<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;background:rgba(0,0,0,.15);border-radius:6px;margin:2px 0;font-size:11px">'
               +'<span style="color:var(--text3)">'+formatSaveTime(abk.timestamp)+'</span>'
               +'<span style="color:var(--text2);flex:1">关卡'+abk.stageProgress+'</span>'
+              +'<span style="color:var(--gold)">⚔️'+(abk.totalPower||'?')+'</span>'
+              +'<span style="color:var(--text3)">'+abk.heroCount+'英雄</span>'
               +'<button class="btn" style="font-size:9px;padding:2px 6px;color:var(--blue)" onclick="restoreBackup(\'auto\','+ai+')">恢复</button>'
-              +'<button class="btn" style="font-size:9px;padding:2px 6px;color:#ff6b6b" onclick="deleteAutoBackup('+ai+')">🗑️</button>'
+              +'<button class="btn" style="font-size:9px;padding:2px 6px;color:#ff6b6b" onclick="showConfirm(\'删除备份\',\'确定删除此自动备份？关卡'+abk.stageProgress+' · '+(abk.heroCount||0)+'英雄\',function(){deleteAutoBackup('+ai+')},\'删除\',\'取消\')">🗑️</button>'
               +'</div>';
           }
-          html+='<button class="btn" style="width:100%;margin-top:8px;font-size:10px" onclick="clearAutoBackups()">🗑️ 清理全部</button>';
+          html+='<button class="btn" style="width:100%;margin-top:8px;font-size:10px" onclick="showConfirm(\'清理全部自动备份\',\'确定删除所有自动备份？共'+meta.autoBackups.length+'个\',clearAutoBackups,\'删除\',\'取消\')">🗑️ 清理全部</button>';
         }else{
           html+='<div style="text-align:center;padding:8px;color:var(--text3);font-size:10px">保存时自动创建</div>';
         }
