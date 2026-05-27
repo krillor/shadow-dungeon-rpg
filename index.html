@@ -158,10 +158,12 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .quality-epic::before{background:linear-gradient(90deg,#a855f7,#8e44ad)}
 .quality-legendary::before{background:linear-gradient(90deg,#f59e0b,#d97706)}
 .quality-mythic::before{background:linear-gradient(90deg,#ef4444,#dc2626)}
+.quality-hidden::before{background:linear-gradient(90deg,#00ffcc,#00cc99)}
 .quality-rare{border-color:rgba(74,158,255,.3)!important}
 .quality-epic{border-color:rgba(168,85,247,.3)!important}
 .quality-legendary{border-color:rgba(245,158,11,.3)!important;box-shadow:inset 0 0 20px rgba(245,158,11,.04)}
 .quality-mythic{border-color:rgba(239,68,68,.3)!important;box-shadow:inset 0 0 20px rgba(239,68,68,.04)}
+.quality-hidden{border-color:rgba(0,255,204,.4)!important;box-shadow:inset 0 0 25px rgba(0,255,204,.08),0 0 15px rgba(0,255,204,.1)}
 .hero-avatar{width:50px;height:50px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;border:2px solid var(--border);position:relative;transition:var(--transition);background:rgba(0,0,0,.2)}
 .hero-card:hover .hero-avatar{transform:scale(1.08);border-color:var(--border-light)}
 .hero-info{flex:1;min-width:0}
@@ -186,7 +188,8 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .quality-epic{border-color:#a855f7!important}
 .quality-legendary{border-color:#f59e0b!important}
 .quality-mythic{border-color:#ef4444!important}
-.q-common{color:#aaa}.q-rare{color:#5bb5ff}.q-epic{color:#b86eff}.q-legendary{color:#ffb833;text-shadow:0 0 10px rgba(255,184,51,.4)}.q-mythic{color:#ff5555;text-shadow:0 0 10px rgba(255,85,85,.4)}
+.quality-hidden{border-color:#00ffcc!important;box-shadow:0 0 15px rgba(0,255,204,.2)}
+.q-common{color:#aaa}.q-rare{color:#5bb5ff}.q-epic{color:#b86eff}.q-legendary{color:#ffb833;text-shadow:0 0 10px rgba(255,184,51,.4)}.q-mythic{color:#ff5555;text-shadow:0 0 10px rgba(255,85,85,.4)}.q-hidden{color:#00ffcc;text-shadow:0 0 12px rgba(0,255,204,.6),0 0 24px rgba(0,255,204,.3)}
 
 /* ===== 按钮 ===== */
 .btn{padding:8px 18px;border:1px solid var(--border);background:linear-gradient(145deg,var(--panel2),var(--panel));color:var(--text);cursor:pointer;border-radius:var(--radius-sm);font-size:13px;transition:var(--transition);font-family:inherit;touch-action:manipulation;position:relative;overflow:hidden;letter-spacing:.3px}
@@ -256,6 +259,7 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .unit-avatar.quality-epic{border-color:#a855f7;box-shadow:0 0 6px rgba(168,85,247,.3)}
 .unit-avatar.quality-legendary{border-color:#f59e0b;box-shadow:0 0 8px rgba(245,158,11,.4)}
 .unit-avatar.quality-mythic{border-color:#ef4444;box-shadow:0 0 10px rgba(239,68,68,.4)}
+.unit-avatar.quality-hidden{border-color:#00ffcc;box-shadow:0 0 12px rgba(0,255,204,.5)}
 .unit-level{position:absolute;bottom:-2px;right:-2px;background:#111;border:1px solid var(--border);border-radius:3px;padding:0 4px;font-size:8px;color:var(--gold);font-weight:bold;z-index:2}
 .unit-role-icon{position:absolute;top:-4px;left:-4px;font-size:11px;z-index:2;filter:drop-shadow(0 1px 2px rgba(0,0,0,.8))}
 .unit-name{text-align:center;font-size:11px;font-weight:bold;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
@@ -445,6 +449,7 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .hd-quality-epic{background:rgba(140,50,220,.15);color:#b06ce6;border:1px solid rgba(140,50,220,.3)}
 .hd-quality-legendary{background:rgba(220,160,30,.15);color:#e8c840;border:1px solid rgba(220,160,30,.3)}
 .hd-quality-mythic{background:rgba(220,50,50,.15);color:#ff6b6b;border:1px solid rgba(220,50,50,.3)}
+.hd-quality-hidden{background:rgba(0,255,204,.1);color:#00ffcc;border:1px solid rgba(0,255,204,.3)}
 .hd-passive{background:rgba(0,0,0,.2);border-radius:8px;padding:10px;border-left:3px solid var(--gold)}
 .hd-passive-name{font-weight:bold;color:var(--gold);font-size:12px}
 .hd-passive-desc{font-size:11px;color:var(--text);margin-top:4px;line-height:1.5}
@@ -661,10 +666,10 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 <script>
 // ==================== 游戏数据定义 ====================
 
-const QUALITIES = ['common','rare','epic','legendary','mythic'];
-const QUALITY_NAMES = {common:'普通',rare:'稀有',epic:'史诗',legendary:'传说',mythic:'神话'};
-const QUALITY_MULT = {common:1.0, rare:1.25, epic:1.55, legendary:1.9, mythic:2.4};
-const QUALITY_COLORS = {common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444'};
+const QUALITIES = ['common','rare','epic','legendary','mythic','hidden'];
+const QUALITY_NAMES = {common:'普通',rare:'稀有',epic:'史诗',legendary:'传说',mythic:'神话',hidden:'隐藏'};
+const QUALITY_MULT = {common:1.0, rare:1.25, epic:1.55, legendary:1.9, mythic:2.4, hidden:3.2};
+const QUALITY_COLORS = {common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444',hidden:'#00ffcc'};
 
 // 等级成长：对数衰减曲线，前期快后期慢，避免无限膨胀
 // 公式: stat = baseStat * qualityMult * (1 + GROWTH_RATE * ln(1 + level))
@@ -5781,6 +5786,7 @@ var G_MUTATION_RATE = 0.30;       // 30% 异变概率
 var G_QUALITY_UP_RATE = 0.05;      // 5% 品质+1概率
 var G_LEGENDARY_DIRECT_RATE = 0.03; // 3% 直接传说概率
 var G_MYTHIC_DIRECT_RATE = 0.01;   // 1% 直接神话概率
+var G_HIDDEN_DIRECT_RATE = 0.001;  // 0.1% 隐藏品质概率
 
 function generateFusedHero(heroes){
   // 基于输入英雄属性即时生成新英雄
@@ -5801,28 +5807,36 @@ function generateFusedHero(heroes){
     newQIdx=QUALITIES.indexOf(newQuality);
   }
   
-  // 2. 判定特殊结果（优先级：神话 > 传说 > 品质+1 > 异变 > 普通）
+  // 2. 判定特殊结果（优先级：隐藏 > 神话 > 传说 > 品质+1 > 异变 > 普通）
   // 金手指强制异变
   var isMutation=G_cheats.forceMutation||Math.random()<G_MUTATION_RATE;
   var isQualityUp=false;
   var isDirectLegendary=false;
   var isDirectMythic=false;
+  var isDirectHidden=false;
   
-  // 1% 直接神话（最高优先级，无视当前品质）
-  if(Math.random()<G_MYTHIC_DIRECT_RATE){
+  // 0.1% 隐藏品质（最高优先级，无视当前品质）
+  if(Math.random()<G_HIDDEN_DIRECT_RATE){
+    newQuality='hidden';
+    newQIdx=QUALITIES.indexOf('hidden');
+    isMutation=true;
+    isDirectHidden=true;
+  }
+  // 1% 直接神话
+  else if(Math.random()<G_MYTHIC_DIRECT_RATE){
     newQuality='mythic';
     newQIdx=QUALITIES.indexOf('mythic');
     isMutation=true;
     isDirectMythic=true;
   }
-  // 3% 直接传说（无视当前品质，但低于神话优先级）
+  // 3% 直接传说
   else if(Math.random()<G_LEGENDARY_DIRECT_RATE){
     newQuality='legendary';
     newQIdx=QUALITIES.indexOf('legendary');
     isMutation=true;
     isDirectLegendary=true;
   }
-  // 5% 品质+1（不超过神话）
+  // 5% 品质+1（不超过隐藏）
   else if(Math.random()<G_QUALITY_UP_RATE && newQIdx<QUALITIES.length-1){
     newQIdx++;
     newQuality=QUALITIES[newQIdx];
@@ -5847,11 +5861,21 @@ function generateFusedHero(heroes){
   if(roleData&&roleData.skills){
     roleData.skills.forEach(function(s){if(allSkillPool.indexOf(s)===-1)allSkillPool.push(s)});
   }
-  // 异变英雄额外获得1-2个技能
-  var baseSkillCount=2+Math.floor(hash%3);
-  var skillCount=isMutation?Math.min(allSkillPool.length,baseSkillCount+1+Math.floor(Math.random()*2)):baseSkillCount;
-  var shuffled=allSkillPool.slice().sort(function(){return Math.random()-0.5});
-  var newSkills=shuffled.slice(0,skillCount);
+  
+  // 隐藏品质：可选择所有素材英雄的全部技能（最多6个）
+  var skillCount;
+  if(isDirectHidden){
+    // 隐藏品质：收集所有素材技能，最多6个
+    skillCount=Math.min(6,allSkillPool.length);
+    var shuffled=allSkillPool.slice().sort(function(){return Math.random()-0.5});
+    var newSkills=shuffled.slice(0,skillCount);
+  }else{
+    // 异变英雄额外获得1-2个技能
+    var baseSkillCount=2+Math.floor(hash%3);
+    skillCount=isMutation?Math.min(allSkillPool.length,baseSkillCount+1+Math.floor(Math.random()*2)):baseSkillCount;
+    var shuffled=allSkillPool.slice().sort(function(){return Math.random()-0.5});
+    var newSkills=shuffled.slice(0,skillCount);
+  }
   
   // 5. 确定新属性 - 统一逻辑：max(职业品质标准, 材料最高属性)
   var roleData=ROLES[mainRole];
@@ -5887,8 +5911,14 @@ function generateFusedHero(heroes){
   var spd=Math.max(stdSPD,maxMaterialSPD);
   var maxMP=Math.max(stdMP,maxMaterialMP);
   
-  // 异变/品质提升时额外加成10%
-  if(isMutation||isQualityUp||isDirectLegendary||isDirectMythic){
+  // 异变/品质提升时额外加成10%，隐藏品质额外加成30%
+  if(isDirectHidden){
+    maxHP=Math.floor(maxHP*1.3);
+    atk=Math.floor(atk*1.3);
+    def=Math.floor(def*1.3);
+    spd=Math.floor(spd*1.3);
+    maxMP=Math.floor(maxMP*1.3);
+  }else if(isMutation||isQualityUp||isDirectLegendary||isDirectMythic){
     maxHP=Math.floor(maxHP*1.1);
     atk=Math.floor(atk*1.1);
     def=Math.floor(def*1.1);
@@ -5937,8 +5967,8 @@ function generateFusedHero(heroes){
   var icon=iconList[(hash>>8)%iconList.length];
   
   // 异变英雄名称前缀
-  var qualityPrefix={common:'',rare:'精英',epic:'史诗',legendary:'传说',mythic:'神话'};
-  var mutationPrefix=isMutation?'☣️异变·':'';
+  var qualityPrefix={common:'',rare:'精英',epic:'史诗',legendary:'传说',mythic:'神话',hidden:'✦隐藏'};
+  var mutationPrefix=isDirectHidden?'✦异变·':isMutation?'☣️异变·':'';
   var newName=mutationPrefix+(qualityPrefix[newQuality]||'')+prefix+suffix;
   
   // 7. 继承最高等级
@@ -5965,11 +5995,14 @@ function generateFusedHero(heroes){
     bonusSkills:[],
     equipment:{weapon:null,armor:null,accessory:null},
     exp:0,
-    lore:isMutation?
+    lore:isDirectHidden?
+      '✦隐藏品质！由'+heroes.map(function(h){return h.name}).join('与')+'融合时发生奇迹异变，集所有素材技能于一身，拥有超越神话的力量。':
+      isMutation?
       '☣️异变英雄！由'+heroes.map(function(h){return h.name}).join('与')+'融合时发生异变，拥有超越同品质的力量。':
       '由'+heroes.map(function(h){return h.name}).join('与')+'融合诞生的'+QUALITY_NAMES[newQuality]+'英雄。',
     deathDefyUsed: false,
-    isMutation: isMutation
+    isMutation: isMutation,
+    isHidden: !!isDirectHidden
   };
   
   return newHero;
@@ -5987,12 +6020,14 @@ function hashStr(str){
 
 // ==================== 合成结果展示 ====================
 function showMergeResult(hero, isQualityUp, oldQuality){
-  var qualityColors={common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444'};
-  var qualityBg={common:'rgba(136,136,136,.15)',rare:'rgba(74,158,255,.15)',epic:'rgba(168,85,247,.15)',legendary:'rgba(245,158,11,.15)',mythic:'rgba(239,68,68,.15)'};
+  var qualityColors={common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444',hidden:'#00ffcc'};
+  var qualityBg={common:'rgba(136,136,136,.15)',rare:'rgba(74,158,255,.15)',epic:'rgba(168,85,247,.15)',legendary:'rgba(245,158,11,.15)',mythic:'rgba(239,68,68,.15)',hidden:'rgba(0,255,204,.12)'};
   
   // 创建特效层
   var effects='';
-  if(hero.quality==='mythic'){
+  if(hero.quality==='hidden'){
+    effects='<div class="merge-mythic-flash" style="background:radial-gradient(ellipse at center,rgba(0,255,204,.6),transparent 50%),radial-gradient(ellipse at 20% 80%,rgba(0,200,255,.4),transparent 40%),radial-gradient(ellipse at 80% 20%,rgba(0,255,180,.4),transparent 40%)"></div><div class="merge-mythic-text" style="color:#00ffcc;text-shadow:0 0 40px rgba(0,255,204,.9),0 0 80px rgba(0,255,204,.5),0 4px 12px rgba(0,0,0,.8)">✦ 隐藏品质 ✦</div><div class="merge-mythic-particles"></div>';
+  }else if(hero.quality==='mythic'){
     effects='<div class="merge-mythic-flash"></div><div class="merge-mythic-text">🔥 神话降临 🔥</div><div class="merge-mythic-particles"></div>';
   }else if(hero.quality==='legendary'){
     effects='<div class="merge-legendary-flash"></div><div class="merge-legendary-text">⚡ 传说诞生 ⚡</div>';
@@ -6997,13 +7032,14 @@ function showHeroDetail(uid){
 
   // 品质颜色映射
   const qualityColors={common:'#aaa',rare:'#5b9bd5',epic:'#b06ce6',legendary:'#e8c840',mythic:'#ff6b6b'};
-  const qualityStars={common:'★',rare:'★★',epic:'★★★',legendary:'★★★★',mythic:'★★★★★'};
+  const qualityStars={common:'★',rare:'★★',epic:'★★★',legendary:'★★★★',mythic:'★★★★★',hidden:'✦✦✦✦✦✦'};
   const qualityDescs={
     common:'基础品质，属性成长一般',
     rare:'稀有品质，属性加成+25%',
     epic:'史诗品质，属性加成+55%',
     legendary:'传说品质，属性加成+90%',
-    mythic:'神话品质，属性加成+140%'
+    mythic:'神话品质，属性加成+140%',
+    hidden:'✦隐藏品质，属性加成+220%，集所有素材技能于一身'
   };
 
   // 属性上限参考（用于进度条百分比）
