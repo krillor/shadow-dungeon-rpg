@@ -394,7 +394,8 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .merge-pity-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--gold),#ff6b00);transition:width .3s}
 .merge-streak-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(255,165,0,.1));border:1px solid rgba(239,68,68,.3);border-radius:20px;font-size:11px;font-weight:bold;color:#ff6b6b;animation:streakPulse 1.5s ease infinite}
 .merge-bond-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:linear-gradient(135deg,rgba(52,152,219,.15),rgba(155,89,182,.1));border:1px solid rgba(52,152,219,.3);border-radius:12px;font-size:10px;color:#5dade2;font-weight:bold}
-.merge-skill-mut{background:linear-gradient(135deg,rgba(168,85,247,.2),rgba(239,68,68,.15))!important;color:#d4a0ff!important;border-color:rgba(168,85,247,.4)!important}
+.merge-skill-mut{background:linear-gradient(135deg,rgba(168,85,247,.3),rgba(239,68,68,.2))!important;color:#d4a0ff!important;border-color:#d4a0ff!important;box-shadow:0 0 8px rgba(168,85,247,.4)!important;animation:skillMutGlow 1.5s ease infinite!important}
+@keyframes skillMutGlow{0%,100%{box-shadow:0 0 4px rgba(168,85,247,.4)}50%{box-shadow:0 0 12px rgba(168,85,247,.8)}}
 .merge-cost{display:flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(0,0,0,.2);border-radius:var(--radius-sm);font-size:12px;color:var(--text2);margin-bottom:8px}
 .merge-cost b{color:var(--gold)}
 .merge-history-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(0,0,0,.15);border-radius:6px;margin-bottom:4px;border-left:3px solid var(--border);font-size:11px}
@@ -6186,14 +6187,26 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials){
       +'</div>';
   }
   
-  // 技能列表
+  // 技能列表 - 变异技能高亮显示
   var stats=getHeroStats(hero);
+  var hasMutated=hero.mutatedSkills&&hero.mutatedSkills.length>0;
+  var mutatedNames=[];
   var skillsHtml=hero.skills.slice(0,6).map(function(s,i){
-    var isMut=hero.mutatedSkills&&hero.mutatedSkills.indexOf(i)>=0;
+    var isMut=hasMutated&&hero.mutatedSkills.indexOf(i)>=0;
+    if(isMut) mutatedNames.push(s);
     var skillData=SKILLS?SKILLS[s]:null;
-    var tip=skillData?' title="'+(skillData.desc||'')+'"':'';
-    return '<span class="merge-result-skill'+(isMut?' merge-skill-mut':'')+'"'+tip+'>'+(isMut?'🧬':'')+s+'</span>';
+    var tip=skillData?' title="🧬 变异技能 - '+(skillData.desc||'')+'"':'';
+    return '<span class="merge-result-skill'+(isMut?' merge-skill-mut':'')+'"'+tip+'>'+(isMut?'🧬':'')+s+(isMut?'✨':'')+'</span>';
   }).join('');
+  
+  // 如果有变异技能，添加专门的变异提示区域
+  var mutateBanner='';
+  if(hasMutated&&mutatedNames.length>0){
+    mutateBanner='<div style="margin:10px 0;padding:8px 12px;background:linear-gradient(135deg,rgba(168,85,247,.2),rgba(239,68,68,.15));border:1px solid #d4a0ff;border-radius:8px;text-align:center">'
+      +'<div style="font-size:13px;color:#d4a0ff;font-weight:bold">🧬 技能变异</div>'
+      +'<div style="font-size:11px;color:var(--text2)">'+mutatedNames.join('、')+' 发生了变异</div>'
+      +'</div>';
+  }
   
   var html=effects+'<div class="merge-result-overlay" onclick="closeMergeResult()">'+
     '<div class="merge-result-card" onclick="event.stopPropagation()" style="max-height:90vh;overflow-y:auto">'+
@@ -6213,6 +6226,7 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials){
         '<div class="merge-result-stat">⚡ 战力<b>'+calcHeroPower(hero)+'</b></div>'+
       '</div>'+
       '<div class="merge-result-skills">'+skillsHtml+'</div>'+
+      mutateBanner+
       matHtml+
       '<div style="display:flex;gap:8px;margin-top:16px">'+
         '<button class="btn btn-primary" onclick="closeMergeResult();switchTab(\'heroes\')">查看英雄</button>'+
