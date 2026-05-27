@@ -5825,6 +5825,10 @@ function generateFusedHero(heroes){
   var luckyBonus = (G.mergeLucky||0) * 0.005; // 每点幸运+0.5%
   var effectiveMutationRate = Math.min(0.50, G_MUTATION_RATE + luckyBonus);
   
+  // === 连击×10：必定异变 ===
+  var streakCount = (G.mergeStreak && G.mergeStreak.count) || 0;
+  var streakForceMutation = streakCount >= 10;
+  
   // === 保底系统：连续10次无特殊触发，下次必定品质+1 ===
   var pityTrigger = false;
   if((G.mergePity||0) >= 10){
@@ -5852,7 +5856,7 @@ function generateFusedHero(heroes){
   
   // 2. 判定特殊结果（优先级：隐藏 > 神话 > 传说 > 品质+1 > 异变 > 普通）
   // 金手指强制异变
-  var isMutation=G_cheats.forceMutation||Math.random()<effectiveMutationRate;
+  var isMutation=G_cheats.forceMutation||streakForceMutation||Math.random()<effectiveMutationRate;
   var isQualityUp=false;
   var isDirectLegendary=false;
   var isDirectMythic=false;
@@ -6336,7 +6340,7 @@ function executeMerge(heroUids){
     var extra=allPool.filter(function(s){return newHero.skills.indexOf(s)===-1});
     if(extra.length>0) newHero.skills.push(extra[Math.floor(Math.random()*extra.length)]);
   }
-  // 连击×10：必定异变（已通过幸运值系统间接实现）
+  // 连击×10：必定异变（已在generateFusedHero中通过streakForceMutation实现）
   
   // === 合成图鉴记录 ===
   if(!G.mergeHistory) G.mergeHistory=[];
