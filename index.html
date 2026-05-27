@@ -10209,6 +10209,7 @@ function renderCheats(el){
           <div class="panel-title">⭐ 英雄修改</div>
           <div class="btn-group">
             <button class="btn" onclick="cheatMaxLevel()">所有英雄50级</button>
+            <button class="btn" onclick="cheatLevelUp()">所有英雄+1级</button>
             <button class="btn" onclick="cheatMaxAllHeroes()">所有英雄99级</button>
             <button class="btn" onclick="cheatMaxAllSkills()">所有英雄满技能</button>
             <button class="btn" onclick="cheatUnlockAll()">解锁所有英雄</button>
@@ -10550,6 +10551,20 @@ function cheatMaxLevel(){
     h.def = Math.floor(h.def * (1 + (h.level - 1) * 0.10));
   });
   showToast('⭐ 所有英雄已升至50级');
+}
+
+function cheatLevelUp(){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  var count=0;
+  var levelCap=getHeroLevelCap();
+  G.heroes.forEach(function(h){
+    if(h.level<levelCap){
+      addHeroExp(h, getExpToLevel(h.level));
+      count++;
+    }
+  });
+  saveGame();
+  showToast('📈 已为 '+count+' 个英雄提升1级');
 }
 
 function cheatGodMode(){
