@@ -9849,6 +9849,78 @@ function submitAllLeaderboards(){
   });
 }
 
+// 管理员删除玩家数据
+function adminDeletePlayerData() {
+  var nameInput = document.getElementById('admin-delete-name');
+  var resultDiv = document.getElementById('admin-delete-result');
+  var name = nameInput ? nameInput.value.trim() : '';
+  
+  if (!name) {
+    if (resultDiv) {
+      resultDiv.style.display = 'block';
+      resultDiv.style.color = '#ff6b6b';
+      resultDiv.textContent = '❌ 请输入玩家名字';
+    }
+    return;
+  }
+  
+  if (!isCloudReady) {
+    if (resultDiv) {
+      resultDiv.style.display = 'block';
+      resultDiv.style.color = '#ff6b6b';
+      resultDiv.textContent = '❌ 云端未连接';
+    }
+    return;
+  }
+  
+  // 确认弹窗
+  showConfirm('⚠️ 删除确认', 
+    '确定要删除玩家 "' + name + '" 的所有云端数据吗？\n\n这将删除：\n- 云端存档（saves 表）\n- 排行榜成绩（leaderboard 表）\n\n此操作不可恢复！',
+    function() {
+      // 先查询获取 device_id
+      Promise.all([
+        sb.from('saves').select('device_id').eq('player_name', name).limit(1),
+        sb.from('leaderboard').select('device_id').eq('player_name', name).limit(1)
+      ]).then(function(results) {
+        var deviceId1 = results[0].data && results[0].data[0] ? results[0].data[0].device_id : null;
+        var deviceId2 = results[1].data && results[1].data[0] ? results[1].data[0].device_id : null;
+        var targetDeviceId = deviceId1 || deviceId2;
+        
+        if (!targetDeviceId) {
+          if (resultDiv) {
+            resultDiv.style.display = 'block';
+            resultDiv.style.color = '#ff6b6b';
+            resultDiv.textContent = '❌ 未找到玩家：' + name;
+          }
+          return;
+        }
+        
+        // 删除两个表的数据
+        return Promise.all([
+          sb.from('saves').delete().eq('device_id', targetDeviceId),
+          sb.from('leaderboard').delete().eq('device_id', targetDeviceId)
+        ]).then(function() {
+          if (resultDiv) {
+            resultDiv.style.display = 'block';
+            resultDiv.style.color = '#27ae60';
+            resultDiv.textContent = '✅ 已删除玩家 "' + name + '" 的所有云端数据';
+          }
+          nameInput.value = '';
+        });
+      }).catch(function(error) {
+        console.error('Delete error:', error);
+        if (resultDiv) {
+          resultDiv.style.display = 'block';
+          resultDiv.style.color = '#ff6b6b';
+          resultDiv.textContent = '❌ 删除失败：' + (error.message || '未知错误');
+        }
+      });
+    },
+    '确认删除',
+    '取消'
+  );
+}
+
 
 // ==================== 英雄金手指功能 ====================
 
@@ -10114,6 +10186,15 @@ function renderCheats(el){
           <div class="btn-group">
             <button class="btn" onclick="cheatSkipStage()">跳过当前关卡</button>
           </div>
+        </div>
+        <div class="panel" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.3)">
+          <div class="panel-title">☁️ 云端数据管理（管理员）</div>
+          <div class="text-dim text-sm mb-8">⚠️ 危险操作：删除指定玩家的云端数据</div>
+          <div class="btn-group">
+            <input type="text" id="admin-delete-name" placeholder="输入玩家名字" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:rgba(0,0,0,.3);color:var(--text);font-size:13px;outline:none">
+            <button class="btn btn-danger" onclick="adminDeletePlayerData()">🗑️ 删除该玩家数据</button>
+          </div>
+          <div id="admin-delete-result" style="margin-top:8px;font-size:12px;display:none"></div>
         </div>
       </div>
     </div>
