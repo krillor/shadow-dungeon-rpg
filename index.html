@@ -2713,6 +2713,22 @@ function deleteSave(){
   showConfirm('删除存档','确定要删除当前存档（槽位'+(slotIdx+1)+'）吗？此操作不可撤销！',function(){deleteSaveSlot(slotIdx);},'删除','取消');
 }
 
+// 重置游戏
+function resetGame(){
+  try{
+    localStorage.removeItem(SAVE_KEY);
+    localStorage.removeItem(SAVE_META_KEY);
+    // 清理所有备份相关数据
+    for(var key in localStorage){
+      if(key.indexOf('shadow_dungeon')>=0){
+        localStorage.removeItem(key);
+      }
+    }
+  }catch(e){}
+  showToast('游戏已重置，正在重新加载...');
+  setTimeout(function(){location.reload();},500);
+}
+
 // 每日登录奖励领取
 function claimDailyBonus(){
   var today=new Date().toDateString();
@@ -6621,11 +6637,6 @@ function renderTown(el){
     +'</div>':'')
     +'<div class="panel">'
       +'<div class="panel-title"><span class="icon">💾</span> 存档管理</div>'
-      +'<div class="btn-group">'
-        +'<button class="btn btn-primary" onclick="saveGame()">💾 保存</button>'
-        +'<button class="btn" onclick="loadGame();updateResUI();renderCurrentTab();showToast(\'📂 已读档\')">📂 读取</button>'
-        +'<button class="btn" style="color:#ff6b6b" onclick="deleteSave()">🗑️ 删除</button>'
-      +'</div>'
       +(function(){
         var meta=getSaveMeta();
         var html='<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.05);padding-top:10px">';
@@ -6680,6 +6691,10 @@ function renderTown(el){
           html+='<div style="text-align:center;padding:8px;color:var(--text3);font-size:10px">保存时自动创建</div>';
         }
         html+='</div></div>';
+        // 重置游戏按钮
+        html+='<div style="margin-top:16px;padding-top:12px;border-top:2px solid rgba(255,107,107,.3)">';
+        html+='<button class="btn" style="width:100%;color:#ff6b6b;border-color:rgba(255,107,107,.3)" onclick="showConfirm(\'⚠️ 重置游戏\',\'确定要重置游戏吗？所有数据将被清除且不可恢复！\',resetGame,\'确认重置\',\'取消\')">⚠️ 重置游戏</button>';
+        html+='</div>';
         return html;
       })()
     +'</div>';
