@@ -1319,6 +1319,51 @@ function getStage(id){
   return generateStage(id);
 }
 
+// ==================== 动态难度系统 ====================
+// 根据玩家进度动态调整关卡难度
+var DYNAMIC_DIFFICULTY = {
+  enabled: true,
+  // 计算难度系数（基于玩家最高战力、通关进度）
+  getDifficultyMult: function() {
+    var mult = 1.0;
+    
+    // 基于最高通关关卡
+    var maxStage = G.maxStageReached || 1;
+    mult += Math.floor(maxStage / 20) * 0.1; // 每20关+10%
+    
+    // 基于玩家平均战力
+    if (G.heroes && G.heroes.length > 0) {
+      var avgPower = G.heroes.reduce(function(s, h) { return s + (calcHeroPower ? calcHeroPower(h) : 0); }, 0) / G.heroes.length;
+      mult += Math.floor(avgPower / 5000) * 0.05; // 每5000战力+5%
+    }
+    
+    // 基于隐藏融合英雄数量（玩家越强，敌人越强）
+    var hiddenRuleCount = G.heroes ? G.heroes.filter(function(h) { return h.hiddenRule; }).length : 0;
+    mult += hiddenRuleCount * 0.05; // 每个隐藏规则英雄+5%
+    
+    // 基于异变/隐藏英雄数量
+    var mutationCount = G.heroes ? G.heroes.filter(function(h) { return h.isMutation || h.isHidden; }).length : 0;
+    mult += mutationCount * 0.03; // 每个异变/隐藏英雄+3%
+    
+    return Math.min(3.0, mult); // 上限300%
+  },
+  
+  // 应用难度到敌人属性
+  applyToEnemy: function(enemy, stageId) {
+    var mult = this.getDifficultyMult();
+    if (mult <= 1.0) return enemy;
+    
+    enemy.maxHP = Math.floor(enemy.maxHP * mult);
+    enemy.hp = enemy.maxHP;
+    enemy.atk = Math.floor(enemy.atk * mult);
+    enemy.def = Math.floor(enemy.def * mult);
+    enemy.spd = Math.floor(enemy.spd * mult);
+    enemy.difficultyMult = mult; // 记录难度系数
+    
+    return enemy;
+  }
+};
+
 // 关卡难度配置
 const STAGE_CONFIG = {
   // 每20关一个周期（周目）
@@ -1478,6 +1523,16 @@ function generateStage(id){
     }
   }
 
+  // 应用动态难度到所有敌人
+  if(DYNAMIC_DIFFICULTY.enabled){
+    var diffMult = DYNAMIC_DIFFICULTY.getDifficultyMult();
+    if(diffMult > 1.0){
+      enemies = enemies.map(function(enemy){
+        return DYNAMIC_DIFFICULTY.applyToEnemy(enemy, id);
+      });
+    }
+  }
+
   return {
     id:id,
     name:(isFinalBoss?'★★★ ':isBoss?'★ ':'')+theme.prefix+theme.suffix+nameSuffix,
@@ -1486,7 +1541,8 @@ function generateStage(id){
     isBoss:isBoss,
     bossType:isFinalBoss?'final':isBoss?'mini':null,
     enemies:enemies,
-    rewards:{gold:goldR,exp:expR,food:foodR,stone:stoneR,iron:ironR,gems:gemsR}
+    rewards:{gold:goldR,exp:expR,food:foodR,stone:stoneR,iron:ironR,gems:gemsR},
+    difficultyMult: DYNAMIC_DIFFICULTY.getDifficultyMult()
   };
 }
 
@@ -5821,6 +5877,192 @@ var G_LEGENDARY_DIRECT_RATE = 0.03; // 3% 直接传说概率
 var G_MYTHIC_DIRECT_RATE = 0.01;   // 1% 直接神话概率
 var G_HIDDEN_DIRECT_RATE = 0.001;  // 0.1% 隐藏品质概率
 
+// ==================== 属性上限突破系统 ====================
+// 通过特定条件提升英雄属性上限
+var STAT_CAP_BASE = {
+  maxHP: 9999,
+  atk: 999,
+  def: 999,
+  spd: 999,
+  maxMP: 999
+};
+
+// 计算英雄实际属性上限（可突破）
+function getHeroStatCap(hero) {
+  var capMult = 1.0;
+  
+  // 隐藏品质突破上限
+  if (hero.isHidden) capMult += 0.5;
+  // 异变英雄突破
+  else if (hero.isMutation) capMult += 0.3;
+  
+  // 隐藏融合规则突破
+  if (hero.hiddenRule) {
+    if (hero.hiddenRule.id === 'three_warriors') capMult += 0.2; // 三英战吕布
+    if (hero.hiddenRule.id === 'tank_wall') capMult += 0.2; // 钢铁长城
+    if (hero.hiddenRule.id === 'mage_circle') capMult += 0.2; // 奥术环流
+    if (hero.hiddenRule.id === 'shadow_assault') capMult += 0.15; // 暗影突袭
+    if (hero.hiddenRule.id === 'holy_trinity') capMult += 0.25; // 圣光三杰
+    if (hero.hiddenRule.id === 'max_level') capMult += 0.3; // 巅峰融合
+  }
+  
+  // 羁绊加成
+  if (hero.bondInfo) capMult += 0.1;
+  
+  return {
+    maxHP: Math.floor(STAT_CAP_BASE.maxHP * capMult),
+    atk: Math.floor(STAT_CAP_BASE.atk * capMult),
+    def: Math.floor(STAT_CAP_BASE.def * capMult),
+    spd: Math.floor(STAT_CAP_BASE.spd * capMult),
+    maxMP: Math.floor(STAT_CAP_BASE.maxMP * capMult)
+  };
+}
+
+// 检查并应用属性上限突破
+function applyStatCapBreak(hero) {
+  var cap = getHeroStatCap(hero);
+  var broke = false;
+  var bonus = {};
+  
+  if (hero.maxHP > STAT_CAP_BASE.maxHP && hero.maxHP <= cap.maxHP) {
+    bonus.maxHP = hero.maxHP - STAT_CAP_BASE.maxHP;
+    broke = true;
+  }
+  if (hero.atk > STAT_CAP_BASE.atk && hero.atk <= cap.atk) {
+    bonus.atk = hero.atk - STAT_CAP_BASE.atk;
+    broke = true;
+  }
+  if (hero.def > STAT_CAP_BASE.def && hero.def <= cap.def) {
+    bonus.def = hero.def - STAT_CAP_BASE.def;
+    broke = true;
+  }
+  if (hero.spd > STAT_CAP_BASE.spd && hero.spd <= cap.spd) {
+    bonus.spd = hero.spd - STAT_CAP_BASE.spd;
+    broke = true;
+  }
+  if (hero.maxMP > STAT_CAP_BASE.maxMP && hero.maxMP <= cap.maxMP) {
+    bonus.maxMP = hero.maxMP - STAT_CAP_BASE.maxMP;
+    broke = true;
+  }
+  
+  return { broke: broke, bonus: bonus, cap: cap };
+}
+
+// ==================== 隐藏融合规则 ====================
+// 特定英雄组合触发额外效果
+var HIDDEN_MERGE_RULES = [
+  {
+    id: 'three_warriors',
+    name: '三英战吕布',
+    desc: '3个战士融合时，攻击力额外+25%',
+    check: function(heroes){
+      return heroes.length===3 && heroes.every(function(h){return h.role==='warrior'});
+    },
+    effect: function(hero, heroes){
+      hero.atk = Math.floor(hero.atk * 1.25);
+      hero.isHiddenRule = 'three_warriors';
+      return '三英战吕布 · ATK+25%';
+    }
+  },
+  {
+    id: 'tank_wall',
+    name: '钢铁长城',
+    desc: '3个守卫融合时，生命值额外+30%',
+    check: function(heroes){
+      return heroes.length===3 && heroes.every(function(h){return h.role==='guardian'});
+    },
+    effect: function(hero, heroes){
+      hero.maxHP = Math.floor(hero.maxHP * 1.30);
+      hero.hp = hero.maxHP;
+      hero.isHiddenRule = 'tank_wall';
+      return '钢铁长城 · HP+30%';
+    }
+  },
+  {
+    id: 'mage_circle',
+    name: '奥术环流',
+    desc: '3个法师融合时，魔法值额外+50%，技能+1',
+    check: function(heroes){
+      return heroes.length===3 && heroes.every(function(h){return h.role==='mage'});
+    },
+    effect: function(hero, heroes){
+      hero.maxMP = Math.floor(hero.maxMP * 1.50);
+      hero.mp = hero.maxMP;
+      if(hero.skills.length < 6) hero.skills.push('奥术飞弹');
+      hero.isHiddenRule = 'mage_circle';
+      return '奥术环流 · MP+50% 技能+1';
+    }
+  },
+  {
+    id: 'shadow_assault',
+    name: '暗影突袭',
+    desc: '刺客+游侠+任意，速度额外+30%，首回合必暴击',
+    check: function(heroes){
+      if(heroes.length!==3) return false;
+      var roles = heroes.map(function(h){return h.role});
+      return roles.indexOf('assassin')>=0 && roles.indexOf('ranger')>=0;
+    },
+    effect: function(hero, heroes){
+      hero.spd = Math.floor(hero.spd * 1.30);
+      hero.isHiddenRule = 'shadow_assault';
+      hero.bonusSkills = hero.bonusSkills || [];
+      hero.bonusSkills.push('暗影突袭');
+      return '暗影突袭 · SPD+30% 首回合暴击';
+    }
+  },
+  {
+    id: 'holy_trinity',
+    name: '圣光三杰',
+    desc: '圣骑士+祭司+任意，全属性+15%',
+    check: function(heroes){
+      if(heroes.length!==3) return false;
+      var roles = heroes.map(function(h){return h.role});
+      return roles.indexOf('paladin')>=0 && roles.indexOf('healer')>=0;
+    },
+    effect: function(hero, heroes){
+      hero.maxHP = Math.floor(hero.maxHP * 1.15);
+      hero.hp = hero.maxHP;
+      hero.atk = Math.floor(hero.atk * 1.15);
+      hero.def = Math.floor(hero.def * 1.15);
+      hero.spd = Math.floor(hero.spd * 1.15);
+      hero.isHiddenRule = 'holy_trinity';
+      return '圣光三杰 · 全属性+15%';
+    }
+  },
+  {
+    id: 'same_name',
+    name: '同名共鸣',
+    desc: '2个同名英雄融合，继承最高等级+5',
+    check: function(heroes){
+      if(heroes.length!==2) return false;
+      return heroes[0].name === heroes[1].name;
+    },
+    effect: function(hero, heroes){
+      var maxLv = Math.max(heroes[0].level, heroes[1].level);
+      hero.level = Math.min(maxLv + 5, getHeroLevelCap());
+      hero.isHiddenRule = 'same_name';
+      return '同名共鸣 · 等级+' + (hero.level - maxLv);
+    }
+  },
+  {
+    id: 'max_level',
+    name: '巅峰融合',
+    desc: '所有材料满级时，品质必定+1',
+    check: function(heroes){
+      var cap = getHeroLevelCap();
+      return heroes.every(function(h){return h.level >= cap});
+    },
+    effect: function(hero, heroes){
+      var qIdx = QUALITIES.indexOf(hero.quality);
+      if(qIdx < QUALITIES.length - 1){
+        hero.quality = QUALITIES[qIdx + 1];
+      }
+      hero.isHiddenRule = 'max_level';
+      return '巅峰融合 · 品质+1';
+    }
+  }
+];
+
 function generateFusedHero(heroes){
   // === 幸运值系统：影响异变概率 ===
   var luckyBonus = (G.mergeLucky||0) * 0.005; // 每点幸运+0.5%
@@ -6011,6 +6253,28 @@ function generateFusedHero(heroes){
   }
   console.log('[Merge]',newQuality,mainRole,'mult='+inheritMult.toFixed(2),'finalHP='+maxHP);
   
+  // === 隐藏融合规则检测 ===
+  var hiddenRuleResult = null;
+  var hiddenRuleBonus = '';
+  var tempHero = {maxHP:maxHP,atk:atk,def:def,spd:spd,maxMP:maxMP,hp:maxHP,mp:maxMP,skills:newSkills,quality:newQuality,level:maxLevel,bonusSkills:[]};
+  for(var i=0; i<HIDDEN_MERGE_RULES.length; i++){
+    var rule = HIDDEN_MERGE_RULES[i];
+    if(rule.check(heroes)){
+      hiddenRuleResult = rule;
+      hiddenRuleBonus = rule.effect(tempHero, heroes);
+      // 应用规则效果后的属性
+      maxHP = tempHero.maxHP;
+      atk = tempHero.atk;
+      def = tempHero.def;
+      spd = tempHero.spd;
+      maxMP = tempHero.maxMP;
+      newQuality = tempHero.quality;
+      maxLevel = tempHero.level;
+      newSkills = tempHero.skills;
+      break; // 只触发第一个匹配的规则
+    }
+  }
+  
   // 6. 生成名称和图标
   var namePrefixes={
     warrior:['战','狂','铁','血','龙','雷','烈'],
@@ -6090,6 +6354,7 @@ function generateFusedHero(heroes){
     isUpset: isUpset,
     bondInfo: bondInfo,
     mutatedSkills: mutatedSkills,
+    hiddenRule: hiddenRuleResult ? {id: hiddenRuleResult.id, name: hiddenRuleResult.name, bonus: hiddenRuleBonus} : null,
     inheritMult: inheritMult
   };
   
