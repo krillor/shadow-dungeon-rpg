@@ -158,12 +158,10 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .quality-epic::before{background:linear-gradient(90deg,#a855f7,#8e44ad)}
 .quality-legendary::before{background:linear-gradient(90deg,#f59e0b,#d97706)}
 .quality-mythic::before{background:linear-gradient(90deg,#ef4444,#dc2626)}
-.quality-hidden::before{background:linear-gradient(90deg,#00ffcc,#00cc99)}
 .quality-rare{border-color:rgba(74,158,255,.3)!important}
 .quality-epic{border-color:rgba(168,85,247,.3)!important}
 .quality-legendary{border-color:rgba(245,158,11,.3)!important;box-shadow:inset 0 0 20px rgba(245,158,11,.04)}
 .quality-mythic{border-color:rgba(239,68,68,.3)!important;box-shadow:inset 0 0 20px rgba(239,68,68,.04)}
-.quality-hidden{border-color:rgba(0,255,204,.4)!important;box-shadow:inset 0 0 25px rgba(0,255,204,.08),0 0 15px rgba(0,255,204,.1)}
 .hero-avatar{width:50px;height:50px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;border:2px solid var(--border);position:relative;transition:var(--transition);background:rgba(0,0,0,.2)}
 .hero-card:hover .hero-avatar{transform:scale(1.08);border-color:var(--border-light)}
 .hero-info{flex:1;min-width:0}
@@ -188,8 +186,7 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .quality-epic{border-color:#a855f7!important}
 .quality-legendary{border-color:#f59e0b!important}
 .quality-mythic{border-color:#ef4444!important}
-.quality-hidden{border-color:#00ffcc!important;box-shadow:0 0 15px rgba(0,255,204,.2)}
-.q-common{color:#aaa}.q-rare{color:#5bb5ff}.q-epic{color:#b86eff}.q-legendary{color:#ffb833;text-shadow:0 0 10px rgba(255,184,51,.4)}.q-mythic{color:#ff5555;text-shadow:0 0 10px rgba(255,85,85,.4)}.q-hidden{color:#00ffcc;text-shadow:0 0 12px rgba(0,255,204,.6),0 0 24px rgba(0,255,204,.3)}
+.q-common{color:#aaa}.q-rare{color:#5bb5ff}.q-epic{color:#b86eff}.q-legendary{color:#ffb833;text-shadow:0 0 10px rgba(255,184,51,.4)}.q-mythic{color:#ff5555;text-shadow:0 0 10px rgba(255,85,85,.4)}
 
 /* ===== 按钮 ===== */
 .btn{padding:8px 18px;border:1px solid var(--border);background:linear-gradient(145deg,var(--panel2),var(--panel));color:var(--text);cursor:pointer;border-radius:var(--radius-sm);font-size:13px;transition:var(--transition);font-family:inherit;touch-action:manipulation;position:relative;overflow:hidden;letter-spacing:.3px}
@@ -259,7 +256,6 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .unit-avatar.quality-epic{border-color:#a855f7;box-shadow:0 0 6px rgba(168,85,247,.3)}
 .unit-avatar.quality-legendary{border-color:#f59e0b;box-shadow:0 0 8px rgba(245,158,11,.4)}
 .unit-avatar.quality-mythic{border-color:#ef4444;box-shadow:0 0 10px rgba(239,68,68,.4)}
-.unit-avatar.quality-hidden{border-color:#00ffcc;box-shadow:0 0 12px rgba(0,255,204,.5)}
 .unit-level{position:absolute;bottom:-2px;right:-2px;background:#111;border:1px solid var(--border);border-radius:3px;padding:0 4px;font-size:8px;color:var(--gold);font-weight:bold;z-index:2}
 .unit-role-icon{position:absolute;top:-4px;left:-4px;font-size:11px;z-index:2;filter:drop-shadow(0 1px 2px rgba(0,0,0,.8))}
 .unit-name{text-align:center;font-size:11px;font-weight:bold;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
@@ -449,7 +445,6 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .hd-quality-epic{background:rgba(140,50,220,.15);color:#b06ce6;border:1px solid rgba(140,50,220,.3)}
 .hd-quality-legendary{background:rgba(220,160,30,.15);color:#e8c840;border:1px solid rgba(220,160,30,.3)}
 .hd-quality-mythic{background:rgba(220,50,50,.15);color:#ff6b6b;border:1px solid rgba(220,50,50,.3)}
-.hd-quality-hidden{background:rgba(0,255,204,.1);color:#00ffcc;border:1px solid rgba(0,255,204,.3)}
 .hd-passive{background:rgba(0,0,0,.2);border-radius:8px;padding:10px;border-left:3px solid var(--gold)}
 .hd-passive-name{font-weight:bold;color:var(--gold);font-size:12px}
 .hd-passive-desc{font-size:11px;color:var(--text);margin-top:4px;line-height:1.5}
@@ -666,24 +661,16 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 <script>
 // ==================== 游戏数据定义 ====================
 
-const QUALITIES = ['common','rare','epic','legendary','mythic','hidden'];
-const QUALITY_NAMES = {common:'普通',rare:'稀有',epic:'史诗',legendary:'传说',mythic:'神话',hidden:'隐藏'};
-const QUALITY_MULT = {common:1.0, rare:1.25, epic:1.55, legendary:1.9, mythic:2.4, hidden:3.2};
-const QUALITY_COLORS = {common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444',hidden:'#00ffcc'};
+const QUALITIES = ['common','rare','epic','legendary','mythic'];
+const QUALITY_NAMES = {common:'普通',rare:'稀有',epic:'史诗',legendary:'传说',mythic:'神话'};
+const QUALITY_MULT = {common:1.0, rare:1.25, epic:1.55, legendary:1.9, mythic:2.4};
+const QUALITY_COLORS = {common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444'};
 
 // 等级成长：对数衰减曲线，前期快后期慢，避免无限膨胀
 // 公式: stat = baseStat * qualityMult * (1 + GROWTH_RATE * ln(1 + level))
 const GROWTH_RATE = 0.35;
-// 满属性保护上限
-const STAT_HARD_CAP={maxHP:99999,atk:9999,def:9999,spd:999,maxMP:9999};
-
-function calcStat(base, qualityMult, level, statType){
-  var value=Math.floor(base * qualityMult * (1 + GROWTH_RATE * Math.log(1 + level)));
-  // 满属性保护：如果指定了属性类型且超过硬上限，则限制在上限
-  if(statType && STAT_HARD_CAP[statType] && value>STAT_HARD_CAP[statType]){
-    return STAT_HARD_CAP[statType];
-  }
-  return value;
+function calcStat(base, qualityMult, level){
+  return Math.floor(base * qualityMult * (1 + GROWTH_RATE * Math.log(1 + level)));
 }
 
 const ROLES = {
@@ -3320,12 +3307,12 @@ function createHero(templateId,level=1){
     id:tpl.id, name:tpl.name, icon:tpl.icon,
     role:tpl.role, quality:tpl.quality,
     level:level, exp:0,
-    maxHP: calcStat(role.baseHP, qm, level, 'maxHP'),
+    maxHP: calcStat(role.baseHP, qm, level),
     hp:0,
-    atk: calcStat(role.baseATK, qm, level, 'atk'),
-    def: calcStat(role.baseDEF, qm, level, 'def'),
-    spd: calcStat(role.baseSPD, qm, level, 'spd'),
-    maxMP: calcStat(role.baseMP, qm, level, 'maxMP'),
+    atk: calcStat(role.baseATK, qm, level),
+    def: calcStat(role.baseDEF, qm, level),
+    spd: calcStat(role.baseSPD, qm, level),
+    maxMP: calcStat(role.baseMP, qm, level),
     mp:0,
     skills: [...tpl.skills],
     equipment:{weapon:null,armor:null,accessory:null},
@@ -4570,12 +4557,12 @@ function addHeroExp(hero,amount){
     // 记录升级前的比例
     var hpRatio=hero.hp/hero.maxHP;
     var mpRatio=hero.mp/hero.maxMP;
-    // 重新计算基础属性（带满属性保护）
-    hero.maxHP=calcStat(role.baseHP, qm, hero.level, 'maxHP');
-    hero.atk=calcStat(role.baseATK, qm, hero.level, 'atk');
-    hero.def=calcStat(role.baseDEF, qm, hero.level, 'def');
-    hero.spd=calcStat(role.baseSPD, qm, hero.level, 'spd');
-    hero.maxMP=calcStat(role.baseMP, qm, hero.level, 'maxMP');
+    // 重新计算基础属性
+    hero.maxHP=calcStat(role.baseHP, qm, hero.level);
+    hero.atk=calcStat(role.baseATK, qm, hero.level);
+    hero.def=calcStat(role.baseDEF, qm, hero.level);
+    hero.spd=calcStat(role.baseSPD, qm, hero.level);
+    hero.maxMP=calcStat(role.baseMP, qm, hero.level);
     // 保持HP/MP比例（满血升级保持满血，残血升级按比例恢复）
     hero.hp=Math.max(1,Math.floor(hero.maxHP*hpRatio));
     hero.mp=Math.floor(hero.maxMP*mpRatio);
@@ -5794,106 +5781,77 @@ var G_MUTATION_RATE = 0.30;       // 30% 异变概率
 var G_QUALITY_UP_RATE = 0.05;      // 5% 品质+1概率
 var G_LEGENDARY_DIRECT_RATE = 0.03; // 3% 直接传说概率
 var G_MYTHIC_DIRECT_RATE = 0.01;   // 1% 直接神话概率
-var G_HIDDEN_DIRECT_RATE = 0.001;  // 0.1% 隐藏品质概率
 
-// 判定合成结果品质（返回品质信息，不生成英雄）
-function determineMergeQuality(heroes){
+function generateFusedHero(heroes){
+  // 基于输入英雄属性即时生成新英雄
+  var inputIds=heroes.map(function(h){return h.id}).sort().join('+');
+  var hash=hashStr(inputIds);
+  
+  // 1. 确定新品质：金手指强制 > 正常计算
   var qualities=heroes.map(function(h){return QUALITIES.indexOf(h.quality)});
   var maxQ=Math.max.apply(null,qualities);
   var avgQ=Math.floor(qualities.reduce(function(s,v){return s+v},0)/qualities.length);
+  // 新品质 = 平均品质，但不能超过最高品质
   var newQIdx=Math.min(maxQ,avgQ);
   var newQuality=QUALITIES[newQIdx];
   
+  // 金手指强制品质（最高优先级）
   if(G_cheats.enabled && G_cheats.forceQuality){
     newQuality=G_cheats.forceQuality;
     newQIdx=QUALITIES.indexOf(newQuality);
   }
   
+  // 2. 判定特殊结果（优先级：神话 > 传说 > 品质+1 > 异变 > 普通）
+  // 金手指强制异变
   var isMutation=G_cheats.forceMutation||Math.random()<G_MUTATION_RATE;
   var isQualityUp=false;
   var isDirectLegendary=false;
   var isDirectMythic=false;
-  var isDirectHidden=false;
   
-  if(Math.random()<G_HIDDEN_DIRECT_RATE){
-    newQuality='hidden';
-    newQIdx=QUALITIES.indexOf('hidden');
-    isMutation=true;
-    isDirectHidden=true;
-  }else if(Math.random()<G_MYTHIC_DIRECT_RATE){
+  // 1% 直接神话（最高优先级，无视当前品质）
+  if(Math.random()<G_MYTHIC_DIRECT_RATE){
     newQuality='mythic';
     newQIdx=QUALITIES.indexOf('mythic');
     isMutation=true;
     isDirectMythic=true;
-  }else if(Math.random()<G_LEGENDARY_DIRECT_RATE){
+  }
+  // 3% 直接传说（无视当前品质，但低于神话优先级）
+  else if(Math.random()<G_LEGENDARY_DIRECT_RATE){
     newQuality='legendary';
     newQIdx=QUALITIES.indexOf('legendary');
     isMutation=true;
     isDirectLegendary=true;
-  }else if(Math.random()<G_QUALITY_UP_RATE && newQIdx<QUALITIES.length-1){
+  }
+  // 5% 品质+1（不超过神话）
+  else if(Math.random()<G_QUALITY_UP_RATE && newQIdx<QUALITIES.length-1){
     newQIdx++;
     newQuality=QUALITIES[newQIdx];
     isMutation=true;
     isQualityUp=true;
   }
   
-  return{
-    newQuality:newQuality,
-    isMutation:isMutation,
-    isQualityUp:isQualityUp,
-    isDirectLegendary:isDirectLegendary,
-    isDirectMythic:isDirectMythic,
-    isDirectHidden:isDirectHidden
-  };
-}
-
-// 获取技能池
-function getSkillPool(heroes,mainRole){
-  var allSkillPool=[];
-  heroes.forEach(function(h){
-    h.skills.forEach(function(s){if(allSkillPool.indexOf(s)===-1)allSkillPool.push(s)});
-    h.bonusSkills.forEach(function(s){if(allSkillPool.indexOf(s)===-1)allSkillPool.push(s)});
-  });
-  var roleData=ROLES[mainRole];
-  if(roleData&&roleData.skills){
-    roleData.skills.forEach(function(s){if(allSkillPool.indexOf(s)===-1)allSkillPool.push(s)});
-  }
-  return allSkillPool;
-}
-
-// 生成融合英雄（支持传入选定技能和品质信息，避免重复判定）
-function generateFusedHero(heroes,selectedSkills,qualityInfo){
-  var inputIds=heroes.map(function(h){return h.id}).sort().join('+');
-  var hash=hashStr(inputIds);
-  
-  // 如果传入了品质信息则直接使用，否则重新判定
-  if(!qualityInfo) qualityInfo=determineMergeQuality(heroes);
-  var newQuality=qualityInfo.newQuality;
-  var isMutation=qualityInfo.isMutation;
-  var isQualityUp=qualityInfo.isQualityUp;
-  var isDirectLegendary=qualityInfo.isDirectLegendary;
-  var isDirectMythic=qualityInfo.isDirectMythic;
-  var isDirectHidden=qualityInfo.isDirectHidden;
-  
+  // 3. 确定新职业：基于哈希从输入英雄职业中选
   var allRoles=heroes.map(function(h){return h.role});
   var uniqueRoles=[];
   allRoles.forEach(function(r){if(uniqueRoles.indexOf(r)===-1)uniqueRoles.push(r)});
   var mainRole=uniqueRoles[hash%uniqueRoles.length];
   
-  var allSkillPool=getSkillPool(heroes,mainRole);
-  var newSkills;
-  
-  if(isDirectHidden && selectedSkills && selectedSkills.length>0){
-    newSkills=selectedSkills;
-  }else if(isDirectHidden){
-    var shuffled=allSkillPool.slice().sort(function(){return Math.random()-0.5});
-    newSkills=shuffled.slice(0,Math.min(6,allSkillPool.length));
-  }else{
-    var baseSkillCount=2+Math.floor(hash%3);
-    var skillCount=isMutation?Math.min(allSkillPool.length,baseSkillCount+1+Math.floor(Math.random()*2)):baseSkillCount;
-    var shuffled=allSkillPool.slice().sort(function(){return Math.random()-0.5});
-    newSkills=shuffled.slice(0,skillCount);
+  // 4. 确定新技能
+  var allSkillPool=[];
+  heroes.forEach(function(h){
+    h.skills.forEach(function(s){if(allSkillPool.indexOf(s)===-1)allSkillPool.push(s)});
+    h.bonusSkills.forEach(function(s){if(allSkillPool.indexOf(s)===-1)allSkillPool.push(s)});
+  });
+  // 加入目标角色的基础技能
+  var roleData=ROLES[mainRole];
+  if(roleData&&roleData.skills){
+    roleData.skills.forEach(function(s){if(allSkillPool.indexOf(s)===-1)allSkillPool.push(s)});
   }
+  // 异变英雄额外获得1-2个技能
+  var baseSkillCount=2+Math.floor(hash%3);
+  var skillCount=isMutation?Math.min(allSkillPool.length,baseSkillCount+1+Math.floor(Math.random()*2)):baseSkillCount;
+  var shuffled=allSkillPool.slice().sort(function(){return Math.random()-0.5});
+  var newSkills=shuffled.slice(0,skillCount);
   
   // 5. 确定新属性 - 统一逻辑：max(职业品质标准, 材料最高属性)
   var roleData=ROLES[mainRole];
@@ -5906,13 +5864,13 @@ function generateFusedHero(heroes,selectedSkills,qualityInfo){
   // 取材料最高等级
   var maxLevel=Math.max.apply(null,heroes.map(function(h){return h.level}));
   
-  // 基于新职业和新品质计算标准值（带满属性保护）
+  // 基于新职业和新品质计算标准值
   var qm=QUALITY_MULT[newQuality];
-  var stdHP=calcStat(baseHP,qm,maxLevel,'maxHP');
-  var stdATK=calcStat(baseATK,qm,maxLevel,'atk');
-  var stdDEF=calcStat(baseDEF,qm,maxLevel,'def');
-  var stdSPD=calcStat(baseSPD,qm,maxLevel,'spd');
-  var stdMP=calcStat(baseMP,qm,maxLevel,'maxMP');
+  var stdHP=calcStat(baseHP,qm,maxLevel);
+  var stdATK=calcStat(baseATK,qm,maxLevel);
+  var stdDEF=calcStat(baseDEF,qm,maxLevel);
+  var stdSPD=calcStat(baseSPD,qm,maxLevel);
+  var stdMP=calcStat(baseMP,qm,maxLevel);
   
   // 取材料中各属性的最高值
   var maxMaterialHP=Math.max.apply(null,heroes.map(function(h){return h.maxHP}));
@@ -5929,14 +5887,8 @@ function generateFusedHero(heroes,selectedSkills,qualityInfo){
   var spd=Math.max(stdSPD,maxMaterialSPD);
   var maxMP=Math.max(stdMP,maxMaterialMP);
   
-  // 异变/品质提升时额外加成10%，隐藏品质额外加成30%
-  if(isDirectHidden){
-    maxHP=Math.floor(maxHP*1.3);
-    atk=Math.floor(atk*1.3);
-    def=Math.floor(def*1.3);
-    spd=Math.floor(spd*1.3);
-    maxMP=Math.floor(maxMP*1.3);
-  }else if(isMutation||isQualityUp||isDirectLegendary||isDirectMythic){
+  // 异变/品质提升时额外加成10%
+  if(isMutation||isQualityUp||isDirectLegendary||isDirectMythic){
     maxHP=Math.floor(maxHP*1.1);
     atk=Math.floor(atk*1.1);
     def=Math.floor(def*1.1);
@@ -5985,8 +5937,8 @@ function generateFusedHero(heroes,selectedSkills,qualityInfo){
   var icon=iconList[(hash>>8)%iconList.length];
   
   // 异变英雄名称前缀
-  var qualityPrefix={common:'',rare:'精英',epic:'史诗',legendary:'传说',mythic:'神话',hidden:'✦隐藏'};
-  var mutationPrefix=isDirectHidden?'✦异变·':isMutation?'☣️异变·':'';
+  var qualityPrefix={common:'',rare:'精英',epic:'史诗',legendary:'传说',mythic:'神话'};
+  var mutationPrefix=isMutation?'☣️异变·':'';
   var newName=mutationPrefix+(qualityPrefix[newQuality]||'')+prefix+suffix;
   
   // 7. 继承最高等级
@@ -6013,14 +5965,11 @@ function generateFusedHero(heroes,selectedSkills,qualityInfo){
     bonusSkills:[],
     equipment:{weapon:null,armor:null,accessory:null},
     exp:0,
-    lore:isDirectHidden?
-      '✦隐藏品质！由'+heroes.map(function(h){return h.name}).join('与')+'融合时发生奇迹异变，集所有素材技能于一身，拥有超越神话的力量。':
-      isMutation?
+    lore:isMutation?
       '☣️异变英雄！由'+heroes.map(function(h){return h.name}).join('与')+'融合时发生异变，拥有超越同品质的力量。':
       '由'+heroes.map(function(h){return h.name}).join('与')+'融合诞生的'+QUALITY_NAMES[newQuality]+'英雄。',
     deathDefyUsed: false,
-    isMutation: isMutation,
-    isHidden: !!isDirectHidden
+    isMutation: isMutation
   };
   
   return newHero;
@@ -6036,103 +5985,14 @@ function hashStr(str){
 }
 
 
-// ==================== 隐藏品质技能选择 ====================
-function showHiddenSkillSelection(heroes, skillPool, onConfirm){
-  var maxSelect=Math.min(6,skillPool.length);
-  var selected=[];
-  
-  var overlay=document.createElement('div');
-  overlay.id='hidden-skill-overlay';
-  overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.95);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px)';
-  
-  // 创建夸张的背景动画
-  var bgAnim=document.createElement('div');
-  bgAnim.style.cssText='position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;pointer-events:none';
-  bgAnim.innerHTML='<div style="position:absolute;top:50%;left:50%;width:200vmax;height:200vmax;background:radial-gradient(circle,rgba(0,255,204,.1)0%,transparent50%);transform:translate(-50%,-50%);animation:hiddenBgPulse 4s ease-in-out infinite"></div>';
-  overlay.appendChild(bgAnim);
-  
-  // 添加CSS动画
-  var style=document.createElement('style');
-  style.textContent='@keyframes hiddenBgPulse{0%,100%{transform:translate(-50%,-50%)scale(1);opacity:.3}50%{transform:translate(-50%,-50%)scale(1.2);opacity:.6}}@keyframes skillCardAppear{0%{transform:scale(0)rotate(-180deg);opacity:0}60%{transform:scale(1.2)rotate(10deg)}100%{transform:scale(1)rotate(0);opacity:1}}@keyframes skillSelected{0%{transform:scale(1)}50%{transform:scale(1.3);box-shadow:0 0 30px #00ffcc,inset 0 0 20px rgba(0,255,204,.5)}100%{transform:scale(1.1);border-color:#00ffcc;background:rgba(0,255,204,.2)}}@keyframes skillPulse{0%,100%{box-shadow:0 0 5px rgba(0,255,204,.3)}50%{box-shadow:0 0 20px rgba(0,255,204,.8),0 0 40px rgba(0,255,204,.4)}}';
-  document.head.appendChild(style);
-  
-  var content=document.createElement('div');
-  content.style.cssText='position:relative;z-index:10;max-width:90vw;width:600px;max-height:90vh;overflow-y:auto;background:linear-gradient(180deg,rgba(10,20,30,.98),rgba(5,15,25,.98));border:2px solid #00ffcc;border-radius:16px;padding:24px;box-shadow:0 0 60px rgba(0,255,204,.3),inset 0 0 30px rgba(0,255,204,.05)';
-  
-  // 标题
-  var title=document.createElement('div');
-  title.innerHTML='<div style="font-size:48px;text-align:center;margin-bottom:8px">✦</div><div style="font-size:24px;font-weight:bold;color:#00ffcc;text-align:center;text-shadow:0 0 20px rgba(0,255,204,.8)">隐藏品质觉醒</div><div style="font-size:14px;color:#888;text-align:center;margin-top:8px">从素材技能中选择 <span style="color:#00ffcc;font-weight:bold">'+maxSelect+'</span> 个技能</div>';
-  content.appendChild(title);
-  
-  // 选中计数
-  var counter=document.createElement('div');
-  counter.style.cssText='text-align:center;margin:16px 0;font-size:16px;color:#00ffcc';
-  counter.innerHTML='已选择: <span id="selected-count" style="font-weight:bold;font-size:20px">0</span>/'+maxSelect;
-  content.appendChild(counter);
-  
-  // 技能网格
-  var grid=document.createElement('div');
-  grid.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0';
-  
-  skillPool.forEach(function(skill,idx){
-    var skillData=SKILLS[skill];
-    var btn=document.createElement('div');
-    btn.className='hidden-skill-btn';
-    btn.style.cssText='padding:12px;border:2px solid rgba(0,255,204,.3);border-radius:10px;background:rgba(0,0,0,.4);cursor:pointer;transition:all .3s;text-align:center;animation:skillCardAppear .5s ease-out '+idx*0.05+'s both';
-    btn.innerHTML='<div style="font-size:20px;margin-bottom:4px">'+(skillData?skillData.icon:'⚡')+'</div><div style="font-size:13px;color:#00ffcc;font-weight:bold">'+skill+'</div>';
-    
-    btn.onclick=function(){
-      var sIdx=selected.indexOf(skill);
-      if(sIdx>=0){
-        selected.splice(sIdx,1);
-        btn.style.cssText='padding:12px;border:2px solid rgba(0,255,204,.3);border-radius:10px;background:rgba(0,0,0,.4);cursor:pointer;transition:all .3s;text-align:center;transform:scale(1)';
-      }else if(selected.length<maxSelect){
-        selected.push(skill);
-        btn.style.cssText='padding:12px;border:2px solid #00ffcc;border-radius:10px;background:rgba(0,255,204,.25);cursor:pointer;transition:all .3s;text-align:center;animation:skillSelected .3s ease forwards;box-shadow:0 0 20px rgba(0,255,204,.5)';
-      }
-      document.getElementById('selected-count').textContent=selected.length;
-      confirmBtn.style.opacity=selected.length>0?'1':'0.5';
-      confirmBtn.style.pointerEvents=selected.length>0?'auto':'none';
-    };
-    
-    grid.appendChild(btn);
-  });
-  
-  content.appendChild(grid);
-  
-  // 确认按钮
-  var confirmBtn=document.createElement('button');
-  confirmBtn.className='btn btn-primary';
-  confirmBtn.style.cssText='width:100%;padding:14px;font-size:16px;margin-top:16px;opacity:.5;pointer-events:none;background:linear-gradient(135deg,#00ffcc,#00cc99);border:none;color:#000;font-weight:bold';
-  confirmBtn.textContent='✦ 确认技能选择 ('+maxSelect+'个)';
-  confirmBtn.onclick=function(){
-    if(selected.length>0){
-      // 关闭动画
-      overlay.style.transition='opacity .5s';
-      overlay.style.opacity='0';
-      setTimeout(function(){
-        document.body.removeChild(overlay);
-        document.head.removeChild(style);
-        onConfirm(selected);
-      },500);
-    }
-  };
-  content.appendChild(confirmBtn);
-  
-  overlay.appendChild(content);
-  document.body.appendChild(overlay);
-}
-
 // ==================== 合成结果展示 ====================
 function showMergeResult(hero, isQualityUp, oldQuality){
-  var qualityColors={common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444',hidden:'#00ffcc'};
-  var qualityBg={common:'rgba(136,136,136,.15)',rare:'rgba(74,158,255,.15)',epic:'rgba(168,85,247,.15)',legendary:'rgba(245,158,11,.15)',mythic:'rgba(239,68,68,.15)',hidden:'rgba(0,255,204,.12)'};
+  var qualityColors={common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444'};
+  var qualityBg={common:'rgba(136,136,136,.15)',rare:'rgba(74,158,255,.15)',epic:'rgba(168,85,247,.15)',legendary:'rgba(245,158,11,.15)',mythic:'rgba(239,68,68,.15)'};
   
   // 创建特效层
   var effects='';
-  if(hero.quality==='hidden'){
-    effects='<div class="merge-mythic-flash" style="background:radial-gradient(ellipse at center,rgba(0,255,204,.6),transparent 50%),radial-gradient(ellipse at 20% 80%,rgba(0,200,255,.4),transparent 40%),radial-gradient(ellipse at 80% 20%,rgba(0,255,180,.4),transparent 40%)"></div><div class="merge-mythic-text" style="color:#00ffcc;text-shadow:0 0 40px rgba(0,255,204,.9),0 0 80px rgba(0,255,204,.5),0 4px 12px rgba(0,0,0,.8)">✦ 隐藏品质 ✦</div><div class="merge-mythic-particles"></div>';
-  }else if(hero.quality==='mythic'){
+  if(hero.quality==='mythic'){
     effects='<div class="merge-mythic-flash"></div><div class="merge-mythic-text">🔥 神话降临 🔥</div><div class="merge-mythic-particles"></div>';
   }else if(hero.quality==='legendary'){
     effects='<div class="merge-legendary-flash"></div><div class="merge-legendary-text">⚡ 传说诞生 ⚡</div>';
@@ -6194,44 +6054,17 @@ function executeMerge(heroUids){
   var maxQIdx=Math.max.apply(null,qualities);
   var oldQuality=QUALITIES[maxQIdx];
   
-  // 先判定品质
-  var qualityInfo=determineMergeQuality(heroes);
-  
-  // 隐藏品质：先弹出技能选择（异步流程）
-  if(qualityInfo.isDirectHidden){
-    var allRoles=heroes.map(function(h){return h.role});
-    var uniqueRoles=[];
-    allRoles.forEach(function(r){if(uniqueRoles.indexOf(r)===-1)uniqueRoles.push(r)});
-    var mainRole=uniqueRoles[hashStr(heroes.map(function(h){return h.id}).sort().join('+'))%uniqueRoles.length];
-    var skillPool=getSkillPool(heroes,mainRole);
-    
-    showHiddenSkillSelection(heroes,skillPool,function(selectedSkills){
-      // 玩家确认技能后，继续合成流程
-      completeMerge(heroes,qualityInfo,oldQuality,selectedSkills);
-      // 合成完成后清空槽位并刷新
-      window._mergeSlots=[null,null,null];
-      renderMerge(document.getElementById('content'));
-    });
-    return false; // 异步流程，尚未完成
-  }
-  
-  // 普通合成
-  completeMerge(heroes,qualityInfo,oldQuality,null);
-  showToast('融合成功！获得 '+QUALITY_NAMES[qualityInfo.newQuality]+' 英雄');
-}
-
-// 完成合成流程
-function completeMerge(heroes,qualityInfo,oldQuality,selectedSkills){
-  // 生成英雄（传入品质信息，避免重复随机判定）
-  const newHero=generateFusedHero(heroes,selectedSkills,qualityInfo);
+  // 即时生成融合英雄
+  const newHero=generateFusedHero(heroes);
   
   // 判断是否品质提升
-  var isQualityUp=QUALITIES.indexOf(newHero.quality)>QUALITIES.indexOf(oldQuality);
+  var isQualityUp=QUALITIES.indexOf(newHero.quality)>maxQIdx;
   
   // 移除被融合的英雄
   heroes.forEach(h=>{
     const idx=G.heroes.findIndex(x=>x.uid===h.uid);
     if(idx>=0)G.heroes.splice(idx,1);
+    // 从队伍中移除
     for(let i=0;i<G.team.length;i++){
       if(G.team[i]&&G.team[i].uid===h.uid)G.team[i]=null;
     }
@@ -6252,6 +6085,8 @@ function completeMerge(heroes,qualityInfo,oldQuality,selectedSkills){
   checkAchievement('equip_5');
   checkAchievement('equip_6');
   checkAchievement('equip_7');
+  
+  return true;
 }
 
 // ==================== 装备系统 ====================
@@ -7162,20 +6997,17 @@ function showHeroDetail(uid){
 
   // 品质颜色映射
   const qualityColors={common:'#aaa',rare:'#5b9bd5',epic:'#b06ce6',legendary:'#e8c840',mythic:'#ff6b6b'};
-  const qualityStars={common:'★',rare:'★★',epic:'★★★',legendary:'★★★★',mythic:'★★★★★',hidden:'✦✦✦✦✦✦'};
+  const qualityStars={common:'★',rare:'★★',epic:'★★★',legendary:'★★★★',mythic:'★★★★★'};
   const qualityDescs={
     common:'基础品质，属性成长一般',
     rare:'稀有品质，属性加成+25%',
     epic:'史诗品质，属性加成+55%',
     legendary:'传说品质，属性加成+90%',
-    mythic:'神话品质，属性加成+140%',
-    hidden:'✦隐藏品质，属性加成+220%，集所有素材技能于一身'
+    mythic:'神话品质，属性加成+140%'
   };
 
-  // 属性上限参考（用于进度条百分比）- 大幅提升上限
-  const statMaxRef={maxHP:99999,atk:9999,def:9999,spd:999,maxMP:9999};
-  // 满属性保护上限（超过此值不再增长）
-  const STAT_HARD_CAP={maxHP:99999,atk:9999,def:9999,spd:999,maxMP:9999};
+  // 属性上限参考（用于进度条百分比）
+  const statMaxRef={maxHP:8000,atk:500,def:350,spd:120,maxMP:500};
   const statColors={maxHP:'#c0392b',atk:'#e74c3c',def:'#2980b9',spd:'#27ae60',maxMP:'#8e44ad'};
 
   // 技能类型标签
@@ -7190,11 +7022,11 @@ function showHeroDetail(uid){
   const nextLevelStats={};
   if(h.level<levelCap){
     const qm=QUALITY_MULT[h.quality];
-    nextLevelStats.maxHP=calcStat(role.baseHP,qm,h.level+1,'maxHP');
-    nextLevelStats.atk=calcStat(role.baseATK,qm,h.level+1,'atk');
-    nextLevelStats.def=calcStat(role.baseDEF,qm,h.level+1,'def');
-    nextLevelStats.spd=calcStat(role.baseSPD,qm,h.level+1,'spd');
-    nextLevelStats.maxMP=calcStat(role.baseMP,qm,h.level+1,'maxMP');
+    nextLevelStats.maxHP=calcStat(role.baseHP,qm,h.level+1);
+    nextLevelStats.atk=calcStat(role.baseATK,qm,h.level+1);
+    nextLevelStats.def=calcStat(role.baseDEF,qm,h.level+1);
+    nextLevelStats.spd=calcStat(role.baseSPD,qm,h.level+1);
+    nextLevelStats.maxMP=calcStat(role.baseMP,qm,h.level+1);
   }
 
   // 构建装备HTML
@@ -8785,8 +8617,6 @@ function updateMergeUI(){
 function doMerge(){
   const activeSlots=window._mergeSlots.filter(Boolean);
   if(executeMerge(activeSlots)){
-    // executeMerge内部处理了隐藏品质的异步流程
-    // 非隐藏品质时需要清空槽位
     window._mergeSlots=[null,null,null];
     renderMerge(document.getElementById('content'));
   }
@@ -10243,7 +10073,6 @@ function cheatForceQuality(quality){
   G_cheats.forceQuality = quality;
   G_cheats.forceLegendary = (quality==='legendary');
   G_cheats.forceMythic = (quality==='mythic');
-  G_cheats.forceHidden = (quality==='hidden');
   showToast(quality ? '⚗️ 已强制合成结果为: ' + QUALITY_NAMES[quality] : '⚗️ 已取消强制品质');
 }
 
@@ -10369,7 +10198,6 @@ function renderCheats(el){
           <div class="btn-group mt-8">
             <button class="btn ${G_cheats.forceQuality==='legendary'?'btn-primary':''}" onclick="cheatForceQuality(${G_cheats.forceQuality==='legendary'?'null':"'legendary'"})">${G_cheats.forceQuality==='legendary'?'⚡ 强制传说[开]':'⚡ 强制传说[关]'}</button>
             <button class="btn ${G_cheats.forceQuality==='mythic'?'btn-primary':''}" onclick="cheatForceQuality(${G_cheats.forceQuality==='mythic'?'null':"'mythic'"})">${G_cheats.forceQuality==='mythic'?'🔥 强制神话[开]':'🔥 强制神话[关]'}</button>
-            <button class="btn ${G_cheats.forceQuality==='hidden'?'btn-primary':''}" onclick="cheatForceQuality(${G_cheats.forceQuality==='hidden'?'null':"'hidden'"})">${G_cheats.forceQuality==='hidden'?'✦ 强制隐藏[开]':'✦ 强制隐藏[关]'}</button>
           </div>
         </div>
         <div class="panel" style="background:rgba(230,126,34,.1);border-color:rgba(230,126,34,.3)">
@@ -10858,12 +10686,7 @@ function saveToCloud() {
   
   return sb.from('saves').upsert(saveData, { onConflict: 'device_id' })
     .then(function(result) {
-      console.log('Cloud save result:', result);
-      if (result.error) {
-        console.error('Cloud save error:', result.error);
-        showToast('❌ 云端保存失败：' + result.error.message);
-        return false;
-      }
+      console.log('Cloud save successful');
       showToast('☁️ 已保存到云端');
       return true;
     })
@@ -10883,19 +10706,11 @@ function loadCloudSave() {
   
   showToast('⏳ 正在从云端下载...');
   
-  // 使用 .limit(1) 而不是 .single()，避免无数据时抛错
-  return sb.from('saves').select('*').eq('device_id', deviceId).limit(1)
+  return sb.from('saves').select('*').eq('device_id', deviceId).single()
     .then(function(result) {
-      console.log('Cloud load result:', result);
-      if (result.error) {
-        console.error('Cloud load error:', result.error);
-        showToast('❌ 查询失败：' + result.error.message);
-        return false;
-      }
-      var data = result.data && result.data[0] ? result.data[0] : null;
-      console.log('Cloud data:', data, 'deviceId:', deviceId);
+      var data = result.data;
       if (!data) {
-        showToast('❌ 云端没有存档 (device: ' + deviceId.substr(0, 8) + '...)');
+        showToast('❌ 云端没有存档');
         return false;
       }
       var gameState = data.game_state;
