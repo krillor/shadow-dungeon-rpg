@@ -9160,17 +9160,31 @@ function renderMerge(el){
     selectedHeroes.forEach(h=>{h.skills.forEach(s=>allSkills.add(s));if(h.bonusSkills)h.bonusSkills.forEach(s=>allSkills.add(s))});
     var skillPool=Array.from(allSkills).map(sid=>SKILLS[sid]).filter(Boolean);
     
-    // 属性范围预览
+    // 属性范围预览（继承倍率0.6~1.8）
     var avgHP=Math.floor(selectedHeroes.reduce((s,h)=>s+h.maxHP,0)/selectedHeroes.length);
     var avgATK=Math.floor(selectedHeroes.reduce((s,h)=>s+h.atk,0)/selectedHeroes.length);
     var avgDEF=Math.floor(selectedHeroes.reduce((s,h)=>s+h.def,0)/selectedHeroes.length);
+    var avgSPD=Math.floor(selectedHeroes.reduce((s,h)=>s+h.spd,0)/selectedHeroes.length);
+    var avgMP=Math.floor(selectedHeroes.reduce((s,h)=>s+h.maxMP,0)/selectedHeroes.length);
+    // 显示范围
+    var minHP=Math.floor(avgHP*0.6), maxHP=Math.floor(avgHP*1.8);
+    var minATK=Math.floor(avgATK*0.6), maxATK=Math.floor(avgATK*1.8);
+    var minDEF=Math.floor(avgDEF*0.6), maxDEF=Math.floor(avgDEF*1.8);
     
     previewHTML=`
       <div style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);border-radius:8px;padding:12px;margin-top:12px">
         <div style="color:var(--gold);font-weight:bold;margin-bottom:8px">🔮 融合预览</div>
         <div style="display:flex;gap:16px;flex-wrap:wrap">
           <div><span class="text-dim">预计品质:</span> <span class="q-${previewQuality}">${QUALITY_NAMES[previewQuality]}</span> <span class="text-xs text-dim">(最高${QUALITY_NAMES[QUALITIES[maxQ]]})</span></div>
-          <div><span class="text-dim">预计属性:</span> ❤️~${avgHP} ⚔️~${avgATK} 🛡️~${avgDEF}</div>
+        </div>
+        <div style="margin-top:6px;font-size:12px">
+          <span class="text-dim">预计属性范围:</span>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px">
+            <div>❤️ ${minHP}~${maxHP}</div>
+            <div>⚔️ ${minATK}~${maxATK}</div>
+            <div>🛡️ ${minDEF}~${maxDEF}</div>
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">💡 继承倍率 ×0.6~1.8，异变+10%</div>
         </div>
         <div style="margin-top:8px">
           <span class="text-dim">技能池 (${skillPool.length}个):</span>
