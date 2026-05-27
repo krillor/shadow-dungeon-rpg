@@ -10646,7 +10646,7 @@ function initSupabase() {
       if (result.data && result.data.user) {
         isCloudReady = true;
         console.log('Supabase ready, Device ID:', deviceId);
-        loadCloudSave();
+        // 不在这里加载云端存档，等本地读档完成后再决定是否从云端恢复
       }
     }).catch(function(error) {
       console.error('Supabase auth error:', error);
@@ -10685,7 +10685,7 @@ function saveToCloud() {
     version: '1.0'
   };
   
-  return sb.from('saves').upsert(saveData, { onConflict: 'user_id' })
+  return sb.from('saves').upsert(saveData, { onConflict: 'device_id' })
     .then(function(result) {
       console.log('Cloud save successful');
       showToast('☁️ 已同步到云端');
@@ -10693,6 +10693,7 @@ function saveToCloud() {
     })
     .catch(function(error) {
       console.error('Cloud save failed:', error);
+      showToast('❌ 云端保存失败：' + (error.message || '未知错误'));
       return false;
     });
 }
@@ -10935,9 +10936,66 @@ function initGame(){
     startAutoProduction();
     switchTab('town');
     showToast('📂 已读取存档');
+    // 本地读档成功后，尝试从云端同步（云端数据更新则覆盖本地）
+    trySyncCloudSave();
     return;
   }
   
+  // 没有本地存档，尝试从云端恢复
+  tryRecoverFromCloud();
+}
+
+// 尝试云端同步（本地有存档时，云端更新则覆盖）
+function trySyncCloudSave(){
+  if(!isCloudReady){
+    // 云端还没准备好，等一下再试
+    setTimeout(trySyncCloudSave, 2000);
+    return;
+  }
+  loadCloudSave().then(function(cloudLoaded){
+    if(cloudLoaded){
+      updateResUI();
+      saveGame();
+      showToast('☁️ 已从云端同步最新数据');
+    }
+  });
+}
+
+// 没有本地存档时，尝试从云端恢复
+function tryRecoverFromCloud(){
+  if(!isCloudReady){
+    // 云端还没准备好，先初始化新游戏，等云端连接后再尝试恢复
+    initNewGame();
+    setTimeout(function(){
+      if(isCloudReady){
+        loadCloudSave().then(function(cloudLoaded){
+          if(cloudLoaded){
+            updateResUI();
+            saveGame();
+            showToast('☁️ 已从云端恢复存档');
+            switchTab('town');
+          }
+        });
+      }
+    }, 3000);
+    return;
+  }
+  // 云端已就绪，直接尝试恢复
+  loadCloudSave().then(function(cloudLoaded){
+    if(cloudLoaded){
+      updateResUI();
+      saveGame();
+      startAutoProduction();
+      switchTab('town');
+      showToast('☁️ 已从云端恢复存档');
+    }else{
+      initNewGame();
+    }
+  });
+}
+
+// 初始化新游戏
+function initNewGame(){
   // 给玩家初始英雄
   const starter1=createHero('swordsman',1);
   const starter2=createHero('squire',1);
