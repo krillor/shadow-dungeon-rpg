@@ -322,6 +322,29 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .bond-preview-item:hover{border-color:var(--border-light);background:rgba(0,0,0,.2)}
 .bond-preview-item.active{animation:bondPulse 2s ease-in-out infinite}
 @keyframes bondPulse{0%,100%{box-shadow:0 0 4px rgba(201,162,39,.1)}50%{box-shadow:0 0 12px rgba(201,162,39,.2)}}
+/* 排行榜滚动列表 */
+.leaderboard-scroll-container{max-height:400px;overflow-y:auto;overflow-x:hidden;border-radius:8px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.05)}
+.leaderboard-scroll-container::-webkit-scrollbar{width:6px}
+.leaderboard-scroll-container::-webkit-scrollbar-track{background:rgba(0,0,0,.2);border-radius:3px}
+.leaderboard-scroll-container::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
+.leaderboard-scroll-container::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.25)}
+.leaderboard-list{display:flex;flex-direction:column}
+.leaderboard-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.03);transition:background .2s}
+.leaderboard-item:nth-child(even){background:rgba(255,255,255,.04)}
+.leaderboard-item:hover{background:rgba(255,255,255,.08)}
+.leaderboard-item.is-me{background:rgba(201,162,39,.12);border-left:3px solid var(--gold)}
+.leaderboard-rank{font-size:14px;font-weight:bold;min-width:32px;text-align:center;padding:4px 6px;border-radius:4px}
+.leaderboard-rank.rank-1{background:linear-gradient(135deg,#ffd700,#ffaa00);color:#000;box-shadow:0 0 8px rgba(255,215,0,.4)}
+.leaderboard-rank.rank-2{background:linear-gradient(135deg,#c0c0c0,#a0a0a0);color:#000}
+.leaderboard-rank.rank-3{background:linear-gradient(135deg,#cd7f32,#b87333);color:#fff}
+.leaderboard-rank.rank-top10{background:rgba(201,162,39,.2);color:var(--gold);border:1px solid rgba(201,162,39,.3)}
+.leaderboard-rank.rank-top100{background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.3)}
+.leaderboard-rank.rank-normal{color:var(--text2)}
+.leaderboard-info{flex:1;min-width:0}
+.leaderboard-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.leaderboard-date{font-size:10px;color:var(--text3);margin-top:1px}
+.leaderboard-score{font-weight:bold;color:var(--gold);font-size:14px;text-align:right;min-width:80px}
+.leaderboard-unit{font-size:10px;color:var(--text2);margin-left:2px;font-weight:normal}
 .log-line{padding:1px 0;animation:fadeIn .3s}
 .log-damage{color:#e74c3c}.log-heal{color:#2ecc71}.log-buff{color:#3498db}.log-debuff{color:#e67e22}
 .log-crit{color:#f1c40f;font-weight:bold}.log-death{color:#888;font-style:italic}.log-info{color:var(--text2)}
@@ -9287,15 +9310,15 @@ function loadLeaderboardData(type){
   listEl.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--text3)">加载中...</div>';
   
   var typeNames = {
-    power: {name: '战力榜', icon: '⚔️', desc: '队伍总战力'},
-    stage: {name: '关卡榜', icon: '💀', desc: '最高通关关卡'},
-    arena: {name: '竞技榜', icon: '🏟️', desc: '竞技场胜场数'},
-    heroes: {name: '英雄榜', icon: '🧙', desc: '拥有英雄数量'}
+    power: {name: '战力榜', icon: '⚔️', desc: '队伍总战力', unit: ''},
+    stage: {name: '关卡榜', icon: '💀', desc: '最高通关关卡', unit: '关'},
+    arena: {name: '竞技榜', icon: '🏟️', desc: '竞技场胜场数', unit: '胜'},
+    heroes: {name: '英雄榜', icon: '🧙', desc: '拥有英雄数量', unit: '人'}
   };
   
   var typeInfo = typeNames[type] || typeNames.power;
   
-  getLeaderboard(type, 50).then(function(entries) {
+  getLeaderboard(type, 1000).then(function(entries) {
     if(entries.length === 0){
       listEl.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px 0">' +
         '<div style="font-size:24px;margin-bottom:8px">📭</div>' +
@@ -9313,27 +9336,39 @@ function loadLeaderboardData(type){
         '</div>';
       }
       
-      html += '<div style="display:flex;flex-direction:column;gap:6px">';
-      for(var i=0;i<Math.min(entries.length,20);i++){
+      // 构建排行榜列表HTML（可滚动）
+      html += '<div class="leaderboard-scroll-container">';
+      html += '<div class="leaderboard-list">';
+      
+      for(var i=0;i<entries.length;i++){
         var entry = entries[i];
         var rank = i + 1;
-        var rankColor = rank === 1 ? '#ffd700' : rank === 2 ? '#c0c0c0' : rank === 3 ? '#cd7f32' : 'var(--text)';
-        var rankIcon = rank <= 3 ? ['🥇','🥈','🥉'][rank-1] : '<span style="display:inline-block;width:24px;text-align:center">' + rank + '</span>';
         var isMe = entry.device_id === deviceId;
         var playerName = isMe ? '<b style="color:var(--gold)">' + (G.playerName || '我') + '</b>' : (entry.name || ('玩家' + (entry.device_id ? entry.device_id.slice(-6) : '???')));
         var dateStr = entry.timestamp ? new Date(entry.timestamp).toLocaleDateString() : '-';
         var scoreStr = entry.score ? entry.score.toLocaleString() : '0';
         
-        html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:' + (isMe?'rgba(201,162,39,.15)':'rgba(255,255,255,.03)') + ';border-radius:6px;border:' + (isMe?'1px solid rgba(201,162,39,.3)':'none') + '">' +
-          '<div style="font-size:16px;color:' + rankColor + ';min-width:28px">' + rankIcon + '</div>' +
-          '<div style="flex:1;font-size:13px">' +
-            '<div>' + playerName + '</div>' +
-            '<div style="font-size:11px;color:var(--text3)">' + dateStr + '</div>' +
+        // 排名样式
+        var rankClass = 'rank-normal';
+        var rankIcon = rank;
+        if(rank === 1) { rankClass = 'rank-1'; rankIcon = '🥇'; }
+        else if(rank === 2) { rankClass = 'rank-2'; rankIcon = '🥈'; }
+        else if(rank === 3) { rankClass = 'rank-3'; rankIcon = '🥉'; }
+        else if(rank <= 10) { rankClass = 'rank-top10'; }
+        else if(rank <= 100) { rankClass = 'rank-top100'; }
+        
+        html += '<div class="leaderboard-item ' + (isMe?'is-me':'') + '">' +
+          '<div class="leaderboard-rank ' + rankClass + '">' + rankIcon + '</div>' +
+          '<div class="leaderboard-info">' +
+            '<div class="leaderboard-name">' + playerName + '</div>' +
+            '<div class="leaderboard-date">' + dateStr + '</div>' +
           '</div>' +
-          '<div style="font-weight:bold;color:var(--gold);font-size:14px">' + scoreStr + '</div>' +
+          '<div class="leaderboard-score">' + scoreStr + '<span class="leaderboard-unit">' + typeInfo.unit + '</span></div>' +
         '</div>';
       }
-      html += '</div>';
+      
+      html += '</div></div>';
+      html += '<div style="text-align:center;color:var(--text3);font-size:11px;margin-top:8px">共 ' + entries.length + ' 条记录 · 已显示全部</div>';
       
       listEl.innerHTML = html;
     });
@@ -10227,7 +10262,7 @@ function submitLeaderboard(scoreType, scoreValue, extraData) {
 
 // 获取排行榜
 function getLeaderboard(scoreType, limit) {
-  limit = limit || 50;
+  limit = limit || 1000;
   
   if (!isCloudReady) {
     return Promise.resolve([]);
