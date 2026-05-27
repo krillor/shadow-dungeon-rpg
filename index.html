@@ -2392,48 +2392,229 @@ let G = {
   },
 };
 
-// ==================== 存档系统 ====================
-const SAVE_KEY='shadow_dungeon_save';
+// ==================== 存档系统（多存档+自动备份+回溯） ====================
+var SAVE_KEY='shadow_dungeon_save';
+var SAVE_META_KEY='shadow_dungeon_meta';
+var MAX_SAVE_SLOTS=3;
+var MAX_BACKUPS=10;
 
-function saveGame(){
+// 获取存档元数据
+function getSaveMeta(){
   try{
-    var data={g:G,heroIdCounter:G.heroIdCounter};
-    localStorage.setItem(SAVE_KEY,JSON.stringify(data));
-    showToast('💾 已存档');
-  }catch(e){showToast('存档失败');}
+    var raw=localStorage.getItem(SAVE_META_KEY);
+    return raw?JSON.parse(raw):{currentSlot:0,slots:{},backups:[]};
+  }catch(e){return {currentSlot:0,slots:{},backups:[]};}
 }
 
+// 保存存档元数据
+function saveSaveMeta(meta){
+  try{localStorage.setItem(SAVE_META_KEY,JSON.stringify(meta));}catch(e){}
+}
+
+// 获取当前存档槽位键名
+function getSlotKey(slotIdx){
+  return 'shadow_dungeon_slot_'+slotIdx;
+}
+
+// 保存游戏（到当前槽位+自动备份）
+function saveGame(){
+  try{
+    var meta=getSaveMeta();
+    var slotIdx=meta.currentSlot||0;
+    var data={g:G,heroIdCounter:G.heroIdCounter};
+    var jsonStr=JSON.stringify(data);
+    // 保存到当前槽位
+    localStorage.setItem(getSlotKey(slotIdx),jsonStr);
+    // 同时保持旧键兼容
+    localStorage.setItem(SAVE_KEY,jsonStr);
+    // 更新槽位元数据
+    if(!meta.slots[slotIdx]) meta.slots[slotIdx]={};
+    meta.slots[slotIdx].timestamp=Date.now();
+    meta.slots[slotIdx].size=jsonStr.length;
+    meta.slots[slotIdx].stageProgress=G.stageProgress||1;
+    meta.slots[slotIdx].heroCount=G.heroes?G.heroes.length:0;
+    meta.slots[slotIdx].playTime=G.totalPlayTime||0;
+    // 自动备份（每次保存前先备份当前槽位）
+    var backupKey='shadow_dungeon_backup_'+Date.now();
+    localStorage.setItem(backupKey,jsonStr);
+    if(!meta.backups) meta.backups=[];
+    meta.backups.unshift({key:backupKey,slotIdx:slotIdx,timestamp:Date.now(),stageProgress:G.stageProgress||1});
+    // 限制备份数量
+    while(meta.backups.length>MAX_BACKUPS){
+      var old=meta.backups.pop();
+      try{localStorage.removeItem(old.key);}catch(e){}
+    }
+    saveSaveMeta(meta);
+    showToast('💾 已存档 (槽位'+(slotIdx+1)+')');
+  }catch(e){
+    if(e.name==='QuotaExceededError'){
+      showToast('❌ 存档空间不足，请删除旧备份');
+    }else{
+      showToast('存档失败');
+    }
+  }
+}
+
+// 加载游戏（从当前槽位）
 function loadGame(){
   try{
-    var raw=localStorage.getItem(SAVE_KEY);
+    var meta=getSaveMeta();
+    var slotIdx=meta.currentSlot||0;
+    // 优先从槽位读取，回退到旧键
+    var raw=localStorage.getItem(getSlotKey(slotIdx))||localStorage.getItem(SAVE_KEY);
     if(!raw)return false;
     var data=JSON.parse(raw);
-    // 恢复英雄ID计数器
     G.heroIdCounter=data.heroIdCounter||0;
-    // 恢复游戏状态（保留引用）
     var saved=data.g;
     Object.keys(saved).forEach(function(k){G[k]=saved[k]});
-    // 恢复竞技场每日重置
+    // 修复：重新建立G.team和G.heroes之间的引用关系
+    if(G.team && G.heroes){
+      for(var i=0;i<G.team.length;i++){
+        if(G.team[i]){
+          var matchedHero=G.heroes.find(function(h){return h&&h.uid===G.team[i].uid;});
+          if(matchedHero){G.team[i]=matchedHero;}
+          else{G.team[i]=null;}
+        }
+      }
+    }
     var today=new Date().toDateString();
     if(G.arenaState&&G.arenaState.lastChallengeDate!==today){
       G.arenaState.dailyChallengesUsed=0;
       G.arenaState.lastChallengeDate=today;
     }
-    // 每日登录检查
     if(G.lastLoginDate!==today){
-      G.dailyBonusClaimed=false; // 新的一天，重置领取状态
+      G.dailyBonusClaimed=false;
       G.lastLoginDate=today;
     }
-    // 初始化连胜计数
     if(G.pveWinStreak===undefined) G.pveWinStreak=0;
     if(G.pveMaxStreak===undefined) G.pveMaxStreak=0;
-    // 初始化成就系统数据
     if(!G.achievements) G.achievements={unlocked:{},progress:{},totalClaimed:0};
     if(!G.stats) G.stats={totalKills:0,totalHeroesRecruited:0,totalEquipmentForged:0,totalEquipmentMerged:0,totalGoldEarned:0,totalGemsEarned:0,maxStageReached:1,maxHeroLevel:0};
-    // 加载后检查所有成就
     setTimeout(function(){checkAllAchievements();},1000);
     return true;
   }catch(e){console.error('读档失败',e);return false;}
+}
+
+// 切换存档槽位
+function switchSaveSlot(slotIdx){
+  var meta=getSaveMeta();
+  var oldSlot=meta.currentSlot||0;
+  if(oldSlot===slotIdx){showToast('已在当前槽位');return;}
+  // 先保存当前进度到旧槽位
+  try{
+    var data={g:G,heroIdCounter:G.heroIdCounter};
+    localStorage.setItem(getSlotKey(oldSlot),JSON.stringify(data));
+    if(!meta.slots[oldSlot]) meta.slots[oldSlot]={};
+    meta.slots[oldSlot].timestamp=Date.now();
+    meta.slots[oldSlot].stageProgress=G.stageProgress||1;
+    meta.slots[oldSlot].heroCount=G.heroes?G.heroes.length:0;
+  }catch(e){}
+  meta.currentSlot=slotIdx;
+  saveSaveMeta(meta);
+  // 重新加载页面
+  location.reload();
+}
+
+// 从备份恢复
+function restoreBackup(backupIdx){
+  var meta=getSaveMeta();
+  if(!meta.backups||!meta.backups[backupIdx]){showToast('备份不存在');return;}
+  var backup=meta.backups[backupIdx];
+  var raw=localStorage.getItem(backup.key);
+  if(!raw){showToast('备份数据已丢失');return;}
+  // 恢复前先备份当前状态
+  var currentData={g:G,heroIdCounter:G.heroIdCounter};
+  var currentBackupKey='shadow_dungeon_backup_'+Date.now();
+  localStorage.setItem(currentBackupKey,JSON.stringify(currentData));
+  meta.backups.unshift({key:currentBackupKey,slotIdx:meta.currentSlot,timestamp:Date.now(),stageProgress:G.stageProgress||1,note:'恢复前自动备份'});
+  while(meta.backups.length>MAX_BACKUPS){
+    var old=meta.backups.pop();
+    try{localStorage.removeItem(old.key);}catch(e){}
+  }
+  // 写入当前槽位
+  localStorage.setItem(getSlotKey(meta.currentSlot),raw);
+  localStorage.setItem(SAVE_KEY,raw);
+  saveSaveMeta(meta);
+  showToast('✅ 已恢复备份，正在重新加载...');
+  setTimeout(function(){location.reload();},500);
+}
+
+// 删除指定槽位存档
+function deleteSaveSlot(slotIdx){
+  var meta=getSaveMeta();
+  localStorage.removeItem(getSlotKey(slotIdx));
+  delete meta.slots[slotIdx];
+  saveSaveMeta(meta);
+  showToast('🗑️ 槽位'+(slotIdx+1)+'已删除');
+  if((meta.currentSlot||0)===slotIdx){
+    // 删除的是当前槽位，切换到第一个有数据的槽位
+    var found=false;
+    for(var i=0;i<MAX_SAVE_SLOTS;i++){
+      if(i!==slotIdx && meta.slots[i]){
+        meta.currentSlot=i;
+        saveSaveMeta(meta);
+        location.reload();
+        return;
+      }
+    }
+    // 没有其他存档，重置游戏
+    localStorage.removeItem(SAVE_KEY);
+    location.reload();
+  }else{
+    renderCurrentTab();
+  }
+}
+
+// 删除指定备份
+function deleteBackup(backupIdx){
+  var meta=getSaveMeta();
+  if(!meta.backups||!meta.backups[backupIdx])return;
+  var backup=meta.backups[backupIdx];
+  try{localStorage.removeItem(backup.key);}catch(e){}
+  meta.backups.splice(backupIdx,1);
+  saveSaveMeta(meta);
+  showToast('🗑️ 备份已删除');
+  renderCurrentTab();
+}
+
+// 清理所有备份
+function clearAllBackups(){
+  var meta=getSaveMeta();
+  if(meta.backups){
+    meta.backups.forEach(function(b){try{localStorage.removeItem(b.key);}catch(e){}});
+  }
+  meta.backups=[];
+  saveSaveMeta(meta);
+  showToast('🗑️ 所有备份已清理');
+  renderCurrentTab();
+}
+
+// 格式化时间
+function formatSaveTime(ts){
+  if(!ts)return '未知';
+  var d=new Date(ts);
+  var now=new Date();
+  var diff=now-d;
+  if(diff<60000) return '刚刚';
+  if(diff<3600000) return Math.floor(diff/60000)+'分钟前';
+  if(diff<86400000) return Math.floor(diff/3600000)+'小时前';
+  if(diff<172800000) return '昨天 '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
+  return (d.getMonth()+1)+'/'+d.getDate()+' '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
+}
+
+// 格式化游戏时长
+function formatPlayTime(minutes){
+  if(!minutes||minutes<=0) return '0分钟';
+  if(minutes<60) return Math.floor(minutes)+'分钟';
+  if(minutes<1440) return Math.floor(minutes/60)+'小时'+Math.floor(minutes%60)+'分';
+  return Math.floor(minutes/1440)+'天'+Math.floor((minutes%1440)/60)+'小时';
+}
+
+// 删除存档（兼容旧调用）
+function deleteSave(){
+  var meta=getSaveMeta();
+  var slotIdx=meta.currentSlot||0;
+  showConfirm('删除存档','确定要删除当前存档（槽位'+(slotIdx+1)+'）吗？此操作不可撤销！',function(){deleteSaveSlot(slotIdx);},'删除','取消');
 }
 
 // 每日登录奖励领取
@@ -6347,8 +6528,52 @@ function renderTown(el){
       +'<div class="btn-group">'
         +'<button class="btn btn-primary" onclick="saveGame()">💾 保存</button>'
         +'<button class="btn" onclick="loadGame();updateResUI();renderCurrentTab();showToast(\'📂 已读档\')">📂 读取</button>'
-        +'<button class="btn" style="color:#ff6b6b" onclick="showConfirm(\'删除存档\',\'确定要删除存档吗？此操作不可撤销！\',deleteSave,\'删除\',\'取消\')">🗑️ 删除</button>'
+        +'<button class="btn" style="color:#ff6b6b" onclick="deleteSave()">🗑️ 删除</button>'
       +'</div>'
+      +(function(){
+        var meta=getSaveMeta();
+        var currentSlot=meta.currentSlot||0;
+        var html='<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.05);padding-top:10px">';
+        html+='<div style="font-size:12px;font-weight:bold;color:var(--gold);margin-bottom:8px">📂 存档槽位</div>';
+        for(var si=0;si<MAX_SAVE_SLOTS;si++){
+          var slot=meta.slots[si];
+          var isCurrent=si===currentSlot;
+          var slotColor=isCurrent?'var(--gold)':'var(--text2)';
+          var slotBorder=isCurrent?'border-color:var(--gold);background:rgba(201,162,39,.06)':'';
+          html+='<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin:4px 0;cursor:pointer;'+slotBorder+'" onclick="switchSaveSlot('+si+')">'
+            +'<span style="font-size:18px">'+(isCurrent?'📂':'📁')+'</span>'
+            +'<div style="flex:1">'
+            +'<div style="font-size:12px;font-weight:bold;color:'+slotColor+'">槽位 '+(si+1)+(isCurrent?' (当前)':'')+'</div>'
+            +(slot?'<div style="font-size:10px;color:var(--text3)">关卡 '+slot.stageProgress+' · '+slot.heroCount+'英雄 · '+formatSaveTime(slot.timestamp)+'</div>'
+              :'<div style="font-size:10px;color:var(--text3)">空槽位</div>')
+            +'</div>'
+            +(slot&&!isCurrent?'<button class="btn" style="font-size:9px;padding:3px 8px;color:#ff6b6b" onclick="event.stopPropagation();showConfirm(\'删除存档\',\'确定删除槽位'+(si+1)+'？\',function(){deleteSaveSlot('+si+')},\'删除\',\'取消\')">🗑️</button>':'')
+            +'</div>';
+        }
+        // 备份列表
+        if(meta.backups&&meta.backups.length>0){
+          html+='<div style="font-size:12px;font-weight:bold;color:var(--blue);margin:12px 0 8px;display:flex;align-items:center;justify-content:space-between">'
+            +'<span>🔄 自动备份 ('+meta.backups.length+'/'+MAX_BACKUPS+')</span>'
+            +'<button class="btn" style="font-size:9px;padding:2px 8px" onclick="clearAllBackups()">清理全部</button>'
+            +'</div>';
+          var showCount=Math.min(meta.backups.length,5);
+          for(var bi=0;bi<showCount;bi++){
+            var bk=meta.backups[bi];
+            html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(0,0,0,.15);border-radius:6px;margin:3px 0;font-size:11px">'
+              +'<span style="color:var(--text3)">'+formatSaveTime(bk.timestamp)+'</span>'
+              +'<span style="color:var(--text2)">关卡'+bk.stageProgress+(bk.note?' · '+bk.note:'')+'</span>'
+              +'<span style="margin-left:auto;display:flex;gap:4px">'
+              +'<button class="btn" style="font-size:9px;padding:2px 8px;color:var(--blue)" onclick="restoreBackup('+bi+')">恢复</button>'
+              +'<button class="btn" style="font-size:9px;padding:2px 8px;color:#ff6b6b" onclick="deleteBackup('+bi+')">🗑️</button>'
+              +'</span></div>';
+          }
+          if(meta.backups.length>5){
+            html+='<div style="font-size:10px;color:var(--text3);text-align:center;margin-top:4px">还有 '+(meta.backups.length-5)+' 个更早的备份</div>';
+          }
+        }
+        html+='</div>';
+        return html;
+      })()
     +'</div>';
   }catch(htmlErr){
     // HTML生成失败时显示原始错误
