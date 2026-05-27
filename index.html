@@ -9849,71 +9849,101 @@ function submitAllLeaderboards(){
   });
 }
 
+// 获取管理员输入的玩家名字
+function adminGetName(){
+  var el=document.getElementById('admin-query-name');
+  return el?el.value.trim():'';
+}
+function adminGetResultDiv(){
+  return document.getElementById('admin-query-result');
+}
+function adminShowResult(text,color){
+  var div=adminGetResultDiv();
+  if(div){div.style.display='block';div.style.color=color||'var(--text2)';div.innerHTML=text;}
+}
+
+// 管理员查看玩家数据
+function adminQueryPlayerData(){
+  var name=adminGetName();
+  if(!name){adminShowResult('❌ 请输入玩家名字','#ff6b6b');return;}
+  if(!isCloudReady){adminShowResult('❌ 云端未连接','#ff6b6b');return;}
+  adminShowResult('⏳ 查询中...','var(--text3)');
+  Promise.all([
+    sb.from('saves').select('*').eq('player_name',name).limit(1),
+    sb.from('leaderboard').select('*').eq('player_name',name)
+  ]).then(function(results){
+    var saveData=results[0].data&&results[0].data[0]?results[0].data[0]:null;
+    var lbData=results[1].data||[];
+    if(!saveData&&!lbData.length){adminShowResult('❌ 未找到玩家：'+name,'#ff6b6b');return;}
+    var html='<div style="background:rgba(0,0,0,.2);border-radius:8px;padding:10px;margin-top:6px;border:1px solid var(--border)">';
+    // 基本信息
+    var did=saveData?saveData.device_id:(lbData[0]?lbData[0].device_id:'?');
+    html+='<div style="font-size:11px;color:var(--text3);margin-bottom:6px">设备ID: <span style="color:var(--text2);word-break:break-all">'+did+'</span></div>';
+    // 存档信息
+    if(saveData){
+      html+='<div style="font-size:12px;font-weight:bold;color:var(--gold);margin-bottom:6px">📦 云端存档</div>';
+      html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center;margin-bottom:8px">';
+      html+='<div style="background:rgba(0,0,0,.2);border-radius:6px;padding:6px"><div style="font-size:14px;font-weight:bold;color:var(--text)">'+(saveData.stageProgress||1)+'</div><div style="font-size:9px;color:var(--text3)">关卡</div></div>';
+      var heroCount=saveData.heroes?saveData.heroes.length:0;
+      html+='<div style="background:rgba(0,0,0,.2);border-radius:6px;padding:6px"><div style="font-size:14px;font-weight:bold;color:var(--text)">'+heroCount+'</div><div style="font-size:9px;color:var(--text3)">英雄</div></div>';
+      var saveTime=saveData.lastSave?formatSaveTime(saveData.lastSave):'未知';
+      html+='<div style="background:rgba(0,0,0,.2);border-radius:6px;padding:6px"><div style="font-size:11px;font-weight:bold;color:var(--text2)">'+saveTime+'</div><div style="font-size:9px;color:var(--text3)">保存时间</div></div>';
+      html+='</div>';
+      // 资源
+      if(saveData.resources){
+        html+='<div style="font-size:10px;color:var(--text3);margin-bottom:4px">💰 资源: '+(saveData.resources.gold||0)+'金 '+(saveData.resources.gems||0)+'💎 '+(saveData.resources.food||0)+'🍞</div>';
+      }
+      // 建筑
+      if(saveData.buildings){
+        html+='<div style="font-size:10px;color:var(--text3)">🏗️ 酒馆Lv.'+(saveData.buildings.tavern||0)+' 神殿Lv.'+(saveData.buildings.temple||0)+'</div>';
+      }
+    }
+    // 排行榜成绩
+    if(lbData.length>0){
+      html+='<div style="font-size:12px;font-weight:bold;color:var(--gold);margin:8px 0 6px;padding-top:8px;border-top:1px solid rgba(255,255,255,.05)">🏆 排行榜成绩</div>';
+      var typeNames={power:'战力',stage:'关卡',arena:'竞技场',heroes:'英雄数'};
+      for(var i=0;i<lbData.length;i++){
+        var lb=lbData[i];
+        html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:rgba(0,0,0,.15);border-radius:4px;margin:2px 0;font-size:11px">';
+        html+='<span style="color:var(--text2)">'+(typeNames[lb.type]||lb.type)+'</span>';
+        html+='<span style="color:var(--gold);font-weight:bold">'+lb.score+'</span>';
+        html+='</div>';
+      }
+    }
+    html+='</div>';
+    adminShowResult(html);
+  }).catch(function(error){
+    console.error('Query error:',error);
+    adminShowResult('❌ 查询失败：'+(error.message||'未知错误'),'#ff6b6b');
+  });
+}
+
 // 管理员删除玩家数据
-function adminDeletePlayerData() {
-  var nameInput = document.getElementById('admin-delete-name');
-  var resultDiv = document.getElementById('admin-delete-result');
-  var name = nameInput ? nameInput.value.trim() : '';
-  
-  if (!name) {
-    if (resultDiv) {
-      resultDiv.style.display = 'block';
-      resultDiv.style.color = '#ff6b6b';
-      resultDiv.textContent = '❌ 请输入玩家名字';
-    }
-    return;
-  }
-  
-  if (!isCloudReady) {
-    if (resultDiv) {
-      resultDiv.style.display = 'block';
-      resultDiv.style.color = '#ff6b6b';
-      resultDiv.textContent = '❌ 云端未连接';
-    }
-    return;
-  }
-  
-  // 确认弹窗
-  showConfirm('⚠️ 删除确认', 
-    '确定要删除玩家 "' + name + '" 的所有云端数据吗？\n\n这将删除：\n- 云端存档（saves 表）\n- 排行榜成绩（leaderboard 表）\n\n此操作不可恢复！',
-    function() {
-      // 先查询获取 device_id
+function adminDeletePlayerData(){
+  var name=adminGetName();
+  if(!name){adminShowResult('❌ 请输入玩家名字','#ff6b6b');return;}
+  if(!isCloudReady){adminShowResult('❌ 云端未连接','#ff6b6b');return;}
+  showConfirm('⚠️ 删除确认',
+    '确定要删除玩家 "'+name+'" 的所有云端数据吗？\n\n这将删除：\n- 云端存档（saves 表）\n- 排行榜成绩（leaderboard 表）\n\n此操作不可恢复！',
+    function(){
       Promise.all([
-        sb.from('saves').select('device_id').eq('player_name', name).limit(1),
-        sb.from('leaderboard').select('device_id').eq('player_name', name).limit(1)
-      ]).then(function(results) {
-        var deviceId1 = results[0].data && results[0].data[0] ? results[0].data[0].device_id : null;
-        var deviceId2 = results[1].data && results[1].data[0] ? results[1].data[0].device_id : null;
-        var targetDeviceId = deviceId1 || deviceId2;
-        
-        if (!targetDeviceId) {
-          if (resultDiv) {
-            resultDiv.style.display = 'block';
-            resultDiv.style.color = '#ff6b6b';
-            resultDiv.textContent = '❌ 未找到玩家：' + name;
-          }
-          return;
-        }
-        
-        // 删除两个表的数据
+        sb.from('saves').select('device_id').eq('player_name',name).limit(1),
+        sb.from('leaderboard').select('device_id').eq('player_name',name).limit(1)
+      ]).then(function(results){
+        var deviceId1=results[0].data&&results[0].data[0]?results[0].data[0].device_id:null;
+        var deviceId2=results[1].data&&results[1].data[0]?results[1].data[0].device_id:null;
+        var targetDeviceId=deviceId1||deviceId2;
+        if(!targetDeviceId){adminShowResult('❌ 未找到玩家：'+name,'#ff6b6b');return;}
         return Promise.all([
-          sb.from('saves').delete().eq('device_id', targetDeviceId),
-          sb.from('leaderboard').delete().eq('device_id', targetDeviceId)
-        ]).then(function() {
-          if (resultDiv) {
-            resultDiv.style.display = 'block';
-            resultDiv.style.color = '#27ae60';
-            resultDiv.textContent = '✅ 已删除玩家 "' + name + '" 的所有云端数据';
-          }
-          nameInput.value = '';
+          sb.from('saves').delete().eq('device_id',targetDeviceId),
+          sb.from('leaderboard').delete().eq('device_id',targetDeviceId)
+        ]).then(function(){
+          adminShowResult('✅ 已删除玩家 "'+name+'" 的所有云端数据','#27ae60');
+          document.getElementById('admin-query-name').value='';
         });
-      }).catch(function(error) {
-        console.error('Delete error:', error);
-        if (resultDiv) {
-          resultDiv.style.display = 'block';
-          resultDiv.style.color = '#ff6b6b';
-          resultDiv.textContent = '❌ 删除失败：' + (error.message || '未知错误');
-        }
+      }).catch(function(error){
+        console.error('Delete error:',error);
+        adminShowResult('❌ 删除失败：'+(error.message||'未知错误'),'#ff6b6b');
       });
     },
     '确认删除',
@@ -10189,12 +10219,12 @@ function renderCheats(el){
         </div>
         <div class="panel" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.3)">
           <div class="panel-title">☁️ 云端数据管理（管理员）</div>
-          <div class="text-dim text-sm mb-8">⚠️ 危险操作：删除指定玩家的云端数据</div>
           <div class="btn-group">
-            <input type="text" id="admin-delete-name" placeholder="输入玩家名字" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:rgba(0,0,0,.3);color:var(--text);font-size:13px;outline:none">
-            <button class="btn btn-danger" onclick="adminDeletePlayerData()">🗑️ 删除该玩家数据</button>
+            <input type="text" id="admin-query-name" placeholder="输入玩家名字" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:rgba(0,0,0,.3);color:var(--text);font-size:13px;outline:none">
+            <button class="btn btn-primary" onclick="adminQueryPlayerData()">🔍 查看数据</button>
+            <button class="btn btn-danger" onclick="adminDeletePlayerData()">🗑️ 删除</button>
           </div>
-          <div id="admin-delete-result" style="margin-top:8px;font-size:12px;display:none"></div>
+          <div id="admin-query-result" style="margin-top:8px;font-size:12px;display:none"></div>
         </div>
       </div>
     </div>
