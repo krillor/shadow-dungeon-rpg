@@ -10706,9 +10706,10 @@ function loadCloudSave() {
   
   showToast('⏳ 正在从云端下载...');
   
-  return sb.from('saves').select('*').eq('device_id', deviceId).single()
+  // 使用 .limit(1) 而不是 .single()，避免无数据时抛错
+  return sb.from('saves').select('*').eq('device_id', deviceId).limit(1)
     .then(function(result) {
-      var data = result.data;
+      var data = result.data && result.data[0] ? result.data[0] : null;
       if (!data) {
         showToast('❌ 云端没有存档');
         return false;
