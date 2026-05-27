@@ -6691,20 +6691,22 @@ function renderTown(el){
           for(var mi=0;mi<meta.manualBackups.length;mi++){
             var mbk=meta.manualBackups[mi];
             var isRestoreBackup=mbk.note&&mbk.note.indexOf('恢复')>=0;
-            html+='<div style="display:flex;align-items:center;gap:8px;padding:8px;background:'+(isRestoreBackup?'rgba(255,165,0,.1)':'rgba(0,0,0,.2)')+';border-radius:6px;margin:4px 0;font-size:11px;border-left:3px solid '+(isRestoreBackup?'#ffa500':'#3b82f6')+'">'
-              +'<div style="flex:1;min-width:0">'
-              +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
+            html+='<div style="background:'+(isRestoreBackup?'rgba(255,165,0,.1)':'rgba(0,0,0,.2)')+';border-radius:6px;margin:4px 0;font-size:11px;border-left:3px solid '+(isRestoreBackup?'#ffa500':'#3b82f6')+'">';
+            // 第一行：时间和数据
+            html+='<div style="display:flex;align-items:center;gap:8px;padding:8px 8px 4px 8px">'
               +'<span style="color:var(--text3);font-size:10px;min-width:50px">'+formatSaveTime(mbk.timestamp)+'</span>'
               +'<span style="background:rgba(255,255,255,.05);padding:1px 6px;border-radius:3px;font-size:10px">💀'+mbk.stageProgress+'</span>'
               +'<span style="background:rgba(201,162,39,.15);padding:1px 6px;border-radius:3px;font-size:10px;color:var(--gold)">⚔️'+(mbk.totalPower||'?')+'</span>'
               +'<span style="background:rgba(255,255,255,.05);padding:1px 6px;border-radius:3px;font-size:10px">🧙'+mbk.heroCount+'</span>'
-              +'</div>'
-              +(mbk.note?'<div style="font-size:9px;color:var(--text3)">'+mbk.note+'</div>':'')
-              +'</div>'
-              +'<div style="display:flex;gap:4px">'
-              +'<button class="btn" style="font-size:9px;padding:3px 8px;background:rgba(59,130,246,.2);border:none;color:#60a5fa" onclick="restoreBackup(\'manual\','+mi+')">恢复</button>'
-              +'<button class="btn" style="font-size:9px;padding:3px 8px;background:rgba(255,107,107,.15);border:none;color:#f87171" onclick="showConfirm(\'删除备份\',\'确定删除此备份？\n\n关卡'+mbk.stageProgress+' · '+mbk.heroCount+'英雄 · ⚔️'+(mbk.totalPower||'?')+'\',function(){deleteManualBackup('+mi+')},\'删除\',\'取消\')">删除</button>'
-              +'</div></div>';
+              +'</div>';
+            // 第二行：备注和操作按钮（分开左右）
+            html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px 8px 8px">';
+            html+='<div style="font-size:9px;color:var(--text3)">'+(mbk.note||'&nbsp;')+'</div>';
+            html+='<div style="display:flex;gap:8px">'
+              +'<button class="btn" style="font-size:9px;padding:4px 12px;background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;color:#fff" onclick="restoreBackup(\'manual\','+mi+')">↩️ 恢复</button>'
+              +'<button class="btn" style="font-size:9px;padding:4px 10px;background:transparent;border:1px solid rgba(255,107,107,.4);color:#f87171" onclick="showConfirm(\'删除备份\',\'确定删除此备份？\n\n关卡'+mbk.stageProgress+' · '+mbk.heroCount+'英雄 · ⚔️'+(mbk.totalPower||'?')+'\',function(){deleteManualBackup('+mi+')},\'删除\',\'取消\')">🗑️</button>'
+              +'</div>';
+            html+='</div></div>';
           }
           html+='<button class="btn" style="width:100%;margin-top:8px;font-size:10px;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.2);color:#f87171" onclick="showConfirm(\'清理全部手动备份\',\'确定删除所有手动备份？共'+meta.manualBackups.length+'个\',clearManualBackups,\'删除全部\',\'取消\')">🗑️ 清理全部</button>';
         }else{
@@ -6727,17 +6729,23 @@ function renderTown(el){
           +'<span style="font-size:9px;color:var(--text3)">保存时自动创建</span>'
           +'</div>';
         if(meta.autoBackups&&meta.autoBackups.length>0){
-          html+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">';
+          html+='<div style="display:flex;flex-direction:column;gap:6px">';
           for(var ai=0;ai<meta.autoBackups.length;ai++){
             var abk=meta.autoBackups[ai];
-            html+='<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:rgba(0,0,0,.2);border-radius:6px;font-size:10px">'
+            html+='<div style="background:rgba(0,0,0,.2);border-radius:6px;padding:8px;font-size:10px">';
+            // 第一行：数据
+            html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
               +'<span style="color:var(--text3);min-width:45px">'+formatSaveTime(abk.timestamp)+'</span>'
               +'<span style="color:var(--text2)">💀'+abk.stageProgress+'</span>'
               +'<span style="color:var(--gold)">⚔️'+(abk.totalPower||'?')+'</span>'
-              +'<div style="margin-left:auto;display:flex;gap:2px">'
-              +'<button class="btn" style="font-size:8px;padding:2px 4px;background:rgba(59,130,246,.2);border:none;color:#60a5fa" onclick="restoreBackup(\'auto\','+ai+')">↩️</button>'
-              +'<button class="btn" style="font-size:8px;padding:2px 4px;background:rgba(255,107,107,.1);border:none;color:#f87171" onclick="showConfirm(\'删除\',\'删除此自动备份？\',function(){deleteAutoBackup('+ai+')},\'删除\',\'取消\')">×</button>'
-              +'</div></div>';
+              +'<span style="color:var(--text3)">🧙'+abk.heroCount+'</span>'
+              +'</div>';
+            // 第二行：操作按钮（分开左右）
+            html+='<div style="display:flex;justify-content:space-between;gap:8px">'
+              +'<button class="btn" style="flex:1;font-size:9px;padding:5px 8px;background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;color:#fff" onclick="restoreBackup(\'auto\','+ai+')">↩️ 恢复此备份</button>'
+              +'<button class="btn" style="font-size:9px;padding:5px 10px;background:transparent;border:1px solid rgba(255,107,107,.4);color:#f87171" onclick="showConfirm(\'删除自动备份\',\'删除此自动备份？\n关卡'+abk.stageProgress+' · '+abk.heroCount+'英雄\',function(){deleteAutoBackup('+ai+')},\'删除\',\'取消\')">🗑️</button>'
+              +'</div>';
+            html+='</div>';
           }
           html+='</div>';
           html+='<button class="btn" style="width:100%;margin-top:8px;font-size:10px;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.15);color:var(--text3)" onclick="showConfirm(\'清理全部自动备份\',\'确定删除所有自动备份？共'+meta.autoBackups.length+'个\',clearAutoBackups,\'删除全部\',\'取消\')">🗑️ 清理全部</button>';
