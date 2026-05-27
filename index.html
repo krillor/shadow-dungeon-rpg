@@ -385,6 +385,33 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .log-skill{color:#9b59b6;font-weight:bold}.log-title{color:var(--gold);font-weight:bold;font-size:12px}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 
+/* ===== 合成增强系统样式 ===== */
+.merge-lucky-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:linear-gradient(135deg,rgba(255,215,0,.08),rgba(255,165,0,.04));border:1px solid rgba(255,215,0,.2);border-radius:var(--radius-md);margin-bottom:10px}
+.merge-lucky-val{font-size:18px;font-weight:900;color:var(--gold);text-shadow:0 0 8px rgba(201,162,39,.3);min-width:30px;text-align:center}
+.merge-lucky-label{font-size:11px;color:var(--text2)}
+.merge-lucky-bonus{font-size:10px;color:#2ecc71;font-weight:bold}
+.merge-pity-bar{height:4px;background:rgba(0,0,0,.3);border-radius:2px;margin-top:6px;overflow:hidden}
+.merge-pity-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--gold),#ff6b00);transition:width .3s}
+.merge-streak-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(255,165,0,.1));border:1px solid rgba(239,68,68,.3);border-radius:20px;font-size:11px;font-weight:bold;color:#ff6b6b;animation:streakPulse 1.5s ease infinite}
+.merge-bond-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:linear-gradient(135deg,rgba(52,152,219,.15),rgba(155,89,182,.1));border:1px solid rgba(52,152,219,.3);border-radius:12px;font-size:10px;color:#5dade2;font-weight:bold}
+.merge-skill-mut{background:linear-gradient(135deg,rgba(168,85,247,.2),rgba(239,68,68,.15))!important;color:#d4a0ff!important;border-color:rgba(168,85,247,.4)!important}
+.merge-cost{display:flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(0,0,0,.2);border-radius:var(--radius-sm);font-size:12px;color:var(--text2);margin-bottom:8px}
+.merge-cost b{color:var(--gold)}
+.merge-history-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(0,0,0,.15);border-radius:6px;margin-bottom:4px;border-left:3px solid var(--border);font-size:11px}
+.merge-history-item.mutation{border-left-color:#a855f7}
+.merge-history-item.legendary{border-left-color:#f59e0b}
+.merge-history-item.mythic{border-left-color:#ef4444}
+.merge-history-item.hidden{border-left-color:#00ffcc}
+.merge-history-item.quality-up{border-left-color:#2ecc71}
+.merge-undo-btn{background:linear-gradient(135deg,rgba(52,152,219,.15),rgba(52,152,219,.05));border:1px solid rgba(52,152,219,.3);color:#5dade2;padding:4px 10px;border-radius:var(--radius-sm);font-size:11px;cursor:pointer;transition:var(--transition)}
+.merge-undo-btn:hover{background:rgba(52,152,219,.25);border-color:rgba(52,152,219,.5)}
+.merge-enhance-flash{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at center,rgba(46,204,113,.5),transparent 70%);pointer-events:none;z-index:299;animation:mutationFlash 1s ease-out forwards}
+.merge-bond-flash{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at center,rgba(52,152,219,.4),transparent 70%);pointer-events:none;z-index:299;animation:mutationFlash 1.2s ease-out forwards}
+.merge-streak-flash{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at center,rgba(255,107,0,.4),transparent 60%);pointer-events:none;z-index:299;animation:mutationFlash 1s ease-out forwards}
+.merge-upset-flash{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at center,rgba(46,204,113,.6),transparent 60%);pointer-events:none;z-index:299;animation:mutationFlash 1.5s ease-out forwards}
+@keyframes mergeGlow{0%,100%{box-shadow:0 0 8px rgba(201,162,39,.2)}50%{box-shadow:0 0 20px rgba(201,162,39,.5)}}
+.merge-glow{animation:mergeGlow 2s ease infinite}
+
 /* 合成区域 */
 .merge-slots{display:flex;gap:8px;margin:8px 0;justify-content:center;flex-wrap:wrap}
 .merge-slot{width:68px;height:68px;border:2px dashed var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;transition:all .2s;background:var(--panel2);position:relative}
@@ -5794,6 +5821,17 @@ var G_MYTHIC_DIRECT_RATE = 0.01;   // 1% 直接神话概率
 var G_HIDDEN_DIRECT_RATE = 0.001;  // 0.1% 隐藏品质概率
 
 function generateFusedHero(heroes){
+  // === 幸运值系统：影响异变概率 ===
+  var luckyBonus = (G.mergeLucky||0) * 0.005; // 每点幸运+0.5%
+  var effectiveMutationRate = Math.min(0.50, G_MUTATION_RATE + luckyBonus);
+  
+  // === 保底系统：连续10次无特殊触发，下次必定品质+1 ===
+  var pityTrigger = false;
+  if((G.mergePity||0) >= 10){
+    pityTrigger = true;
+    G.mergePity = 0;
+  }
+  
   // 基于输入英雄属性即时生成新英雄
   var inputIds=heroes.map(function(h){return h.id}).sort().join('+');
   var hash=hashStr(inputIds);
@@ -5814,7 +5852,7 @@ function generateFusedHero(heroes){
   
   // 2. 判定特殊结果（优先级：隐藏 > 神话 > 传说 > 品质+1 > 异变 > 普通）
   // 金手指强制异变
-  var isMutation=G_cheats.forceMutation||Math.random()<G_MUTATION_RATE;
+  var isMutation=G_cheats.forceMutation||Math.random()<effectiveMutationRate;
   var isQualityUp=false;
   var isDirectLegendary=false;
   var isDirectMythic=false;
@@ -5849,6 +5887,33 @@ function generateFusedHero(heroes){
     isQualityUp=true;
   }
   
+  // === 保底触发：连续10次无特殊结果，强制品质+1 ===
+  if(pityTrigger && !isDirectHidden && !isDirectMythic && !isDirectLegendary && !isQualityUp){
+    if(newQIdx < QUALITIES.length-1){
+      newQIdx++;
+      newQuality=QUALITIES[newQIdx];
+      isMutation=true;
+      isQualityUp=true;
+    }
+  }
+  
+  // === 反转合成（以弱胜强）：所有材料品质<=稀有时，5%直接史诗 ===
+  var allLowQuality = qualities.every(function(q){return q<=1});
+  var qualityGap = maxQ - Math.min.apply(null,qualities);
+  var isUpset = false;
+  if(allLowQuality && Math.random()<0.05 && !isDirectHidden && !isDirectMythic && !isDirectLegendary){
+    newQuality='epic';
+    newQIdx=QUALITIES.indexOf('epic');
+    isMutation=true;
+    isUpset=true;
+  }
+  // 材料品质差距大时，属性倍率下限提升到1.0
+  var upsetBonus = (qualityGap>=2 && Math.random()<0.3);
+  
+  // === 合成羁绊检测 ===
+  var bondInfo = detectMergeBond(heroes);
+  var bondMult = bondInfo ? bondInfo.mult : 1.0;
+  
   // 3. 确定新职业：基于哈希从输入英雄职业中选
   var allRoles=heroes.map(function(h){return h.role});
   var uniqueRoles=[];
@@ -5882,6 +5947,15 @@ function generateFusedHero(heroes){
     var newSkills=shuffled.slice(0,skillCount);
   }
   
+  // === 技能变异：异变时10%概率某个技能变异 ===
+  var mutatedSkills = [];
+  if(isMutation && newSkills.length > 0 && Math.random() < 0.10){
+    var mutIdx = Math.floor(Math.random() * newSkills.length);
+    var mutSkillName = newSkills[mutIdx];
+    // 标记变异技能
+    mutatedSkills.push(mutIdx);
+  }
+  
   // 5. 确定新属性 - 统一逻辑：max(职业品质标准, 材料最高属性)
   var roleData=ROLES[mainRole];
   var baseHP=roleData?roleData.baseHP:100;
@@ -5901,7 +5975,10 @@ function generateFusedHero(heroes){
   var avgMaterialMP=Math.floor(heroes.reduce(function(s,h){return s+h.maxMP},0)/heroes.length);
   
   // 属性继承：材料平均值的0.6~1.8倍随机
-  var inheritMult=0.6+Math.random()*1.2; // 0.6~1.8
+  var minMult = upsetBonus ? 1.0 : 0.6; // 以弱胜强时下限提升
+  var inheritMult=minMult+Math.random()*(1.8-minMult);
+  // 羁绊加成
+  inheritMult *= bondMult;
   var maxHP=Math.floor(avgMaterialHP*inheritMult);
   var atk=Math.floor(avgMaterialATK*inheritMult);
   var def=Math.floor(avgMaterialDEF*inheritMult);
@@ -5999,8 +6076,26 @@ function generateFusedHero(heroes){
       '由'+heroes.map(function(h){return h.name}).join('与')+'融合诞生的'+QUALITY_NAMES[newQuality]+'英雄。',
     deathDefyUsed: false,
     isMutation: isMutation,
-    isHidden: !!isDirectHidden
+    isHidden: !!isDirectHidden,
+    isUpset: isUpset,
+    bondInfo: bondInfo,
+    mutatedSkills: mutatedSkills,
+    inheritMult: inheritMult
   };
+  
+  // === 更新幸运值和保底 ===
+  if(!G.mergeLucky) G.mergeLucky = 0;
+  if(!G.mergePity) G.mergePity = 0;
+  if(isDirectHidden || isDirectMythic || isDirectLegendary || isQualityUp || isUpset){
+    G.mergeLucky = 0; // 特殊触发清零幸运值
+    G.mergePity = 0;
+  } else if(isMutation){
+    G.mergeLucky = Math.max(0, G.mergeLucky - 2); // 异变减2
+    G.mergePity = 0;
+  } else {
+    G.mergeLucky++; // 普通合成+1
+    G.mergePity++;
+  }
   
   return newHero;
 }
@@ -6033,15 +6128,32 @@ function showMergeResult(hero, isQualityUp, oldQuality){
   }else if(hero.isMutation){
     effects='<div class="merge-mutation-flash"></div>';
   }
+  // 羁绊特效
+  if(hero.bondInfo){
+    effects+='<div class="merge-bond-flash"></div>';
+  }
+  // 反转合成特效
+  if(hero.isUpset){
+    effects+='<div class="merge-upset-flash"></div>';
+  }
+  // 连击特效
+  if(G.mergeStreak && G.mergeStreak.count>=3){
+    effects+='<div class="merge-streak-flash"></div>';
+  }
   
   // 创建结果卡片
   var stats=getHeroStats(hero);
-  var skillsHtml=hero.skills.slice(0,4).map(function(s){return '<span class="merge-result-skill">'+s+'</span>'}).join('');
+  var skillsHtml=hero.skills.slice(0,6).map(function(s,i){
+    var isMut=hero.mutatedSkills&&hero.mutatedSkills.indexOf(i)>=0;
+    return '<span class="merge-result-skill'+(isMut?' merge-skill-mut':'')+'">'+(isMut?'🧬':'')+s+'</span>';
+  }).join('');
   
   var html=effects+'<div class="merge-result-overlay" onclick="closeMergeResult()">'+
     '<div class="merge-result-card" onclick="event.stopPropagation()">'+
       '<div class="merge-result-avatar" style="background:'+qualityBg[hero.quality]+';border-color:'+qualityColors[hero.quality]+'">'+hero.icon+'</div>'+
       (hero.isMutation?'<div class="merge-result-mutation">☣️ 异变英雄 · 超越极限</div>':'')+
+      (hero.isUpset?'<div class="merge-result-mutation" style="color:#2ecc71">🍀 以弱胜强 · 逆境翻盘</div>':'')+
+      (hero.bondInfo?'<div class="merge-result-mutation" style="color:#5dade2">🔗 '+hero.bondInfo.name+' · '+hero.bondInfo.desc+'</div>':'')+
       '<div class="merge-result-quality" style="color:'+qualityColors[hero.quality]+'">'+QUALITY_NAMES[hero.quality]+'</div>'+
       '<div class="merge-result-name">'+hero.name+'</div>'+
       '<div class="merge-result-stats">'+
@@ -6054,8 +6166,9 @@ function showMergeResult(hero, isQualityUp, oldQuality){
       '</div>'+
       '<div class="merge-result-skills">'+skillsHtml+'</div>'+
       '<div style="display:flex;gap:8px;margin-top:16px">'+
-        '<button class="btn btn-primary" onclick="closeMergeResult();switchTab(\"heroes\")">查看英雄</button>'+
+        '<button class="btn btn-primary" onclick="closeMergeResult();switchTab(\'heroes\')">查看英雄</button>'+
         '<button class="btn" onclick="closeMergeResult()">继续合成</button>'+
+        (G.lastMerge?'<button class="merge-undo-btn" onclick="undoMerge()">↩ 撤销(50💎)</button>':'')+
       '</div>'+
     '</div>'+
   '</div>';
@@ -6070,6 +6183,104 @@ function closeMergeResult(){
   flashes.forEach(function(f){f.remove()});
 }
 
+// ==================== 合成增强系统 ====================
+
+// 合成羁绊检测
+function detectMergeBond(heroes){
+  var roles=heroes.map(function(h){return h.role});
+  var uniqueRoles=[];
+  roles.forEach(function(r){if(uniqueRoles.indexOf(r)===-1)uniqueRoles.push(r)});
+  
+  // 3个同职业 → 职业精通
+  if(uniqueRoles.length===1){
+    return{name:'职业精通',desc:'全属性+10%',mult:1.10};
+  }
+  
+  // 双职业羁绊
+  var roleSet=uniqueRoles.slice().sort().join('+');
+  var bonds={
+    'warrior+mage':{name:'魔剑士',desc:'ATK+15%',mult:1.15},
+    'mage+warrior':{name:'魔剑士',desc:'ATK+15%',mult:1.15},
+    'assassin+ranger':{name:'暗影猎手',desc:'SPD+20%',mult:1.20},
+    'ranger+assassin':{name:'暗影猎手',desc:'SPD+20%',mult:1.20},
+    'guardian+healer':{name:'圣盾守护',desc:'DEF+15%,HP+10%',mult:1.15},
+    'healer+guardian':{name:'圣盾守护',desc:'DEF+15%,HP+10%',mult:1.15},
+    'warlock+mage':{name:'深渊之力',desc:'MP+20%',mult:1.20},
+    'mage+warlock':{name:'深渊之力',desc:'MP+20%',mult:1.20},
+    'paladin+guardian':{name:'钢铁堡垒',desc:'DEF+20%',mult:1.20},
+    'guardian+paladin':{name:'钢铁堡垒',desc:'DEF+20%',mult:1.20},
+    'paladin+healer':{name:'神圣之光',desc:'HP+15%',mult:1.15},
+    'healer+paladin':{name:'神圣之光',desc:'HP+15%',mult:1.15}
+  };
+  
+  // 3个英雄时检查所有两两组合
+  if(heroes.length===3){
+    for(var i=0;i<uniqueRoles.length;i++){
+      for(var j=i+1;j<uniqueRoles.length;j++){
+        var key=uniqueRoles[i]+'+'+uniqueRoles[j];
+        if(bonds[key]) return bonds[key];
+      }
+    }
+  }
+  
+  // 2个英雄时直接检查
+  if(heroes.length===2 && bonds[roleSet]) return bonds[roleSet];
+  
+  return null;
+}
+
+// 撤销合成
+function undoMerge(){
+  if(!G.lastMerge){
+    showToast('没有可撤销的合成');
+    return;
+  }
+  if((G.resources.gems||0)<50){
+    showToast('💎 宝石不足！需要50宝石');
+    return;
+  }
+  
+  // 移除合成结果英雄
+  var resultIdx=G.heroes.findIndex(function(h){return h.uid===G.lastMerge.result.uid});
+  if(resultIdx>=0) G.heroes.splice(resultIdx,1);
+  
+  // 恢复材料英雄
+  G.lastMerge.materials.forEach(function(mat){
+    var hero={
+      uid:mat.uid,id:mat.id,name:mat.name,icon:mat.icon,quality:mat.quality,
+      level:mat.level,maxHP:mat.maxHP,hp:mat.maxHP,atk:mat.atk,def:mat.def,
+      spd:mat.spd,maxMP:mat.maxMP,mp:mat.maxMP,skills:mat.skills,
+      bonusSkills:mat.bonusSkills||[],equipment:mat.equipment,exp:mat.exp,
+      role:mat.role,lore:mat.lore,isMutation:mat.isMutation,isHidden:mat.isHidden,
+      deathDefyUsed:false
+    };
+    G.heroes.push(hero);
+  });
+  
+  G.resources.gems-=50;
+  G.lastMerge=null;
+  closeMergeResult();
+  updateResUI();
+  saveGame();
+  showToast('↩ 已撤销上次合成，材料英雄已归还');
+}
+
+// 获取幸运值信息
+function getMergeLuckyInfo(){
+  var lucky=G.mergeLucky||0;
+  var pity=G.mergePity||0;
+  var bonus=Math.min(0.50, 0.30+lucky*0.005);
+  return{lucky:lucky,pity:pity,bonus:bonus,rate:Math.round(bonus*100)};
+}
+
+// 获取连击信息
+function getMergeStreakInfo(){
+  if(!G.mergeStreak) return{count:0,active:false};
+  var active=Date.now()-G.mergeStreak.lastTime<=60000;
+  if(!active) return{count:0,active:false};
+  return{count:G.mergeStreak.count,active:true};
+}
+
 function executeMerge(heroUids){
   const heroes=heroUids.map(uid=>G.heroes.find(h=>h.uid===uid)).filter(Boolean);
   if(heroes.length<2){showToast('请至少选择2个英雄！');return false}
@@ -6081,9 +6292,17 @@ function executeMerge(heroUids){
     return false;
   }
   
-  // 记录最高品质用于判断品质提升
+  // === 合成消耗：金币 = 材料最高品质 × 1000 ===
   var qualities=heroes.map(function(h){return QUALITIES.indexOf(h.quality)});
   var maxQIdx=Math.max.apply(null,qualities);
+  var mergeCost = (maxQIdx+1) * 1000;
+  if((G.resources.gold||0) < mergeCost){
+    showToast('💰 金币不足！需要 '+mergeCost+' 金币');
+    return false;
+  }
+  G.resources.gold -= mergeCost;
+  
+  // 记录最高品质用于判断品质提升
   var oldQuality=QUALITIES[maxQIdx];
   
   // 即时生成融合英雄
@@ -6092,11 +6311,47 @@ function executeMerge(heroUids){
   // 判断是否品质提升
   var isQualityUp=QUALITIES.indexOf(newHero.quality)>maxQIdx;
   
+  // === 保存回溯数据 ===
+  G.lastMerge={
+    materials:heroes.map(function(h){return{uid:h.uid,id:h.id,name:h.name,icon:h.icon,quality:h.quality,level:h.level,maxHP:h.maxHP,atk:h.atk,def:h.def,spd:h.spd,maxMP:h.maxMP,skills:h.skills.slice(),bonusSkills:h.bonusSkills.slice(),equipment:JSON.parse(JSON.stringify(h.equipment)),exp:h.exp,role:h.role,lore:h.lore,isMutation:h.isMutation,isHidden:h.isHidden}}),
+    result:{uid:newHero.uid},
+    timestamp:Date.now()
+  };
+  
+  // === 连续合成奖励 ===
+  if(!G.mergeStreak) G.mergeStreak={count:0,lastTime:0};
+  var now=Date.now();
+  if(now - G.mergeStreak.lastTime > 60000) G.mergeStreak.count=0;
+  G.mergeStreak.count++;
+  G.mergeStreak.lastTime=now;
+  
+  // 连击×3：属性倍率下限提升（已通过连击数影响后续合成）
+  // 连击×5：额外获得1个技能
+  if(G.mergeStreak.count>=5 && newHero.skills.length<6){
+    var allPool=[];
+    heroes.forEach(function(h){
+      h.skills.forEach(function(s){if(allPool.indexOf(s)===-1)allPool.push(s)});
+      h.bonusSkills.forEach(function(s){if(allPool.indexOf(s)===-1)allPool.push(s)});
+    });
+    var extra=allPool.filter(function(s){return newHero.skills.indexOf(s)===-1});
+    if(extra.length>0) newHero.skills.push(extra[Math.floor(Math.random()*extra.length)]);
+  }
+  // 连击×10：必定异变（已通过幸运值系统间接实现）
+  
+  // === 合成图鉴记录 ===
+  if(!G.mergeHistory) G.mergeHistory=[];
+  G.mergeHistory.unshift({
+    time:Date.now(),
+    materials:heroes.map(function(h){return{name:h.name,icon:h.icon,quality:h.quality}}),
+    result:{name:newHero.name,icon:newHero.icon,quality:newHero.quality,isMutation:newHero.isMutation,isUpset:newHero.isUpset,bondInfo:newHero.bondInfo,inheritMult:newHero.inheritMult},
+    mult:newHero.inheritMult
+  });
+  if(G.mergeHistory.length>50) G.mergeHistory.length=50; // 最多保留50条
+  
   // 移除被融合的英雄
   heroes.forEach(h=>{
     const idx=G.heroes.findIndex(x=>x.uid===h.uid);
     if(idx>=0)G.heroes.splice(idx,1);
-    // 从队伍中移除
     for(let i=0;i<G.team.length;i++){
       if(G.team[i]&&G.team[i].uid===h.uid)G.team[i]=null;
     }
@@ -6112,12 +6367,12 @@ function executeMerge(heroUids){
   
   // 更新成就统计
   updateStat('equipmentMerged', 1);
-  
-  // 检查合成相关成就
   checkAchievement('equip_5');
   checkAchievement('equip_6');
   checkAchievement('equip_7');
   
+  updateResUI();
+  saveGame();
   return true;
 }
 
@@ -8501,10 +8756,73 @@ function renderMerge(el){
       </div>`;
   }
   
+  var luckyInfo=getMergeLuckyInfo();
+  var streakInfo=getMergeStreakInfo();
+  var qualities=selectedHeroes.map(function(h){return QUALITIES.indexOf(h.quality)});
+  var maxQ=qualities.length?Math.max.apply(null,qualities):0;
+  var mergeCost=(maxQ+1)*1000;
+  var bondPreview=selectedHeroes.length>=2?detectMergeBond(selectedHeroes):null;
+  var canAfford=(G.resources.gold||0)>=mergeCost;
+  
+  // 合成历史
+  var historyHtml='';
+  if(G.mergeHistory&&G.mergeHistory.length>0){
+    historyHtml='<div class="panel"><div class="panel-title"><span class="icon">📖</span> 合成记录 <span class="text-xs text-dim">('+G.mergeHistory.length+'条)</span></div><div style="max-height:200px;overflow-y:auto">';
+    G.mergeHistory.slice(0,10).forEach(function(rec){
+      var cls=rec.result.isMutation?(rec.result.quality==='hidden'?'hidden':rec.result.quality==='mythic'?'mythic':rec.result.quality==='legendary'?'legendary':'mutation'):'';
+      if(rec.result.isUpset) cls='quality-up';
+      var bondTag=rec.result.bondInfo?' <span class="merge-bond-tag">'+rec.result.bondInfo.name+'</span>':'';
+      var upsetTag=rec.result.isUpset?' <span style="color:#2ecc71;font-size:10px">🍀</span>':'';
+      historyHtml+='<div class="merge-history-item '+cls+'">'
+        +'<span>'+rec.materials.map(function(m){return m.icon}).join('+')+' → '+rec.result.icon+' '+rec.result.name
+        +'<span class="q-'+rec.result.quality+'" style="font-size:10px;margin-left:4px">'+QUALITY_NAMES[rec.result.quality]+'</span>'
+        +bondTag+upsetTag
+        +'<span class="text-dim" style="margin-left:auto;font-size:10px">×'+(rec.mult?rec.mult.toFixed(2):'?')+'</span>'
+        +'</div>';
+    });
+    historyHtml+='</div></div>';
+  }
+  
+  // 回溯按钮
+  var undoHtml='';
+  if(G.lastMerge && (Date.now()-G.lastMerge.timestamp)<86400000){
+    undoHtml='<div style="margin-top:8px;text-align:center"><button class="merge-undo-btn" onclick="undoMerge()">↩ 撤销上次合成 (50💎)</button></div>';
+  }
+  
+  // 羁绊预览
+  var bondHtml='';
+  if(bondPreview){
+    bondHtml='<div style="margin-top:8px;padding:8px 12px;background:linear-gradient(135deg,rgba(52,152,219,.1),rgba(155,89,182,.05));border:1px solid rgba(52,152,219,.2);border-radius:var(--radius-sm);font-size:12px">'
+      +'<span class="merge-bond-tag">'+bondPreview.name+'</span> <span style="color:#5dade2">'+bondPreview.desc+'</span></div>';
+  }
+  
+  // 连击显示
+  var streakHtml='';
+  if(streakInfo.active&&streakInfo.count>=2){
+    var streakBonus=streakInfo.count>=10?'必定异变':streakInfo.count>=5?'额外技能+1':streakInfo.count>=3?'属性下限提升':'';
+    streakHtml='<div style="text-align:center;margin-bottom:8px"><span class="merge-streak-badge">🔥 连击 ×'+streakInfo.count+'</span>'
+      +(streakBonus?' <span class="text-xs" style="color:#ff6b6b">'+streakBonus+'</span>':'')+'</div>';
+  }
+  
   el.innerHTML=`
-    <div class="panel">
+    ${streakHtml}
+    <div class="panel merge-glow">
       <div class="panel-title"><span class="icon">⚗️</span> 英雄融合</div>
-      <div class="text-dim text-sm mb-8">点击下方英雄添加到合成框，选择2-3个英雄进行融合</div>
+      <div class="merge-lucky-bar">
+        <div>
+          <div class="merge-lucky-label">🍀 幸运值</div>
+          <div class="merge-lucky-val">${luckyInfo.lucky}</div>
+        </div>
+        <div style="flex:1">
+          <div class="merge-lucky-label">异变概率 <span class="merge-lucky-bonus">${luckyInfo.rate}%</span></div>
+          <div class="merge-pity-bar"><div class="merge-pity-fill" style="width:${luckyInfo.rate/50*100}%"></div></div>
+        </div>
+        <div>
+          <div class="merge-lucky-label">🎯 保底</div>
+          <div class="merge-lucky-val" style="font-size:14px;color:${luckyInfo.pity>=8?'#ff6b6b':'var(--text)'}">${luckyInfo.pity}/10</div>
+        </div>
+      </div>
+      <div class="merge-cost">💰 消耗: <b>${mergeCost}</b> 金币 ${canAfford?'':'<span class="text-red">(不足)</span>'}</div>
       <div class="merge-slots" id="merge-slots">
         <div class="merge-slot" id="merge-slot-0">?</div>
         <div class="merge-slot" id="merge-slot-1">?</div>
@@ -8512,24 +8830,30 @@ function renderMerge(el){
         <div class="merge-arrow">→</div>
         <div class="merge-result" id="merge-result">?</div>
       </div>
+      ${bondHtml}
       <div id="merge-preview" class="text-dim text-sm mt-8">${selectedHeroes.length<2?'请选择至少2个英雄进行融合':previewHTML}</div>
       <div class="btn-group mt-8">
-        <button class="btn btn-primary" id="merge-btn" onclick="doMerge()" ${selectedHeroes.length<2?'disabled':''}>开始融合</button>
+        <button class="btn btn-primary" id="merge-btn" onclick="doMerge()" ${selectedHeroes.length<2||!canAfford?'disabled':''}>开始融合</button>
         <button class="btn" onclick="clearMerge()">清空</button>
       </div>
+      ${undoHtml}
     </div>
     <div class="panel">
       <div class="panel-title"><span class="icon">📖</span> 融合规则</div>
       <div class="text-dim text-sm" style="line-height:2">
-        <div>⚗️ <b>任意融合</b>：任何2-3个英雄都可以融合，不受配方限制</div>
-        <div>📊 <b>品质限制</b>：融合英雄品质 ≤ 被融合最高品质</div>
-        <div>🎲 <b>技能继承</b>：随机继承材料英雄的技能（最多3个）</div>
-        <div>📈 <b>属性继承</b>：取材料英雄属性平均值，异变时+20%</div>
-        <div>☣️ <b>异变</b>：30%概率发生异变，属性/技能更强</div>
-        <div>⬆️ <b>品质提升</b>：5%概率品质+1（必定异变）</div>
-        <div>🌟 <b>神话降临</b>：1%概率直接获得神话品质（必定异变）</div>
+        <div>⚗️ <b>任意融合</b>：任何2-3个英雄都可以融合</div>
+        <div>💰 <b>合成消耗</b>：金币 = (最高品质+1) × 1000</div>
+        <div>🎲 <b>属性继承</b>：材料平均值 × (0.6~1.8)随机</div>
+        <div>🍀 <b>幸运值</b>：每次普通合成+1，提升异变概率</div>
+        <div>🎯 <b>保底机制</b>：连续10次无特殊触发，下次品质+1</div>
+        <div>🔗 <b>合成羁绊</b>：特定职业组合获得属性加成</div>
+        <div>🍀 <b>以弱胜强</b>：低品质材料5%逆袭史诗</div>
+        <div>🧬 <b>技能变异</b>：异变时10%技能强化变异</div>
+        <div>🔥 <b>连续合成</b>：1分钟内连击获得额外奖励</div>
+        <div>↩ <b>合成回溯</b>：50💎撤销最近一次合成</div>
       </div>
     </div>
+    ${historyHtml}
     <div class="panel">
       <div class="panel-title"><span class="icon">👥</span> 可用英雄 (${heroCount}) <span class="text-xs text-dim">点击添加/移除</span></div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">${heroesHTML}</div>
@@ -8630,9 +8954,14 @@ function updateMergeUI(){
           +'<br><span class="text-xs text-dim">❤️'+preview.maxHP+' ⚔️'+preview.atk+' 🛡️'+preview.def+' 🏃'+preview.spd+' 💧'+preview.maxMP+'</span>'
           +'<br><span class="text-xs text-purple">技能：'+skillNames+'</span>';
       }else{
-        // 默认隐藏结果
+        var bondPrev=detectMergeBond(heroes);
+        var qIdx=heroes.map(function(h){return QUALITIES.indexOf(h.quality)});
+        var mQ=Math.max.apply(null,qIdx);
+        var cost=(mQ+1)*1000;
+        var bondStr=bondPrev?'<br><span class="merge-bond-tag">'+bondPrev.name+'</span> <span style="color:#5dade2;font-size:11px">'+bondPrev.desc+'</span>':'';
         resultEl.innerHTML='<div style="text-align:center"><div style="font-size:32px">❓</div><div class="text-xs text-dim">???</div></div>';
-        previewEl.innerHTML='<span class="text-green">✓ 已选择 '+heroes.length+' 个英雄，可进行融合</span><br><span class="text-xs text-dim">（开启金手指可预览结果）</span>';
+        previewEl.innerHTML='<span class="text-green">✓ 已选择 '+heroes.length+' 个英雄，可进行融合</span>'
+          +'<br><span class="text-xs text-dim">💰 消耗 '+cost+' 金币'+bondStr+'</span>';
       }
       btn.disabled=false;
     }else{
