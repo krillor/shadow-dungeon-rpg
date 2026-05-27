@@ -9728,12 +9728,12 @@ function renderLeaderboard(el){
   '</div>' +
   '<div class="panel">' +
     '<div class="panel-title"><span class="icon">☁️</span> 云存档</div>' +
-    '<div style="color:var(--text2);font-size:12px;margin-bottom:12px">自动同步游戏进度到云端，换设备不丢失</div>' +
+    '<div style="color:var(--text2);font-size:12px;margin-bottom:12px">手动保存/恢复完整游戏状态到云端，换设备不丢失</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-      '<button class="btn btn-primary" onclick="saveToCloud().then(function(){showToast(\'☁️ 已保存到云端\')})">💾 保存到云端</button>' +
-      '<button class="btn" onclick="loadCloudSave().then(function(){showToast(\'☁️ 已从云端恢复\')})">📥 从云端恢复</button>' +
+      '<button class="btn btn-primary" onclick="saveToCloud()">💾 上传存档</button>' +
+      '<button class="btn" onclick="showConfirm(\'📥 从云端恢复\',\'确定要从云端恢复存档吗？\\n\\n当前本地进度将被覆盖！\',loadCloudSave,\'确认恢复\',\'取消\')">📥 恢复存档</button>' +
     '</div>' +
-    '<div style="margin-top:10px;font-size:11px;color:var(--text3)">💡 提示：游戏会自动尝试同步云端存档，也可以手动操作</div>' +
+    '<div style="margin-top:10px;font-size:11px;color:var(--text3)">💡 上传会保存当前完整游戏状态，恢复将覆盖本地进度</div>' +
   '</div>';
   
   setTimeout(function(){ loadLeaderboardData('power'); }, 100);
@@ -10659,9 +10659,10 @@ function initSupabase() {
   }
 }
 
-// 保存到云端
+// 保存到云端（完整游戏状态）
 function saveToCloud() {
   if (!isCloudReady || !deviceId) {
+    showToast('❌ 云端未连接，请稍后再试');
     return Promise.resolve(false);
   }
   
@@ -10671,16 +10672,14 @@ function saveToCloud() {
     return Promise.resolve(false);
   }
   
+  showToast('⏳ 正在上传到云端...');
+  
+  // 保存完整游戏状态
   var saveData = {
     device_id: deviceId,
     player_name: G.playerName,
-    heroes: G.heroes,
-    team: G.team,
-    resources: G.resources,
-    buildings: G.buildings,
-    stageProgress: G.stageProgress,
-    equipment: G.equipment,
-    arenaState: G.arenaState,
+    game_state: G,
+    hero_id_counter: G.heroIdCounter || 0,
     lastSave: Date.now(),
     version: '1.0'
   };
@@ -10688,7 +10687,7 @@ function saveToCloud() {
   return sb.from('saves').upsert(saveData, { onConflict: 'device_id' })
     .then(function(result) {
       console.log('Cloud save successful');
-      showToast('☁️ 已同步到云端');
+      showToast('☁️ 已保存到云端');
       return true;
     })
     .catch(function(error) {
@@ -10698,38 +10697,40 @@ function saveToCloud() {
     });
 }
 
-// 从云端加载
+// 从云端加载（完整游戏状态）
 function loadCloudSave() {
   if (!isCloudReady || !deviceId) {
+    showToast('❌ 云端未连接，请稍后再试');
     return Promise.resolve(false);
   }
+  
+  showToast('⏳ 正在从云端下载...');
   
   return sb.from('saves').select('*').eq('device_id', deviceId).single()
     .then(function(result) {
       var data = result.data;
-      if (data) {
-        if (data.heroes) G.heroes = data.heroes;
-        if (data.team) G.team = data.team;
-        if (data.resources) {
-          var res = data.resources;
-          for (var key in res) { G.resources[key] = res[key]; }
-        }
-        if (data.buildings) G.buildings = data.buildings;
-        if (data.stageProgress) G.stageProgress = data.stageProgress;
-        if (data.equipment) G.equipment = data.equipment;
-        if (data.arenaState) {
-          var arena = data.arenaState;
-          for (var key in arena) { G.arenaState[key] = arena[key]; }
-        }
-        updateResUI();
-        saveGame();
-        showToast('☁️ 已从云端恢复存档');
-        return true;
+      if (!data) {
+        showToast('❌ 云端没有存档');
+        return false;
       }
-      return false;
+      var gameState = data.game_state;
+      if (!gameState) {
+        showToast('❌ 云端存档格式不兼容，请重新上传');
+        return false;
+      }
+      // 恢复 heroIdCounter
+      if (data.hero_id_counter) G.heroIdCounter = data.hero_id_counter;
+      // 恢复完整游戏状态
+      Object.keys(gameState).forEach(function(k) { G[k] = gameState[k]; });
+      // 保存到本地
+      saveGame();
+      showToast('✅ 已从云端恢复，正在刷新...');
+      setTimeout(function() { location.reload(); }, 800);
+      return true;
     })
     .catch(function(error) {
       console.error('Cloud load failed:', error);
+      showToast('❌ 云端加载失败：' + (error.message || '未知错误'));
       return false;
     });
 }
@@ -10927,7 +10928,7 @@ function getPlayerRank(scoreType) {
 
 // ==================== 初始化 ====================
 function initGame(){
-  // 初始化 Supabase
+  // 初始化 Supabase（后台连接，不阻塞游戏启动）
   initSupabase();
   
   // 尝试读档
@@ -10936,62 +10937,11 @@ function initGame(){
     startAutoProduction();
     switchTab('town');
     showToast('📂 已读取存档');
-    // 本地读档成功后，尝试从云端同步（云端数据更新则覆盖本地）
-    trySyncCloudSave();
     return;
   }
   
-  // 没有本地存档，尝试从云端恢复
-  tryRecoverFromCloud();
-}
-
-// 尝试云端同步（本地有存档时，云端更新则覆盖）
-function trySyncCloudSave(){
-  if(!isCloudReady){
-    // 云端还没准备好，等一下再试
-    setTimeout(trySyncCloudSave, 2000);
-    return;
-  }
-  loadCloudSave().then(function(cloudLoaded){
-    if(cloudLoaded){
-      updateResUI();
-      saveGame();
-      showToast('☁️ 已从云端同步最新数据');
-    }
-  });
-}
-
-// 没有本地存档时，尝试从云端恢复
-function tryRecoverFromCloud(){
-  if(!isCloudReady){
-    // 云端还没准备好，先初始化新游戏，等云端连接后再尝试恢复
-    initNewGame();
-    setTimeout(function(){
-      if(isCloudReady){
-        loadCloudSave().then(function(cloudLoaded){
-          if(cloudLoaded){
-            updateResUI();
-            saveGame();
-            showToast('☁️ 已从云端恢复存档');
-            switchTab('town');
-          }
-        });
-      }
-    }, 3000);
-    return;
-  }
-  // 云端已就绪，直接尝试恢复
-  loadCloudSave().then(function(cloudLoaded){
-    if(cloudLoaded){
-      updateResUI();
-      saveGame();
-      startAutoProduction();
-      switchTab('town');
-      showToast('☁️ 已从云端恢复存档');
-    }else{
-      initNewGame();
-    }
-  });
+  // 没有本地存档，初始化新游戏
+  initNewGame();
 }
 
 // 初始化新游戏
