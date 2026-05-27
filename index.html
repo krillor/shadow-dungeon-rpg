@@ -5979,7 +5979,8 @@ function generateFusedHero(heroes){
   var avgMaterialMP=Math.floor(heroes.reduce(function(s,h){return s+h.maxMP},0)/heroes.length);
   
   // 属性继承：材料平均值的0.6~1.8倍随机
-  var minMult = upsetBonus ? 1.0 : 0.6; // 以弱胜强时下限提升
+  // 连击×3：属性下限提升到0.8
+  var minMult = upsetBonus ? 1.0 : (streakCount>=3 ? 0.8 : 0.6);
   var inheritMult=minMult+Math.random()*(1.8-minMult);
   // 羁绊加成
   inheritMult *= bondMult;
