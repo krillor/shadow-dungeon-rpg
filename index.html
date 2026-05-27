@@ -5954,13 +5954,14 @@ function generateFusedHero(heroes){
     var newSkills=shuffled.slice(0,skillCount);
   }
   
-  // === 技能变异：异变时10%概率某个技能变异 ===
+  // === 技能变异：异变时10%概率某个技能变异（金手指可强制） ===
   var mutatedSkills = [];
-  if(isMutation && newSkills.length > 0 && Math.random() < 0.10){
+  var forceMutate = G_cheats.enabled && G_cheats.forceSkillMutate;
+  if(isMutation && newSkills.length > 0 && (forceMutate || Math.random() < 0.10)){
     var mutIdx = Math.floor(Math.random() * newSkills.length);
-    var mutSkillName = newSkills[mutIdx];
-    // 标记变异技能
     mutatedSkills.push(mutIdx);
+    // 使用后自动关闭金手指
+    if(forceMutate) G_cheats.forceSkillMutate = false;
   }
   
   // 5. 确定新属性 - 统一逻辑：max(职业品质标准, 材料最高属性)
@@ -10592,6 +10593,7 @@ function renderCheats(el){
             <button class="btn" onclick="cheatMaxLevel()">所有英雄50级</button>
             <button class="btn" onclick="cheatLevelUp()">所有英雄+1级</button>
             <button class="btn" onclick="cheatStreak10()">连击×10</button>
+            <button class="btn" onclick="cheatForceSkillMutate()">技能变异</button>
             <button class="btn" onclick="cheatMaxAllHeroes()">所有英雄99级</button>
             <button class="btn" onclick="cheatMaxAllSkills()">所有英雄满技能</button>
             <button class="btn" onclick="cheatUnlockAll()">解锁所有英雄</button>
@@ -10957,6 +10959,12 @@ function cheatStreak10(){
   G.mergeStreak.cooldownEnd=0;
   saveGame();
   showToast('🔥 连击已设为×10，下次合成必定异变！');
+}
+
+function cheatForceSkillMutate(){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  G_cheats.forceSkillMutate = !G_cheats.forceSkillMutate;
+  showToast(G_cheats.forceSkillMutate ? '🧬 下次合成必定技能变异' : '🧬 技能变异已关闭');
 }
 
 function cheatGodMode(){
