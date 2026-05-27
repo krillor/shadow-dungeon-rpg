@@ -5893,28 +5893,20 @@ function generateFusedHero(heroes){
   // 取材料最高等级
   var maxLevel=Math.max.apply(null,heroes.map(function(h){return h.level}));
   
-  // 基于新职业和新品质计算标准值
-  var qm=QUALITY_MULT[newQuality];
-  var stdHP=calcStat(baseHP,qm,maxLevel);
-  var stdATK=calcStat(baseATK,qm,maxLevel);
-  var stdDEF=calcStat(baseDEF,qm,maxLevel);
-  var stdSPD=calcStat(baseSPD,qm,maxLevel);
-  var stdMP=calcStat(baseMP,qm,maxLevel);
+  // 取材料中各属性的平均值
+  var avgMaterialHP=Math.floor(heroes.reduce(function(s,h){return s+h.maxHP},0)/heroes.length);
+  var avgMaterialATK=Math.floor(heroes.reduce(function(s,h){return s+h.atk},0)/heroes.length);
+  var avgMaterialDEF=Math.floor(heroes.reduce(function(s,h){return s+h.def},0)/heroes.length);
+  var avgMaterialSPD=Math.floor(heroes.reduce(function(s,h){return s+h.spd},0)/heroes.length);
+  var avgMaterialMP=Math.floor(heroes.reduce(function(s,h){return s+h.maxMP},0)/heroes.length);
   
-  // 取材料中各属性的最高值
-  var maxMaterialHP=Math.max.apply(null,heroes.map(function(h){return h.maxHP}));
-  var maxMaterialATK=Math.max.apply(null,heroes.map(function(h){return h.atk}));
-  var maxMaterialDEF=Math.max.apply(null,heroes.map(function(h){return h.def}));
-  var maxMaterialSPD=Math.max.apply(null,heroes.map(function(h){return h.spd}));
-  var maxMaterialMP=Math.max.apply(null,heroes.map(function(h){return h.maxMP}));
-  
-  // 最终属性 = max(职业品质标准, 材料最高属性)
-  // 确保合成英雄既符合职业品质标准，又不弱于材料
-  var maxHP=Math.max(stdHP,maxMaterialHP);
-  var atk=Math.max(stdATK,maxMaterialATK);
-  var def=Math.max(stdDEF,maxMaterialDEF);
-  var spd=Math.max(stdSPD,maxMaterialSPD);
-  var maxMP=Math.max(stdMP,maxMaterialMP);
+  // 属性继承：材料平均值的0.6~1.8倍随机
+  var inheritMult=0.6+Math.random()*1.2; // 0.6~1.8
+  var maxHP=Math.floor(avgMaterialHP*inheritMult);
+  var atk=Math.floor(avgMaterialATK*inheritMult);
+  var def=Math.floor(avgMaterialDEF*inheritMult);
+  var spd=Math.floor(avgMaterialSPD*inheritMult);
+  var maxMP=Math.floor(avgMaterialMP*inheritMult);
   
   // 异变/品质提升时额外加成10%，隐藏品质额外加成30%
   if(isDirectHidden){
