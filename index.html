@@ -2496,14 +2496,17 @@ function createManualBackup(){
     var jsonStr=JSON.stringify(data);
     var backupKey='shadow_dungeon_manual_'+Date.now();
     localStorage.setItem(backupKey,jsonStr);
+    var stage=G.stageProgress||1;
+    var heroCount=G.heroes?G.heroes.length:0;
+    var power=calcTotalPower();
     if(!meta.manualBackups) meta.manualBackups=[];
     meta.manualBackups.unshift({
       key:backupKey,
       slotIdx:slotIdx,
       timestamp:Date.now(),
-      stageProgress:G.stageProgress||1,
-      heroCount:G.heroes?G.heroes.length:0,
-      totalPower:calcTotalPower(),
+      stageProgress:stage,
+      heroCount:heroCount,
+      totalPower:power,
       note:'手动备份'
     });
     // 限制手动备份数量
@@ -2512,9 +2515,30 @@ function createManualBackup(){
       try{localStorage.removeItem(old.key);}catch(e){}
     }
     saveSaveMeta(meta);
-    showToast('📌 手动备份已创建');
+    // 显示成功弹窗
+    showModal('📌 备份创建成功',`
+      <div style="text-align:center;padding:10px 0">
+        <div style="font-size:40px;margin-bottom:12px">✅</div>
+        <div style="font-size:14px;font-weight:bold;color:var(--gold);margin-bottom:16px">手动备份已保存</div>
+        <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px;text-align:left">
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+            <span style="color:var(--text2)">关卡</span>
+            <span style="color:var(--text)">${stage}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+            <span style="color:var(--text2)">英雄数</span>
+            <span style="color:var(--text)">${heroCount}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0">
+            <span style="color:var(--text2)">总战力</span>
+            <span style="color:var(--gold);font-weight:bold">⚔️${power}</span>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="closeModal();renderCurrentTab()">确定</button>
+      </div>
+    `);
   }catch(e){
-    showToast('备份失败');
+    showToast('❌ 备份失败');
   }
 }
 
