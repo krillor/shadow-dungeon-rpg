@@ -1007,7 +1007,8 @@ const TALENT_TREES = {
 // 天赋点获取配置
 const TALENT_CONFIG = {
   pointsPerLevel: 1,        // 每升1级获得1点天赋点
-  maxPoints: 120,           // 天赋点获取上限（与神殿最大等级上限一致）
+  maxPoints: 15,            // 最多15点天赋点
+  unlockLevel: 50,          // 50级后开放天赋系统
   resetCostGold: 500,       // 重置天赋消耗金币
   resetCostGems: 5          // 重置天赋消耗宝石
 };
@@ -4204,21 +4205,27 @@ function addHeroExp(hero,amount){
   var levelCap=getHeroLevelCap();
   if(hero.level>=levelCap)return false;
   hero.exp+=amount;
-  let leveled=false;
-  let newTalentPoints=0;
+  var leveled=false;
+  var newTalentPoints=0;
   while(hero.exp>=getExpToLevel(hero.level)&&hero.level<levelCap){
     hero.exp-=getExpToLevel(hero.level);
     hero.level++;
     leveled=true;
     const role=ROLES[hero.role];const qm=QUALITY_MULT[hero.quality];
+    // 记录升级前的比例
+    var hpRatio=hero.hp/hero.maxHP;
+    var mpRatio=hero.mp/hero.maxMP;
+    // 重新计算基础属性
     hero.maxHP=calcStat(role.baseHP, qm, hero.level);
     hero.atk=calcStat(role.baseATK, qm, hero.level);
     hero.def=calcStat(role.baseDEF, qm, hero.level);
     hero.spd=calcStat(role.baseSPD, qm, hero.level);
     hero.maxMP=calcStat(role.baseMP, qm, hero.level);
-    hero.hp=hero.maxHP;hero.mp=hero.maxMP;
-    // 升级获得天赋点
-    if(hero.level<=TALENT_CONFIG.maxPoints){
+    // 保持HP/MP比例（满血升级保持满血，残血升级按比例恢复）
+    hero.hp=Math.max(1,Math.floor(hero.maxHP*hpRatio));
+    hero.mp=Math.floor(hero.maxMP*mpRatio);
+    // 升级获得天赋点：50级后开放，51-65级获得15点
+    if(hero.level>TALENT_CONFIG.unlockLevel && hero.level<=(TALENT_CONFIG.unlockLevel+TALENT_CONFIG.maxPoints)){
       newTalentPoints++;
     }
   }
@@ -4227,7 +4234,7 @@ function addHeroExp(hero,amount){
   // 如果有获得天赋点，显示提示
   if(newTalentPoints>0){
     hero.talentPoints=(hero.talentPoints||0)+newTalentPoints;
-    showToast(`🌟 ${hero.name} 获得 ${newTalentPoints} 点天赋点！`);
+    showToast('🌟 '+hero.name+' 获得 '+newTalentPoints+' 点天赋点！');
   }
   return leveled;
 }
@@ -7261,6 +7268,23 @@ function showTalentTree(heroUid){
   
   const tree=TALENT_TREES[hero.role];
   if(!tree)return;
+  
+  // 50级后开放天赋系统
+  if(hero.level<TALENT_CONFIG.unlockLevel){
+    showModal('🌟 天赋系统', `
+      <div style="text-align:center;padding:20px">
+        <div style="font-size:48px;margin-bottom:12px">🔒</div>
+        <div style="font-size:16px;font-weight:bold;color:var(--gold);margin-bottom:8px">天赋系统尚未解锁</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:16px">${hero.name} 需要达到 <b style="color:var(--gold)">Lv.${TALENT_CONFIG.unlockLevel}</b> 才能解锁天赋系统</div>
+        <div style="font-size:12px;color:var(--text3);background:rgba(0,0,0,.2);padding:12px;border-radius:8px">
+          <div>当前等级: <b style="color:var(--red)">Lv.${hero.level}</b></div>
+          <div>还需等级: <b style="color:var(--gold)">${TALENT_CONFIG.unlockLevel-hero.level}级</b></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:16px" onclick="closeModal()">知道了</button>
+      </div>
+    `);
+    return;
+  }
   
   // 初始化英雄天赋数据
   if(!hero.talents)hero.talents={};
