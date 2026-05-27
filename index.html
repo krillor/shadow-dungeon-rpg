@@ -6316,7 +6316,14 @@ function executeMerge(heroUids){
   // 记录最高品质用于判断品质提升
   var oldQuality=QUALITIES[maxQIdx];
   
-  // 即时生成融合英雄
+  // === 连续合成计数（必须在generateFusedHero之前） ===
+  if(!G.mergeStreak) G.mergeStreak={count:0,lastTime:0,cooldownEnd:0};
+  var now=Date.now();
+  if(now - G.mergeStreak.lastTime > 60000) G.mergeStreak.count=0;
+  G.mergeStreak.count++;
+  G.mergeStreak.lastTime=now;
+  
+  // 即时生成融合英雄（此时streakCount已更新）
   const newHero=generateFusedHero(heroes);
   
   // 判断是否品质提升
@@ -6329,20 +6336,12 @@ function executeMerge(heroUids){
     timestamp:Date.now()
   };
   
-  // === 连续合成奖励 ===
-  if(!G.mergeStreak) G.mergeStreak={count:0,lastTime:0,cooldownEnd:0};
-  var now=Date.now();
-  if(now - G.mergeStreak.lastTime > 60000) G.mergeStreak.count=0;
-  G.mergeStreak.count++;
-  G.mergeStreak.lastTime=now;
-  
-  // 连击×10触发后进入5分钟冷却
+  // === 连击×10触发后进入5分钟冷却 ===
   if(G.mergeStreak.count >= 10){
-    G.mergeStreak.cooldownEnd = now + 5 * 60 * 1000; // 5分钟
-    G.mergeStreak.count = 0; // 重置连击数
+    G.mergeStreak.cooldownEnd = now + 5 * 60 * 1000;
+    G.mergeStreak.count = 0;
   }
   
-  // 连击×3：属性倍率下限提升（已通过连击数影响后续合成）
   // 连击×5：额外获得1个技能
   if(G.mergeStreak.count>=5 && newHero.skills.length<6){
     var allPool=[];
