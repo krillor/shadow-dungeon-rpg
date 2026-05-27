@@ -5796,93 +5796,102 @@ var G_LEGENDARY_DIRECT_RATE = 0.03; // 3% 直接传说概率
 var G_MYTHIC_DIRECT_RATE = 0.01;   // 1% 直接神话概率
 var G_HIDDEN_DIRECT_RATE = 0.001;  // 0.1% 隐藏品质概率
 
-function generateFusedHero(heroes){
-  // 基于输入英雄属性即时生成新英雄
-  var inputIds=heroes.map(function(h){return h.id}).sort().join('+');
-  var hash=hashStr(inputIds);
-  
-  // 1. 确定新品质：金手指强制 > 正常计算
+// 判定合成结果品质（返回品质信息，不生成英雄）
+function determineMergeQuality(heroes){
   var qualities=heroes.map(function(h){return QUALITIES.indexOf(h.quality)});
   var maxQ=Math.max.apply(null,qualities);
   var avgQ=Math.floor(qualities.reduce(function(s,v){return s+v},0)/qualities.length);
-  // 新品质 = 平均品质，但不能超过最高品质
   var newQIdx=Math.min(maxQ,avgQ);
   var newQuality=QUALITIES[newQIdx];
   
-  // 金手指强制品质（最高优先级）
   if(G_cheats.enabled && G_cheats.forceQuality){
     newQuality=G_cheats.forceQuality;
     newQIdx=QUALITIES.indexOf(newQuality);
   }
   
-  // 2. 判定特殊结果（优先级：隐藏 > 神话 > 传说 > 品质+1 > 异变 > 普通）
-  // 金手指强制异变
   var isMutation=G_cheats.forceMutation||Math.random()<G_MUTATION_RATE;
   var isQualityUp=false;
   var isDirectLegendary=false;
   var isDirectMythic=false;
   var isDirectHidden=false;
   
-  // 0.1% 隐藏品质（最高优先级，无视当前品质）
   if(Math.random()<G_HIDDEN_DIRECT_RATE){
     newQuality='hidden';
     newQIdx=QUALITIES.indexOf('hidden');
     isMutation=true;
     isDirectHidden=true;
-  }
-  // 1% 直接神话
-  else if(Math.random()<G_MYTHIC_DIRECT_RATE){
+  }else if(Math.random()<G_MYTHIC_DIRECT_RATE){
     newQuality='mythic';
     newQIdx=QUALITIES.indexOf('mythic');
     isMutation=true;
     isDirectMythic=true;
-  }
-  // 3% 直接传说
-  else if(Math.random()<G_LEGENDARY_DIRECT_RATE){
+  }else if(Math.random()<G_LEGENDARY_DIRECT_RATE){
     newQuality='legendary';
     newQIdx=QUALITIES.indexOf('legendary');
     isMutation=true;
     isDirectLegendary=true;
-  }
-  // 5% 品质+1（不超过隐藏）
-  else if(Math.random()<G_QUALITY_UP_RATE && newQIdx<QUALITIES.length-1){
+  }else if(Math.random()<G_QUALITY_UP_RATE && newQIdx<QUALITIES.length-1){
     newQIdx++;
     newQuality=QUALITIES[newQIdx];
     isMutation=true;
     isQualityUp=true;
   }
   
-  // 3. 确定新职业：基于哈希从输入英雄职业中选
-  var allRoles=heroes.map(function(h){return h.role});
-  var uniqueRoles=[];
-  allRoles.forEach(function(r){if(uniqueRoles.indexOf(r)===-1)uniqueRoles.push(r)});
-  var mainRole=uniqueRoles[hash%uniqueRoles.length];
-  
-  // 4. 确定新技能
+  return{
+    newQuality:newQuality,
+    isMutation:isMutation,
+    isQualityUp:isQualityUp,
+    isDirectLegendary:isDirectLegendary,
+    isDirectMythic:isDirectMythic,
+    isDirectHidden:isDirectHidden
+  };
+}
+
+// 获取技能池
+function getSkillPool(heroes,mainRole){
   var allSkillPool=[];
   heroes.forEach(function(h){
     h.skills.forEach(function(s){if(allSkillPool.indexOf(s)===-1)allSkillPool.push(s)});
     h.bonusSkills.forEach(function(s){if(allSkillPool.indexOf(s)===-1)allSkillPool.push(s)});
   });
-  // 加入目标角色的基础技能
   var roleData=ROLES[mainRole];
   if(roleData&&roleData.skills){
     roleData.skills.forEach(function(s){if(allSkillPool.indexOf(s)===-1)allSkillPool.push(s)});
   }
+  return allSkillPool;
+}
+
+// 生成融合英雄（支持传入选定技能）
+function generateFusedHero(heroes,selectedSkills){
+  var inputIds=heroes.map(function(h){return h.id}).sort().join('+');
+  var hash=hashStr(inputIds);
   
-  // 隐藏品质：可选择所有素材英雄的全部技能（最多6个）
-  var skillCount;
-  if(isDirectHidden){
-    // 隐藏品质：收集所有素材技能，最多6个
-    skillCount=Math.min(6,allSkillPool.length);
+  var qualityInfo=determineMergeQuality(heroes);
+  var newQuality=qualityInfo.newQuality;
+  var isMutation=qualityInfo.isMutation;
+  var isQualityUp=qualityInfo.isQualityUp;
+  var isDirectLegendary=qualityInfo.isDirectLegendary;
+  var isDirectMythic=qualityInfo.isDirectMythic;
+  var isDirectHidden=qualityInfo.isDirectHidden;
+  
+  var allRoles=heroes.map(function(h){return h.role});
+  var uniqueRoles=[];
+  allRoles.forEach(function(r){if(uniqueRoles.indexOf(r)===-1)uniqueRoles.push(r)});
+  var mainRole=uniqueRoles[hash%uniqueRoles.length];
+  
+  var allSkillPool=getSkillPool(heroes,mainRole);
+  var newSkills;
+  
+  if(isDirectHidden && selectedSkills && selectedSkills.length>0){
+    newSkills=selectedSkills;
+  }else if(isDirectHidden){
     var shuffled=allSkillPool.slice().sort(function(){return Math.random()-0.5});
-    var newSkills=shuffled.slice(0,skillCount);
+    newSkills=shuffled.slice(0,Math.min(6,allSkillPool.length));
   }else{
-    // 异变英雄额外获得1-2个技能
     var baseSkillCount=2+Math.floor(hash%3);
-    skillCount=isMutation?Math.min(allSkillPool.length,baseSkillCount+1+Math.floor(Math.random()*2)):baseSkillCount;
+    var skillCount=isMutation?Math.min(allSkillPool.length,baseSkillCount+1+Math.floor(Math.random()*2)):baseSkillCount;
     var shuffled=allSkillPool.slice().sort(function(){return Math.random()-0.5});
-    var newSkills=shuffled.slice(0,skillCount);
+    newSkills=shuffled.slice(0,skillCount);
   }
   
   // 5. 确定新属性 - 统一逻辑：max(职业品质标准, 材料最高属性)
@@ -6026,6 +6035,93 @@ function hashStr(str){
 }
 
 
+// ==================== 隐藏品质技能选择 ====================
+function showHiddenSkillSelection(heroes, skillPool, onConfirm){
+  var maxSelect=Math.min(6,skillPool.length);
+  var selected=[];
+  
+  var overlay=document.createElement('div');
+  overlay.id='hidden-skill-overlay';
+  overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.95);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px)';
+  
+  // 创建夸张的背景动画
+  var bgAnim=document.createElement('div');
+  bgAnim.style.cssText='position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;pointer-events:none';
+  bgAnim.innerHTML='<div style="position:absolute;top:50%;left:50%;width:200vmax;height:200vmax;background:radial-gradient(circle,rgba(0,255,204,.1)0%,transparent50%);transform:translate(-50%,-50%);animation:hiddenBgPulse 4s ease-in-out infinite"></div>';
+  overlay.appendChild(bgAnim);
+  
+  // 添加CSS动画
+  var style=document.createElement('style');
+  style.textContent='@keyframes hiddenBgPulse{0%,100%{transform:translate(-50%,-50%)scale(1);opacity:.3}50%{transform:translate(-50%,-50%)scale(1.2);opacity:.6}}@keyframes skillCardAppear{0%{transform:scale(0)rotate(-180deg);opacity:0}60%{transform:scale(1.2)rotate(10deg)}100%{transform:scale(1)rotate(0);opacity:1}}@keyframes skillSelected{0%{transform:scale(1)}50%{transform:scale(1.3);box-shadow:0 0 30px #00ffcc,inset 0 0 20px rgba(0,255,204,.5)}100%{transform:scale(1.1);border-color:#00ffcc;background:rgba(0,255,204,.2)}}@keyframes skillPulse{0%,100%{box-shadow:0 0 5px rgba(0,255,204,.3)}50%{box-shadow:0 0 20px rgba(0,255,204,.8),0 0 40px rgba(0,255,204,.4)}}';
+  document.head.appendChild(style);
+  
+  var content=document.createElement('div');
+  content.style.cssText='position:relative;z-index:10;max-width:90vw;width:600px;max-height:90vh;overflow-y:auto;background:linear-gradient(180deg,rgba(10,20,30,.98),rgba(5,15,25,.98));border:2px solid #00ffcc;border-radius:16px;padding:24px;box-shadow:0 0 60px rgba(0,255,204,.3),inset 0 0 30px rgba(0,255,204,.05)';
+  
+  // 标题
+  var title=document.createElement('div');
+  title.innerHTML='<div style="font-size:48px;text-align:center;margin-bottom:8px">✦</div><div style="font-size:24px;font-weight:bold;color:#00ffcc;text-align:center;text-shadow:0 0 20px rgba(0,255,204,.8)">隐藏品质觉醒</div><div style="font-size:14px;color:#888;text-align:center;margin-top:8px">从素材技能中选择 <span style="color:#00ffcc;font-weight:bold">'+maxSelect+'</span> 个技能</div>';
+  content.appendChild(title);
+  
+  // 选中计数
+  var counter=document.createElement('div');
+  counter.style.cssText='text-align:center;margin:16px 0;font-size:16px;color:#00ffcc';
+  counter.innerHTML='已选择: <span id="selected-count" style="font-weight:bold;font-size:20px">0</span>/'+maxSelect;
+  content.appendChild(counter);
+  
+  // 技能网格
+  var grid=document.createElement('div');
+  grid.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0';
+  
+  skillPool.forEach(function(skill,idx){
+    var skillData=SKILLS[skill];
+    var btn=document.createElement('div');
+    btn.className='hidden-skill-btn';
+    btn.style.cssText='padding:12px;border:2px solid rgba(0,255,204,.3);border-radius:10px;background:rgba(0,0,0,.4);cursor:pointer;transition:all .3s;text-align:center;animation:skillCardAppear .5s ease-out '+idx*0.05+'s both';
+    btn.innerHTML='<div style="font-size:20px;margin-bottom:4px">'+(skillData?skillData.icon:'⚡')+'</div><div style="font-size:13px;color:#00ffcc;font-weight:bold">'+skill+'</div>';
+    
+    btn.onclick=function(){
+      var sIdx=selected.indexOf(skill);
+      if(sIdx>=0){
+        selected.splice(sIdx,1);
+        btn.style.cssText='padding:12px;border:2px solid rgba(0,255,204,.3);border-radius:10px;background:rgba(0,0,0,.4);cursor:pointer;transition:all .3s;text-align:center;transform:scale(1)';
+      }else if(selected.length<maxSelect){
+        selected.push(skill);
+        btn.style.cssText='padding:12px;border:2px solid #00ffcc;border-radius:10px;background:rgba(0,255,204,.25);cursor:pointer;transition:all .3s;text-align:center;animation:skillSelected .3s ease forwards;box-shadow:0 0 20px rgba(0,255,204,.5)';
+      }
+      document.getElementById('selected-count').textContent=selected.length;
+      confirmBtn.style.opacity=selected.length>0?'1':'0.5';
+      confirmBtn.style.pointerEvents=selected.length>0?'auto':'none';
+    };
+    
+    grid.appendChild(btn);
+  });
+  
+  content.appendChild(grid);
+  
+  // 确认按钮
+  var confirmBtn=document.createElement('button');
+  confirmBtn.className='btn btn-primary';
+  confirmBtn.style.cssText='width:100%;padding:14px;font-size:16px;margin-top:16px;opacity:.5;pointer-events:none;background:linear-gradient(135deg,#00ffcc,#00cc99);border:none;color:#000;font-weight:bold';
+  confirmBtn.textContent='✦ 确认技能选择 ('+maxSelect+'个)';
+  confirmBtn.onclick=function(){
+    if(selected.length>0){
+      // 关闭动画
+      overlay.style.transition='opacity .5s';
+      overlay.style.opacity='0';
+      setTimeout(function(){
+        document.body.removeChild(overlay);
+        document.head.removeChild(style);
+        onConfirm(selected);
+      },500);
+    }
+  };
+  content.appendChild(confirmBtn);
+  
+  overlay.appendChild(content);
+  document.body.appendChild(overlay);
+}
+
 // ==================== 合成结果展示 ====================
 function showMergeResult(hero, isQualityUp, oldQuality){
   var qualityColors={common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444',hidden:'#00ffcc'};
@@ -6097,17 +6193,41 @@ function executeMerge(heroUids){
   var maxQIdx=Math.max.apply(null,qualities);
   var oldQuality=QUALITIES[maxQIdx];
   
-  // 即时生成融合英雄
-  const newHero=generateFusedHero(heroes);
+  // 先判定品质
+  var qualityInfo=determineMergeQuality(heroes);
+  
+  // 隐藏品质：先弹出技能选择
+  if(qualityInfo.isDirectHidden){
+    var allRoles=heroes.map(function(h){return h.role});
+    var uniqueRoles=[];
+    allRoles.forEach(function(r){if(uniqueRoles.indexOf(r)===-1)uniqueRoles.push(r)});
+    var mainRole=uniqueRoles[hashStr(heroes.map(function(h){return h.id}).sort().join('+'))%uniqueRoles.length];
+    var skillPool=getSkillPool(heroes,mainRole);
+    
+    showHiddenSkillSelection(heroes,skillPool,function(selectedSkills){
+      // 玩家确认技能后，继续合成流程
+      completeMerge(heroes,qualityInfo,oldQuality,selectedSkills);
+    });
+    return true;
+  }
+  
+  // 普通合成
+  completeMerge(heroes,qualityInfo,oldQuality,null);
+  showToast('融合成功！获得 '+QUALITY_NAMES[qualityInfo.newQuality]+' 英雄');
+}
+
+// 完成合成流程
+function completeMerge(heroes,qualityInfo,oldQuality,selectedSkills){
+  // 生成英雄
+  const newHero=generateFusedHero(heroes,selectedSkills);
   
   // 判断是否品质提升
-  var isQualityUp=QUALITIES.indexOf(newHero.quality)>maxQIdx;
+  var isQualityUp=QUALITIES.indexOf(newHero.quality)>QUALITIES.indexOf(oldQuality);
   
   // 移除被融合的英雄
   heroes.forEach(h=>{
     const idx=G.heroes.findIndex(x=>x.uid===h.uid);
     if(idx>=0)G.heroes.splice(idx,1);
-    // 从队伍中移除
     for(let i=0;i<G.team.length;i++){
       if(G.team[i]&&G.team[i].uid===h.uid)G.team[i]=null;
     }
@@ -6128,7 +6248,11 @@ function executeMerge(heroUids){
   checkAchievement('equip_5');
   checkAchievement('equip_6');
   checkAchievement('equip_7');
-  
+}
+
+// 原来的mergeHeroes函数返回true表示成功
+function mergeHeroes(heroUids){
+  // ... existing validation code ...
   return true;
 }
 
