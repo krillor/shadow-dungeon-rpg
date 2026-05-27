@@ -7572,7 +7572,11 @@ function renderTeam(el){
         var progress=item.isActive?'✅':'⬜';
         var countText=item.count+'/'+(item.nextThreshold?item.nextThreshold.need:item.bond.thresholds[item.bond.thresholds.length-1].need);
         var nextDesc=item.nextThreshold?'<div style="font-size:10px;color:var(--text3);margin-top:2px">→ '+item.nextThreshold.desc+'</div>':'<div style="font-size:10px;color:var(--gold);margin-top:2px">已满级!</div>';
-        var activeDesc=item.isActive?'<div style="font-size:10px;color:var(--green);margin-top:2px">✨ '+item.threshold.desc+'</div>':'';
+        var activeDesc='';
+        if(item.isActive){
+          var activeThreshold=item.bond.thresholds.filter(function(t){return item.count>=t.need;}).pop();
+          if(activeThreshold) activeDesc='<div style="font-size:10px;color:var(--green);margin-top:2px">✨ '+activeThreshold.desc+'</div>';
+        }
         html+='<div class="bond-preview-item" style="border-color:'+(item.isActive?tc:'var(--border)')+';'+(item.isActive?'background:linear-gradient(135deg,'+tc+'08,'+tc+'03)':'')+'">'
           +'<div style="display:flex;align-items:center;gap:6px">'
           +'<span style="font-size:16px">'+item.bond.icon+'</span>'
