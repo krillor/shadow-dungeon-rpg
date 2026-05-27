@@ -1007,7 +1007,7 @@ const TALENT_TREES = {
 // 天赋点获取配置
 const TALENT_CONFIG = {
   pointsPerLevel: 1,        // 每升1级获得1点天赋点
-  maxPoints: 15,            // 最多15点天赋点（对应15级后不再获得）
+  maxPoints: 120,           // 天赋点获取上限（与神殿最大等级上限一致）
   resetCostGold: 500,       // 重置天赋消耗金币
   resetCostGems: 5          // 重置天赋消耗宝石
 };
@@ -3559,7 +3559,7 @@ function calculateArenaReward(opponents,difficulty,isWin){
   var baseFame=ARENA_CONFIG.baseFameReward;
   var diffMult=ARENA_CONFIG.difficultyMultiplier[difficulty]||1;
   
-  var levelBonus=1+(avgLevel/80);
+  var levelBonus=1+(avgLevel/getHeroLevelCap());
   var qualityBonus=1+(avgQuality*0.15);
   var countBonus=opponents.length*0.2;
   
