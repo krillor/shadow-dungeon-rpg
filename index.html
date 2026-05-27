@@ -8759,8 +8759,8 @@ function renderMerge(el){
   var luckyInfo=getMergeLuckyInfo();
   var streakInfo=getMergeStreakInfo();
   var qualities=selectedHeroes.map(function(h){return QUALITIES.indexOf(h.quality)});
-  var maxQ=qualities.length?Math.max.apply(null,qualities):0;
-  var mergeCost=(maxQ+1)*1000;
+  var maxQ=qualities.length>0?Math.max.apply(null,qualities):0;
+  var mergeCost=selectedHeroes.length>=2?(maxQ+1)*1000:0;
   var bondPreview=selectedHeroes.length>=2?detectMergeBond(selectedHeroes):null;
   var canAfford=(G.resources.gold||0)>=mergeCost;
   
