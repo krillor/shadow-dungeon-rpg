@@ -5825,9 +5825,12 @@ function generateFusedHero(heroes){
   var luckyBonus = (G.mergeLucky||0) * 0.005; // 每点幸运+0.5%
   var effectiveMutationRate = Math.min(0.50, G_MUTATION_RATE + luckyBonus);
   
-  // === 连击×10：必定异变 ===
+  // === 连击×10：必定异变（触发后进入5分钟冷却） ===
   var streakCount = (G.mergeStreak && G.mergeStreak.count) || 0;
-  var streakForceMutation = streakCount >= 10;
+  var streakNow = Date.now();
+  var streakCooldownEnd = (G.mergeStreak && G.mergeStreak.cooldownEnd) || 0;
+  var streakInCooldown = streakNow < streakCooldownEnd;
+  var streakForceMutation = streakCount >= 10 && !streakInCooldown;
   
   // === 保底系统：连续10次无特殊触发，下次必定品质+1 ===
   var pityTrigger = false;
@@ -6280,10 +6283,13 @@ function getMergeLuckyInfo(){
 
 // 获取连击信息
 function getMergeStreakInfo(){
-  if(!G.mergeStreak) return{count:0,active:false};
-  var active=Date.now()-G.mergeStreak.lastTime<=60000;
-  if(!active) return{count:0,active:false};
-  return{count:G.mergeStreak.count,active:true};
+  if(!G.mergeStreak) return{count:0,active:false,cooldown:0};
+  var now=Date.now();
+  var cd=Math.max(0,(G.mergeStreak.cooldownEnd||0)-now);
+  if(cd>0) return{count:0,active:false,cooldown:cd};
+  var active=now-G.mergeStreak.lastTime<=60000;
+  if(!active) return{count:0,active:false,cooldown:0};
+  return{count:G.mergeStreak.count,active:true,cooldown:0};
 }
 
 function executeMerge(heroUids){
@@ -6310,7 +6316,14 @@ function executeMerge(heroUids){
   // 记录最高品质用于判断品质提升
   var oldQuality=QUALITIES[maxQIdx];
   
-  // 即时生成融合英雄
+  // === 连续合成计数（必须在generateFusedHero之前，确保streakCount正确） ===
+  if(!G.mergeStreak) G.mergeStreak={count:0,lastTime:0,cooldownEnd:0};
+  var now=Date.now();
+  if(now - G.mergeStreak.lastTime > 60000) G.mergeStreak.count=0;
+  G.mergeStreak.count++;
+  G.mergeStreak.lastTime=now;
+  
+  // 即时生成融合英雄（此时streakCount已更新，generateFusedHero可正确读取）
   const newHero=generateFusedHero(heroes);
   
   // 判断是否品质提升
@@ -6323,14 +6336,12 @@ function executeMerge(heroUids){
     timestamp:Date.now()
   };
   
-  // === 连续合成奖励 ===
-  if(!G.mergeStreak) G.mergeStreak={count:0,lastTime:0};
-  var now=Date.now();
-  if(now - G.mergeStreak.lastTime > 60000) G.mergeStreak.count=0;
-  G.mergeStreak.count++;
-  G.mergeStreak.lastTime=now;
+  // === 连击×10触发后进入5分钟冷却 ===
+  if(G.mergeStreak.count >= 10){
+    G.mergeStreak.cooldownEnd = now + 5 * 60 * 1000;
+    G.mergeStreak.count = 0;
+  }
   
-  // 连击×3：属性倍率下限提升（已通过连击数影响后续合成）
   // 连击×5：额外获得1个技能
   if(G.mergeStreak.count>=5 && newHero.skills.length<6){
     var allPool=[];
@@ -8803,7 +8814,11 @@ function renderMerge(el){
   
   // 连击显示
   var streakHtml='';
-  if(streakInfo.active&&streakInfo.count>=2){
+  if(streakInfo.cooldown>0){
+    var cdMin=Math.floor(streakInfo.cooldown/60000);
+    var cdSec=Math.floor((streakInfo.cooldown%60000)/1000);
+    streakHtml='<div style="text-align:center;margin-bottom:8px"><span class="merge-streak-badge" style="background:rgba(100,100,100,.15);border-color:rgba(100,100,100,.3);color:#888">⏱️ 冷却中 '+cdMin+':'+(cdSec<10?'0':'')+cdSec+'</span></div>';
+  }else if(streakInfo.active&&streakInfo.count>=2){
     var streakBonus=streakInfo.count>=10?'必定异变':streakInfo.count>=5?'额外技能+1':streakInfo.count>=3?'属性下限提升':'';
     streakHtml='<div style="text-align:center;margin-bottom:8px"><span class="merge-streak-badge">🔥 连击 ×'+streakInfo.count+'</span>'
       +(streakBonus?' <span class="text-xs" style="color:#ff6b6b">'+streakBonus+'</span>':'')+'</div>';
