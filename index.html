@@ -1608,7 +1608,7 @@ const HERO_BONDS = [
   {id:'bond_thunder', name:'雷霆之怒', icon:'⚡', type:'theme', check:'template', key:'thunder',
    checkFn:function(heroes){return heroes.filter(function(h){return ['thunder_blade','thunder_armor','thunder_gloves','storm_ranger','chaos_blade','chaos_armor','chaos_orb2'].indexOf(h.templateId)>=0 || h.name.indexOf('雷')>=0 || h.name.indexOf('风暴')>=0;}).length;},
    thresholds:[{need:2,desc:'2名雷系英雄：攻击有15%概率造成50%额外伤害',effect:{type:'onHitExtraDmg',chance:0.15,value:0.50,name:'雷击'}},
-               {need:3,desc:'3名雷系英雄：雷击概率25%，伤害80%',effect:{type:'onHitExtraDmg',chance:0.25,value:0.80,name:'雷霆一击'}},
+               {need:3,desc:'3名雷系英雄：雷击概率25%，伤害80%',effect:{type:'onHitExtraDmg',chance:0.25,value:0.80,name:'雷霆一击'}}],
    story:'雷霆是天空的怒吼，是神明的审判。雷系英雄们承载着远古风暴的力量，每一击都如同天罚降临。'},
 
   // ===== 趣味羁绊 =====
