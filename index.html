@@ -4567,12 +4567,12 @@ function addHeroExp(hero,amount){
     // 记录升级前的比例
     var hpRatio=hero.hp/hero.maxHP;
     var mpRatio=hero.mp/hero.maxMP;
-    // 重新计算基础属性
-    hero.maxHP=calcStat(role.baseHP, qm, hero.level);
-    hero.atk=calcStat(role.baseATK, qm, hero.level);
-    hero.def=calcStat(role.baseDEF, qm, hero.level);
-    hero.spd=calcStat(role.baseSPD, qm, hero.level);
-    hero.maxMP=calcStat(role.baseMP, qm, hero.level);
+    // 重新计算基础属性（与当前属性取最大值，确保异变/隐藏品质加成不被覆盖）
+    hero.maxHP=Math.max(hero.maxHP, calcStat(role.baseHP, qm, hero.level));
+    hero.atk=Math.max(hero.atk, calcStat(role.baseATK, qm, hero.level));
+    hero.def=Math.max(hero.def, calcStat(role.baseDEF, qm, hero.level));
+    hero.spd=Math.max(hero.spd, calcStat(role.baseSPD, qm, hero.level));
+    hero.maxMP=Math.max(hero.maxMP, calcStat(role.baseMP, qm, hero.level));
     // 保持HP/MP比例（满血升级保持满血，残血升级按比例恢复）
     hero.hp=Math.max(1,Math.floor(hero.maxHP*hpRatio));
     hero.mp=Math.floor(hero.maxMP*mpRatio);
