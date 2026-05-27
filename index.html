@@ -5825,9 +5825,12 @@ function generateFusedHero(heroes){
   var luckyBonus = (G.mergeLucky||0) * 0.005; // 每点幸运+0.5%
   var effectiveMutationRate = Math.min(0.50, G_MUTATION_RATE + luckyBonus);
   
-  // === 连击×10：必定异变 ===
+  // === 连击×10：必定异变（触发后进入5分钟冷却） ===
   var streakCount = (G.mergeStreak && G.mergeStreak.count) || 0;
-  var streakForceMutation = streakCount >= 10;
+  var now = Date.now();
+  var cooldownEnd = (G.mergeStreak && G.mergeStreak.cooldownEnd) || 0;
+  var inCooldown = now < cooldownEnd;
+  var streakForceMutation = streakCount >= 10 && !inCooldown;
   
   // === 保底系统：连续10次无特殊触发，下次必定品质+1 ===
   var pityTrigger = false;
@@ -6280,10 +6283,13 @@ function getMergeLuckyInfo(){
 
 // 获取连击信息
 function getMergeStreakInfo(){
-  if(!G.mergeStreak) return{count:0,active:false};
-  var active=Date.now()-G.mergeStreak.lastTime<=60000;
-  if(!active) return{count:0,active:false};
-  return{count:G.mergeStreak.count,active:true};
+  if(!G.mergeStreak) return{count:0,active:false,cooldown:0};
+  var now=Date.now();
+  var cooldownLeft=Math.max(0,(G.mergeStreak.cooldownEnd||0)-now);
+  if(cooldownLeft>0) return{count:0,active:false,cooldown:cooldownLeft};
+  var active=now-G.mergeStreak.lastTime<=60000;
+  if(!active) return{count:0,active:false,cooldown:0};
+  return{count:G.mergeStreak.count,active:true,cooldown:0};
 }
 
 function executeMerge(heroUids){
@@ -6324,11 +6330,17 @@ function executeMerge(heroUids){
   };
   
   // === 连续合成奖励 ===
-  if(!G.mergeStreak) G.mergeStreak={count:0,lastTime:0};
+  if(!G.mergeStreak) G.mergeStreak={count:0,lastTime:0,cooldownEnd:0};
   var now=Date.now();
   if(now - G.mergeStreak.lastTime > 60000) G.mergeStreak.count=0;
   G.mergeStreak.count++;
   G.mergeStreak.lastTime=now;
+  
+  // 连击×10触发后进入5分钟冷却
+  if(G.mergeStreak.count >= 10){
+    G.mergeStreak.cooldownEnd = now + 5 * 60 * 1000; // 5分钟
+    G.mergeStreak.count = 0; // 重置连击数
+  }
   
   // 连击×3：属性倍率下限提升（已通过连击数影响后续合成）
   // 连击×5：额外获得1个技能
@@ -8803,7 +8815,11 @@ function renderMerge(el){
   
   // 连击显示
   var streakHtml='';
-  if(streakInfo.active&&streakInfo.count>=2){
+  if(streakInfo.cooldown>0){
+    var min=Math.floor(streakInfo.cooldown/60000);
+    var sec=Math.floor((streakInfo.cooldown%60000)/1000);
+    streakHtml='<div style="text-align:center;margin-bottom:8px"><span class="merge-streak-badge" style="background:rgba(100,100,100,.15);border-color:rgba(100,100,100,.3);color:#888">⏱️ 冷却中 '+min+':'+(sec<10?'0':'')+sec+'</span></div>';
+  }else if(streakInfo.active&&streakInfo.count>=2){
     var streakBonus=streakInfo.count>=10?'必定异变':streakInfo.count>=5?'额外技能+1':streakInfo.count>=3?'属性下限提升':'';
     streakHtml='<div style="text-align:center;margin-bottom:8px"><span class="merge-streak-badge">🔥 连击 ×'+streakInfo.count+'</span>'
       +(streakBonus?' <span class="text-xs" style="color:#ff6b6b">'+streakBonus+'</span>':'')+'</div>';
