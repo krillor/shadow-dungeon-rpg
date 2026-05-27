@@ -5861,12 +5861,13 @@ function getSkillPool(heroes,mainRole){
   return allSkillPool;
 }
 
-// 生成融合英雄（支持传入选定技能）
-function generateFusedHero(heroes,selectedSkills){
+// 生成融合英雄（支持传入选定技能和品质信息，避免重复判定）
+function generateFusedHero(heroes,selectedSkills,qualityInfo){
   var inputIds=heroes.map(function(h){return h.id}).sort().join('+');
   var hash=hashStr(inputIds);
   
-  var qualityInfo=determineMergeQuality(heroes);
+  // 如果传入了品质信息则直接使用，否则重新判定
+  if(!qualityInfo) qualityInfo=determineMergeQuality(heroes);
   var newQuality=qualityInfo.newQuality;
   var isMutation=qualityInfo.isMutation;
   var isQualityUp=qualityInfo.isQualityUp;
@@ -6196,7 +6197,7 @@ function executeMerge(heroUids){
   // 先判定品质
   var qualityInfo=determineMergeQuality(heroes);
   
-  // 隐藏品质：先弹出技能选择
+  // 隐藏品质：先弹出技能选择（异步流程）
   if(qualityInfo.isDirectHidden){
     var allRoles=heroes.map(function(h){return h.role});
     var uniqueRoles=[];
@@ -6207,8 +6208,11 @@ function executeMerge(heroUids){
     showHiddenSkillSelection(heroes,skillPool,function(selectedSkills){
       // 玩家确认技能后，继续合成流程
       completeMerge(heroes,qualityInfo,oldQuality,selectedSkills);
+      // 合成完成后清空槽位并刷新
+      window._mergeSlots=[null,null,null];
+      renderMerge(document.getElementById('content'));
     });
-    return true;
+    return false; // 异步流程，尚未完成
   }
   
   // 普通合成
@@ -6218,8 +6222,8 @@ function executeMerge(heroUids){
 
 // 完成合成流程
 function completeMerge(heroes,qualityInfo,oldQuality,selectedSkills){
-  // 生成英雄
-  const newHero=generateFusedHero(heroes,selectedSkills);
+  // 生成英雄（传入品质信息，避免重复随机判定）
+  const newHero=generateFusedHero(heroes,selectedSkills,qualityInfo);
   
   // 判断是否品质提升
   var isQualityUp=QUALITIES.indexOf(newHero.quality)>QUALITIES.indexOf(oldQuality);
@@ -6248,12 +6252,6 @@ function completeMerge(heroes,qualityInfo,oldQuality,selectedSkills){
   checkAchievement('equip_5');
   checkAchievement('equip_6');
   checkAchievement('equip_7');
-}
-
-// 原来的mergeHeroes函数返回true表示成功
-function mergeHeroes(heroUids){
-  // ... existing validation code ...
-  return true;
 }
 
 // ==================== 装备系统 ====================
@@ -8787,6 +8785,8 @@ function updateMergeUI(){
 function doMerge(){
   const activeSlots=window._mergeSlots.filter(Boolean);
   if(executeMerge(activeSlots)){
+    // executeMerge内部处理了隐藏品质的异步流程
+    // 非隐藏品质时需要清空槽位
     window._mergeSlots=[null,null,null];
     renderMerge(document.getElementById('content'));
   }
