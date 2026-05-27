@@ -5999,7 +5999,7 @@ function generateFusedHero(heroes){
     spd=Math.floor(spd*1.1);
     maxMP=Math.floor(maxMP*1.1);
   }
-  console.log('[Merge]',newQuality,mainRole,'stdHP='+stdHP,'matHP='+maxMaterialHP,'final='+maxHP);
+  console.log('[Merge]',newQuality,mainRole,'mult='+inheritMult.toFixed(2),'finalHP='+maxHP);
   
   // 6. 生成名称和图标
   var namePrefixes={
