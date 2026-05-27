@@ -9913,6 +9913,58 @@ function cheatMaxAllSkills(){
   renderCurrentTab();
 }
 
+// 一键所有英雄属性加满
+function cheatMaxAllStats(){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  var maxStats = {maxHP:99999,atk:9999,def:9999,spd:999,maxMP:9999};
+  G.heroes.forEach(function(h){
+    // 基础属性加满
+    h.maxHP = maxStats.maxHP;
+    h.hp = maxStats.maxHP;
+    h.atk = maxStats.atk;
+    h.def = maxStats.def;
+    h.spd = maxStats.spd;
+    h.maxMP = maxStats.maxMP;
+    h.mp = maxStats.maxMP;
+    // 等级设为最高
+    h.level = 99;
+    h.exp = 0;
+    // 天赋点加满
+    h.talentPoints = 99;
+    // 所有天赋升满
+    if(!h.talents) h.talents = {};
+    var allTalents = ['hpBoost','atkBoost','defBoost','spdBoost','critRate','critDmg','lifeSteal','dmgReduce','mpRegen','skillDmg'];
+    allTalents.forEach(function(t){h.talents[t]=5;});
+    // 添加所有技能
+    var roleSkills = ROLES[h.role].skills || [];
+    roleSkills.forEach(function(s){
+      if(h.skills.indexOf(s)===-1) h.skills.push(s);
+    });
+    var bonus = ['连击','反击','吸血','暴击强化','闪避','坚韧'];
+    bonus.forEach(function(s){
+      if(h.bonusSkills.indexOf(s)===-1 && h.skills.indexOf(s)===-1) h.bonusSkills.push(s);
+    });
+    // 装备神话品质满级
+    if(!h.equipment) h.equipment = {};
+    ['weapon','armor','accessory'].forEach(function(slot){
+      if(!h.equipment[slot]){
+        h.equipment[slot] = {
+          id: slot==='weapon'?'mythic_sword':slot==='armor'?'mythic_armor':'mythic_ring',
+          name: slot==='weapon'?'神话之剑':slot==='armor'?'神话铠甲':'神话戒指',
+          quality: 'mythic',
+          level: 10,
+          slot: slot
+        };
+      }
+      h.equipment[slot].quality = 'mythic';
+      h.equipment[slot].level = 10;
+    });
+  });
+  saveGame();
+  showToast('🔥 所有英雄属性已加满！');
+  renderCurrentTab();
+}
+
 // 强制指定合成结果品质
 function cheatForceQuality(quality){
   if(!G_cheats.enabled){showToast('请先开启金手指');return;}
@@ -10022,6 +10074,9 @@ function renderCheats(el){
             <button class="btn" onclick="cheatSpawnHero('epic')">生成史诗英雄</button>
             <button class="btn" onclick="cheatSpawnHero('legendary')">生成传说英雄</button>
             <button class="btn" onclick="cheatSpawnHero('mythic')">生成神话英雄</button>
+          </div>
+          <div class="btn-group mt-8">
+            <button class="btn btn-primary" onclick="cheatMaxAllStats()">🔥 所有英雄属性加满</button>
           </div>
         </div>
         <div class="panel" style="background:rgba(41,128,185,.1);border-color:rgba(41,128,185,.3)">
