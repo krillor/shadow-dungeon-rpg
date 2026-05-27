@@ -10686,7 +10686,12 @@ function saveToCloud() {
   
   return sb.from('saves').upsert(saveData, { onConflict: 'device_id' })
     .then(function(result) {
-      console.log('Cloud save successful');
+      console.log('Cloud save result:', result);
+      if (result.error) {
+        console.error('Cloud save error:', result.error);
+        showToast('❌ 云端保存失败：' + result.error.message);
+        return false;
+      }
       showToast('☁️ 已保存到云端');
       return true;
     })
@@ -10709,9 +10714,16 @@ function loadCloudSave() {
   // 使用 .limit(1) 而不是 .single()，避免无数据时抛错
   return sb.from('saves').select('*').eq('device_id', deviceId).limit(1)
     .then(function(result) {
+      console.log('Cloud load result:', result);
+      if (result.error) {
+        console.error('Cloud load error:', result.error);
+        showToast('❌ 查询失败：' + result.error.message);
+        return false;
+      }
       var data = result.data && result.data[0] ? result.data[0] : null;
+      console.log('Cloud data:', data, 'deviceId:', deviceId);
       if (!data) {
-        showToast('❌ 云端没有存档');
+        showToast('❌ 云端没有存档 (device: ' + deviceId.substr(0, 8) + '...)');
         return false;
       }
       var gameState = data.game_state;
