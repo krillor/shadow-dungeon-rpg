@@ -1339,8 +1339,12 @@ body{
 .merge-pity-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--gold),#ff6b00);transition:width .3s}
 .merge-streak-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(255,165,0,.1));border:1px solid rgba(239,68,68,.3);border-radius:20px;font-size:11px;font-weight:bold;color:#ff6b6b;animation:streakPulse 1.5s ease infinite}
 .merge-bond-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:linear-gradient(135deg,rgba(52,152,219,.15),rgba(155,89,182,.1));border:1px solid rgba(52,152,219,.3);border-radius:12px;font-size:10px;color:#5dade2;font-weight:bold}
-.merge-skill-mut{background:linear-gradient(135deg,rgba(168,85,247,.3),rgba(239,68,68,.2))!important;color:#d4a0ff!important;border-color:#d4a0ff!important;box-shadow:0 0 8px rgba(168,85,247,.4)!important;animation:skillMutGlow 1.5s ease infinite!important}
-@keyframes skillMutGlow{0%,100%{box-shadow:0 0 4px rgba(168,85,247,.4)}50%{box-shadow:0 0 12px rgba(168,85,247,.8)}}
+@keyframes skillMutGlow{0%,100%{box-shadow:0 0 4px rgba(168,85,247,.6),inset 0 0 8px rgba(168,85,247,.1)}50%{box-shadow:0 0 16px rgba(168,85,247,.9),inset 0 0 12px rgba(168,85,247,.2)}}
+@keyframes skillMutPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
+.merge-skill-mut{background:linear-gradient(135deg,rgba(168,85,247,.35),rgba(239,68,68,.25))!important;color:#e8d5ff!important;border:1px solid #d4a0ff!important;box-shadow:0 0 12px rgba(168,85,247,.5),inset 0 1px 0 rgba(255,255,255,.1)!important;animation:skillMutGlow 1.2s ease infinite,skillMutPulse 2s ease infinite!important;padding:3px 10px!important;border-radius:6px!important;font-weight:600!important;text-shadow:0 0 4px rgba(168,85,247,.5)!important;position:relative!important;overflow:hidden!important}
+.merge-skill-mut::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);animation:shimmer 2s infinite}
+.merge-result-skill{cursor:pointer;transition:all .2s}
+.merge-result-skill:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.3)}
 .merge-cost{display:flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(0,0,0,.2);border-radius:var(--radius-sm);font-size:12px;color:var(--text2);margin-bottom:8px}
 .merge-cost b{color:var(--gold)}
 .merge-history-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(0,0,0,.15);border-radius:6px;margin-bottom:4px;border-left:3px solid var(--border);font-size:11px}
@@ -4622,13 +4626,14 @@ function showModal(title,contentHTML,buttons){
 function closeModal(){document.getElementById('modal-root').innerHTML=''}
 
 // 显示单个技能详情
+// 显示单个技能详情
 function showSkillDetail(skillId){
   var skillData=SKILLS?SKILLS[skillId]:null;
   if(!skillData)return;
   var html='<div style="text-align:center;padding:20px 0">'+
-    '<div style="font-size:48px;margin-bottom:12px">'+skillData.icon+'</div>'+
-    '<div style="font-size:18px;font-weight:bold;color:var(--gold);margin-bottom:8px">'+skillData.name+'</div>'+
-    '<div style="font-size:12px;color:#a855f7;margin-bottom:16px">🧬 变异技能</div>'+
+    '<div style="font-size:48px;margin-bottom:12px;filter:drop-shadow(0 0 12px rgba(168,85,247,0.5))">'+skillData.icon+'</div>'+
+    '<div style="font-size:18px;font-weight:bold;color:#d4a0ff;margin-bottom:8px">'+skillData.name+'</div>'+
+    '<div style="font-size:12px;color:#a855f7;margin-bottom:16px;padding:4px 12px;background:rgba(168,85,247,0.15);border-radius:12px;display:inline-block">🧬 变异技能</div>'+
     '<div style="font-size:14px;color:var(--text);line-height:1.8;padding:0 16px">'+skillData.desc+'</div>';
   if(skillData.mpCost){
     html+='<div style="margin-top:16px;font-size:12px;color:var(--text2)">💧 消耗: '+skillData.mpCost+' MP</div>';
@@ -4637,7 +4642,7 @@ function showSkillDetail(skillId){
     html+='<div style="font-size:12px;color:var(--text2)">⏱️ 冷却: '+skillData.cooldown+'回合</div>';
   }
   html+='</div>';
-  showModal('技能详情',html,[{text:'关闭',className:'btn',onclick:'closeModal()'}]);
+  showModal('技能详情',html,[]);
 }
 
 // 显示多个变异技能详情
@@ -4647,10 +4652,11 @@ function showMutatedSkillsDetail(skillIds){
   skillIds.forEach(function(skillId){
     var skillData=SKILLS?SKILLS[skillId]:null;
     if(skillData){
-      html+='<div style="padding:12px;margin-bottom:12px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.3);border-radius:8px">'+
+      html+='<div style="padding:12px;margin-bottom:12px;background:linear-gradient(135deg,rgba(168,85,247,0.12),rgba(239,68,68,0.08));border:1px solid rgba(168,85,247,0.4);border-radius:8px">'+
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
-        '<span style="font-size:24px">'+skillData.icon+'</span>'+
+        '<span style="font-size:24px;filter:drop-shadow(0 0 8px rgba(168,85,247,0.4))">'+skillData.icon+'</span>'+
         '<span style="font-size:15px;font-weight:bold;color:#d4a0ff">'+skillData.name+'</span>'+
+        '<span style="font-size:10px;color:#a855f7;padding:2px 6px;background:rgba(168,85,247,0.2);border-radius:8px">变异</span>'+
         '</div>'+
         '<div style="font-size:12px;color:var(--text2);line-height:1.6">'+skillData.desc+'</div>';
       if(skillData.mpCost){
@@ -4660,7 +4666,7 @@ function showMutatedSkillsDetail(skillIds){
     }
   });
   html+='</div>';
-  showModal('变异技能详情',html,[{text:'关闭',className:'btn',onclick:'closeModal()'}]);
+  showModal('变异技能详情',html,[]);
 }
 
 // 美化确认弹窗（替代原生confirm）
@@ -7929,23 +7935,27 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials){
   var stats=getHeroStats(hero);
   var hasMutated=hero.mutatedSkills&&hero.mutatedSkills.length>0;
   var mutatedNames=[];
+  var mutatedSkillIds=[];
   var skillsHtml=hero.skills.slice(0,6).map(function(s,i){
     var isMut=hasMutated&&hero.mutatedSkills.indexOf(i)>=0;
     var skillData=SKILLS?SKILLS[s]:null;
     var displayName=skillData?skillData.name:s;
-    if(isMut) mutatedNames.push(displayName);
+    if(isMut){
+      mutatedNames.push(displayName);
+      mutatedSkillIds.push(s);
+    }
     var tip=skillData?' title="🧬 变异技能 - '+(skillData.desc||'')+'"':'';
-    var clickHandler=skillData?' onclick="showSkillDetail(\''+s+'\')" style="cursor:pointer"':'';
-    return '<span class="merge-result-skill'+(isMut?' merge-skill-mut':'')+'"'+tip+clickHandler+'>'+(isMut?'🧬':'')+displayName+(isMut?'✨':'')+'</span>';
+    return '<span class="merge-result-skill'+(isMut?' merge-skill-mut':'')+'"'+tip+' data-skill-id="'+s+'" onclick="event.stopPropagation();showSkillDetail(\''+s+'\')">'+(isMut?'🧬':'')+displayName+(isMut?'✨':'')+'</span>';
   }).join('');
   
   // 如果有变异技能，添加专门的变异提示区域（可点击查看详情）
   var mutateBanner='';
   if(hasMutated&&mutatedNames.length>0){
-    mutateBanner='<div style="margin:10px 0;padding:8px 12px;background:linear-gradient(135deg,rgba(168,85,247,.2),rgba(239,68,68,.15));border:1px solid #d4a0ff;border-radius:8px;text-align:center;cursor:pointer" onclick="showMutatedSkillsDetail('+JSON.stringify(hero.skills.filter(function(s,i){return hero.mutatedSkills.indexOf(i)>=0}))+')">'
-      +'<div style="font-size:13px;color:#d4a0ff;font-weight:bold">🧬 技能变异</div>'
-      +'<div style="font-size:11px;color:var(--text2)">'+mutatedNames.join('、')+' 发生了变异</div>'
-      +'<div style="font-size:10px;color:#a855f7;margin-top:4px">点击查看详情</div>'
+    var skillIdsJson=JSON.stringify(mutatedSkillIds);
+    mutateBanner='<div style="margin:10px 0;padding:10px 14px;background:linear-gradient(135deg,rgba(168,85,247,.25),rgba(239,68,68,.15));border:1px solid #d4a0ff;border-radius:10px;text-align:center;cursor:pointer;box-shadow:0 0 16px rgba(168,85,247,.2)" onclick="event.stopPropagation();showMutatedSkillsDetail('+skillIdsJson+')">'
+      +'<div style="font-size:14px;color:#d4a0ff;font-weight:bold;margin-bottom:4px">🧬 技能变异</div>'
+      +'<div style="font-size:12px;color:var(--text2)">'+mutatedNames.join('、')+' 发生了变异</div>'
+      +'<div style="font-size:10px;color:#a855f7;margin-top:6px;padding:2px 8px;background:rgba(168,85,247,.15);border-radius:8px;display:inline-block">点击查看详情</div>'
       +'</div>';
   }
   
