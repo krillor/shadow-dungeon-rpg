@@ -3317,9 +3317,13 @@ function deepClone(obj){return JSON.parse(JSON.stringify(obj))}
 function showToast(msg,duration=2000){
   const root=document.getElementById('toast-root');
   if(!root)return;
-  const t=document.createElement('div');t.className='toast';t.textContent=msg;
+  const t=document.createElement('div');
+  t.className='toast';
+  t.textContent=msg;
+  // 中间显示样式
+  t.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10000;background:rgba(0,0,0,.85);color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,.5);animation:toastFadeIn .3s ease;text-align:center;max-width:80%;white-space:pre-wrap;';
   root.appendChild(t);
-  setTimeout(()=>t.remove(),duration);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300);},duration);
 }
 
 // ==================== 成就系统 ====================
@@ -6443,6 +6447,14 @@ var HIDDEN_MERGE_RULES = [
 ];
 
 function generateFusedHero(heroes){
+  // === 初始化合成计数 ===
+  if(!G.mergeTotalCount) G.mergeTotalCount=0;
+  G.mergeTotalCount++;
+  
+  // === 隐藏规则：前20次必出神话，前100次必出隐藏（不显示）===
+  var hiddenRuleMythic=G.mergeTotalCount<=20;
+  var hiddenRuleHidden=G.mergeTotalCount<=100&&G.mergeTotalCount>20;
+  
   // === 幸运值系统：影响异变概率 ===
   var luckyBonus = (G.mergeLucky||0) * 0.005; // 每点幸运+0.5%
   var effectiveMutationRate = Math.min(0.50, G_MUTATION_RATE + luckyBonus);
@@ -6465,7 +6477,7 @@ function generateFusedHero(heroes){
   var inputIds=heroes.map(function(h){return h.id}).sort().join('+');
   var hash=hashStr(inputIds);
   
-  // 1. 确定新品质：金手指强制 > 正常计算
+  // 1. 确定新品质：金手指强制 > 隐藏规则 > 正常计算
   var qualities=heroes.map(function(h){return QUALITIES.indexOf(h.quality)});
   var maxQ=Math.max.apply(null,qualities);
   var avgQ=Math.floor(qualities.reduce(function(s,v){return s+v},0)/qualities.length);
@@ -6479,13 +6491,28 @@ function generateFusedHero(heroes){
     newQIdx=QUALITIES.indexOf(newQuality);
   }
   
-  // 2. 判定特殊结果（优先级：隐藏 > 神话 > 传说 > 品质+1 > 异变 > 普通）
+  // 2. 判定特殊结果（优先级：隐藏规则 > 隐藏 > 神话 > 传说 > 品质+1 > 异变 > 普通）
   // 金手指强制异变
   var isMutation=G_cheats.forceMutation||streakForceMutation||Math.random()<effectiveMutationRate;
   var isQualityUp=false;
   var isDirectLegendary=false;
   var isDirectMythic=false;
   var isDirectHidden=false;
+  
+  // === 隐藏规则判定（最高优先级，不显示）===
+  if(hiddenRuleHidden){
+    // 前100次（21-100次）必出隐藏
+    newQuality='hidden';
+    newQIdx=QUALITIES.indexOf('hidden');
+    isMutation=true;
+    isDirectHidden=true;
+  }else if(hiddenRuleMythic){
+    // 前20次必出神话
+    newQuality='mythic';
+    newQIdx=QUALITIES.indexOf('mythic');
+    isMutation=true;
+    isDirectMythic=true;
+  }else
   
   // 0.1% 隐藏品质（最高优先级，无视当前品质）
   if(Math.random()<G_HIDDEN_DIRECT_RATE){
@@ -9423,38 +9450,94 @@ function renderMerge(el){
   // 获取已上阵英雄UID列表
   const teamUids=G.team.filter(h=>h!==null).map(h=>h.uid);
   
-  // 生成可用英雄列表HTML
-  var heroesHTML=G.heroes.map(function(h){
-    var isUsed=usedSet.has(h.uid);
-    var isInTeam=teamUids.includes(h.uid);
-    // 上阵英雄显示为禁用状态
-    if(isInTeam){
-      return '<div class="hero-card quality-'+h.quality+'" style="cursor:not-allowed;opacity:0.4;filter:grayscale(0.5)">'
-        +'<div class="hero-avatar">'+h.icon+'</div>'
-        +'<div class="hero-info">'
-        +'<div class="hero-name"><span class="q-'+h.quality+'">'+h.name+'</span> <span class="text-blue" style="font-size:10px">[上阵]</span></div>'
-        +'<div class="hero-meta">'+ROLES[h.role].icon+' '+ROLES[h.role].name+' · Lv.'+h.level+'</div>'
-        +'<div class="hero-stats text-xs text-dim">❤️'+h.maxHP+' ⚔️'+h.atk+' 🛡️'+h.def+'</div>'
-        +'</div></div>';
+  // 品质筛选状态
+  if(!window._mergeQualityFilter) window._mergeQualityFilter='all';
+  var qualityFilter=window._mergeQualityFilter;
+  
+  // 筛选后的英雄列表
+  var filteredHeroes=G.heroes.filter(function(h){
+    if(qualityFilter==='all') return true;
+    return h.quality===qualityFilter;
+  });
+  
+  // 按品质分组
+  var heroesByQuality={};
+  filteredHeroes.forEach(function(h){
+    if(!heroesByQuality[h.quality]) heroesByQuality[h.quality]=[];
+    heroesByQuality[h.quality].push(h);
+  });
+  
+  // 生成品质筛选按钮
+  var qualityFilterHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">';
+  qualityFilterHTML+='<button class="btn btn-sm '+(qualityFilter==='all'?'btn-primary':'')+'" onclick="setMergeQualityFilter(\'all\')">全部('+G.heroes.length+')</button>';
+  ['legendary','mythic','hidden','epic','rare','common'].forEach(function(q){
+    var cnt=(heroesByQuality[q]||[]).length;
+    if(cnt>0){
+      qualityFilterHTML+='<button class="btn btn-sm '+(qualityFilter===q?'btn-primary':'')+'" onclick="setMergeQualityFilter(\''+q+'\')"><span class="q-'+q+'">'+QUALITY_NAMES[q]+'</span>('+cnt+')</button>';
     }
-    // 锁定英雄显示为禁用状态
-    if(h.locked){
-      return '<div class="hero-card quality-'+h.quality+'" style="cursor:not-allowed;opacity:0.4;filter:grayscale(0.5)">'
-        +'<div class="hero-avatar">'+h.icon+'</div>'
-        +'<div class="hero-info">'
-        +'<div class="hero-name"><span class="q-'+h.quality+'">'+h.name+'</span> <span class="text-gold" style="font-size:10px">🔒锁定</span></div>'
-        +'<div class="hero-meta">'+ROLES[h.role].icon+' '+ROLES[h.role].name+' · Lv.'+h.level+'</div>'
-        +'<div class="hero-stats text-xs text-dim">❤️'+h.maxHP+' ⚔️'+h.atk+' 🛡️'+h.def+'</div>'
-        +'</div></div>';
-    }
-    return '<div class="hero-card quality-'+h.quality+(isUsed?' used':'')+'" onclick="'+(isUsed?'removeMergeHero':'addMergeHero')+'('+h.uid+')" style="cursor:pointer;opacity:'+(isUsed?'0.5':'1')+'">'
-      +'<div class="hero-avatar">'+h.icon+'</div>'
-      +'<div class="hero-info">'
-      +'<div class="hero-name"><span class="q-'+h.quality+'">'+h.name+'</span>'+(isUsed?' <span class="text-green">✓</span>':'')+'</div>'
-      +'<div class="hero-meta">'+ROLES[h.role].icon+' '+ROLES[h.role].name+' · Lv.'+h.level+'</div>'
-      +'<div class="hero-stats text-xs text-dim">❤️'+h.maxHP+' ⚔️'+h.atk+' 🛡️'+h.def+'</div>'
-      +'</div></div>';
-  }).join('');
+  });
+  qualityFilterHTML+='</div>';
+  
+  // 快捷操作按钮
+  var quickActionsHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">';
+  quickActionsHTML+='<button class="btn btn-sm" onclick="quickAddMergeHeroes(\'highest\')">⭐ 添加最高品质</button>';
+  quickActionsHTML+='<button class="btn btn-sm" onclick="quickAddMergeHeroes(\'lowest\')">📉 添加最低品质</button>';
+  quickActionsHTML+='<button class="btn btn-sm" onclick="quickAddMergeHeroes(\'same\')">🔄 添加同品质</button>';
+  quickActionsHTML+='<button class="btn btn-sm btn-danger" onclick="clearMerge()">🗑️ 清空</button>';
+  quickActionsHTML+='</div>';
+  
+  // 生成可用英雄列表HTML（按品质分组显示）
+  var heroesHTML='';
+  var qualityOrder=['hidden','mythic','legendary','epic','rare','common'];
+  qualityOrder.forEach(function(q){
+    var heroes=heroesByQuality[q];
+    if(!heroes||heroes.length===0) return;
+    
+    heroesHTML+='<div style="margin-bottom:12px">';
+    heroesHTML+='<div style="font-size:12px;color:var(--text2);margin-bottom:6px;padding-left:4px;border-left:2px solid var(--'+q+')"><span class="q-'+q+'">'+QUALITY_NAMES[q]+'</span> ('+heroes.length+'个) <button class="btn btn-sm" style="font-size:10px;padding:2px 6px" onclick="quickAddMergeHeroes(\''+q+'\')">全选</button></div>';
+    heroesHTML+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    
+    heroes.forEach(function(h){
+      var isUsed=usedSet.has(h.uid);
+      var isInTeam=teamUids.includes(h.uid);
+      
+      // 上阵英雄显示为禁用状态
+      if(isInTeam){
+        heroesHTML+='<div class="hero-card-mini quality-'+h.quality+'" style="cursor:not-allowed;opacity:0.4;filter:grayscale(0.5);min-width:100px;max-width:140px" title="已上阵">'
+          +'<div style="display:flex;align-items:center;gap:4px">'
+          +'<span style="font-size:16px">'+h.icon+'</span>'
+          +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+h.name+'</div>'
+          +'<div style="font-size:9px;color:var(--text3)">Lv.'+h.level+' [上阵]</div>'
+          +'</div></div></div>';
+        return;
+      }
+      // 锁定英雄显示为禁用状态
+      if(h.locked){
+        heroesHTML+='<div class="hero-card-mini quality-'+h.quality+'" style="cursor:not-allowed;opacity:0.4;filter:grayscale(0.5);min-width:100px;max-width:140px" title="已锁定">'
+          +'<div style="display:flex;align-items:center;gap:4px">'
+          +'<span style="font-size:16px">'+h.icon+'</span>'
+          +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+h.name+'</div>'
+          +'<div style="font-size:9px;color:var(--text3)">Lv.'+h.level+' 🔒</div>'
+          +'</div></div></div>';
+        return;
+      }
+      heroesHTML+='<div class="hero-card-mini quality-'+h.quality+(isUsed?' used':'')+'" onclick="'+(isUsed?'removeMergeHero':'addMergeHero')+'('+h.uid+')" style="cursor:pointer;opacity:'+(isUsed?'0.5':'1')+';min-width:100px;max-width:140px;position:relative" title="点击'+(isUsed?'移除':'添加')+'">'
+        +'<div style="display:flex;align-items:center;gap:4px">'
+        +'<span style="font-size:16px">'+h.icon+'</span>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+h.name+(isUsed?' ✓':'')+'</div>'
+        +'<div style="font-size:9px;color:var(--text3)">Lv.'+h.level+' '+ROLES[h.role].icon+'</div>'
+        +'</div></div></div>';
+    });
+    
+    heroesHTML+='</div></div>';
+  });
+  
+  if(filteredHeroes.length===0){
+    heroesHTML='<div class="text-dim text-center" style="padding:20px">没有符合条件的英雄</div>';
+  }
   
   // 计算融合预览
   var selectedHeroes=usedUids.filter(Boolean).map(uid=>G.heroes.find(h=>h.uid===uid)).filter(Boolean);
@@ -9598,12 +9681,90 @@ function renderMerge(el){
     </div>
     ${historyHtml}
     <div class="panel">
-      <div class="panel-title"><span class="icon">👥</span> 可用英雄 (${heroCount}) <span class="text-xs text-dim">点击添加/移除</span></div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">${heroesHTML}</div>
+      <div class="panel-title"><span class="icon">👥</span> 可用英雄 (${heroCount})</div>
+      ${qualityFilterHTML}
+      ${quickActionsHTML}
+      <div style="max-height:400px;overflow-y:auto">${heroesHTML}</div>
     </div>
   `;
   if(!window._mergeSlots) window._mergeSlots=[null,null,null];
   updateMergeUI();
+}
+
+// 设置品质筛选
+function setMergeQualityFilter(quality){
+  window._mergeQualityFilter=quality;
+  renderMerge(document.getElementById('content'));
+}
+
+// 快捷添加英雄
+function quickAddMergeHeroes(mode){
+  var usedUids=window._mergeSlots||[null,null,null];
+  var usedSet=new Set(usedUids.filter(Boolean));
+  var teamUids=G.team.filter(h=>h!==null).map(h=>h.uid);
+  var available=G.heroes.filter(function(h){return !usedSet.has(h.uid)&&!teamUids.includes(h.uid)&&!h.locked;});
+  
+  if(available.length===0){
+    showToast('没有可用英雄');
+    return;
+  }
+  
+  var toAdd=[];
+  
+  if(mode==='highest'){
+    // 添加最高品质的英雄
+    var qualityOrder=['hidden','mythic','legendary','epic','rare','common'];
+    for(var i=0;i<qualityOrder.length;i++){
+      var q=qualityOrder[i];
+      var heroes=available.filter(function(h){return h.quality===q;});
+      if(heroes.length>0){
+        toAdd=heroes.slice(0,3);
+        break;
+      }
+    }
+  }else if(mode==='lowest'){
+    // 添加最低品质的英雄
+    var qualityOrder2=['common','rare','epic','legendary','mythic','hidden'];
+    for(var i=0;i<qualityOrder2.length;i++){
+      var q=qualityOrder2[i];
+      var heroes=available.filter(function(h){return h.quality===q;});
+      if(heroes.length>0){
+        toAdd=heroes.slice(0,3);
+        break;
+      }
+    }
+  }else if(mode==='same'){
+    // 添加同品质的英雄（优先选择数量最多的品质）
+    var qualityCounts={};
+    available.forEach(function(h){
+      qualityCounts[h.quality]=(qualityCounts[h.quality]||0)+1;
+    });
+    var maxQ='common';
+    var maxCount=0;
+    for(var q in qualityCounts){
+      if(qualityCounts[q]>maxCount){
+        maxCount=qualityCounts[q];
+        maxQ=q;
+      }
+    }
+    toAdd=available.filter(function(h){return h.quality===maxQ;}).slice(0,3);
+  }else{
+    // 按品质全选
+    toAdd=available.filter(function(h){return h.quality===mode;}).slice(0,3);
+  }
+  
+  if(toAdd.length<2){
+    showToast('可用英雄不足2个');
+    return;
+  }
+  
+  // 清空后添加
+  window._mergeSlots=[null,null,null];
+  for(var i=0;i<Math.min(toAdd.length,3);i++){
+    window._mergeSlots[i]=toAdd[i].uid;
+  }
+  
+  renderMerge(document.getElementById('content'));
 }
 
 function addMergeHero(heroUid){
