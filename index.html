@@ -8839,9 +8839,11 @@ function executeMerge(heroUids){
   
   // === 合成事故判定（在添加英雄后、展示结果前） ===
   var accident = rollMergeAccident(newHero, heroes);
+  var isExplosion = false;
   if (accident) {
     if (!accident.hero) {
       // 爆炸：英雄已添加但需要移除
+      isExplosion = true;
       var aidx = G.heroes.indexOf(newHero);
       if (aidx >= 0) G.heroes.splice(aidx, 1);
     } else {
@@ -8852,8 +8854,8 @@ function executeMerge(heroUids){
     }
   }
   
-  // === 合成赌局效果应用 ===
-  if (G_mergeGamble !== 'normal') {
+  // === 合成赌局效果应用（爆炸事故时不执行） ===
+  if (G_mergeGamble !== 'normal' && !isExplosion) {
     var gambleInfo = getGambleInfo();
     if (gambleInfo.costType === 'gems') {
       if ((G.resources.gems || 0) < gambleInfo.cost) {
@@ -8880,20 +8882,22 @@ function executeMerge(heroUids){
   // === 合成挑战检测 ===
   checkMergeChallenge(accident ? accident.hero : newHero, accident);
   
-  // 显示合成结果（传入材料英雄用于对比展示）
-  showMergeResult(newHero, isQualityUp, oldQuality, heroes);
-  
-  // 显示事故结果
-  if (accident) {
-    setTimeout(function(){ showAccidentResult(accident); }, 800);
+  // 显示合成结果
+  if (isExplosion) {
+    // 爆炸事故：不显示合成结果弹窗
+    setTimeout(function(){ showAccidentResult(accident); }, 300);
+  } else {
+    showMergeResult(newHero, isQualityUp, oldQuality, heroes);
+    // 显示事故结果（非爆炸）
+    if (accident) {
+      setTimeout(function(){ showAccidentResult(accident); }, 800);
+    }
+    // 显示赌局结果
+    if (newHero._gambleResult) {
+      setTimeout(function(){ showToast(getGambleResultText(newHero._gambleResult)); }, 500);
+    }
+    showToast('融合成功！获得 '+QUALITY_NAMES[newHero.quality]+' 英雄：'+newHero.icon+' '+newHero.name);
   }
-  
-  // 显示赌局结果
-  if (newHero._gambleResult) {
-    setTimeout(function(){ showToast(getGambleResultText(newHero._gambleResult)); }, 500);
-  }
-  
-  showToast('融合成功！获得 '+QUALITY_NAMES[newHero.quality]+' 英雄：'+newHero.icon+' '+newHero.name);
   
   // 更新成就统计
   updateStat('equipmentMerged', 1);
