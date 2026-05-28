@@ -12274,6 +12274,236 @@ function renderArenaDifficultySelect(){
 // 游戏初始化时自动初始化突破系统
 initBreakthroughSystem();
 
+// ==================== 金手指悬浮按钮系统 ====================
+(function initCheatFloatButton(){
+  // 创建悬浮按钮容器
+  var floatContainer = document.createElement('div');
+  floatContainer.id = 'cheat-float-container';
+  floatContainer.style.cssText = 'position:fixed;bottom:80px;right:20px;z-index:9999;display:none;';
+  
+  // 创建展开的面板
+  var cheatPanel = document.createElement('div');
+  cheatPanel.id = 'cheat-float-panel';
+  cheatPanel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e,#16213e);border:2px solid var(--gold);border-radius:12px;padding:16px;width:320px;max-height:70vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.6);display:none;margin-bottom:10px;';
+  
+  // 创建悬浮按钮
+  var floatBtn = document.createElement('button');
+  floatBtn.id = 'cheat-float-btn';
+  floatBtn.innerHTML = '🔓';
+  floatBtn.style.cssText = 'width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#ff6b00);border:none;color:#fff;font-size:24px;cursor:pointer;box-shadow:0 4px 16px rgba(255,107,0,.4);transition:all .3s;display:flex;align-items:center;justify-content:center;';
+  floatBtn.onmouseenter = function(){this.style.transform='scale(1.1)';};
+  floatBtn.onmouseleave = function(){this.style.transform='scale(1)';};
+  
+  // 点击展开/收起
+  floatBtn.onclick = function(){
+    if(!G_cheats.unlocked){
+      showCheatPasswordModal();
+      return;
+    }
+    var panel = document.getElementById('cheat-float-panel');
+    if(panel.style.display === 'none'){
+      panel.style.display = 'block';
+      renderCheatFloatPanel();
+    }else{
+      panel.style.display = 'none';
+    }
+  };
+  
+  floatContainer.appendChild(cheatPanel);
+  floatContainer.appendChild(floatBtn);
+  document.body.appendChild(floatContainer);
+  
+  // 检查是否显示悬浮按钮（非H5模式）
+  if(!G_isH5Package){
+    floatContainer.style.display = 'block';
+  }
+})();
+
+// 显示密码输入弹窗
+function showCheatPasswordModal(){
+  showModal('🔓 解锁金手指', `
+    <div style="text-align:center;padding:20px">
+      <div style="font-size:48px;margin-bottom:16px">🔒</div>
+      <div style="font-size:14px;color:var(--text2);margin-bottom:16px">请输入金手指密码</div>
+      <input type="password" id="float-cheat-pwd" style="width:100%;padding:12px;border:1px solid var(--gold);background:var(--panel2);color:var(--text);border-radius:8px;font-size:16px;text-align:center;margin-bottom:16px" placeholder="输入密码" onkeydown="if(event.key==='Enter')unlockCheatFloat()">
+      <button class="btn btn-primary" style="width:100%" onclick="unlockCheatFloat()">🔓 解锁</button>
+      <div id="float-cheat-error" style="color:var(--red);margin-top:8px;font-size:12px;display:none"></div>
+    </div>
+  `);
+  setTimeout(function(){document.getElementById('float-cheat-pwd').focus();},100);
+}
+
+// 解锁金手指悬浮按钮
+function unlockCheatFloat(){
+  var input = document.getElementById('float-cheat-pwd');
+  var err = document.getElementById('float-cheat-error');
+  var pwd = input.value.trim();
+  if(pwd === 'lxl'){
+    G_cheats.unlocked = true;
+    G_cheats.enabled = true;
+    closeModal();
+    showToast('🔓 金手指已解锁！');
+    renderCheatFloatPanel();
+    document.getElementById('cheat-float-panel').style.display = 'block';
+    // 同时解锁导航栏的金手指
+    renderCurrentTab();
+  }else{
+    err.textContent = '❌ 密码错误';
+    err.style.display = 'block';
+    input.value = '';
+    input.focus();
+  }
+}
+
+// 渲染悬浮面板内容
+function renderCheatFloatPanel(){
+  var panel = document.getElementById('cheat-float-panel');
+  if(!panel) return;
+  
+  var html = '<div style="border-bottom:1px solid rgba(255,255,255,.1);padding-bottom:12px;margin-bottom:12px">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+  html += '<span style="font-weight:bold;color:var(--gold)">🔓 金手指</span>';
+  html += '<button onclick="document.getElementById(\'cheat-float-panel\').style.display=\'none\'" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px">×</button>';
+  html += '</div>';
+  html += '<div style="margin-top:8px"><button class="btn '+(G_cheats.enabled?'btn-danger':'btn-primary')+'" style="width:100%;padding:8px" onclick="toggleCheatFloatEnabled()">'+(G_cheats.enabled?'🔒 关闭金手指':'🔓 开启金手指')+'</button></div>';
+  html += '</div>';
+  
+  if(G_cheats.enabled){
+    // 资源修改
+    html += '<div style="margin-bottom:16px">';
+    html += '<div style="font-size:12px;color:var(--gold);margin-bottom:8px">💰 资源修改</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">';
+    html += '<button class="btn btn-sm" onclick="cheatAddResource(\'gold\',999999)">💰金币+99万</button>';
+    html += '<button class="btn btn-sm" onclick="cheatAddResource(\'gems\',999)">💎宝石+999</button>';
+    html += '<button class="btn btn-sm" onclick="cheatAddResource(\'food\',9999)">🍞食物+9999</button>';
+    html += '<button class="btn btn-sm" onclick="cheatAddResource(\'stone\',9999)">🪨石材+9999</button>';
+    html += '<button class="btn btn-sm" onclick="cheatAddResource(\'iron\',9999)">⛏️铁矿+9999</button>';
+    html += '<button class="btn btn-sm" onclick="cheatAddResource(\'fame\',999)">🏆声望+999</button>';
+    html += '<button class="btn btn-sm" onclick="cheatAddResource(\'expPotion\',999)">🧪经验药+999</button>';
+    html += '<button class="btn btn-sm" onclick="cheatAllResources()" style="background:var(--gold);color:#000">全部加满</button>';
+    html += '</div>';
+    html += '</div>';
+    
+    // 突破材料
+    html += '<div style="margin-bottom:16px">';
+    html += '<div style="font-size:12px;color:var(--purple);margin-bottom:8px">⚡ 突破材料</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">';
+    html += '<button class="btn btn-sm" onclick="cheatAddBreakthroughMaterial(\'rare\',99)">💧精华+99</button>';
+    html += '<button class="btn btn-sm" onclick="cheatAddBreakthroughMaterial(\'epic\',99)">💎结晶+99</button>';
+    html += '<button class="btn btn-sm" onclick="cheatAddBreakthroughMaterial(\'legendary\',99)">⚜️碎片+99</button>';
+    html += '<button class="btn btn-sm" onclick="cheatAddBreakthroughMaterial(\'mythic\',99)">🔮核心+99</button>';
+    html += '<button class="btn btn-sm" onclick="cheatAddBreakthroughMaterial(\'hidden\',99)">✦隐藏+99</button>';
+    html += '<button class="btn btn-sm" onclick="cheatAllBreakthroughMaterials()" style="background:var(--purple);color:#fff">全部材料+99</button>';
+    html += '</div>';
+    html += '</div>';
+    
+    // 战斗修改
+    html += '<div style="margin-bottom:16px">';
+    html += '<div style="font-size:12px;color:var(--blue);margin-bottom:8px">⚔️ 战斗修改</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">';
+    html += '<button class="btn btn-sm '+(G_cheats.godMode?'btn-primary':'')+'" onclick="cheatGodMode();renderCheatFloatPanel()">🛡️无敌'+(G_cheats.godMode?'[开]':'')+'</button>';
+    html += '<button class="btn btn-sm '+(G_cheats.oneHitKill?'btn-primary':'')+'" onclick="cheatOneHitKill();renderCheatFloatPanel()">⚔️秒杀'+(G_cheats.oneHitKill?'[开]':'')+'</button>';
+    html += '<button class="btn btn-sm '+(G_cheats.infiniteMP?'btn-primary':'')+'" onclick="cheatInfiniteMP();renderCheatFloatPanel()">🔮无限蓝'+(G_cheats.infiniteMP?'[开]':'')+'</button>';
+    html += '<button class="btn btn-sm" onclick="cheatSkipStage()">⏭️跳过关卡</button>';
+    html += '</div>';
+    html += '</div>';
+    
+    // 英雄修改
+    html += '<div style="margin-bottom:16px">';
+    html += '<div style="font-size:12px;color:var(--purple);margin-bottom:8px">⭐ 英雄修改</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">';
+    html += '<button class="btn btn-sm" onclick="cheatMaxAllHeroes()">全部99级</button>';
+    html += '<button class="btn btn-sm" onclick="cheatMaxAllStats()">属性加满</button>';
+    html += '<button class="btn btn-sm" onclick="cheatMaxAllSkills()">满技能</button>';
+    html += '<button class="btn btn-sm" onclick="cheatUnlockAll()">解锁全英雄</button>';
+    html += '<button class="btn btn-sm" onclick="cheatSpawnHero(\'legendary\')">生成传说</button>';
+    html += '<button class="btn btn-sm" onclick="cheatSpawnHero(\'mythic\')">生成神话</button>';
+    html += '</div>';
+    html += '</div>';
+    
+    // 融合相关
+    html += '<div style="margin-bottom:16px">';
+    html += '<div style="font-size:12px;color:var(--purple);margin-bottom:8px">⚗️ 融合相关</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">';
+    html += '<button class="btn btn-sm '+(G_cheats.forceMutation?'btn-primary':'')+'" onclick="cheatForceMutation();renderCheatFloatPanel()">☣️强制异变</button>';
+    html += '<button class="btn btn-sm '+(G_cheats.showMergeResult?'btn-primary':'')+'" onclick="cheatShowMergeResult();renderCheatFloatPanel()">🔮显示结果</button>';
+    html += '<button class="btn btn-sm '+(G_cheats.forceQuality==='legendary'?'btn-primary':'')+'" onclick="cheatForceQuality('+(G_cheats.forceQuality==='legendary'?'null':"'legendary'")+');renderCheatFloatPanel()">⚡强制传说</button>';
+    html += '<button class="btn btn-sm '+(G_cheats.forceQuality==='mythic'?'btn-primary':'')+'" onclick="cheatForceQuality('+(G_cheats.forceQuality==='mythic'?'null':"'mythic'")+');renderCheatFloatPanel()">🔥强制神话</button>';
+    html += '</div>';
+    html += '</div>';
+    
+    // 其他功能
+    html += '<div>';
+    html += '<div style="font-size:12px;color:var(--orange);margin-bottom:8px">🎁 其他功能</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">';
+    html += '<button class="btn btn-sm '+(G_cheats.infiniteRecruit?'btn-primary':'')+'" onclick="cheatInfiniteRecruit();renderCheatFloatPanel()">🍺无限招募</button>';
+    html += '<button class="btn btn-sm '+(G_cheats.freeEnhance?'btn-primary':'')+'" onclick="cheatFreeEnhance();renderCheatFloatPanel()">🔨免费强化</button>';
+    html += '<button class="btn btn-sm" onclick="cheatGenerateAllEquipment()">生成全装备</button>';
+    html += '<button class="btn btn-sm" onclick="cheatMaxEnhanceAll()">装备+10</button>';
+    html += '</div>';
+    html += '</div>';
+  }
+  
+  panel.innerHTML = html;
+}
+
+// 切换金手指启用状态
+function toggleCheatFloatEnabled(){
+  G_cheats.enabled = !G_cheats.enabled;
+  showToast(G_cheats.enabled ? '🔓 金手指已开启' : '🔒 金手指已关闭');
+  renderCheatFloatPanel();
+}
+
+// 添加资源
+function cheatAddResource(type, amount){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  if(!G.resources[type]) G.resources[type] = 0;
+  G.resources[type] += amount;
+  updateResUI();
+  saveGame();
+  var resourceNames = {gold:'金币',gems:'宝石',food:'食物',stone:'石材',iron:'铁矿',fame:'声望',expPotion:'经验药水'};
+  showToast('💰 ' + (resourceNames[type]||type) + ' +' + amount);
+}
+
+// 添加突破材料
+function cheatAddBreakthroughMaterial(type, amount){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  initBreakthroughSystem();
+  if(!G.breakthroughMaterials[type]) G.breakthroughMaterials[type] = 0;
+  G.breakthroughMaterials[type] += amount;
+  saveGame();
+  var matNames = {rare:'突破精华',epic:'突破结晶',legendary:'传说碎片',mythic:'神话核心',hidden:'隐藏核心'};
+  showToast('⚡ ' + (matNames[type]||type) + ' +' + amount);
+}
+
+// 全部资源加满
+function cheatAllResources(){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  G.resources.gold = 99999999;
+  G.resources.gems = 99999;
+  G.resources.food = 99999;
+  G.resources.stone = 99999;
+  G.resources.iron = 99999;
+  G.resources.fame = 99999;
+  G.resources.expPotion = 99999;
+  updateResUI();
+  saveGame();
+  showToast('💰 所有资源已加满！');
+}
+
+// 全部突破材料加满
+function cheatAllBreakthroughMaterials(){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  initBreakthroughSystem();
+  G.breakthroughMaterials.rare = 999;
+  G.breakthroughMaterials.epic = 999;
+  G.breakthroughMaterials.legendary = 999;
+  G.breakthroughMaterials.mythic = 999;
+  G.breakthroughMaterials.hidden = 999;
+  saveGame();
+  showToast('⚡ 所有突破材料已加满！');
+}
+
 </script>
 </body>
 </html>
