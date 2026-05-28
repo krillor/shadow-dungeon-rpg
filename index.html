@@ -6630,6 +6630,17 @@ function generateFusedHero(heroes){
     spd=Math.floor(spd*1.1);
     maxMP=Math.floor(maxMP*1.1);
   }
+  
+  // === 限制属性不超过品质上限 ===
+  if(STAT_QUALITY_CAP && STAT_QUALITY_CAP[newQuality]){
+    var cap=STAT_QUALITY_CAP[newQuality];
+    maxHP=Math.min(maxHP,cap.maxHP);
+    atk=Math.min(atk,cap.atk);
+    def=Math.min(def,cap.def);
+    spd=Math.min(spd,cap.spd);
+    maxMP=Math.min(maxMP,cap.maxMP);
+  }
+  
   console.log('[Merge]',newQuality,mainRole,'mult='+inheritMult.toFixed(2),'finalHP='+maxHP);
   
   // === 隐藏融合规则检测 ===
@@ -11119,6 +11130,40 @@ function cheatMaxAllHeroes(){
   renderCurrentTab();
 }
 
+// 一键所有英雄达到品质最大属性
+function cheatMaxAllHeroesAtCap(){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  if(!STAT_QUALITY_CAP)return;
+  G.heroes.forEach(function(hero){
+    var cap=STAT_QUALITY_CAP[hero.quality];
+    if(!cap)return;
+    // 设置属性为品质上限
+    hero.maxHP=cap.maxHP;
+    hero.hp=cap.maxHP;
+    hero.atk=cap.atk;
+    hero.def=cap.def;
+    hero.spd=cap.spd;
+    hero.maxMP=cap.maxMP;
+    hero.mp=cap.maxMP;
+  });
+  saveGame();
+  showToast('✨ 所有英雄已达到品质最大属性！');
+  renderCurrentTab();
+}
+
+// 获取英雄某属性的品质上限
+function getHeroStatCap(hero,stat){
+  if(!STAT_QUALITY_CAP||!hero||!hero.quality)return Infinity;
+  var cap=STAT_QUALITY_CAP[hero.quality];
+  return cap?cap[stat]:Infinity;
+}
+
+// 限制属性不超过品质上限
+function clampHeroStat(hero,stat,value){
+  var cap=getHeroStatCap(hero,stat);
+  return Math.min(value,cap);
+}
+
 // 一键满技能所有英雄
 function cheatMaxAllSkills(){
   if(!G_cheats.enabled){showToast('请先开启金手指');return;}
@@ -11139,19 +11184,20 @@ function cheatMaxAllSkills(){
   renderCurrentTab();
 }
 
-// 一键所有英雄属性加满
+// 一键所有英雄属性加满（遵守品质上限）
 function cheatMaxAllStats(){
   if(!G_cheats.enabled){showToast('请先开启金手指');return;}
-  var maxStats = {maxHP:99999,atk:9999,def:9999,spd:999,maxMP:9999};
   G.heroes.forEach(function(h){
-    // 基础属性加满
-    h.maxHP = maxStats.maxHP;
-    h.hp = maxStats.maxHP;
-    h.atk = maxStats.atk;
-    h.def = maxStats.def;
-    h.spd = maxStats.spd;
-    h.maxMP = maxStats.maxMP;
-    h.mp = maxStats.maxMP;
+    // 获取该品质的属性上限
+    var cap = STAT_QUALITY_CAP[h.quality] || {maxHP:99999,atk:9999,def:9999,spd:999,maxMP:9999};
+    // 基础属性加满（不超过品质上限）
+    h.maxHP = cap.maxHP;
+    h.hp = cap.maxHP;
+    h.atk = cap.atk;
+    h.def = cap.def;
+    h.spd = cap.spd;
+    h.maxMP = cap.maxMP;
+    h.mp = cap.maxMP;
     // 等级设为最高
     h.level = 99;
     h.exp = 0;
@@ -12464,8 +12510,10 @@ function renderCheatFloatPanel(){
     html += '<button class="btn btn-sm" onclick="cheatMaxAllStats()">属性加满</button>';
     html += '<button class="btn btn-sm" onclick="cheatMaxAllSkills()">满技能</button>';
     html += '<button class="btn btn-sm" onclick="cheatUnlockAll()">解锁全英雄</button>';
+    html += '<button class="btn btn-sm" onclick="cheatMaxAllHeroesAtCap()">🔱品质满属性</button>';
     html += '<button class="btn btn-sm" onclick="cheatSpawnHero(\'legendary\')">生成传说</button>';
     html += '<button class="btn btn-sm" onclick="cheatSpawnHero(\'mythic\')">生成神话</button>';
+    html += '<button class="btn btn-sm" onclick="cheatSpawnHero(\'hidden\')">生成隐藏</button>';
     html += '</div>';
     html += '</div>';
     
