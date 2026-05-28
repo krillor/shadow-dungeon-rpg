@@ -4152,6 +4152,9 @@ function getArenaDailyLimit(){
 }
 
 function getArenaRemainingChallenges(){
+  // 金手指开启时无限次数
+  if(G_cheats.enabled)return 999;
+  
   var limit=getArenaDailyLimit();
   // 检查是否跨天重置
   var today=new Date().toDateString();
@@ -4319,7 +4322,13 @@ function generateArenaOpponent(difficulty){
 }
 
 function calculateArenaReward(opponents,difficulty,isWin){
-  if(!isWin)return{gold:0,fame:0,extras:{}};
+  if(!isWin)return{gold:0,fame:0,extras:{},materials:{}};
+  
+  initBreakthroughSystem();
+  
+  // 使用ARENA_CONFIG_V2配置
+  var config=ARENA_CONFIG_V2;
+  var rewardMult=config.rewardMultiplier[difficulty]||1;
   
   // 计算对手平均等级和品质
   var totalLevel=0,totalQuality=0;
@@ -4330,50 +4339,65 @@ function calculateArenaReward(opponents,difficulty,isWin){
   var avgLevel=Math.floor(totalLevel/opponents.length);
   var avgQuality=Math.floor(totalQuality/opponents.length);
   
-  var baseGold=ARENA_CONFIG.baseGoldReward;
-  var baseFame=ARENA_CONFIG.baseFameReward;
-  var diffMult=ARENA_CONFIG.difficultyMultiplier[difficulty]||1;
+  // 基础奖励
+  var baseGold=500;
+  var baseFame=50;
   
   var levelBonus=1+(avgLevel/getHeroLevelCap());
   var qualityBonus=1+(avgQuality*0.15);
   var countBonus=opponents.length*0.2;
   
-  var gold=Math.floor(baseGold*levelBonus*qualityBonus*(1+countBonus)*diffMult);
-  var fame=Math.floor(baseFame*levelBonus*qualityBonus*(1+countBonus)*diffMult);
+  var gold=Math.floor(baseGold*levelBonus*qualityBonus*(1+countBonus)*rewardMult);
+  var fame=Math.floor(baseFame*levelBonus*qualityBonus*(1+countBonus)*rewardMult);
   
   // 连胜加成
-  var winStreak=G.arenaState.winStreak;
+  var winStreak=G.arenaState.winStreak||0;
   var streakBonus=0;
-  var streakThresholds=Object.keys(ARENA_CONFIG.winStreakBonus).map(Number).sort(function(a,b){return b-a});
-  for(var i=0;i<streakThresholds.length;i++){
-    if(winStreak>=streakThresholds[i]){streakBonus=ARENA_CONFIG.winStreakBonus[streakThresholds[i]];break;}
-  }
+  if(winStreak>=10)streakBonus=1.0;
+  else if(winStreak>=5)streakBonus=0.5;
+  else if(winStreak>=3)streakBonus=0.3;
+  else if(winStreak>=2)streakBonus=0.2;
+  
   gold=Math.floor(gold*(1+streakBonus));
   fame=Math.floor(fame*(1+streakBonus));
   
-  // 丰厚额外奖励
-  var extras=ARENA_CONFIG.rewardExtras[difficulty]||ARENA_CONFIG.rewardExtras.easy;
+  // 额外奖励
   var rewardExtras={};
   
-  // 宝石掉落
-  if(extras.gemChance>0&&Math.random()<extras.gemChance){
-    rewardExtras.gems=extras.gemAmount;
-  }
-  
   // 经验药水
-  var potionAmount=rand(extras.expPotionMin,extras.expPotionMax);
-  rewardExtras.expPotion=potionAmount;
+  rewardExtras.expPotion=Math.floor(3*rewardMult);
   
   // 铁矿
-  var ironAmount=rand(extras.ironMin,extras.ironMax);
-  rewardExtras.iron=ironAmount;
+  rewardExtras.iron=Math.floor(5*rewardMult);
   
   // 石材（高难度）
-  if(difficulty==='hard'||difficulty==='nightmare'||difficulty==='mythic'){
-    rewardExtras.stone=rand(5,20)*(difficulty==='mythic'?3:difficulty==='nightmare'?2:1);
+  if(difficulty==='hard'||difficulty==='nightmare'||difficulty==='hell'||difficulty==='mythic'){
+    rewardExtras.stone=Math.floor(10*rewardMult);
   }
   
-  return{gold:gold,fame:fame,extras:rewardExtras};
+  // 宝石（噩梦及以上）
+  if((difficulty==='nightmare'||difficulty==='hell'||difficulty==='mythic')&&Math.random()<0.3){
+    rewardExtras.gems=Math.floor(rewardMult);
+  }
+  
+  // 突破材料掉落
+  var materialDrops=config.materialDrop[difficulty]||{};
+  var rewardMaterials={};
+  
+  Object.keys(materialDrops).forEach(function(quality){
+    var dropChance=materialDrops[quality];
+    if(Math.random()<dropChance){
+      var mat=BREAKTHROUGH_MATERIALS[quality];
+      if(mat){
+        var amount=Math.floor(Math.random()*2)+1; // 1-2个
+        rewardMaterials[quality]=amount;
+        if(!G.breakthroughMaterials[quality])G.breakthroughMaterials[quality]=0;
+        G.breakthroughMaterials[quality]+=amount;
+      }
+    }
+  });
+  
+  return{gold:gold,fame:fame,extras:rewardExtras,materials:rewardMaterials};
 }
 
 function startArenaBattle(difficulty){
@@ -4772,7 +4796,17 @@ async function finishArenaBattle(isWin,playerUnits,enemyUnits,reward){
       extraMsg+=' 🪨'+extras.stone;
     }
     
-    showToast('🎉 竞技场胜利！💰'+reward.gold+' 🏆'+reward.fame+extraMsg);
+    // 突破材料奖励
+    var materials=reward.materials||{};
+    var matMsg='';
+    Object.keys(materials).forEach(function(quality){
+      var mat=BREAKTHROUGH_MATERIALS[quality];
+      if(mat){
+        matMsg+=' '+mat.icon+materials[quality];
+      }
+    });
+    
+    showToast('🎉 竞技场胜利！💰'+reward.gold+' 🏆'+reward.fame+extraMsg+matMsg);
     updateResUI();
   }else{
     showToast('💀 竞技场失败...');
@@ -4790,7 +4824,14 @@ async function finishArenaBattle(isWin,playerUnits,enemyUnits,reward){
       if(ex.expPotion)extraStr+=' 🧪'+ex.expPotion;
       if(ex.iron)extraStr+=' ⛏️'+ex.iron;
       if(ex.stone)extraStr+=' 🪨'+ex.stone;
-      rewardText='<div style="text-align:center;margin:12px 0;color:#ffd700;font-size:16px">💰'+reward.gold+' 🏆'+reward.fame+extraStr+'</div>';
+      // 突破材料
+      var matStr='';
+      var mats=reward.materials||{};
+      Object.keys(mats).forEach(function(q){
+        var m=BREAKTHROUGH_MATERIALS[q];
+        if(m)matStr+=' '+m.icon+mats[q];
+      });
+      rewardText='<div style="text-align:center;margin:12px 0;color:#ffd700;font-size:16px">💰'+reward.gold+' 🏆'+reward.fame+extraStr+matStr+'</div>';
     }
     var streakText=isWin?'<div style="text-align:center;margin:8px 0;color:#2ed573">连胜: '+G.arenaState.winStreak+'</div>':'';
     btnArea.innerHTML='<div style="margin:20px 0;text-align:center;padding:20px;background:rgba(0,0,0,0.3);border-radius:10px">'+resultText+rewardText+streakText+'</div>';
@@ -11328,6 +11369,7 @@ function unlockCheats(){
     G_cheats.unlocked=true;
     G_cheats.enabled=true;
     showToast('🔓 金手指已解锁！');
+    updateCheatFloatButton(); // 显示悬浮按钮
     renderCurrentTab();
   }else{
     err.textContent='❌ 密码错误';
@@ -12275,6 +12317,18 @@ function renderArenaDifficultySelect(){
 initBreakthroughSystem();
 
 // ==================== 金手指悬浮按钮系统 ====================
+// 更新悬浮按钮显示状态
+function updateCheatFloatButton(){
+  var container = document.getElementById('cheat-float-container');
+  if(!container) return;
+  // 只有解锁后才显示悬浮按钮，且非H5模式
+  if(G_cheats.unlocked && !G_isH5Package){
+    container.style.display = 'block';
+  }else{
+    container.style.display = 'none';
+  }
+}
+
 (function initCheatFloatButton(){
   // 创建悬浮按钮容器
   var floatContainer = document.createElement('div');
@@ -12294,12 +12348,8 @@ initBreakthroughSystem();
   floatBtn.onmouseenter = function(){this.style.transform='scale(1.1)';};
   floatBtn.onmouseleave = function(){this.style.transform='scale(1)';};
   
-  // 点击展开/收起
+  // 点击展开/收起（解锁后直接展开，不需要密码）
   floatBtn.onclick = function(){
-    if(!G_cheats.unlocked){
-      showCheatPasswordModal();
-      return;
-    }
     var panel = document.getElementById('cheat-float-panel');
     if(panel.style.display === 'none'){
       panel.style.display = 'block';
@@ -12313,10 +12363,8 @@ initBreakthroughSystem();
   floatContainer.appendChild(floatBtn);
   document.body.appendChild(floatContainer);
   
-  // 检查是否显示悬浮按钮（非H5模式）
-  if(!G_isH5Package){
-    floatContainer.style.display = 'block';
-  }
+  // 初始不显示，等待解锁
+  // updateCheatFloatButton() 会在解锁后调用
 })();
 
 // 显示密码输入弹窗
