@@ -7917,9 +7917,13 @@ function generateFusedHero(heroes){
   var omen = getCurrentOmen();
   var omenEffects = omen.effects || {};
   
-  // === 技能变异：异变时10%概率某个技能变异（金手指可强制，天象可加成） ===
+  // === 技能变异：异变时10%概率某个技能变异（金手指可强制，天象可加成，技能卷轴可强制） ===
   var mutatedSkills = [];
   var forceMutate = G_cheats.enabled && G_cheats.forceSkillMutate;
+  // 技能卷轴独立标记（不依赖金手指系统）
+  if (G.mergeForceSkillMutate) {
+    forceMutate = true;
+  }
   // 天象强制技能变异
   if(omenEffects.forceSkillMutate){
     forceMutate = true;
@@ -7927,10 +7931,13 @@ function generateFusedHero(heroes){
   // 天象增加变异概率
   var mutationBonus = omenEffects.mutationChance || 0;
   var skillMutateChance = 0.10 + mutationBonus;
-  if(isMutation && newSkills.length > 0 && (forceMutate || Math.random() < skillMutateChance)){
+  // 技能卷轴：无视 isMutation 条件，必定触发
+  var scrollForce = !!G.mergeForceSkillMutate;
+  if((isMutation || scrollForce) && newSkills.length > 0 && (forceMutate || Math.random() < skillMutateChance)){
     var mutIdx = Math.floor(Math.random() * newSkills.length);
     mutatedSkills.push(mutIdx);
-    // 使用后自动关闭金手指（天象强制不关闭）
+    // 使用后自动关闭标记（天象强制不关闭）
+    if(G.mergeForceSkillMutate) G.mergeForceSkillMutate = false;
     if(forceMutate && !(omenEffects.forceSkillMutate)) G_cheats.forceSkillMutate = false;
   }
   
@@ -8387,16 +8394,74 @@ function rollMergeAccident(hero, materials) {
   return result;
 }
 
-function showAccidentResult(accident) {
+function showAccidentResult(accident, newHero, isQualityUp, oldQuality, materials) {
   if (!accident) return;
   var acc = accident.accident;
+  var type = accident.type;
+  
+  // 每种事故的详细机制说明
+  var detailMap = {
+    explosion: {
+      detail: '💥 所有材料英雄炸裂消失，转化为合成碎片。',
+      extra: '💡 收集10个碎片可兑换任意传说英雄'
+    },
+    timewarp: {
+      detail: '🌀 攻击力↔防御力互换，生命值↔速度互换。战士可能变成法师面板，法师可能变成坦克！',
+      extra: '⚠️ 属性互换是永久的，请根据新面板调整阵容策略'
+    },
+    ghost: {
+      detail: '👻 英雄属性减半（生命/攻击/防御），但战斗结束后有10%概率附身队友，赋予队友+50%全属性！',
+      extra: '⏰ 幽灵状态持续7天，到期后英雄消失'
+    },
+    clown: {
+      detail: '🤡 英雄获得随机荒谬名字和一个强力被动增益（攻击×1.5 / 暴击率×2 / 闪避×1.5 三选一）。',
+      extra: '🎲 可能是废物也可能是OP，看运气！'
+    },
+    mirror: {
+      detail: '🪞 复制当前最强英雄的1.2倍属性（含技能、品质、职业），成为超强临时英雄！',
+      extra: '⏰ 镜像英雄7天后消失，请抓紧使用'
+    }
+  };
+  var info = detailMap[type] || {};
+  
   var html = '<div style="text-align:center;padding:20px 0">'
-    + '<div style="font-size:64px;margin-bottom:12px;animation:bounce 0.5s ease">' + acc.icon + '</div>'
-    + '<div style="font-size:18px;font-weight:bold;color:' + acc.color + ';margin-bottom:8px">合成事故：' + acc.name + '</div>'
-    + '<div style="font-size:14px;color:var(--text);line-height:1.6;padding:0 16px">' + accident.message + '</div>'
-    + (accident.type === 'explosion' ? '<div style="margin-top:12px;font-size:12px;color:var(--gold)">💡 收集10个碎片可兑换任意传说英雄</div>' : '')
+    + '<div style="font-size:72px;margin-bottom:12px;animation:bounce 0.5s ease">' + acc.icon + '</div>'
+    + '<div style="font-size:20px;font-weight:bold;color:' + acc.color + ';margin-bottom:10px">合成事故：' + acc.name + '</div>'
+    + '<div style="font-size:14px;color:var(--text);line-height:1.8;padding:0 16px;margin-bottom:12px">' + accident.message + '</div>'
+    // 详细机制说明区域
+    + '<div style="margin:12px 16px;padding:14px;background:rgba(0,0,0,.25);border:1px solid ' + acc.color + ';border-radius:10px;text-align:left">'
+    + '<div style="font-size:13px;font-weight:bold;color:' + acc.color + ';margin-bottom:8px">📋 事故机制</div>'
+    + '<div style="font-size:13px;color:var(--text);line-height:1.8">' + (info.detail || acc.desc) + '</div>'
+    + (info.extra ? '<div style="font-size:12px;color:var(--gold);margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">' + info.extra + '</div>' : '')
+    + '</div>'
+    // 当前碎片数量（如果有）
+    + (type === 'explosion' && G.mergeFragments ? '<div style="font-size:13px;color:var(--gold);margin-top:8px">📦 当前碎片: ' + G.mergeFragments + ' 个</div>' : '')
     + '</div>';
-  showModal(acc.icon + ' 合成事故', html, []);
+  
+  var buttons = [];
+  // 如果有合成结果英雄（非爆炸），关闭事故弹窗后显示合成结果
+  if (newHero) {
+    buttons.push({
+      text: '查看合成结果',
+      cls: 'btn-primary',
+      action: "closeModal();showMergeResult(window._accidentHero," + isQualityUp + ",'" + oldQuality + "',window._accidentMats,null)"
+    });
+  }
+  
+  // 保存合成结果数据供弹窗关闭后使用
+  if (newHero) {
+    window._accidentHero = newHero;
+    window._accidentMats = materials;
+    window._accidentIsQualityUp = isQualityUp;
+    window._accidentOldQuality = oldQuality;
+    // 赌局结果延迟显示
+    if (newHero._gambleResult) {
+      setTimeout(function(){ showToast(getGambleResultText(newHero._gambleResult)); }, 500);
+    }
+    showToast('融合成功！获得 '+QUALITY_NAMES[newHero.quality]+' 英雄：'+newHero.icon+' '+newHero.name);
+  }
+  
+  showModal(acc.icon + ' 合成事故', html, buttons);
 }
 
 // ==================== 合成赌局系统 ====================
@@ -8647,11 +8712,15 @@ function doLabRecipe(recipeId) {
   if (recipe.reward.expPotion) G.resources.expPotion = (G.resources.expPotion||0) + recipe.reward.expPotion;
   if (recipe.reward.fragments) G.mergeFragments = (G.mergeFragments||0) + recipe.reward.fragments;
   if (recipe.reward.skillMutate) {
-    G_cheats.forceSkillMutate = true;
+    // 使用独立标记，不依赖金手指系统
+    G.mergeForceSkillMutate = true;
   }
   if (recipe.requireFragments) G.mergeFragments -= 10;
   
   showToast(recipe.icon + ' 实验成功！获得 ' + recipe.desc);
+  if (recipe.reward.skillMutate) {
+    setTimeout(function(){ showToast('🧬 技能变异标记已激活！下次合成必定触发技能变异'); }, 500);
+  }
   saveGame();
   renderMerge(document.getElementById('content'));
 }
@@ -8921,6 +8990,8 @@ function executeMerge(heroUids){
     // 更新英雄列表中的引用
     var gidx = G.heroes.findIndex(function(h){return h.uid===newHero.uid});
     if (gidx >= 0) G.heroes[gidx] = newHero;
+    // 赌局可能改变品质，重新计算 isQualityUp
+    isQualityUp = QUALITIES.indexOf(newHero.quality) > maxQIdx;
   }
   
   // === 合成挑战检测 ===
@@ -8930,9 +9001,12 @@ function executeMerge(heroUids){
   if (isExplosion) {
     // 爆炸事故：不显示合成结果弹窗，只显示事故弹窗
     setTimeout(function(){ showAccidentResult(accident); }, 300);
+  } else if (accident) {
+    // 有非爆炸事故：先弹事故详情弹窗（优先），关闭后再显示合成结果
+    showAccidentResult(accident, newHero, isQualityUp, oldQuality, heroes);
   } else {
-    // 非爆炸事故：将事故信息传入合成结果弹窗一并显示（避免弹窗遮挡）
-    showMergeResult(newHero, isQualityUp, oldQuality, heroes, accident);
+    // 无事故：正常显示合成结果
+    showMergeResult(newHero, isQualityUp, oldQuality, heroes, null);
     // 显示赌局结果
     if (newHero._gambleResult) {
       setTimeout(function(){ showToast(getGambleResultText(newHero._gambleResult)); }, 500);
