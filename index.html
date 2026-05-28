@@ -8149,7 +8149,7 @@ function hashStr(str){
 
 
 // ==================== 合成结果展示 ====================
-function showMergeResult(hero, isQualityUp, oldQuality, materials){
+function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
   var qualityColors={common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444',hidden:'#00ffcc'};
   var qualityBg={common:'rgba(136,136,136,.15)',rare:'rgba(74,158,255,.15)',epic:'rgba(168,85,247,.15)',legendary:'rgba(245,158,11,.15)',mythic:'rgba(239,68,68,.15)',hidden:'rgba(0,255,204,.12)'};
   
@@ -8244,6 +8244,17 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials){
       +'</div>';
   }
   
+  // 事故信息横幅（非爆炸事故在合成结果弹窗中显示）
+  var accidentBanner='';
+  if(accident && accident.accident){
+    var accInfo=accident.accident;
+    accidentBanner='<div style="margin:10px 0;padding:12px 14px;background:linear-gradient(135deg,rgba(255,68,68,.2),rgba(255,165,0,.1));border:1px solid '+accInfo.color+';border-radius:10px;text-align:center;box-shadow:0 0 16px rgba(255,68,68,.15)">'
+      +'<div style="font-size:36px;margin-bottom:6px;animation:bounce 0.5s ease">'+accInfo.icon+'</div>'
+      +'<div style="font-size:15px;font-weight:bold;color:'+accInfo.color+';margin-bottom:4px">合成事故：'+accInfo.name+'</div>'
+      +'<div style="font-size:12px;color:var(--text);line-height:1.6">'+accident.message+'</div>'
+      +'</div>';
+  }
+  
   var html=effects+'<div class="merge-result-overlay" onclick="closeMergeResult()">'+
     '<div class="merge-result-card" onclick="event.stopPropagation()" style="max-height:90vh;overflow-y:auto">'+
       '<div class="merge-result-avatar" style="background:'+qualityBg[hero.quality]+';border-color:'+qualityColors[hero.quality]+'">'+hero.icon+'</div>'+
@@ -8263,6 +8274,7 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials){
       '</div>'+
       '<div class="merge-result-skills">'+skillsHtml+'</div>'+
       mutateBanner+
+      accidentBanner+
       matHtml+
       '<div style="display:flex;gap:8px;margin-top:16px">'+
         '<button class="btn btn-primary" onclick="closeMergeResult();switchTab(\'heroes\')">查看英雄</button>'+
@@ -8788,11 +8800,40 @@ function executeMerge(heroUids){
   var qualities=heroes.map(function(h){return QUALITIES.indexOf(h.quality)});
   var maxQIdx=Math.max.apply(null,qualities);
   var mergeCost = (maxQIdx+1) * 200;
+  
+  // === 赌局费用前置检查 ===
+  var gambleInfo = getGambleInfo();
+  var gambleCost = 0;
+  var gambleCostType = 'gold';
+  if (G_mergeGamble !== 'normal') {
+    gambleCost = gambleInfo.cost;
+    gambleCostType = gambleInfo.costType || 'gold';
+    if (gambleCostType === 'gems') {
+      if ((G.resources.gems || 0) < gambleCost) {
+        showToast('💎 宝石不足！需要 '+gambleCost+' 宝石');
+        return false;
+      }
+    } else {
+      if ((G.resources.gold || 0) < mergeCost + gambleCost) {
+        showToast('💰 金币不足！需要 '+(mergeCost+gambleCost)+' 金币（含赌局费用'+gambleCost+'）');
+        return false;
+      }
+    }
+  }
+  
   if((G.resources.gold||0) < mergeCost){
     showToast('💰 金币不足！需要 '+mergeCost+' 金币');
     return false;
   }
   G.resources.gold -= mergeCost;
+  // 扣除赌局费用
+  if (G_mergeGamble !== 'normal' && gambleCost > 0) {
+    if (gambleCostType === 'gems') {
+      G.resources.gems -= gambleCost;
+    } else {
+      G.resources.gold -= gambleCost;
+    }
+  }
   
   // 记录最高品质用于判断品质提升
   var oldQuality=QUALITIES[maxQIdx];
@@ -8874,29 +8915,12 @@ function executeMerge(heroUids){
     }
   }
   
-  // === 合成赌局效果应用（爆炸事故时不执行） ===
+  // === 合成赌局效果应用（费用已前置扣除，爆炸事故时不执行） ===
   if (G_mergeGamble !== 'normal' && !isExplosion) {
-    var gambleInfo = getGambleInfo();
-    if (gambleInfo.costType === 'gems') {
-      if ((G.resources.gems || 0) < gambleInfo.cost) {
-        showToast('💎 宝石不足！'); G_mergeGamble = 'normal';
-      } else {
-        G.resources.gems -= gambleInfo.cost;
-        newHero = applyGambleResult(newHero);
-        // 更新英雄列表中的引用
-        var gidx = G.heroes.findIndex(function(h){return h.uid===newHero.uid});
-        if (gidx >= 0) G.heroes[gidx] = newHero;
-      }
-    } else if (gambleInfo.cost > 0) {
-      if ((G.resources.gold || 0) < gambleInfo.cost) {
-        showToast('💰 金币不足！'); G_mergeGamble = 'normal';
-      } else {
-        G.resources.gold -= gambleInfo.cost;
-        newHero = applyGambleResult(newHero);
-        var gidx = G.heroes.findIndex(function(h){return h.uid===newHero.uid});
-        if (gidx >= 0) G.heroes[gidx] = newHero;
-      }
-    }
+    newHero = applyGambleResult(newHero);
+    // 更新英雄列表中的引用
+    var gidx = G.heroes.findIndex(function(h){return h.uid===newHero.uid});
+    if (gidx >= 0) G.heroes[gidx] = newHero;
   }
   
   // === 合成挑战检测 ===
@@ -8904,14 +8928,11 @@ function executeMerge(heroUids){
   
   // 显示合成结果
   if (isExplosion) {
-    // 爆炸事故：不显示合成结果弹窗
+    // 爆炸事故：不显示合成结果弹窗，只显示事故弹窗
     setTimeout(function(){ showAccidentResult(accident); }, 300);
   } else {
-    showMergeResult(newHero, isQualityUp, oldQuality, heroes);
-    // 显示事故结果（非爆炸）
-    if (accident) {
-      setTimeout(function(){ showAccidentResult(accident); }, 800);
-    }
+    // 非爆炸事故：将事故信息传入合成结果弹窗一并显示（避免弹窗遮挡）
+    showMergeResult(newHero, isQualityUp, oldQuality, heroes, accident);
     // 显示赌局结果
     if (newHero._gambleResult) {
       setTimeout(function(){ showToast(getGambleResultText(newHero._gambleResult)); }, 500);
@@ -11414,8 +11435,20 @@ function renderMerge(el){
   var qualities=selectedHeroes.map(function(h){return QUALITIES.indexOf(h.quality)});
   var maxQ=qualities.length>0?Math.max.apply(null,qualities):0;
   var mergeCost=selectedHeroes.length>=2?(maxQ+1)*200:0;
+  // 加入赌局费用
+  var gambleInfo=getGambleInfo();
+  var totalCost=mergeCost;
+  var totalCostText=mergeCost+'💰';
+  if(G_mergeGamble!=='normal'&&gambleInfo.cost>0){
+    if(gambleInfo.costType==='gems'){
+      totalCostText=mergeCost+'💰 + '+gambleInfo.cost+'💎';
+    }else{
+      totalCost+=gambleInfo.cost;
+      totalCostText=totalCost+'💰';
+    }
+  }
   var bondPreview=selectedHeroes.length>=2?detectMergeBond(selectedHeroes):null;
-  var canAfford=(G.resources.gold||0)>=mergeCost;
+  var canAfford=(G.resources.gold||0)>=mergeCost&&(G_mergeGamble==='normal'||gambleInfo.costType==='gems'?(G.resources.gems||0)>=(gambleInfo.cost||0):(G.resources.gold||0)>=(mergeCost+(gambleInfo.cost||0)));
   
   // 合成历史
   var historyHtml='';
@@ -11577,7 +11610,7 @@ function renderMerge(el){
         ${bondHtml}
         
         <div class="merge-actions">
-          <div class="merge-cost-info">💰 消耗: <b style="color:${canAfford?'var(--gold)':'var(--red)'}">${mergeCost}</b> 金币</div>
+          <div class="merge-cost-info">💰 消耗: <b style="color:${canAfford?'var(--gold)':'var(--red)'}">${totalCostText}</b></div>
           <div class="merge-btn-group">
             <button class="btn-merge-clear" onclick="clearMerge()">清空</button>
             <button class="btn-merge-go" id="merge-btn" onclick="doMerge()" ${selectedHeroes.length<2||!canAfford?'disabled':''}>⚗️ 开始融合</button>
@@ -11917,7 +11950,16 @@ function updateMergeButtonState(){
   var qualities=usedUids.filter(Boolean).map(function(uid){var h=G.heroes.find(function(x){return x.uid===uid});return h?QUALITIES.indexOf(h.quality):0;});
   var maxQ=qualities.length>0?Math.max.apply(null,qualities):0;
   var mergeCost=selectedCount>=2?(maxQ+1)*200:0;
+  // 加入赌局费用检查
+  var gambleInfo=getGambleInfo();
   var canAfford=(G.resources.gold||0)>=mergeCost;
+  if(G_mergeGamble!=='normal'&&gambleInfo.cost>0){
+    if(gambleInfo.costType==='gems'){
+      canAfford=canAfford&&(G.resources.gems||0)>=gambleInfo.cost;
+    }else{
+      canAfford=(G.resources.gold||0)>=(mergeCost+gambleInfo.cost);
+    }
+  }
 
   btn.disabled=selectedCount<2||!canAfford;
 }
