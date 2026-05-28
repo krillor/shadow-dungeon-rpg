@@ -1653,7 +1653,7 @@ body{
   position:fixed;
   top:0;left:0;right:0;bottom:0;
   background:rgba(0,0,0,0.85);
-  z-index:100;
+  z-index:400;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -2002,7 +2002,7 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
     </div>
   </div>
 </div>
-<div id="modal-root"></div>
+<div id="modal-root" style="z-index:400;position:relative"></div>
 <div id="toast-root"></div>
 
 <script>
@@ -4634,6 +4634,21 @@ function showSkillDetail(skillId){
     '<div style="font-size:48px;margin-bottom:12px;filter:drop-shadow(0 0 12px rgba(168,85,247,0.5))">'+skillData.icon+'</div>'+
     '<div style="font-size:18px;font-weight:bold;color:#d4a0ff;margin-bottom:8px">'+skillData.name+'</div>'+
     '<div style="font-size:12px;color:#a855f7;margin-bottom:16px;padding:4px 12px;background:rgba(168,85,247,0.15);border-radius:12px;display:inline-block">🧬 变异技能</div>'+
+    '<div style="margin:12px 16px;padding:10px;background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(239,68,68,0.1));border:1px solid rgba(168,85,247,0.3);border-radius:8px;text-align:left">'+
+    '<div style="font-size:12px;color:#d4a0ff;font-weight:bold;margin-bottom:6px">✨ 变异增幅效果</div>';
+  if(skillData.type==='damage'){
+    html+='<div style="font-size:13px;color:var(--green)">⚔️ 伤害倍率 ×1.5（+50%）</div>';
+  }
+  if(skillData.type==='heal'){
+    html+='<div style="font-size:13px;color:var(--green)">💚 治疗效果 ×1.4（+40%）</div>';
+  }
+  if(skillData.type==='shield'){
+    html+='<div style="font-size:13px;color:var(--green)">🛡️ 护盾值 ×1.4（+40%）</div>';
+  }
+  if(skillData.type==='drain'){
+    html+='<div style="font-size:13px;color:var(--green)">⚔️ 伤害倍率 ×1.5 | 💚 吸血 ×1.4</div>';
+  }
+  html+='</div>'+
     '<div style="font-size:14px;color:var(--text);line-height:1.8;padding:0 16px">'+skillData.desc+'</div>';
   if(skillData.mpCost){
     html+='<div style="margin-top:16px;font-size:12px;color:var(--text2)">💧 消耗: '+skillData.mpCost+' MP</div>';
@@ -6110,7 +6125,23 @@ function createBattleUnit(hero,isEnemy=false){
   };
 }
 
-function calcDamage(attacker,defender,skill=null){
+function calcDamage(attacker,defender,skill=null,skillIdx=-1){
+  // 变异技能增幅：伤害+50%，治疗+40%，护盾+40%
+  var isMutatedSkill=false;
+  if(skill && attacker.hero && attacker.hero.mutatedSkills && attacker.hero.mutatedSkills.length>0){
+    var allSkillIds=[].concat(attacker.hero.skills,attacker.hero.bonusSkills);
+    if(skillIdx>=0){
+      isMutatedSkill=attacker.hero.mutatedSkills.indexOf(skillIdx)>=0;
+    }else{
+      // 通过skill id查找索引
+      for(var mi=0;mi<allSkillIds.length;mi++){
+        if(allSkillIds[mi]===skill.id||allSkillIds[mi]===skill.name){
+          isMutatedSkill=attacker.hero.mutatedSkills.indexOf(mi)>=0;
+          break;
+        }
+      }
+    }
+  }
   // 金手指：一击必杀（玩家攻击时）
   if(G_cheats.enabled && G_cheats.oneHitKill && !attacker.isEnemy){
     return{dmg:999999,crit:true,dodged:false};
@@ -6161,6 +6192,8 @@ function calcDamage(attacker,defender,skill=null){
   
   // 基础伤害计算
   let mult=skill?skill.mult:1.0;
+  // 变异技能伤害增幅 +50%
+  if(isMutatedSkill) mult*=1.5;
   let dmg=Math.max(1,Math.floor((atk*mult-def*0.5)*(0.9+Math.random()*0.2)));
   
   // 暴击计算（考虑职业暴击率 + 英雄特质暴击率）
@@ -7171,6 +7204,14 @@ async function runBattle(stageId){
 async function executeSkillV2(user,target,skill,allUnits,logFn){
   const targets=Array.isArray(target)?target:[target];
   var userSide=user.isEnemy?'enemy':'ally';
+  // 判断是否是变异技能
+  var isMutated=false;
+  if(user.hero && user.hero.mutatedSkills && user.hero.mutatedSkills.length>0){
+    var allSIds=[].concat(user.hero.skills,user.bonusSkills);
+    for(var msi=0;msi<allSIds.length;msi++){
+      if(allSIds[msi]===skill.id){isMutated=user.hero.mutatedSkills.indexOf(msi)>=0;break;}
+    }
+  }
   switch(skill.type){
     case 'damage':
       targets.forEach(t=>{
@@ -7185,8 +7226,8 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
         let dmg=r.dmg;
         if(t.shield>0){const absorbed=Math.min(t.shield,dmg);t.shield-=absorbed;dmg-=absorbed;if(absorbed>0)showFloat(t,'🛡-'+absorbed,'shield-num')}
         t.hp=Math.max(0,t.hp-dmg);
-        logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+' 对 '+t.icon+t.name+' 造成 '+dmg+' 点伤害'+(r.crit?' 💥暴击！':''),r.crit?'crit':'damage');
-        showFloat(t,(r.crit?'💥':'')+dmg,r.crit?'crit':'damage');
+        logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+(isMutated?' 🧬':'')+' 对 '+t.icon+t.name+' 造成 '+dmg+' 点伤害'+(r.crit?' 💥暴击！':'')+(isMutated?' ✨变异':''),r.crit?'crit':'damage');
+        showFloat(t,(r.crit?'💥':'')+(isMutated?'🧬':'')+dmg,r.crit?'crit':'damage');
         animUnit(t,'hit',300);
         // 记录统计数据
         recordBattleStat(user,'damage',dmg);
@@ -7206,12 +7247,13 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
       break;
     case 'heal':
       var totalHeal=0;
+      var healMult=isMutated?1.4:1.0;
       targets.forEach(t=>{
         if(!t.alive)return;
-        const heal=Math.floor(t.maxHP*skill.healPct);
+        const heal=Math.floor(t.maxHP*skill.healPct*healMult);
         t.hp=Math.min(t.maxHP,t.hp+heal);
-        logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+'，恢复 '+t.icon+t.name+' '+heal+' 点生命','heal');
-        showFloat(t,'+'+heal,'heal');animUnit(t,'heal-target',500);
+        logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+(isMutated?' 🧬':'')+'，恢复 '+t.icon+t.name+' '+heal+' 点生命'+(isMutated?' ✨变异+40%':''),'heal');
+        showFloat(t,'+'+heal+(isMutated?'🧬':''),'heal');animUnit(t,'heal-target',500);
         totalHeal+=heal;
       });
       // 记录施法者的治疗输出量（治疗自己或别人的总量）
@@ -7226,11 +7268,12 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
         showFloat(t,'↑'+skill.name,'buff-text');animUnit(t,'heal-target',500);
       });break;
     case 'shield':
+      var shieldMult=isMutated?1.4:1.0;
       targets.forEach(t=>{
         if(!t.alive)return;
-        const amt=Math.floor(t.maxHP*skill.shieldPct);
+        const amt=Math.floor(t.maxHP*skill.shieldPct*shieldMult);
         t.shield+=amt;
-        logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+'，为 '+t.icon+t.name+' 添加 '+amt+' 点护盾','buff');
+        logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+(isMutated?' 🧬':'')+'，为 '+t.icon+t.name+' 添加 '+amt+' 点护盾'+(isMutated?' ✨变异+40%':''),'buff');
         showFloat(t,'🛡+'+amt,'shield-num');animUnit(t,'shield-up',400);
       });break;
     case 'drain':
