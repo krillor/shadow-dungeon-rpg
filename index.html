@@ -1358,13 +1358,265 @@ body{
 @keyframes mergeGlow{0%,100%{box-shadow:0 0 8px rgba(201,162,39,.2)}50%{box-shadow:0 0 20px rgba(201,162,39,.5)}}
 .merge-glow{animation:mergeGlow 2s ease infinite}
 
-/* 合成区域 */
-.merge-slots{display:flex;gap:8px;margin:8px 0;justify-content:center;flex-wrap:wrap}
-.merge-slot{width:68px;height:68px;border:2px dashed var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;transition:all .2s;background:var(--panel2);position:relative}
-.merge-slot:active{border-color:var(--gold)}
-.merge-slot.filled{border-style:solid}
-.merge-arrow{font-size:20px;color:var(--gold);align-self:center}
-.merge-result{width:76px;height:76px;border:2px solid var(--gold);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:28px;background:rgba(201,162,39,.1);position:relative}
+/* ===== 融合区域 - 精美重构 ===== */
+@keyframes slotIdle{0%,100%{border-color:rgba(100,100,200,0.3);box-shadow:0 0 0 rgba(100,100,200,0)}50%{border-color:rgba(100,100,200,0.5);box-shadow:0 0 12px rgba(100,100,200,0.1)}}
+@keyframes resultIdle{0%,100%{border-color:rgba(212,175,55,0.3);box-shadow:0 0 8px rgba(212,175,55,0.1)}50%{border-color:rgba(212,175,55,0.6);box-shadow:0 0 20px rgba(212,175,55,0.2)}}
+@keyframes slotFilled{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+@keyframes mergeArrowPulse{0%,100%{opacity:0.4;transform:translateX(0)}50%{opacity:1;transform:translateX(3px)}}
+@keyframes fusionOrb{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes orbParticle{0%{opacity:0;transform:translateY(0) scale(0)}30%{opacity:1;transform:translateY(-8px) scale(1)}100%{opacity:0;transform:translateY(-20px) scale(0.5)}}
+@keyframes readyPulse{0%,100%{box-shadow:0 0 15px rgba(212,175,55,0.3),0 0 30px rgba(212,175,55,0.1)}50%{box-shadow:0 0 25px rgba(212,175,55,0.5),0 0 50px rgba(212,175,55,0.2)}}
+
+.merge-fusion-area{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+  padding:16px;
+  background:linear-gradient(180deg,rgba(0,0,0,0.25),rgba(0,0,0,0.1));
+  border-radius:var(--radius-lg);
+  border:1px solid rgba(255,255,255,0.04);
+  position:relative;
+  overflow:hidden;
+}
+.merge-fusion-area::before{
+  content:'';
+  position:absolute;
+  top:50%;left:50%;
+  width:200px;height:200px;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle,rgba(168,85,247,0.06),transparent 70%);
+  pointer-events:none;
+}
+.merge-input-row{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  width:100%;
+}
+.merge-slot{
+  width:72px;
+  height:84px;
+  border:2px dashed rgba(100,100,200,0.3);
+  border-radius:var(--radius-md);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  cursor:pointer;
+  transition:var(--transition-bounce);
+  background:linear-gradient(145deg,rgba(20,20,50,0.6),rgba(15,15,35,0.4));
+  position:relative;
+  animation:slotIdle 3s ease-in-out infinite;
+  box-shadow:inset 0 2px 8px rgba(0,0,0,0.3);
+}
+.merge-slot:hover{
+  border-color:rgba(100,100,200,0.6);
+  background:linear-gradient(145deg,rgba(30,30,60,0.8),rgba(20,20,45,0.6));
+  transform:translateY(-2px);
+  box-shadow:0 4px 16px rgba(0,0,0,0.3),inset 0 2px 8px rgba(0,0,0,0.2);
+}
+.merge-slot:active{transform:scale(0.97)}
+.merge-slot.filled{
+  border-style:solid;
+  border-color:rgba(100,100,200,0.5);
+  animation:slotFilled 0.4s ease;
+  background:linear-gradient(145deg,rgba(30,30,60,0.8),rgba(20,20,45,0.6));
+  box-shadow:0 4px 16px rgba(100,100,200,0.15),inset 0 2px 8px rgba(0,0,0,0.2);
+}
+.merge-slot .slot-placeholder{
+  font-size:28px;
+  opacity:0.3;
+  filter:grayscale(0.5);
+}
+.merge-slot .slot-hint{
+  font-size:9px;
+  color:var(--text3);
+  opacity:0.6;
+}
+.merge-slot .slot-icon{
+  font-size:30px;
+  line-height:1;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+.merge-slot .slot-name{
+  font-size:9px;
+  color:var(--text2);
+  font-weight:600;
+  max-width:64px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.merge-slot .slot-remove{
+  position:absolute;
+  top:-6px;right:-6px;
+  width:18px;height:18px;
+  background:var(--red);
+  color:#fff;
+  border-radius:50%;
+  font-size:10px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,0.3);
+  transition:var(--transition);
+  z-index:5;
+}
+.merge-slot .slot-remove:hover{transform:scale(1.2)}
+.merge-plus{
+  font-size:18px;
+  color:var(--text3);
+  opacity:0.5;
+  font-weight:300;
+  flex-shrink:0;
+}
+.merge-arrow-row{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  width:100%;
+  position:relative;
+}
+.merge-arrow-row::before{
+  content:'';
+  position:absolute;
+  top:50%;left:15%;right:15%;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(212,175,55,0.15),transparent);
+}
+.merge-arrow-icon{
+  font-size:22px;
+  color:var(--gold);
+  animation:mergeArrowPulse 2s ease-in-out infinite;
+  filter:drop-shadow(0 0 6px rgba(212,175,55,0.4));
+  position:relative;
+  z-index:1;
+}
+.merge-result{
+  width:80px;
+  height:92px;
+  border:2px dashed rgba(212,175,55,0.3);
+  border-radius:var(--radius-md);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  background:linear-gradient(145deg,rgba(212,175,55,0.08),rgba(255,107,0,0.03));
+  position:relative;
+  animation:resultIdle 3s ease-in-out infinite;
+  box-shadow:inset 0 2px 8px rgba(0,0,0,0.2);
+  overflow:hidden;
+}
+.merge-result::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:radial-gradient(circle at 50% 50%,rgba(212,175,55,0.05),transparent 70%);
+  pointer-events:none;
+}
+.merge-result.ready{
+  border-style:solid;
+  border-color:var(--gold);
+  animation:readyPulse 2s ease-in-out infinite;
+  background:linear-gradient(145deg,rgba(212,175,55,0.15),rgba(255,107,0,0.06));
+}
+.merge-result .result-placeholder{
+  font-size:32px;
+  opacity:0.4;
+  filter:grayscale(0.5);
+}
+.merge-result .result-hint{
+  font-size:9px;
+  color:var(--gold);
+  opacity:0.5;
+}
+.merge-result .result-icon{
+  font-size:34px;
+  line-height:1;
+  filter:drop-shadow(0 2px 6px rgba(212,175,55,0.4));
+}
+.merge-result .result-name{
+  font-size:9px;
+  color:var(--gold);
+  font-weight:600;
+  max-width:72px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.merge-result .result-quality{
+  font-size:8px;
+  font-weight:700;
+}
+.merge-actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  justify-content:space-between;
+  width:100%;
+  flex-wrap:wrap;
+}
+.merge-actions .merge-cost-info{
+  font-size:12px;
+  color:var(--text2);
+}
+.merge-actions .merge-cost-info b{
+  font-weight:700;
+}
+.merge-actions .merge-btn-group{
+  display:flex;
+  gap:8px;
+}
+.merge-actions .btn-merge-clear{
+  padding:8px 16px;
+  border:1px solid var(--border);
+  background:transparent;
+  color:var(--text3);
+  cursor:pointer;
+  border-radius:var(--radius-sm);
+  font-size:12px;
+  font-family:inherit;
+  transition:var(--transition);
+}
+.merge-actions .btn-merge-clear:hover{
+  border-color:var(--red);
+  color:var(--red);
+  background:rgba(255,71,87,0.08);
+}
+.merge-actions .btn-merge-go{
+  padding:10px 24px;
+  border:none;
+  background:linear-gradient(135deg,rgba(212,175,55,0.2),rgba(212,175,55,0.08));
+  color:var(--gold);
+  cursor:pointer;
+  border-radius:var(--radius-md);
+  font-size:14px;
+  font-weight:700;
+  font-family:inherit;
+  transition:var(--transition-bounce);
+  letter-spacing:0.5px;
+  box-shadow:0 0 0 1px rgba(212,175,55,0.3),0 4px 16px rgba(0,0,0,0.2);
+  position:relative;
+  overflow:hidden;
+}
+.merge-actions .btn-merge-go:hover:not(:disabled){
+  background:linear-gradient(135deg,rgba(212,175,55,0.35),rgba(212,175,55,0.15));
+  box-shadow:0 0 20px rgba(212,175,55,0.3),0 4px 20px rgba(0,0,0,0.3);
+  transform:translateY(-2px);
+}
+.merge-actions .btn-merge-go:active:not(:disabled){
+  transform:scale(0.97);
+}
+.merge-actions .btn-merge-go:disabled{
+  opacity:0.35;
+  cursor:not-allowed;
+  filter:grayscale(0.5);
+  box-shadow:none;
+}
 
 /* 建筑卡片 */
 .building-card{background:linear-gradient(145deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-bottom:6px;display:flex;gap:8px;align-items:center;transition:var(--transition)}
@@ -10466,23 +10718,39 @@ function renderMerge(el){
         </div>
         
         <!-- 融合槽位 -->
-        <div style="display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin-bottom:12px">
-          <div class="merge-slot" id="merge-slot-0" style="width:70px;height:80px">?</div>
-          <div style="font-size:20px;color:var(--text3)">+</div>
-          <div class="merge-slot" id="merge-slot-1" style="width:70px;height:80px">?</div>
-          <div style="font-size:20px;color:var(--text3)">+</div>
-          <div class="merge-slot" id="merge-slot-2" style="width:70px;height:80px">?</div>
-          <div style="font-size:24px;color:var(--gold);margin:0 8px">→</div>
-          <div class="merge-result" id="merge-result" style="width:70px;height:80px;background:linear-gradient(135deg,rgba(255,215,0,.1),rgba(255,107,0,.05));border:2px dashed rgba(255,215,0,.3)">?</div>
+        <div class="merge-fusion-area">
+          <div class="merge-input-row">
+            <div class="merge-slot" id="merge-slot-0" onclick="removeMergeSlot(0)">
+              <span class="slot-placeholder">?</span>
+              <span class="slot-hint">点击添加</span>
+            </div>
+            <span class="merge-plus">+</span>
+            <div class="merge-slot" id="merge-slot-1" onclick="removeMergeSlot(1)">
+              <span class="slot-placeholder">?</span>
+              <span class="slot-hint">点击添加</span>
+            </div>
+            <span class="merge-plus">+</span>
+            <div class="merge-slot" id="merge-slot-2" onclick="removeMergeSlot(2)">
+              <span class="slot-placeholder">?</span>
+              <span class="slot-hint">点击添加</span>
+            </div>
+          </div>
+          <div class="merge-arrow-row">
+            <span class="merge-arrow-icon">⚗️</span>
+          </div>
+          <div class="merge-result" id="merge-result">
+            <span class="result-placeholder">?</span>
+            <span class="result-hint">融合结果</span>
+          </div>
         </div>
         
         ${bondHtml}
         
-        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">
-          <div style="font-size:12px">💰 消耗: <b style="color:${canAfford?'var(--gold)':'var(--red)'}">${mergeCost}</b> 金币</div>
-          <div class="btn-group">
-            <button class="btn btn-sm" onclick="clearMerge()">清空</button>
-            <button class="btn btn-primary btn-sm" id="merge-btn" onclick="doMerge()" ${selectedHeroes.length<2||!canAfford?'disabled':''}>⚗️ 开始融合</button>
+        <div class="merge-actions">
+          <div class="merge-cost-info">💰 消耗: <b style="color:${canAfford?'var(--gold)':'var(--red)'}">${mergeCost}</b> 金币</div>
+          <div class="merge-btn-group">
+            <button class="btn-merge-clear" onclick="clearMerge()">清空</button>
+            <button class="btn-merge-go" id="merge-btn" onclick="doMerge()" ${selectedHeroes.length<2||!canAfford?'disabled':''}>⚗️ 开始融合</button>
           </div>
         </div>
         
@@ -10659,12 +10927,13 @@ function updateMergeUI(){
     const el=document.getElementById('merge-slot-'+i);
     const hero=slots[i]?G.heroes.find(h=>h.uid===slots[i]):null;
     if(hero){
-      el.innerHTML='<div style="text-align:center"><div style="font-size:28px">'+hero.icon+'</div><div class="text-xs q-'+hero.quality+'">'+hero.name+'</div><div class="text-xs text-dim">Lv.'+hero.level+'</div></div>';
-      el.classList.add('filled','quality-'+hero.quality);
+      el.innerHTML='<span class="slot-icon">'+hero.icon+'</span><span class="slot-name q-'+hero.quality+'">'+hero.name+'</span><span class="slot-remove" onclick="event.stopPropagation();removeMergeSlot('+i+')">×</span>';
+      el.className='merge-slot filled quality-'+hero.quality;
+      el.onclick=null;
     }else{
-      el.innerHTML='?';
-      el.classList.remove('filled');
+      el.innerHTML='<span class="slot-placeholder">?</span><span class="slot-hint">点击添加</span>';
       el.className='merge-slot';
+      el.onclick=(function(idx){return function(){openMergeSlotPicker(idx)}})(i);
     }
   }
   const activeSlots=slots.filter(Boolean);
@@ -10678,7 +10947,8 @@ function updateMergeUI(){
       // 预览融合结果（需要金手指开启 showMergeResult 才显示）
       if(G_cheats.enabled && G_cheats.showMergeResult){
         var preview=generateFusedHero(heroes);
-        resultEl.innerHTML='<div style="text-align:center"><div style="font-size:32px">'+preview.icon+'</div><div class="text-xs q-'+preview.quality+'" style="font-weight:bold">'+preview.name+'</div><div class="text-xs text-dim">'+ROLES[preview.role].icon+' '+ROLES[preview.role].name+'</div></div>';
+        resultEl.innerHTML='<span class="result-icon">'+preview.icon+'</span><span class="result-name q-'+preview.quality+'">'+preview.name+'</span><span class="result-quality q-'+preview.quality+'">'+QUALITY_NAMES[preview.quality]+'</span>';
+        resultEl.className='merge-result ready';
         var skillNames=preview.skills.map(function(s){return SKILLS[s]?SKILLS[s].icon+SKILLS[s].name:s}).join(' ');
         previewEl.innerHTML='<span class="text-green">✓ 可融合：'+preview.icon+' '+preview.name+' ('+QUALITY_NAMES[preview.quality]+')</span>'
           +'<br><span class="text-xs text-dim">❤️'+preview.maxHP+' ⚔️'+preview.atk+' 🛡️'+preview.def+' 🏃'+preview.spd+' 💧'+preview.maxMP+'</span>'
@@ -10687,15 +10957,17 @@ function updateMergeUI(){
         var bondPrev=detectMergeBond(heroes);
         var qIdx=heroes.map(function(h){return QUALITIES.indexOf(h.quality)});
         var mQ=Math.max.apply(null,qIdx);
-        var cost=(mQ+1)*1000;
+        var cost=(mQ+1)*200;
         var bondStr=bondPrev?'<br><span class="merge-bond-tag">'+bondPrev.name+'</span> <span style="color:#5dade2;font-size:11px">'+bondPrev.desc+'</span>':'';
-        resultEl.innerHTML='<div style="text-align:center"><div style="font-size:32px">❓</div><div class="text-xs text-dim">???</div></div>';
+        resultEl.innerHTML='<span class="result-icon" style="animation:float 2s ease-in-out infinite">❓</span><span class="result-name" style="color:var(--text3)">???</span>';
+        resultEl.className='merge-result ready';
         previewEl.innerHTML='<span class="text-green">✓ 已选择 '+heroes.length+' 个英雄，可进行融合</span>'
           +'<br><span class="text-xs text-dim">💰 消耗 '+cost+' 金币'+bondStr+'</span>';
       }
       btn.disabled=false;
     }else{
-      resultEl.innerHTML='?';
+      resultEl.innerHTML='<span class="result-placeholder">?</span><span class="result-hint">融合结果</span>';
+      resultEl.className='merge-result';
       previewEl.innerHTML='<span class="text-red">英雄不存在</span>';
       btn.disabled=true;
     }
@@ -10717,6 +10989,11 @@ function doMerge(){
 function clearMerge(){
   window._mergeSlots=[null,null,null];
   renderMerge(document.getElementById('content'));
+}
+
+function removeMergeSlot(slotIdx){
+  window._mergeSlots[slotIdx]=null;
+  updateMergeUI();
 }
 
 // 更新单个融合槽位UI
