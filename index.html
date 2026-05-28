@@ -7333,11 +7333,13 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
         let dmg=r.dmg;
         if(t.shield>0){const absorbed=Math.min(t.shield,dmg);t.shield-=absorbed;dmg-=absorbed}
         t.hp=Math.max(0,t.hp-dmg);
-        const healAmt=Math.floor(dmg*0.5);
+        // 变异技能吸血从50%提升到70%
+        const drainRate=isMutated?0.7:0.5;
+        const healAmt=Math.floor(dmg*drainRate);
         user.hp=Math.min(user.maxHP,user.hp+healAmt);
-        logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+'，对 '+t.icon+t.name+' 造成 '+dmg+' 伤害，恢复 '+healAmt+' 生命','skill');
+        logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+(isMutated?' 🧬':'')+'，对 '+t.icon+t.name+' 造成 '+dmg+' 伤害，恢复 '+healAmt+' 生命'+(isMutated?' ✨变异+40%吸血':''),'skill');
         showFloat(t,'-'+dmg,'damage');animUnit(t,'hit',300);
-        showFloat(user,'+'+healAmt,'heal');animUnit(user,'heal-target',500);
+        showFloat(user,'+'+healAmt+(isMutated?'🧬':''),'heal');animUnit(user,'heal-target',500);
         if(t.hp<=0){t.alive=false;logFn(t.icon+' '+t.name+' 倒下了...','death');animUnit(t,'dying',700)}
       });break;
     case 'debuff':
@@ -8043,8 +8045,9 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials){
   // 如果有变异技能，添加专门的变异提示区域（可点击查看详情）
   var mutateBanner='';
   if(hasMutated&&mutatedNames.length>0){
-    var skillIdsJson=JSON.stringify(mutatedSkillIds);
-    mutateBanner='<div style="margin:10px 0;padding:10px 14px;background:linear-gradient(135deg,rgba(168,85,247,.25),rgba(239,68,68,.15));border:1px solid #d4a0ff;border-radius:10px;text-align:center;cursor:pointer;box-shadow:0 0 16px rgba(168,85,247,.2)" onclick="event.stopPropagation();showMutatedSkillsDetail('+skillIdsJson+')">'
+    // 使用单引号包裹的JSON字符串，避免HTML属性引号冲突
+    var skillIdsJson=JSON.stringify(mutatedSkillIds).replace(/"/g,"'").replace(/'/g,"\\'");
+    mutateBanner='<div style="margin:10px 0;padding:10px 14px;background:linear-gradient(135deg,rgba(168,85,247,.25),rgba(239,68,68,.15));border:1px solid #d4a0ff;border-radius:10px;text-align:center;cursor:pointer;box-shadow:0 0 16px rgba(168,85,247,.2)" onclick="event.stopPropagation();showMutatedSkillsDetail(JSON.parse(this.dataset.skillIds))" data-skill-ids=\''+JSON.stringify(mutatedSkillIds)+'\'>'
       +'<div style="font-size:14px;color:#d4a0ff;font-weight:bold;margin-bottom:4px">🧬 技能变异</div>'
       +'<div style="font-size:12px;color:var(--text2)">'+mutatedNames.join('、')+' 发生了变异</div>'
       +'<div style="font-size:10px;color:#a855f7;margin-top:6px;padding:2px 8px;background:rgba(168,85,247,.15);border-radius:8px;display:inline-block">点击查看详情</div>'
@@ -14029,6 +14032,7 @@ function renderCheatFloatPanel(){
     html += '<div style="font-size:12px;color:var(--purple);margin-bottom:8px">⚗️ 融合相关</div>';
     html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">';
     html += '<button class="btn btn-sm '+(G_cheats.forceMutation?'btn-primary':'')+'" onclick="cheatForceMutation();renderCheatFloatPanel()">☣️强制异变</button>';
+    html += '<button class="btn btn-sm '+(G_cheats.forceSkillMutate?'btn-primary':'')+'" onclick="cheatForceSkillMutate();renderCheatFloatPanel()">🧬技能变异</button>';
     html += '<button class="btn btn-sm '+(G_cheats.showMergeResult?'btn-primary':'')+'" onclick="cheatShowMergeResult();renderCheatFloatPanel()">🔮显示结果</button>';
     html += '<button class="btn btn-sm '+(G_cheats.forceQuality==='legendary'?'btn-primary':'')+'" onclick="cheatForceQuality('+(G_cheats.forceQuality==='legendary'?'null':"'legendary'")+');renderCheatFloatPanel()">⚡强制传说</button>';
     html += '<button class="btn btn-sm '+(G_cheats.forceQuality==='mythic'?'btn-primary':'')+'" onclick="cheatForceQuality('+(G_cheats.forceQuality==='mythic'?'null':"'mythic'")+');renderCheatFloatPanel()">🔥强制神话</button>';
