@@ -7540,6 +7540,7 @@ function renderCurrentTab(){
     case 'codex': renderCodex(contentEl);break;
     case 'achievements': renderAchievements(contentEl);break;
     case 'leaderboard': renderLeaderboard(contentEl);break;
+    case 'breakthrough': contentEl.innerHTML=renderBreakthroughUI();break;
     case 'cheats': renderCheats(contentEl);break;
   }
 }
@@ -10340,9 +10341,12 @@ function renderBuildings(el){
 }
 
 function renderArena(el){
+  initBreakthroughSystem();
   var arenaLevel=G.buildings.arena||0;
   var remaining=getArenaRemainingChallenges();
   var dailyLimit=getArenaDailyLimit();
+  var totalWins=G.arenaState.totalWins||0;
+  var config=ARENA_CONFIG_V2;
   
   if(arenaLevel===0){
     el.innerHTML=`<div class="panel">
@@ -10358,87 +10362,104 @@ function renderArena(el){
   var teamPower=0;
   teamHeroes.forEach(function(h){teamPower+=calcHeroPower(h)});
   
-  // 构建难度卡片
-  var difficulties=['easy','normal','hard','nightmare','mythic'];
-  var diffCards=difficulties.map(function(diff){
-    var unlockLevel=ARENA_CONFIG.difficultyUnlock[diff]||1;
-    var locked=arenaLevel<unlockLevel;
+  // 构建难度选择器
+  var diffCards=[];
+  config.difficulties.forEach(function(diff){
+    var unlocked=totalWins>=config.unlockRequirements[diff];
     var noChallenges=remaining<=0;
-    var disabled=locked||noChallenges;
-    var icon=ARENA_CONFIG.difficultyIcons[diff];
-    var name=ARENA_CONFIG.difficultyNames[diff];
-    var desc=ARENA_CONFIG.difficultyDesc[diff];
-    var mult=ARENA_CONFIG.difficultyMultiplier[diff];
-    var extras=ARENA_CONFIG.rewardExtras[diff];
+    var disabled=!unlocked||noChallenges;
+    var bgColor=unlocked?'var(--panel2)':'rgba(0,0,0,0.3)';
+    var borderColor=unlocked?'var(--border-light)':'var(--border)';
     
-    var bgColors={easy:'rgba(46,213,115,0.1)',normal:'rgba(255,193,7,0.1)',hard:'rgba(255,107,107,0.1)',nightmare:'rgba(139,92,246,0.1)',mythic:'rgba(220,50,50,0.12)'};
-    var textColors={easy:'#2ed573',normal:'#ffc107',hard:'#ff6b6b',nightmare:'#b06ce6',mythic:'#ff4444'};
+    // 奖励预览
+    var rewardMult=config.rewardMultiplier[diff];
+    var matDrop=config.materialDrop[diff]||{};
+    var matDrops=Object.keys(matDrop).map(function(k){
+      var mat=BREAKTHROUGH_MATERIALS[k];
+      return mat?mat.icon+Math.round(matDrop[k]*100)+'%':'';
+    }).filter(Boolean).join(' ');
     
-    var rewardPreview='💰金币 · 🏆声望';
-    if(extras.expPotionMax>0)rewardPreview+=' · 🧪药水';
-    if(extras.ironMax>0)rewardPreview+=' · ⛏️铁矿';
-    if(extras.gemChance>0)rewardPreview+=' · 💎宝石';
-    if(extras.stone)rewardPreview+=' · 🪨石材';
-    
-    return `<div style="flex:1;min-width:140px;background:${bgColors[diff]};border-radius:10px;padding:14px 10px;text-align:center;position:relative;${locked?'opacity:.4':''}">
-      ${locked?'<div style="position:absolute;top:6px;right:8px;font-size:10px;color:var(--text3)">🔒 Lv.'+unlockLevel+'</div>':''}
-      <div style="font-size:28px;margin-bottom:6px">${icon}</div>
-      <div style="font-weight:bold;color:${textColors[diff]};font-size:14px">${name}</div>
-      <div class="text-xs text-dim" style="margin-top:4px;line-height:1.5">${desc}</div>
-      <div style="margin-top:8px;padding:6px;background:rgba(0,0,0,.2);border-radius:6px">
-        <div class="text-xs" style="color:var(--gold)">奖励×${mult}</div>
-        <div class="text-xs text-dim" style="margin-top:2px">${rewardPreview}</div>
-      </div>
-      <button class="btn btn-sm mt-8" onclick="startArenaBattle('${diff}')" ${disabled?'disabled':''}>${locked?'未解锁':'挑战'}</button>
-    </div>`;
+    diffCards.push(`<div class="arena-diff-btn ${unlocked?'':'locked'}" onclick="${unlocked&&remaining>0?`startArenaBattleV2('${diff}')`:''}">
+      <div style="font-size:22px;margin-bottom:4px">${config.difficultyIcons[diff]}</div>
+      <div style="font-weight:bold;font-size:12px">${config.difficultyNames[diff]}</div>
+      <div style="font-size:9px;color:var(--text2);margin-top:2px">${config.difficultyDesc[diff]}</div>
+      <div style="font-size:10px;color:var(--gold);margin-top:4px">奖励×${rewardMult}</div>
+      ${matDrops?'<div style="font-size:9px;color:var(--purple)">'+matDrops+'</div>':''}
+      ${!unlocked?'<div style="font-size:9px;color:var(--red);margin-top:2px">🔒需'+config.unlockRequirements[diff]+'胜</div>':''}
+      ${unlocked&&remaining<=0?'<div style="font-size:9px;color:var(--red);margin-top:2px">今日次数用完</div>':''}
+    </div>`);
+  });
+  
+  // 连胜加成显示
+  var winStreak=G.arenaState.winStreak||0;
+  var streakBonus=0;
+  if(winStreak>=10)streakBonus=1.0;
+  else if(winStreak>=5)streakBonus=0.5;
+  else if(winStreak>=3)streakBonus=0.3;
+  else if(winStreak>=2)streakBonus=0.2;
+  
+  // 突破材料库存
+  var matHTML=Object.keys(BREAKTHROUGH_MATERIALS).map(function(k){
+    var m=BREAKTHROUGH_MATERIALS[k];
+    var cnt=G.breakthroughMaterials[k]||0;
+    return '<div style="background:rgba(0,0,0,.2);padding:6px 8px;border-radius:6px;text-align:center"><div style="font-size:14px">'+m.icon+'</div><div style="font-size:10px;color:var(--text2)">'+m.name+'</div><div style="font-size:12px;font-weight:bold;color:var(--gold)">'+cnt+'</div></div>';
   }).join('');
   
   el.innerHTML=`<div class="panel">
-    <div class="panel-title"><span class="icon">🏟️</span> 竞技场 <span class="text-blue">Lv.${arenaLevel}</span></div>
+    <div class="panel-title"><span class="icon">🏟️</span> 竞技场V2 <span class="text-blue">Lv.${arenaLevel}</span></div>
     
     <!-- 统计信息 -->
     <div style="background:rgba(0,0,0,0.2);border-radius:8px;padding:12px;margin-bottom:14px;border:1px solid rgba(255,255,255,.03)">
       <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;align-items:center">
         <span>今日剩余: <b style="color:#2ed573">${remaining}/${dailyLimit}</b></span>
-        <span>连胜: <b style="color:#ffd700">${G.arenaState.winStreak||0}</b></span>
+        <span>连胜: <b style="color:#ffd700">${winStreak}</b>${streakBonus>0?' <span style="color:#2ed573">+'+Math.round(streakBonus*100)+'%</span>':''}</span>
         <span>最高连胜: <b style="color:#ffa500">${G.arenaState.maxWinStreak||0}</b></span>
-        <span>胜/负: <b style="color:#4a9eff">${G.arenaState.totalWins||0}</b>/<b style="color:#ff6b6b">${G.arenaState.totalLosses||0}</b></span>
+        <span>胜/负: <b style="color:#4a9eff">${totalWins}</b>/<b style="color:#ff6b6b">${G.arenaState.totalLosses||0}</b></span>
       </div>
       <div style="margin-top:6px;font-size:11px;color:var(--text3)">
-        队伍战力: <b style="color:var(--gold)">${teamPower}</b> · 英雄数: <b>${teamHeroes.length}</b> · 最高难度: <b style="color:var(--gold)">${ARENA_CONFIG.difficultyNames[G.arenaState.highestDifficulty||'easy']||'无'}</b>
+        队伍战力: <b style="color:var(--gold)">${teamPower}</b> · 英雄数: <b>${teamHeroes.length}</b> · 最高难度: <b style="color:var(--gold)">${config.difficultyNames[G.arenaState.highestDifficulty||'easy']||'无'}</b>
       </div>
     </div>
-    
-    <div class="text-dim text-sm mb-8">对手根据你的队伍等级、品质和战力动态生成，高难度拥有合理阵容搭配</div>
     
     <!-- 难度选择 -->
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
-      ${diffCards}
+    <div class="text-dim text-sm mb-8">通过胜利解锁更高难度 · 高难度掉落突破材料</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:16px">
+      ${diffCards.join('')}
     </div>
     
-    <!-- 连胜加成 -->
-    <div style="background:rgba(255,215,0,0.08);border-radius:8px;padding:12px;border:1px solid rgba(255,215,0,.1)">
-      <div style="font-weight:bold;margin-bottom:8px;color:#ffd700">🔥 连胜加成</div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px">
-        <span>2连胜: <b style="color:#2ed573">+20%</b></span>
-        <span>3连胜: <b style="color:#2ed573">+30%</b></span>
-        <span>5连胜: <b style="color:#ffa500">+50%</b></span>
-        <span>10连胜: <b style="color:#ff6b6b">+100%</b></span>
+    <!-- 突破材料 -->
+    <div style="margin-top:10px">
+      <div style="font-weight:bold;margin-bottom:8px;color:var(--purple)">⚡ 突破材料库存</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
+        ${matHTML}
       </div>
+      <div class="text-xs text-dim" style="margin-top:6px">击败高难度对手获得突破材料，用于提升英雄品质上限</div>
     </div>
     
     <!-- 玩法说明 -->
-    <div style="background:rgba(0,0,0,.15);border-radius:8px;padding:12px;margin-top:10px">
-      <div style="font-weight:bold;margin-bottom:6px;color:var(--blue)">💡 竞技场玩法</div>
+    <div style="background:rgba(0,0,0,.15);border-radius:8px;padding:12px;margin-top:12px">
+      <div style="font-weight:bold;margin-bottom:6px;color:var(--blue)">💡 竞技场V2说明</div>
       <div class="text-xs text-dim" style="line-height:1.8">
-        <div>• 对手等级、品质与你的队伍匹配，难度越高对手越强</div>
-        <div>• 噩梦/神话难度的敌方拥有合理阵容搭配（坦克+输出+辅助）</div>
-        <div>• 高难度敌方英雄会携带额外技能，需要针对性调整阵容策略</div>
-        <div>• 丰厚奖励：金币、声望、经验药水、铁矿、宝石、石材</div>
-        <div>• 连胜越高奖励越多，失败则连胜清零</div>
+        <div>• 入门/简单难度无需解锁，新手也能挑战</div>
+        <div>• 困难及以上难度敌方拥有阵容搭配和羁绊效果</div>
+        <div>• 挑战成功增加连胜，失败连胜清零</div>
+        <div>• 高难度掉落突破材料，可用于英雄品质突破</div>
+        <div>• 神话/地狱难度掉落隐藏核心，可突破至隐藏品质</div>
       </div>
     </div>
   </div>`;
+}
+
+// 竞技场V2开始战斗
+function startArenaBattleV2(difficulty){
+  initBreakthroughSystem();
+  var config=ARENA_CONFIG_V2;
+  var teamHeroes=G.team.filter(function(h){return h!==null});
+  if(teamHeroes.length===0){
+    showToast('请先编队英雄');
+    return;
+  }
+  startArenaBattle(difficulty);
 }
 
 
