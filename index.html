@@ -176,160 +176,6 @@ initBreakthroughSystem();
 <!-- TapTap H5 Debug SDK (生产环境请移除) -->
 <script>
 (function(){var taptapDebug=window.TTED||{log:function(){console.log.apply(console,arguments)}};window.TTED=taptapDebug;console.log('[TapTap H5] SDK已加载');})();
-
-// ==================== 属性突破系统 V2 ====================
-// 属性上限配置
-var STAT_QUALITY_CAP={
-  common:{maxHP:800,atk:120,def:100,spd:80,maxMP:150},
-  rare:{maxHP:2000,atk:280,def:240,spd:180,maxMP:350},
-  epic:{maxHP:5000,atk:650,def:550,spd:420,maxMP:800},
-  legendary:{maxHP:9000,atk:999,def:999,spd:750,maxMP:999},
-  mythic:{maxHP:9999,atk:999,def:999,spd:900,maxMP:999},
-  hidden:{maxHP:14999,atk:1499,def:1499,spd:1300,maxMP:1499}
-};
-
-// 突破材料配置
-var BREAKTHROUGH_MATERIALS={
-  rare:{name:'突破精华',icon:'💧',cost:{gold:5000,material:10},arenaDrop:{chance:0.3,min:1,max:2}},
-  epic:{name:'突破结晶',icon:'💎',cost:{gold:15000,material:15},arenaDrop:{chance:0.25,min:1,max:2}},
-  legendary:{name:'传说碎片',icon:'⚜️',cost:{gold:50000,material:20},arenaDrop:{chance:0.2,min:1,max:2}},
-  mythic:{name:'神话核心',icon:'🔮',cost:{gold:150000,material:30},arenaDrop:{chance:0.15,min:1,max:2}},
-  hidden:{name:'隐藏核心',icon:'✦',cost:{gold:500000,material:50},arenaDrop:{chance:0.1,min:1,max:1}}
-};
-
-// 竞技场V2配置
-var ARENA_CONFIG_V2={
-  difficulties:['entry','easy','normal','hard','nightmare','hell','mythic'],
-  unlockRequirements:{entry:0,easy:3,normal:10,hard:25,nightmare:50,hell:100,mythic:200},
-  difficultyNames:{entry:'入门',easy:'简单',normal:'普通',hard:'困难',nightmare:'噩梦',hell:'地狱',mythic:'神话'},
-  difficultyIcons:{entry:'🟢',easy:'🟢',normal:'🟡',hard:'🟠',nightmare:'🔴',hell:'💀',mythic:'👹'},
-  difficultyDesc:{entry:'等级×50%·新手',easy:'等级×70%·基础',normal:'等级×90%·标准',hard:'等级×110%·优化',nightmare:'等级×130%·完美',hell:'等级×150%·极限',mythic:'等级×180%·超越'},
-  statMultiplier:{entry:0.5,easy:0.7,normal:0.9,hard:1.1,nightmare:1.3,hell:1.5,mythic:1.8},
-  maxQuality:{entry:'common',easy:'rare',normal:'epic',hard:'legendary',nightmare:'legendary',hell:'mythic',mythic:'hidden'},
-  skillCount:{entry:1,easy:2,normal:2,hard:3,nightmare:3,hell:4,mythic:5},
-  equipmentLevel:{entry:'none',easy:'basic',normal:'standard',hard:'enhanced',nightmare:'epic',hell:'legendary',mythic:'mythic'},
-  bondEnabled:{entry:false,easy:false,normal:false,hard:true,nightmare:true,hell:true,mythic:true},
-  rewardMultiplier:{entry:0.5,easy:1,normal:1.5,hard:2.5,nightmare:4,hell:6,mythic:10},
-  materialDrop:{entry:{rare:0.1},easy:{rare:0.3,epic:0.05},normal:{rare:0.2,epic:0.25,legendary:0.02},hard:{epic:0.2,legendary:0.15,mythic:0.01},nightmare:{epic:0.1,legendary:0.25,mythic:0.08},hell:{legendary:0.2,mythic:0.15,hidden:0.05},mythic:{legendary:0.1,mythic:0.25,hidden:0.15}}
-};
-
-// 初始化突破系统
-function initBreakthroughSystem(){
-  if(!G.breakthroughMaterials){
-    G.breakthroughMaterials={rare:0,epic:0,legendary:0,mythic:0,hidden:0};
-  }
-  if(!G.heroBreakthrough)G.heroBreakthrough={};
-}
-
-// 获取突破后品质
-function getNextQuality(current,tier){
-  var qualities=['common','rare','epic','legendary','mythic','hidden'];
-  var idx=qualities.indexOf(current);
-  if(idx===-1)return current;
-  return qualities[Math.min(idx+tier,qualities.length-1)];
-}
-
-// 执行突破
-function performBreakthrough(hero){
-  initBreakthroughSystem();
-  var nextQ=getNextQuality(hero.quality,1);
-  var mat=BREAKTHROUGH_MATERIALS[nextQ];
-  if(!mat){
-    showToast('❌ 已达最高品质');
-    return false;
-  }
-  if((G.breakthroughMaterials[nextQ]||0)<mat.cost.material){
-    showToast('❌ '+mat.name+'不足（需'+mat.cost.material+'个）');
-    return false;
-  }
-  if((G.resources.gold||0)<mat.cost.gold){
-    showToast('❌ 金币不足');
-    return false;
-  }
-  G.breakthroughMaterials[nextQ]-=mat.cost.material;
-  G.resources.gold-=mat.cost.gold;
-  if(!G.heroBreakthrough[hero.uid])G.heroBreakthrough[hero.uid]={tier:0,count:0};
-  G.heroBreakthrough[hero.uid].tier++;
-  G.heroBreakthrough[hero.uid].count++;
-  var newCap=STAT_QUALITY_CAP[nextQ];
-  hero.quality=nextQ;
-  var hpRatio=hero.hp/hero.maxHP;
-  hero.maxHP=Math.min(Math.floor(hero.maxHP*1.2),newCap.maxHP);
-  hero.hp=Math.floor(hero.maxHP*hpRatio);
-  hero.atk=Math.min(Math.floor(hero.atk*1.15),newCap.atk);
-  hero.def=Math.min(Math.floor(hero.def*1.15),newCap.def);
-  hero.spd=Math.min(Math.floor(hero.spd*1.1),newCap.spd);
-  hero.maxMP=Math.min(Math.floor(hero.maxMP*1.1),newCap.maxMP);
-  hero.mp=Math.min(hero.mp,hero.maxMP);
-  if(!hero.bonusSkills)hero.bonusSkills=[];
-  if(hero.bonusSkills.length<3){
-    var roleTpls=HERO_TEMPLATES.filter(function(t){return t.role===hero.role&&t.quality!=='common'});
-    var pool=[];
-    roleTpls.forEach(function(t){t.skills.forEach(function(s){if(hero.skills.indexOf(s)<0&&hero.bonusSkills.indexOf(s)<0&&pool.indexOf(s)<0)pool.push(s);});});
-    if(pool.length>0)hero.bonusSkills.push(pool[Math.floor(Math.random()*pool.length)]);
-  }
-  showToast('✨ '+hero.name+'突破成功！品质→'+QUALITY_NAMES[nextQ]);
-  saveGame();
-  return true;
-}
-
-// 渲染突破界面
-function renderBreakthroughUI(){
-  initBreakthroughSystem();
-  var html='<div class="panel"><div class="panel-title">⚡ 属性突破系统</div>';
-  html+='<div style="font-size:12px;color:var(--text2);margin-bottom:12px;">通过竞技场获得突破材料，提升英雄品质上限</div>';
-  html+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;">';
-  Object.keys(BREAKTHROUGH_MATERIALS).forEach(function(k){
-    var m=BREAKTHROUGH_MATERIALS[k];
-    var cnt=G.breakthroughMaterials[k]||0;
-    html+='<div style="background:rgba(0,0,0,.2);padding:8px;border-radius:8px;text-align:center;">';
-    html+='<div style="font-size:20px;">'+m.icon+'</div>';
-    html+='<div style="font-size:10px;color:var(--text2);">'+m.name+'</div>';
-    html+='<div style="font-size:14px;font-weight:bold;color:var(--gold);">'+cnt+'</div></div>';
-  });
-  html+='</div><div style="max-height:300px;overflow-y:auto;">';
-  G.heroes.forEach(function(hero){
-    var nextQ=getNextQuality(hero.quality,1);
-    if(!nextQ||nextQ===hero.quality)return;
-    var m=BREAKTHROUGH_MATERIALS[nextQ];
-    var ok=(G.breakthroughMaterials[nextQ]||0)>=m.cost.material&&(G.resources.gold||0)>=m.cost.gold;
-    html+='<div style="background:var(--panel2);padding:10px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">';
-    html+='<div style="font-size:28px;">'+hero.icon+'</div>';
-    html+='<div style="flex:1;"><div style="font-weight:bold;">'+hero.name+'</div>';
-    html+='<div style="font-size:10px;color:var(--text2);">'+QUALITY_NAMES[hero.quality]+' → '+QUALITY_NAMES[nextQ]+'</div></div>';
-    html+='<div style="text-align:right;font-size:11px;"><div>'+m.icon+'×'+m.cost.material+'</div><div>💰'+m.cost.gold+'</div></div>';
-    html+='<button class="btn btn-sm '+(ok?'btn-primary':'')+'" '+(ok?'onclick="performBreakthroughById('+hero.uid+')"':'disabled')+'>'+(ok?'突破':'不足')+'</button></div>';
-  });
-  html+='</div></div>';
-  return html;
-}
-
-function performBreakthroughById(uid){
-  var hero=G.heroes.find(function(h){return h.uid===uid;});
-  if(hero){performBreakthrough(hero);renderCurrentTab();}
-}
-
-function renderArenaDifficultySelect(){
-  initBreakthroughSystem();
-  var config=ARENA_CONFIG_V2;
-  var totalWins=G.arenaState.totalWins||0;
-  var html='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">';
-  config.difficulties.forEach(function(diff){
-    var unlocked=totalWins>=config.unlockRequirements[diff];
-    html+='<div class="arena-diff-btn '+(unlocked?'':'locked')+'" onclick="'+(unlocked?'selectArenaDifficulty(\''+diff+'\')':'')+'">';
-    html+='<div style="font-size:20px;">'+config.difficultyIcons[diff]+'</div>';
-    html+='<div style="font-weight:bold;">'+config.difficultyNames[diff]+'</div>';
-    html+='<div style="font-size:10px;color:var(--text2);">'+config.difficultyDesc[diff]+'</div>';
-    if(!unlocked)html+='<div style="font-size:9px;color:var(--red);">🔒需'+config.unlockRequirements[diff]+'胜</div>';
-    html+='</div>';
-  });
-  html+='</div>';
-  return html;
-}
-
-// 游戏初始化时自动初始化突破系统
-initBreakthroughSystem();
-
 </script>
 <script src="https://ms-sdk-release.vivo.com.cn/h5/debug/TTED.js">
 // ==================== 属性突破系统 V2 ====================
@@ -9909,19 +9755,17 @@ function renderEquip(el){
     +'.equip-item .equip-enhance{color:var(--blue);font-size:10px;margin-left:2px}'
     +'.equip-item .equip-set-badge{position:absolute;top:-4px;right:-4px;font-size:10px;background:var(--panel);border:1px solid var(--gold);border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)}'
     +'.equip-item .equip-hero{font-size:10px;color:var(--text2);margin-left:auto}'
-    +'/* ===== 突破系统样式 ===== */
-.arena-diff-btn{padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;transition:all .2s}
-.arena-diff-btn:hover{transform:translateY(-2px);border-color:var(--gold);box-shadow:0 4px 12px rgba(0,0,0,.2)}
-.arena-diff-btn.locked{opacity:0.5;cursor:not-allowed}
-.arena-diff-btn.locked:hover{transform:none;border-color:var(--border);box-shadow:none}
-.arena-diff-btn.active{background:var(--panel);border-color:var(--gold);box-shadow:0 0 8px rgba(201,162,39,.3)}
-
-/* 突破按钮特效 */
-@keyframes breakthroughGlow{0%,100%{box-shadow:0 0 5px rgba(168,85,247,.3)}50%{box-shadow:0 0 15px rgba(168,85,247,.6)}}
-.btn-breakthrough{animation:breakthroughGlow 2s ease infinite;border-color:var(--purple);color:var(--purple)}
-.btn-breakthrough:hover{background:linear-gradient(135deg,#1a0a2a,#2a1a3a);box-shadow:0 0 15px rgba(168,85,247,.4)}
-
-</style>'
+    +'/* ===== 突破系统样式 ===== */'
+    +'.arena-diff-btn{padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;transition:all .2s}'
+    +'.arena-diff-btn:hover{transform:translateY(-2px);border-color:var(--gold);box-shadow:0 4px 12px rgba(0,0,0,.2)}'
+    +'.arena-diff-btn.locked{opacity:0.5;cursor:not-allowed}'
+    +'.arena-diff-btn.locked:hover{transform:none;border-color:var(--border);box-shadow:none}'
+    +'.arena-diff-btn.active{background:var(--panel);border-color:var(--gold);box-shadow:0 0 8px rgba(201,162,39,.3)}'
+    +'/* 突破按钮特效 */'
+    +'@keyframes breakthroughGlow{0%,100%{box-shadow:0 0 5px rgba(168,85,247,.3)}50%{box-shadow:0 0 15px rgba(168,85,247,.6)}}'
+    +'.btn-breakthrough{animation:breakthroughGlow 2s ease infinite;border-color:var(--purple);color:var(--purple)}'
+    +'.btn-breakthrough:hover{background:linear-gradient(135deg,#1a0a2a,#2a1a3a);box-shadow:0 0 15px rgba(168,85,247,.4)}'
+    +'</style>'
     +'<div class="panel">'
     +'<div class="panel-title"><span class="icon">⚡</span> 快捷操作</div>'
     +'<div class="btn-group">'
