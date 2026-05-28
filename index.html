@@ -501,7 +501,7 @@ body{
   font-weight:300;
 }
 
-/* ===== 底部导航 - 现代浮动风格 ===== */
+/* ===== 底部导航 - 现代浮动风格（支持滚动） ===== */
 #sidebar{
   position:fixed;
   bottom:0;
@@ -512,14 +512,23 @@ body{
   border-top:1px solid var(--border);
   display:flex;
   align-items:center;
-  justify-content:space-around;
+  justify-content:flex-start;
   padding:0 8px 8px;
   z-index:50;
-  gap:2px;
+  gap:4px;
   flex-shrink:0;
   box-shadow:0 -8px 32px rgba(0,0,0,0.4);
   backdrop-filter:blur(20px) saturate(180%);
   -webkit-backdrop-filter:blur(20px) saturate(180%);
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+  scroll-behavior:smooth;
+  -webkit-overflow-scrolling:touch;
+}
+#sidebar::-webkit-scrollbar{
+  display:none;
 }
 #sidebar::before{
   content:'';
@@ -529,7 +538,8 @@ body{
   background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent);
 }
 #sidebar .nav-btn{
-  width:auto;
+  width:56px;
+  min-width:56px;
   height:52px;
   border:none;
   background:transparent;
@@ -542,11 +552,10 @@ body{
   align-items:center;
   justify-content:center;
   transition:var(--transition-bounce);
-  flex:1;
-  min-width:0;
   padding:6px 4px;
   position:relative;
   gap:4px;
+  flex-shrink:0;
 }
 #sidebar .nav-btn:hover{
   color:var(--text2);
@@ -7727,12 +7736,12 @@ function detectMergeBond(heroes){
   return null;
 }
 
-// 获取撤销合成费用（按结果英雄品质）
+// 获取撤销合成费用（按结果英雄品质）- 已降低
 function getUndoMergeCost(){
   if(!G.lastMerge)return 0;
   var quality=G.lastMerge.result.quality;
-  var costs={common:1000,rare:2000,epic:5000,legendary:10000,mythic:20000,hidden:50000};
-  return costs[quality]||1000;
+  var costs={common:100,rare:200,epic:500,legendary:1000,mythic:2000,hidden:5000};
+  return costs[quality]||100;
 }
 
 // 撤销合成
@@ -7802,10 +7811,10 @@ function executeMerge(heroUids){
     return false;
   }
   
-  // === 合成消耗：金币 = 材料最高品质 × 1000 ===
+  // === 合成消耗：金币 = 材料最高品质 × 200（已降低）===
   var qualities=heroes.map(function(h){return QUALITIES.indexOf(h.quality)});
   var maxQIdx=Math.max.apply(null,qualities);
-  var mergeCost = (maxQIdx+1) * 1000;
+  var mergeCost = (maxQIdx+1) * 200;
   if((G.resources.gold||0) < mergeCost){
     showToast('💰 金币不足！需要 '+mergeCost+' 金币');
     return false;
@@ -10373,7 +10382,7 @@ function renderMerge(el){
   var streakInfo=getMergeStreakInfo();
   var qualities=selectedHeroes.map(function(h){return QUALITIES.indexOf(h.quality)});
   var maxQ=qualities.length>0?Math.max.apply(null,qualities):0;
-  var mergeCost=selectedHeroes.length>=2?(maxQ+1)*1000:0;
+  var mergeCost=selectedHeroes.length>=2?(maxQ+1)*200:0;
   var bondPreview=selectedHeroes.length>=2?detectMergeBond(selectedHeroes):null;
   var canAfford=(G.resources.gold||0)>=mergeCost;
   
@@ -10430,7 +10439,7 @@ function renderMerge(el){
         <summary style="cursor:pointer;color:var(--text2);font-size:12px;padding:6px 0">📖 查看融合规则</summary>
         <div class="text-dim text-xs" style="line-height:1.8;padding:8px;background:rgba(0,0,0,.2);border-radius:6px;margin-top:6px">
           <div>⚗️ 任意融合：任何2-3个英雄都可以融合</div>
-          <div>💰 合成消耗：金币 = (最高品质+1) × 1000</div>
+          <div>💰 合成消耗：金币 = (最高品质+1) × 200</div>
           <div>🎲 属性继承：材料平均值 × (0.6~1.8)随机</div>
           <div>🍀 幸运值：每次普通合成+1，提升异变概率</div>
           <div>🎯 保底机制：连续10次无特殊触发，下次品质+1</div>
@@ -10799,7 +10808,7 @@ function updateMergeButtonState(){
 
   var qualities=usedUids.filter(Boolean).map(function(uid){var h=G.heroes.find(function(x){return x.uid===uid});return h?QUALITIES.indexOf(h.quality):0;});
   var maxQ=qualities.length>0?Math.max.apply(null,qualities):0;
-  var mergeCost=selectedCount>=2?(maxQ+1)*1000:0;
+  var mergeCost=selectedCount>=2?(maxQ+1)*200:0;
   var canAfford=(G.resources.gold||0)>=mergeCost;
 
   btn.disabled=selectedCount<2||!canAfford;
