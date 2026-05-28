@@ -6464,9 +6464,14 @@ function generateFusedHero(heroes){
   if(!G.mergeTotalCount) G.mergeTotalCount=0;
   G.mergeTotalCount++;
   
-  // === 隐藏规则：前20次必出神话，前100次必出隐藏（不显示）===
-  var hiddenRuleMythic=G.mergeTotalCount<=20;
-  var hiddenRuleHidden=G.mergeTotalCount<=100&&G.mergeTotalCount>20;
+  // === 初始化保底计数器 ===
+  if(!G.mergeMythicPity) G.mergeMythicPity=0; // 神话保底计数
+  if(!G.mergeHiddenPity) G.mergeHiddenPity=0; // 隐藏保底计数
+  
+  // === 保底规则：前20次内没出神话，第20次保底出神话 ===
+  // === 保底规则：第21-100次内没出隐藏，第100次保底出隐藏 ===
+  var mythicGuarantee = G.mergeMythicPity >= 19; // 第20次保底
+  var hiddenGuarantee = G.mergeTotalCount > 20 && G.mergeHiddenPity >= 79; // 第100次保底(21-100共80次)
   
   // === 幸运值系统：影响异变概率 ===
   var luckyBonus = (G.mergeLucky||0) * 0.005; // 每点幸运+0.5%
@@ -6490,7 +6495,7 @@ function generateFusedHero(heroes){
   var inputIds=heroes.map(function(h){return h.id}).sort().join('+');
   var hash=hashStr(inputIds);
   
-  // 1. 确定新品质：金手指强制 > 隐藏规则 > 正常计算
+  // 1. 确定新品质：金手指强制 > 保底规则 > 正常计算
   var qualities=heroes.map(function(h){return QUALITIES.indexOf(h.quality)});
   var maxQ=Math.max.apply(null,qualities);
   var avgQ=Math.floor(qualities.reduce(function(s,v){return s+v},0)/qualities.length);
@@ -6504,27 +6509,33 @@ function generateFusedHero(heroes){
     newQIdx=QUALITIES.indexOf(newQuality);
   }
   
-  // 2. 判定特殊结果（优先级：隐藏规则 > 隐藏 > 神话 > 传说 > 品质+1 > 异变 > 普通）
-  // 金手指强制异变
+  // 2. 判定特殊结果
   var isMutation=G_cheats.forceMutation||streakForceMutation||Math.random()<effectiveMutationRate;
   var isQualityUp=false;
   var isDirectLegendary=false;
   var isDirectMythic=false;
   var isDirectHidden=false;
+  var isGuaranteeMythic=false; // 神话保底标记
+  var isGuaranteeHidden=false; // 隐藏保底标记
   
-  // === 隐藏规则判定（最高优先级，不显示）===
-  if(hiddenRuleHidden){
-    // 前100次（21-100次）必出隐藏
+  // === 保底判定（最高优先级，不显示）===
+  if(hiddenGuarantee){
+    // 第100次保底出隐藏
     newQuality='hidden';
     newQIdx=QUALITIES.indexOf('hidden');
     isMutation=true;
     isDirectHidden=true;
-  }else if(hiddenRuleMythic){
-    // 前20次必出神话
+    isGuaranteeHidden=true;
+    G.mergeHiddenPity=0; // 重置隐藏保底计数
+  }else if(mythicGuarantee){
+    // 第20次保底出神话
     newQuality='mythic';
     newQIdx=QUALITIES.indexOf('mythic');
     isMutation=true;
     isDirectMythic=true;
+    isGuaranteeMythic=true;
+    G.mergeMythicPity=0; // 重置神话保底计数
+    G.mergeHiddenPity=0; // 开始计算隐藏保底
   }else{
     // 正常随机判定
     // 0.1% 隐藏品质（最高优先级，无视当前品质）
@@ -6533,6 +6544,9 @@ function generateFusedHero(heroes){
       newQIdx=QUALITIES.indexOf('hidden');
       isMutation=true;
       isDirectHidden=true;
+      // 出隐藏后，重置两个保底计数
+      G.mergeMythicPity=0;
+      G.mergeHiddenPity=0;
     }
     // 1% 直接神话
     else if(Math.random()<G_MYTHIC_DIRECT_RATE){
@@ -6540,6 +6554,9 @@ function generateFusedHero(heroes){
       newQIdx=QUALITIES.indexOf('mythic');
       isMutation=true;
       isDirectMythic=true;
+      // 出神话后，重置神话保底，开始计算隐藏保底
+      G.mergeMythicPity=0;
+      G.mergeHiddenPity=0;
     }
     // 3% 直接传说
     else if(Math.random()<G_LEGENDARY_DIRECT_RATE){
@@ -6578,6 +6595,14 @@ function generateFusedHero(heroes){
     }
     // 材料品质差距大时，属性倍率下限提升到1.0
     var upsetBonus = (qualityGap>=2 && Math.random()<0.3);
+    
+    // === 保底计数器递增 ===
+    if(!isDirectMythic && G.mergeTotalCount <= 20){
+      G.mergeMythicPity++;
+    }
+    if(!isDirectHidden && G.mergeTotalCount > 20 && G.mergeTotalCount <= 100){
+      G.mergeHiddenPity++;
+    }
   }
   
   // === 合成羁绊检测 ===
