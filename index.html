@@ -1747,6 +1747,9 @@ body{
 .hd-passive-name{font-weight:bold;color:var(--gold);font-size:12px}
 .hd-passive-desc{font-size:11px;color:var(--text);margin-top:4px;line-height:1.5}
 .hd-skill-card{background:rgba(0,0,0,.2);border-radius:8px;padding:10px;display:flex;gap:10px;align-items:flex-start}
+.hd-skill-clickable{transition:transform .15s ease,box-shadow .15s ease}
+.hd-skill-clickable:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(168,85,247,.3)}
+.hd-skill-clickable:active{transform:scale(.97)}
 .hd-skill-icon{font-size:24px;flex-shrink:0;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.05);border-radius:8px}
 .hd-skill-info{flex:1;min-width:0}
 .hd-skill-name{font-weight:bold;font-size:12px}
@@ -4625,28 +4628,52 @@ function showModal(title,contentHTML,buttons){
 }
 function closeModal(){document.getElementById('modal-root').innerHTML=''}
 
-// 显示单个技能详情
-// 显示单个技能详情
-function showSkillDetail(skillId){
+// 显示单个技能详情（isMutated: 是否变异技能，默认false）
+function showSkillDetail(skillId,isMutated){
   var skillData=SKILLS?SKILLS[skillId]:null;
   if(!skillData)return;
+  isMutated=!!isMutated;
   var html='<div style="text-align:center;padding:20px 0">'+
     '<div style="font-size:48px;margin-bottom:12px;filter:drop-shadow(0 0 12px rgba(168,85,247,0.5))">'+skillData.icon+'</div>'+
-    '<div style="font-size:18px;font-weight:bold;color:#d4a0ff;margin-bottom:8px">'+skillData.name+'</div>'+
-    '<div style="font-size:12px;color:#a855f7;margin-bottom:16px;padding:4px 12px;background:rgba(168,85,247,0.15);border-radius:12px;display:inline-block">🧬 变异技能</div>'+
-    '<div style="margin:12px 16px;padding:10px;background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(239,68,68,0.1));border:1px solid rgba(168,85,247,0.3);border-radius:8px;text-align:left">'+
-    '<div style="font-size:12px;color:#d4a0ff;font-weight:bold;margin-bottom:6px">✨ 变异增幅效果</div>';
+    '<div style="font-size:18px;font-weight:bold;color:'+(isMutated?'#d4a0ff':'var(--text)')+';margin-bottom:8px">'+skillData.name+'</div>';
+  if(isMutated){
+    html+='<div style="font-size:12px;color:#a855f7;margin-bottom:16px;padding:4px 12px;background:rgba(168,85,247,0.15);border-radius:12px;display:inline-block">🧬 变异技能</div>';
+  }
+  // 技能数值信息（普通 vs 变异对比）
+  html+='<div style="margin:12px 16px;padding:10px;background:'+(isMutated?'linear-gradient(135deg,rgba(168,85,247,0.15),rgba(239,68,68,0.1))':'rgba(0,0,0,0.2)')+';border:1px solid '+(isMutated?'rgba(168,85,247,0.3)':'var(--border)')+';border-radius:8px;text-align:left">';
+  if(isMutated){
+    html+='<div style="font-size:12px;color:#d4a0ff;font-weight:bold;margin-bottom:6px">✨ 变异增幅效果</div>';
+  }else{
+    html+='<div style="font-size:12px;color:var(--text2);font-weight:bold;margin-bottom:6px">📊 技能数值</div>';
+  }
   if(skillData.type==='damage'){
-    html+='<div style="font-size:13px;color:var(--green)">⚔️ 伤害倍率 ×1.5（+50%）</div>';
+    var baseMult=skillData.mult||1.0;
+    html+='<div style="font-size:13px;color:var(--text)">⚔️ 伤害倍率: <b>'+baseMult+'x</b></div>';
+    if(isMutated) html+='<div style="font-size:13px;color:var(--green)">✨ 变异后: <b>'+(baseMult*1.5).toFixed(1)+'x</b>（+50%）</div>';
   }
   if(skillData.type==='heal'){
-    html+='<div style="font-size:13px;color:var(--green)">💚 治疗效果 ×1.4（+40%）</div>';
+    var baseHeal=skillData.healPct?Math.round(skillData.healPct*100):0;
+    html+='<div style="font-size:13px;color:var(--text)">💚 治疗效果: <b>'+baseHeal+'%</b> 最大生命</div>';
+    if(isMutated) html+='<div style="font-size:13px;color:var(--green)">✨ 变异后: <b>'+Math.round(baseHeal*1.4)+'%</b>（+40%）</div>';
   }
   if(skillData.type==='shield'){
-    html+='<div style="font-size:13px;color:var(--green)">🛡️ 护盾值 ×1.4（+40%）</div>';
+    var baseShield=skillData.shieldPct?Math.round(skillData.shieldPct*100):0;
+    html+='<div style="font-size:13px;color:var(--text)">🛡️ 护盾值: <b>'+baseShield+'%</b> 最大生命</div>';
+    if(isMutated) html+='<div style="font-size:13px;color:var(--green)">✨ 变异后: <b>'+Math.round(baseShield*1.4)+'%</b>（+40%）</div>';
   }
   if(skillData.type==='drain'){
-    html+='<div style="font-size:13px;color:var(--green)">⚔️ 伤害倍率 ×1.5 | 💚 吸血 ×1.4</div>';
+    var baseDmg=skillData.mult||1.0;
+    html+='<div style="font-size:13px;color:var(--text)">⚔️ 伤害倍率: <b>'+baseDmg+'x</b> | 💚 吸血: <b>50%</b></div>';
+    if(isMutated) html+='<div style="font-size:13px;color:var(--green)">✨ 变异后: <b>'+(baseDmg*1.5).toFixed(1)+'x</b> 伤害 | <b>70%</b> 吸血（+50%伤害/+40%吸血）</div>';
+  }
+  if(skillData.type==='buff'){
+    html+='<div style="font-size:13px;color:var(--text)">💪 增益效果（变异不影响）</div>';
+  }
+  if(skillData.type==='debuff'){
+    html+='<div style="font-size:13px;color:var(--text)">🌑 减益效果（变异不影响）</div>';
+  }
+  if(skillData.type==='cleanse'){
+    html+='<div style="font-size:13px;color:var(--text)">✨ 净化效果（变异不影响）</div>';
   }
   html+='</div>'+
     '<div style="font-size:14px;color:var(--text);line-height:1.8;padding:0 16px">'+skillData.desc+'</div>';
@@ -4657,7 +4684,7 @@ function showSkillDetail(skillId){
     html+='<div style="font-size:12px;color:var(--text2)">⏱️ 冷却: '+skillData.cooldown+'回合</div>';
   }
   html+='</div>';
-  showModal('技能详情',html,[]);
+  showModal(isMutated?'变异技能详情':'技能详情',html,[]);
 }
 
 // 显示多个变异技能详情
@@ -4667,15 +4694,36 @@ function showMutatedSkillsDetail(skillIds){
   skillIds.forEach(function(skillId){
     var skillData=SKILLS?SKILLS[skillId]:null;
     if(skillData){
+      // 构建变异增幅对比信息
+      var boostInfo='';
+      if(skillData.type==='damage'){
+        var bm=skillData.mult||1.0;
+        boostInfo='<div style="font-size:11px;color:var(--green);margin-top:4px">✨ 伤害: '+bm+'x → <b>'+(bm*1.5).toFixed(1)+'x</b>（+50%）</div>';
+      }else if(skillData.type==='heal'){
+        var bh=skillData.healPct?Math.round(skillData.healPct*100):0;
+        boostInfo='<div style="font-size:11px;color:var(--green);margin-top:4px">✨ 治疗: '+bh+'% → <b>'+Math.round(bh*1.4)+'%</b>（+40%）</div>';
+      }else if(skillData.type==='shield'){
+        var bs=skillData.shieldPct?Math.round(skillData.shieldPct*100):0;
+        boostInfo='<div style="font-size:11px;color:var(--green);margin-top:4px">✨ 护盾: '+bs+'% → <b>'+Math.round(bs*1.4)+'%</b>（+40%）</div>';
+      }else if(skillData.type==='drain'){
+        var bd=skillData.mult||1.0;
+        boostInfo='<div style="font-size:11px;color:var(--green);margin-top:4px">✨ 伤害: '+bd+'x → <b>'+(bd*1.5).toFixed(1)+'x</b> | 吸血: 50% → <b>70%</b></div>';
+      }else{
+        boostInfo='<div style="font-size:11px;color:var(--text3);margin-top:4px">（此技能类型不受变异增幅影响）</div>';
+      }
       html+='<div style="padding:12px;margin-bottom:12px;background:linear-gradient(135deg,rgba(168,85,247,0.12),rgba(239,68,68,0.08));border:1px solid rgba(168,85,247,0.4);border-radius:8px">'+
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
         '<span style="font-size:24px;filter:drop-shadow(0 0 8px rgba(168,85,247,0.4))">'+skillData.icon+'</span>'+
         '<span style="font-size:15px;font-weight:bold;color:#d4a0ff">'+skillData.name+'</span>'+
         '<span style="font-size:10px;color:#a855f7;padding:2px 6px;background:rgba(168,85,247,0.2);border-radius:8px">变异</span>'+
         '</div>'+
-        '<div style="font-size:12px;color:var(--text2);line-height:1.6">'+skillData.desc+'</div>';
+        '<div style="font-size:12px;color:var(--text2);line-height:1.6">'+skillData.desc+'</div>'+
+        boostInfo;
       if(skillData.mpCost){
         html+='<div style="margin-top:6px;font-size:11px;color:var(--text3)">💧 '+skillData.mpCost+' MP</div>';
+      }
+      if(skillData.cooldown){
+        html+='<div style="font-size:11px;color:var(--text3)">⏱️ '+skillData.cooldown+'回合冷却</div>';
       }
       html+='</div>';
     }
@@ -7988,7 +8036,7 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials){
       mutatedSkillIds.push(s);
     }
     var tip=skillData?' title="🧬 变异技能 - '+(skillData.desc||'')+'"':'';
-    return '<span class="merge-result-skill'+(isMut?' merge-skill-mut':'')+'"'+tip+' data-skill-id="'+s+'" onclick="event.stopPropagation();showSkillDetail(\''+s+'\')">'+(isMut?'🧬':'')+displayName+(isMut?'✨':'')+'</span>';
+    return '<span class="merge-result-skill'+(isMut?' merge-skill-mut':'')+'"'+tip+' data-skill-id="'+s+'" onclick="event.stopPropagation();showSkillDetail(\''+s+'\','+!!isMut+')">'+(isMut?'🧬':'')+displayName+(isMut?'✨':'')+'</span>';
   }).join('');
   
   // 如果有变异技能，添加专门的变异提示区域（可点击查看详情）
@@ -9318,7 +9366,7 @@ function showHeroDetail(uid){
       if(sk.critBonus)metaParts.push('暴击+'+Math.round(sk.critBonus*100)+'%');
       if(sk.alwaysHit)metaParts.push('必中');
       if(sk.dot)metaParts.push(sk.dot.name+':'+Math.round(sk.dot.dmgPct*100)+'%/回合');
-      return `<div class="hd-skill-card" style="margin-bottom:8px${isMutated?';border:1px solid #d4a0ff;background:rgba(168,85,247,.08)':''}">
+      return `<div class="hd-skill-card${isMutated?' hd-skill-clickable':''}" style="margin-bottom:8px${isMutated?';border:1px solid #d4a0ff;background:rgba(168,85,247,.08);cursor:pointer':''}"${isMutated?' onclick="event.stopPropagation();showSkillDetail(\''+sid+'\',true)"':''}>
         <div class="hd-skill-icon">${sk.icon}</div>
         <div class="hd-skill-info">
           <div class="hd-skill-name">${isMutated?'🧬 ':''}${sk.name} ${isBonus?'<span class="text-purple text-xs">★融合</span>':''}${isMutated?'<span class="text-xs" style="color:#d4a0ff">✨变异</span>':''}</div>
@@ -9326,6 +9374,7 @@ function showHeroDetail(uid){
           <div class="hd-skill-meta">
             <span style="color:${typeColor};background:rgba(255,255,255,.05);padding:1px 6px;border-radius:3px">${typeLabel}</span>
             ${metaParts.map(p=>'<span>'+p+'</span>').join('')}
+            ${isMutated?'<span style="color:#d4a0ff;background:rgba(168,85,247,.15)">🧬变异+详情</span>':''}
           </div>
         </div>
       </div>`;
