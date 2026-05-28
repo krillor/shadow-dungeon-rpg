@@ -9528,56 +9528,53 @@ function renderMerge(el){
   quickActionsHTML+='<button class="btn btn-sm btn-danger" onclick="clearMerge()">🗑️ 清空</button>';
   quickActionsHTML+='</div>';
   
-  // 生成可用英雄列表HTML（按品质分组显示）
-  var heroesHTML='';
+  // 生成可用英雄列表HTML（扁平列表，与融合框风格一致）
+  var heroesHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px">';
+  
+  // 按品质排序：hidden > mythic > legendary > epic > rare > common
   var qualityOrder=['hidden','mythic','legendary','epic','rare','common'];
+  var sortedHeroes=[];
   qualityOrder.forEach(function(q){
-    var heroes=heroesByQuality[q];
-    if(!heroes||heroes.length===0) return;
-    
-    heroesHTML+='<div style="margin-bottom:12px">';
-    heroesHTML+='<div style="font-size:12px;color:var(--text2);margin-bottom:6px;padding-left:4px;border-left:2px solid var(--'+q+')"><span class="q-'+q+'">'+QUALITY_NAMES[q]+'</span> ('+heroes.length+'个) <button class="btn btn-sm" style="font-size:10px;padding:2px 6px" onclick="quickAddMergeHeroes(\''+q+'\')">全选</button></div>';
-    heroesHTML+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
-    
-    heroes.forEach(function(h){
-      var isUsed=usedSet.has(h.uid);
-      var isInTeam=teamUids.includes(h.uid);
-      
-      // 上阵英雄显示为禁用状态
-      if(isInTeam){
-        heroesHTML+='<div class="hero-card-mini quality-'+h.quality+'" style="cursor:not-allowed;opacity:0.4;filter:grayscale(0.5);min-width:140px;max-width:180px;padding:10px 12px;border-radius:10px" title="已上阵">'
-          +'<div style="display:flex;align-items:center;gap:4px">'
-          +'<span style="font-size:16px">'+h.icon+'</span>'
-          +'<div style="flex:1;min-width:0">'
-          +'<div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+h.name+'</div>'
-          +'<div style="font-size:9px;color:var(--text3)">Lv.'+h.level+' [上阵]</div>'
-          +'</div></div></div>';
-        return;
-      }
-      // 锁定英雄显示为禁用状态
-      if(h.locked){
-        heroesHTML+='<div class="hero-card-mini quality-'+h.quality+'" style="cursor:not-allowed;opacity:0.4;filter:grayscale(0.5);min-width:140px;max-width:180px;padding:10px 12px;border-radius:10px" title="已锁定">'
-          +'<div style="display:flex;align-items:center;gap:4px">'
-          +'<span style="font-size:16px">'+h.icon+'</span>'
-          +'<div style="flex:1;min-width:0">'
-          +'<div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+h.name+'</div>'
-          +'<div style="font-size:9px;color:var(--text3)">Lv.'+h.level+' 🔒</div>'
-          +'</div></div></div>';
-        return;
-      }
-      heroesHTML+='<div class="hero-card-mini quality-'+h.quality+(isUsed?' used':'')+'" onclick="'+(isUsed?'removeMergeHero':'addMergeHero')+'('+h.uid+')" style="cursor:pointer;opacity:'+(isUsed?'0.5':'1')+';min-width:140px;max-width:180px;padding:10px 12px;border-radius:10px;position:relative" title="点击'+(isUsed?'移除':'添加')+'">'
-        +'<div style="display:flex;align-items:center;gap:4px">'
-        +'<span style="font-size:16px">'+h.icon+'</span>'
-        +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+h.name+(isUsed?' ✓':'')+'</div>'
-        +'<div style="font-size:9px;color:var(--text3)">Lv.'+h.level+' '+ROLES[h.role].icon+'</div>'
-        +'</div></div></div>';
-    });
-    
-    heroesHTML+='</div></div>';
+    var group=filteredHeroes.filter(function(h){return h.quality===q});
+    sortedHeroes=sortedHeroes.concat(group);
   });
   
-  if(filteredHeroes.length===0){
+  sortedHeroes.forEach(function(h){
+    var isUsed=usedSet.has(h.uid);
+    var isInTeam=teamUids.includes(h.uid);
+    
+    // 上阵英雄显示为禁用状态
+    if(isInTeam){
+      heroesHTML+='<div class="merge-slot" style="opacity:0.35;filter:grayscale(0.5);cursor:not-allowed;position:relative">'
+        +'<div style="font-size:24px;text-align:center">'+h.icon+'</div>'
+        +'<div style="font-size:10px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text2)">'+h.name+'</div>'
+        +'<div style="font-size:9px;text-align:center;color:var(--text3)">Lv.'+h.level+'</div>'
+        +'<div style="position:absolute;top:2px;right:4px;font-size:8px;color:var(--red)">上阵</div>'
+        +'</div>';
+      return;
+    }
+    // 锁定英雄显示为禁用状态
+    if(h.locked){
+      heroesHTML+='<div class="merge-slot" style="opacity:0.35;filter:grayscale(0.5);cursor:not-allowed;position:relative">'
+        +'<div style="font-size:24px;text-align:center">'+h.icon+'</div>'
+        +'<div style="font-size:10px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text2)">'+h.name+'</div>'
+        +'<div style="font-size:9px;text-align:center;color:var(--text3)">Lv.'+h.level+'</div>'
+        +'<div style="position:absolute;top:2px;right:4px;font-size:8px;color:var(--gold)">🔒</div>'
+        +'</div>';
+      return;
+    }
+    // 可用英雄 - 与融合框merge-slot样式一致
+    var borderStyle=isUsed?'border:2px solid var(--gold);box-shadow:0 0 8px rgba(255,215,0,.3)':'';
+    heroesHTML+='<div class="merge-slot" onclick="'+(isUsed?'removeMergeHero':'addMergeHero')+'('+h.uid+')" style="cursor:pointer;opacity:'+(isUsed?'0.8':'1')+';'+borderStyle+'">'
+      +'<div style="font-size:24px;text-align:center">'+h.icon+'</div>'
+      +'<div style="font-size:10px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span class="q-'+h.quality+'">'+h.name+'</span>'+(isUsed?' ✓':'')+'</div>'
+      +'<div style="font-size:9px;text-align:center;color:var(--text3)">Lv.'+h.level+' '+ROLES[h.role].icon+'</div>'
+      +'</div>';
+  });
+  
+  heroesHTML+='</div>';
+  
+  if(sortedHeroes.length===0){
     heroesHTML='<div class="text-dim text-center" style="padding:20px">没有符合条件的英雄</div>';
   }
   
@@ -9673,7 +9670,6 @@ function renderMerge(el){
   }
   
   el.innerHTML=`
-    ${streakHtml}
     <div class="panel">
       <div class="panel-title"><span class="icon">📖</span> 融合规则</div>
       <div class="text-dim text-sm" style="line-height:2">
@@ -9690,7 +9686,7 @@ function renderMerge(el){
       </div>
     </div>
     <div class="panel merge-glow">
-      <div class="panel-title"><span class="icon">⚗️</span> 英雄融合</div>
+      <div class="panel-title"><span class="icon">⚗️</span> 英雄融合 ${streakHtml?'<span style="float:right;font-size:12px">'+streakHtml+'</span>':''}</div>
       <div class="merge-lucky-bar">
         <div>
           <div class="merge-lucky-label">🍀 幸运值</div>
@@ -9724,7 +9720,6 @@ function renderMerge(el){
     <div class="panel">
       <div class="panel-title"><span class="icon">👥</span> 可用英雄 (${heroCount})</div>
       ${qualityFilterHTML}
-      ${quickActionsHTML}
       <div style="max-height:400px;overflow-y:auto">${heroesHTML}</div>
     </div>
     ${historyHtml}
