@@ -6525,59 +6525,60 @@ function generateFusedHero(heroes){
     newQIdx=QUALITIES.indexOf('mythic');
     isMutation=true;
     isDirectMythic=true;
-  }else
-  
-  // 0.1% 隐藏品质（最高优先级，无视当前品质）
-  if(Math.random()<G_HIDDEN_DIRECT_RATE){
-    newQuality='hidden';
-    newQIdx=QUALITIES.indexOf('hidden');
-    isMutation=true;
-    isDirectHidden=true;
-  }
-  // 1% 直接神话
-  else if(Math.random()<G_MYTHIC_DIRECT_RATE){
-    newQuality='mythic';
-    newQIdx=QUALITIES.indexOf('mythic');
-    isMutation=true;
-    isDirectMythic=true;
-  }
-  // 3% 直接传说
-  else if(Math.random()<G_LEGENDARY_DIRECT_RATE){
-    newQuality='legendary';
-    newQIdx=QUALITIES.indexOf('legendary');
-    isMutation=true;
-    isDirectLegendary=true;
-  }
-  // 5% 品质+1（不超过隐藏）
-  else if(Math.random()<G_QUALITY_UP_RATE && newQIdx<QUALITIES.length-1){
-    newQIdx++;
-    newQuality=QUALITIES[newQIdx];
-    isMutation=true;
-    isQualityUp=true;
-  }
-  
-  // === 保底触发：连续10次无特殊结果，强制品质+1 ===
-  if(pityTrigger && !isDirectHidden && !isDirectMythic && !isDirectLegendary && !isQualityUp){
-    if(newQIdx < QUALITIES.length-1){
+  }else{
+    // 正常随机判定
+    // 0.1% 隐藏品质（最高优先级，无视当前品质）
+    if(Math.random()<G_HIDDEN_DIRECT_RATE){
+      newQuality='hidden';
+      newQIdx=QUALITIES.indexOf('hidden');
+      isMutation=true;
+      isDirectHidden=true;
+    }
+    // 1% 直接神话
+    else if(Math.random()<G_MYTHIC_DIRECT_RATE){
+      newQuality='mythic';
+      newQIdx=QUALITIES.indexOf('mythic');
+      isMutation=true;
+      isDirectMythic=true;
+    }
+    // 3% 直接传说
+    else if(Math.random()<G_LEGENDARY_DIRECT_RATE){
+      newQuality='legendary';
+      newQIdx=QUALITIES.indexOf('legendary');
+      isMutation=true;
+      isDirectLegendary=true;
+    }
+    // 5% 品质+1（不超过隐藏）
+    else if(Math.random()<G_QUALITY_UP_RATE && newQIdx<QUALITIES.length-1){
       newQIdx++;
       newQuality=QUALITIES[newQIdx];
       isMutation=true;
       isQualityUp=true;
     }
+    
+    // === 保底触发：连续10次无特殊结果，强制品质+1 ===
+    if(pityTrigger && !isDirectHidden && !isDirectMythic && !isDirectLegendary && !isQualityUp){
+      if(newQIdx < QUALITIES.length-1){
+        newQIdx++;
+        newQuality=QUALITIES[newQIdx];
+        isMutation=true;
+        isQualityUp=true;
+      }
+    }
+    
+    // === 反转合成（以弱胜强）：所有材料品质<=稀有时，5%直接史诗 ===
+    var allLowQuality = qualities.every(function(q){return q<=1});
+    var qualityGap = maxQ - Math.min.apply(null,qualities);
+    var isUpset = false;
+    if(allLowQuality && Math.random()<0.05 && !isDirectHidden && !isDirectMythic && !isDirectLegendary){
+      newQuality='epic';
+      newQIdx=QUALITIES.indexOf('epic');
+      isMutation=true;
+      isUpset=true;
+    }
+    // 材料品质差距大时，属性倍率下限提升到1.0
+    var upsetBonus = (qualityGap>=2 && Math.random()<0.3);
   }
-  
-  // === 反转合成（以弱胜强）：所有材料品质<=稀有时，5%直接史诗 ===
-  var allLowQuality = qualities.every(function(q){return q<=1});
-  var qualityGap = maxQ - Math.min.apply(null,qualities);
-  var isUpset = false;
-  if(allLowQuality && Math.random()<0.05 && !isDirectHidden && !isDirectMythic && !isDirectLegendary){
-    newQuality='epic';
-    newQIdx=QUALITIES.indexOf('epic');
-    isMutation=true;
-    isUpset=true;
-  }
-  // 材料品质差距大时，属性倍率下限提升到1.0
-  var upsetBonus = (qualityGap>=2 && Math.random()<0.3);
   
   // === 合成羁绊检测 ===
   var bondInfo = detectMergeBond(heroes);
