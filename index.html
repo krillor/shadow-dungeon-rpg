@@ -2836,7 +2836,7 @@ let G = {
 var SAVE_KEY='shadow_dungeon_save';
 var SAVE_META_KEY='shadow_dungeon_meta';
 var MAX_SAVE_SLOTS=3;
-var MAX_AUTO_BACKUPS=5;
+var MAX_AUTO_BACKUPS=1;
 var MAX_MANUAL_BACKUPS=10;
 
 // 获取存档元数据
@@ -2885,22 +2885,23 @@ function saveGame(){
     meta.slots[slotIdx].stageProgress=G.stageProgress||1;
     meta.slots[slotIdx].heroCount=G.heroes?G.heroes.length:0;
     meta.slots[slotIdx].playTime=G.totalPlayTime||0;
-    // 自动备份（每次保存前创建自动备份）
-    var backupKey='shadow_dungeon_auto_'+Date.now();
-    localStorage.setItem(backupKey,jsonStr);
-    if(!meta.autoBackups) meta.autoBackups=[];
-    meta.autoBackups.unshift({
-      key:backupKey,
-      slotIdx:slotIdx,
-      timestamp:Date.now(),
-      stageProgress:G.stageProgress||1,
-      heroCount:G.heroes?G.heroes.length:0,
-      totalPower:calcTotalPower()
-    });
-    // 限制自动备份数量
-    while(meta.autoBackups.length>MAX_AUTO_BACKUPS){
-      var old=meta.autoBackups.pop();
-      try{localStorage.removeItem(old.key);}catch(e){}
+    // 自动备份（距离上次备份超过5分钟才创建）
+    var lastAutoBackup=meta.autoBackups&&meta.autoBackups[0]?meta.autoBackups[0].timestamp:0;
+    if(Date.now()-lastAutoBackup>5*60*1000){
+      // 清除旧备份
+      if(meta.autoBackups){
+        meta.autoBackups.forEach(function(bk){try{localStorage.removeItem(bk.key);}catch(e){}});
+      }
+      var backupKey='shadow_dungeon_auto_'+Date.now();
+      localStorage.setItem(backupKey,jsonStr);
+      meta.autoBackups=[{
+        key:backupKey,
+        slotIdx:slotIdx,
+        timestamp:Date.now(),
+        stageProgress:G.stageProgress||1,
+        heroCount:G.heroes?G.heroes.length:0,
+        totalPower:calcTotalPower()
+      }];
     }
     saveSaveMeta(meta);
     showToast('💾 已存档 (槽位'+(slotIdx+1)+')');
@@ -7685,36 +7686,36 @@ function renderTown(el){
         +'<button class="btn" style="flex:1" onclick="renderTavernRecruit()">🍺 招募</button>'
       +'</div>'
     +'</div>'
-    +'<div class="grid-2">'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
       +'<div class="town-module-btn" onclick="switchTab(\'heroes\')">'
-        +'<div class="town-module-btn-icon">⚔️</div>'
-        +'<div class="town-module-btn-name">英雄管理</div>'
-        +'<div class="town-module-btn-info">'+heroCount+' 位英雄</div>'
+        +'<div class="town-module-btn-icon">👥</div>'
+        +'<div class="town-module-btn-name">英雄</div>'
+        +'<div class="town-module-btn-info">'+heroCount+' 位</div>'
       +'</div>'
       +'<div class="town-module-btn" onclick="switchTab(\'team\')">'
-        +'<div class="town-module-btn-icon">🛡️</div>'
-        +'<div class="town-module-btn-name">队伍编成</div>'
-        +'<div class="town-module-btn-info">'+teamCount+'/6 已编入</div>'
+        +'<div class="town-module-btn-icon">⚔️</div>'
+        +'<div class="town-module-btn-name">编队</div>'
+        +'<div class="town-module-btn-info">'+teamCount+'/6</div>'
       +'</div>'
       +'<div class="town-module-btn" onclick="switchTab(\'battle\')">'
-        +'<div class="town-module-btn-icon">💀</div>'
-        +'<div class="town-module-btn-name">出征战斗</div>'
-        +'<div class="town-module-btn-info">'+(nextStage?nextStage.name:'已全部通关')+'</div>'
+        +'<div class="town-module-btn-icon">🗡️</div>'
+        +'<div class="town-module-btn-name">战斗</div>'
+        +'<div class="town-module-btn-info">第'+(G.stageProgress||1)+'关</div>'
       +'</div>'
       +'<div class="town-module-btn" onclick="switchTab(\'merge\')">'
         +'<div class="town-module-btn-icon">⚗️</div>'
-        +'<div class="town-module-btn-name">英雄合成</div>'
-        +'<div class="town-module-btn-info">'+MERGE_RECIPES.length+' 种配方</div>'
+        +'<div class="town-module-btn-name">合成</div>'
+        +'<div class="town-module-btn-info">融合</div>'
       +'</div>'
       +'<div class="town-module-btn" onclick="switchTab(\'equip\')">'
-        +'<div class="town-module-btn-icon">🗡️</div>'
-        +'<div class="town-module-btn-name">装备管理</div>'
-        +'<div class="town-module-btn-info">'+equipCount+' 件待装备</div>'
+        +'<div class="town-module-btn-icon">🛡️</div>'
+        +'<div class="town-module-btn-name">装备</div>'
+        +'<div class="town-module-btn-info">'+equipCount+' 件</div>'
       +'</div>'
       +'<div class="town-module-btn" onclick="switchTab(\'buildings\')">'
-        +'<div class="town-module-btn-icon">🏗️</div>'
-        +'<div class="town-module-btn-name">城镇建筑</div>'
-        +'<div class="town-module-btn-info">酒馆 Lv.'+G.buildings.tavern+'</div>'
+        +'<div class="town-module-btn-icon">🏰</div>'
+        +'<div class="town-module-btn-name">建筑</div>'
+        +'<div class="town-module-btn-info">Lv.'+(G.buildings.tavern||0)+'</div>'
       +'</div>'
     +'</div>'
     +(G.offlineEarnings?'<div class="daily-bonus-banner" style="cursor:pointer;background:linear-gradient(135deg,rgba(100,200,255,.15),rgba(50,150,255,.05));border-color:rgba(100,200,255,.3)" onclick="claimOfflineEarnings()">'
@@ -9679,13 +9680,13 @@ function renderMerge(el){
         <div>↩ <b>合成回溯</b>：50💎撤销最近一次合成</div>
       </div>
     </div>
-    ${historyHtml}
     <div class="panel">
       <div class="panel-title"><span class="icon">👥</span> 可用英雄 (${heroCount})</div>
       ${qualityFilterHTML}
       ${quickActionsHTML}
       <div style="max-height:400px;overflow-y:auto">${heroesHTML}</div>
     </div>
+    ${historyHtml}
   `;
   if(!window._mergeSlots) window._mergeSlots=[null,null,null];
   updateMergeUI();
