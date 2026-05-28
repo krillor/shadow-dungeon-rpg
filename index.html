@@ -4169,17 +4169,8 @@ function getArenaDailyLimit(){
 }
 
 function getArenaRemainingChallenges(){
-  // 金手指开启时无限次数
-  if(G_cheats.enabled)return 999;
-  
-  var limit=getArenaDailyLimit();
-  // 检查是否跨天重置
-  var today=new Date().toDateString();
-  if(G.arenaState.lastChallengeDate!==today){
-    G.arenaState.dailyChallengesUsed=0;
-    G.arenaState.lastChallengeDate=today;
-  }
-  return Math.max(0,limit-G.arenaState.dailyChallengesUsed);
+  // 无限制
+  return 999;
 }
 
 // 竞技场对手生成（V2 - 属性突破系统版本）
@@ -6953,7 +6944,7 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials){
       '<div style="display:flex;gap:8px;margin-top:16px">'+
         '<button class="btn btn-primary" onclick="closeMergeResult();switchTab(\'heroes\')">查看英雄</button>'+
         '<button class="btn" onclick="closeMergeResult()">继续合成</button>'+
-        (G.lastMerge?'<button class="merge-undo-btn" onclick="undoMerge()">↩ 撤销(50💎)</button>':'')+
+        (G.lastMerge?'<button class="merge-undo-btn" onclick="undoMerge()">↩ 撤销('+getUndoMergeCost()+'💰)</button>':'')+
       '</div>'+
     '</div>'+
   '</div>';
@@ -7014,21 +7005,30 @@ function detectMergeBond(heroes){
   return null;
 }
 
+// 获取撤销合成费用（按结果英雄品质）
+function getUndoMergeCost(){
+  if(!G.lastMerge)return 0;
+  var quality=G.lastMerge.result.quality;
+  var costs={common:1000,rare:2000,epic:5000,legendary:10000,mythic:20000,hidden:50000};
+  return costs[quality]||1000;
+}
+
 // 撤销合成
 function undoMerge(){
   if(!G.lastMerge){
     showToast('没有可撤销的合成');
     return;
   }
-  if((G.resources.gems||0)<50){
-    showToast('💎 宝石不足！需要50宝石');
+  var undoCost=getUndoMergeCost();
+  if((G.resources.gold||0)<undoCost){
+    showToast('💰 金币不足！需要'+undoCost+'金币');
     return;
   }
-  
+
   // 移除合成结果英雄
   var resultIdx=G.heroes.findIndex(function(h){return h.uid===G.lastMerge.result.uid});
   if(resultIdx>=0) G.heroes.splice(resultIdx,1);
-  
+
   // 恢复材料英雄
   G.lastMerge.materials.forEach(function(mat){
     var hero={
@@ -7041,8 +7041,8 @@ function undoMerge(){
     };
     G.heroes.push(hero);
   });
-  
-  G.resources.gems-=50;
+
+  G.resources.gold-=undoCost;
   G.lastMerge=null;
   closeMergeResult();
   updateResUI();
@@ -9643,7 +9643,7 @@ function renderMerge(el){
   // 回溯按钮
   var undoHtml='';
   if(G.lastMerge && (Date.now()-G.lastMerge.timestamp)<86400000){
-    undoHtml='<div style="margin-top:8px;text-align:center"><button class="merge-undo-btn" onclick="undoMerge()">↩ 撤销上次合成 (50💎)</button></div>';
+    undoHtml='<div style="margin-top:8px;text-align:center"><button class="merge-undo-btn" onclick="undoMerge()">↩ 撤销上次合成 ('+getUndoMergeCost()+'💰)</button></div>';
   }
   
   // 羁绊预览
@@ -9823,11 +9823,13 @@ function quickAddMergeHeroes(mode){
 }
 
 function addMergeHero(heroUid){
-  // 找到第一个空槽位
   for(var i=0;i<3;i++){
     if(!window._mergeSlots[i]){
       window._mergeSlots[i]=heroUid;
-      renderMerge(document.getElementById('content'));
+      updateMergeSlotUI(i, heroUid);
+      updateMergeHeroCardStyle(heroUid, true);
+      updateMergePreview();
+      updateMergeButtonState();
       return;
     }
   }
@@ -9835,11 +9837,13 @@ function addMergeHero(heroUid){
 }
 
 function removeMergeHero(heroUid){
-  // 找到并移除该英雄
   for(var i=0;i<3;i++){
     if(window._mergeSlots[i]===heroUid){
       window._mergeSlots[i]=null;
-      renderMerge(document.getElementById('content'));
+      updateMergeSlotUI(i, null);
+      updateMergeHeroCardStyle(heroUid, false);
+      updateMergePreview();
+      updateMergeButtonState();
       return;
     }
   }
@@ -9946,6 +9950,97 @@ function doMerge(){
 function clearMerge(){
   window._mergeSlots=[null,null,null];
   renderMerge(document.getElementById('content'));
+}
+
+// 更新单个融合槽位UI
+function updateMergeSlotUI(slotIdx, heroUid){
+  var slot=document.getElementById('merge-slot-'+slotIdx);
+  if(!slot)return;
+
+  if(heroUid){
+    var hero=G.heroes.find(function(h){return h.uid===heroUid});
+    if(hero){
+      slot.innerHTML='<div style="font-size:28px;text-align:center">'+hero.icon+'</div><div style="font-size:10px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+hero.name+'</div><div style="font-size:9px;text-align:center;color:var(--text3)">Lv.'+hero.level+'</div>';
+      slot.style.borderColor='var(--gold)';
+      slot.style.boxShadow='0 0 10px rgba(255,215,0,.3)';
+    }
+  }else{
+    slot.innerHTML='?';
+    slot.style.borderColor='';
+    slot.style.boxShadow='';
+  }
+}
+
+// 更新英雄卡片选中状态
+function updateMergeHeroCardStyle(heroUid, isSelected){
+  var card=document.querySelector('.hero-card[data-uid="'+heroUid+'"]');
+  if(!card)return;
+
+  if(isSelected){
+    card.style.boxShadow='0 0 12px rgba(255,215,0,.4)';
+    card.style.borderColor='var(--gold)';
+    // 添加或更新已选标记
+    var badge=card.querySelector('.merge-selected-badge');
+    if(!badge){
+      badge=document.createElement('div');
+      badge.className='merge-selected-badge';
+      badge.style.cssText='position:absolute;top:4px;right:4px;background:var(--gold);color:#000;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:bold';
+      badge.textContent='✓ 已选';
+      card.appendChild(badge);
+    }
+    // 更新点击事件
+    card.onclick=function(){removeMergeHero(heroUid);};
+  }else{
+    card.style.boxShadow='';
+    card.style.borderColor='';
+    // 移除已选标记
+    var badge=card.querySelector('.merge-selected-badge');
+    if(badge)badge.remove();
+    // 更新点击事件
+    card.onclick=function(){addMergeHero(heroUid);};
+  }
+}
+
+// 更新融合预览
+function updateMergePreview(){
+  var previewEl=document.getElementById('merge-preview');
+  if(!previewEl)return;
+
+  var usedUids=window._mergeSlots||[null,null,null];
+  var selectedHeroes=usedUids.filter(Boolean).map(function(uid){return G.heroes.find(function(h){return h.uid===uid});}).filter(Boolean);
+
+  if(selectedHeroes.length<2){
+    previewEl.innerHTML='<div class="text-dim text-sm text-center">👇 点击下方英雄卡片添加到融合槽</div>';
+    return;
+  }
+
+  // 重新计算预览（简化版）
+  var qualities=selectedHeroes.map(function(h){return QUALITIES.indexOf(h.quality)});
+  var maxQ=Math.max.apply(null,qualities);
+  var avgQ=Math.floor(qualities.reduce(function(a,b){return a+b},0)/selectedHeroes.length);
+  var previewQuality=QUALITIES[Math.min(maxQ,avgQ)];
+
+  var avgHP=Math.floor(selectedHeroes.reduce(function(s,h){return s+h.maxHP},0)/selectedHeroes.length);
+  var avgATK=Math.floor(selectedHeroes.reduce(function(s,h){return s+h.atk},0)/selectedHeroes.length);
+  var avgDEF=Math.floor(selectedHeroes.reduce(function(s,h){return s+h.def},0)/selectedHeroes.length);
+
+  previewEl.innerHTML='<div style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);border-radius:8px;padding:12px"><div style="color:var(--gold);font-weight:bold;margin-bottom:8px">🔮 融合预览</div><div style="display:flex;gap:16px;flex-wrap:wrap"><div><span class="text-dim">预计品质:</span> <span class="q-'+previewQuality+'">'+QUALITY_NAMES[previewQuality]+'</span></div><div><span class="text-dim">预计属性:</span> ❤️~'+avgHP+' ⚔️~'+avgATK+' 🛡️~'+avgDEF+'</div></div></div>';
+}
+
+// 更新融合按钮状态
+function updateMergeButtonState(){
+  var btn=document.getElementById('merge-btn');
+  if(!btn)return;
+
+  var usedUids=window._mergeSlots||[null,null,null];
+  var selectedCount=usedUids.filter(Boolean).length;
+
+  var qualities=usedUids.filter(Boolean).map(function(uid){var h=G.heroes.find(function(x){return x.uid===uid});return h?QUALITIES.indexOf(h.quality):0;});
+  var maxQ=qualities.length>0?Math.max.apply(null,qualities):0;
+  var mergeCost=selectedCount>=2?(maxQ+1)*1000:0;
+  var canAfford=(G.resources.gold||0)>=mergeCost;
+
+  btn.disabled=selectedCount<2||!canAfford;
 }
 
 function renderEquip(el){
