@@ -9509,27 +9509,8 @@ function renderMerge(el){
     heroesByQuality[h.quality].push(h);
   });
   
-  // 生成品质筛选按钮
-  var qualityFilterHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">';
-  qualityFilterHTML+='<button class="btn btn-sm '+(qualityFilter==='all'?'btn-primary':'')+'" onclick="setMergeQualityFilter(\'all\')">全部('+G.heroes.length+')</button>';
-  ['legendary','mythic','hidden','epic','rare','common'].forEach(function(q){
-    var cnt=(heroesByQuality[q]||[]).length;
-    if(cnt>0){
-      qualityFilterHTML+='<button class="btn btn-sm '+(qualityFilter===q?'btn-primary':'')+'" onclick="setMergeQualityFilter(\''+q+'\')"><span class="q-'+q+'">'+QUALITY_NAMES[q]+'</span>('+cnt+')</button>';
-    }
-  });
-  qualityFilterHTML+='</div>';
-  
-  // 快捷操作按钮
-  var quickActionsHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">';
-  quickActionsHTML+='<button class="btn btn-sm" onclick="quickAddMergeHeroes(\'highest\')">⭐ 添加最高品质</button>';
-  quickActionsHTML+='<button class="btn btn-sm" onclick="quickAddMergeHeroes(\'lowest\')">📉 添加最低品质</button>';
-  quickActionsHTML+='<button class="btn btn-sm" onclick="quickAddMergeHeroes(\'same\')">🔄 添加同品质</button>';
-  quickActionsHTML+='<button class="btn btn-sm btn-danger" onclick="clearMerge()">🗑️ 清空</button>';
-  quickActionsHTML+='</div>';
-  
-  // 生成可用英雄列表HTML（扁平列表，与融合框风格一致）
-  var heroesHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px">';
+  // 生成可用英雄列表HTML（与英雄界面卡片风格一致）
+  var heroesHTML='';
   
   // 按品质排序：hidden > mythic > legendary > epic > rare > common
   var qualityOrder=['hidden','mythic','legendary','epic','rare','common'];
@@ -9542,40 +9523,55 @@ function renderMerge(el){
   sortedHeroes.forEach(function(h){
     var isUsed=usedSet.has(h.uid);
     var isInTeam=teamUids.includes(h.uid);
+    var role=ROLES[h.role];
+    var power=calcHeroPower(h);
     
-    // 上阵英雄显示为禁用状态
+    // 卡片基础样式
+    var cardStyle='cursor:pointer;position:relative;transition:all .2s';
+    if(isUsed) cardStyle+=';box-shadow:0 0 12px rgba(255,215,0,.4);border-color:var(--gold) !important';
+    if(isInTeam || h.locked) cardStyle+=';opacity:0.4;filter:grayscale(0.5);cursor:not-allowed';
+    
+    // 点击事件
+    var clickHandler='';
+    if(!isInTeam && !h.locked){
+      clickHandler=isUsed?'removeMergeHero('+h.uid+')':'addMergeHero('+h.uid+')';
+    }
+    
+    heroesHTML+='<div class="hero-card quality-'+h.quality+'" data-uid="'+h.uid+'" onclick="'+clickHandler+'" style="'+cardStyle+'">';
+    
+    // 已选标记
+    if(isUsed){
+      heroesHTML+='<div style="position:absolute;top:4px;right:4px;background:var(--gold);color:#000;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:bold">✓ 已选</div>';
+    }
+    
+    // 上阵标记
     if(isInTeam){
-      heroesHTML+='<div class="merge-slot" style="opacity:0.35;filter:grayscale(0.5);cursor:not-allowed;position:relative">'
-        +'<div style="font-size:24px;text-align:center">'+h.icon+'</div>'
-        +'<div style="font-size:10px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text2)">'+h.name+'</div>'
-        +'<div style="font-size:9px;text-align:center;color:var(--text3)">Lv.'+h.level+'</div>'
-        +'<div style="position:absolute;top:2px;right:4px;font-size:8px;color:var(--red)">上阵</div>'
-        +'</div>';
-      return;
+      heroesHTML+='<div style="position:absolute;top:4px;right:4px;background:var(--red);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px">上阵</div>';
     }
-    // 锁定英雄显示为禁用状态
-    if(h.locked){
-      heroesHTML+='<div class="merge-slot" style="opacity:0.35;filter:grayscale(0.5);cursor:not-allowed;position:relative">'
-        +'<div style="font-size:24px;text-align:center">'+h.icon+'</div>'
-        +'<div style="font-size:10px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text2)">'+h.name+'</div>'
-        +'<div style="font-size:9px;text-align:center;color:var(--text3)">Lv.'+h.level+'</div>'
-        +'<div style="position:absolute;top:2px;right:4px;font-size:8px;color:var(--gold)">🔒</div>'
-        +'</div>';
-      return;
+    
+    // 锁定标记
+    if(h.locked && !isInTeam){
+      heroesHTML+='<div style="position:absolute;top:4px;right:4px;background:var(--text3);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px">🔒</div>';
     }
-    // 可用英雄 - 与融合框merge-slot样式一致
-    var borderStyle=isUsed?'border:2px solid var(--gold);box-shadow:0 0 8px rgba(255,215,0,.3)':'';
-    heroesHTML+='<div class="merge-slot" onclick="'+(isUsed?'removeMergeHero':'addMergeHero')+'('+h.uid+')" style="cursor:pointer;opacity:'+(isUsed?'0.8':'1')+';'+borderStyle+'">'
-      +'<div style="font-size:24px;text-align:center">'+h.icon+'</div>'
-      +'<div style="font-size:10px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span class="q-'+h.quality+'">'+h.name+'</span>'+(isUsed?' ✓':'')+'</div>'
-      +'<div style="font-size:9px;text-align:center;color:var(--text3)">Lv.'+h.level+' '+ROLES[h.role].icon+'</div>'
-      +'</div>';
+    
+    heroesHTML+='<div class="hero-avatar" style="background:rgba('+
+      (h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':h.quality==='mythic'?'220,50,50':'180,100,255')
+      +',.2)">'+h.icon+'</div>';
+    
+    heroesHTML+='<div class="hero-info">';
+    heroesHTML+='<div class="hero-name"><span class="q-'+h.quality+'">'+h.name+'</span></div>';
+    heroesHTML+='<div class="hero-meta">'+role.icon+' '+role.name+' · Lv.'+h.level+'</div>';
+    heroesHTML+='<div class="hero-stats">';
+    heroesHTML+='<span class="stat-tag">❤️<b>'+h.maxHP+'</b></span>';
+    heroesHTML+='<span class="stat-tag">⚔️<b>'+h.atk+'</b></span>';
+    heroesHTML+='<span class="stat-tag">🛡️<b>'+h.def+'</b></span>';
+    heroesHTML+='</div>';
+    heroesHTML+='<div class="hero-power">⚡战力: <b>'+power+'</b></div>';
+    heroesHTML+='</div></div>';
   });
   
-  heroesHTML+='</div>';
-  
   if(sortedHeroes.length===0){
-    heroesHTML='<div class="text-dim text-center" style="padding:20px">没有符合条件的英雄</div>';
+    heroesHTML='<div class="text-dim text-center" style="padding:40px">没有符合条件的英雄</div>';
   }
   
   // 计算融合预览
@@ -9671,56 +9667,78 @@ function renderMerge(el){
   
   el.innerHTML=`
     <div class="panel">
-      <div class="panel-title"><span class="icon">📖</span> 融合规则</div>
-      <div class="text-dim text-sm" style="line-height:2">
-        <div>⚗️ <b>任意融合</b>：任何2-3个英雄都可以融合</div>
-        <div>💰 <b>合成消耗</b>：金币 = (最高品质+1) × 1000</div>
-        <div>🎲 <b>属性继承</b>：材料平均值 × (0.6~1.8)随机</div>
-        <div>🍀 <b>幸运值</b>：每次普通合成+1，提升异变概率</div>
-        <div>🎯 <b>保底机制</b>：连续10次无特殊触发，下次品质+1</div>
-        <div>🔗 <b>合成羁绊</b>：特定职业组合获得属性加成</div>
-        <div>🍀 <b>以弱胜强</b>：低品质材料5%逆袭史诗</div>
-        <div>🧬 <b>技能变异</b>：异变时10%技能强化变异</div>
-        <div>🔥 <b>连续合成</b>：1分钟内连击获得额外奖励</div>
-        <div>↩ <b>合成回溯</b>：50💎撤销最近一次合成</div>
-      </div>
-    </div>
-    <div class="panel merge-glow">
       <div class="panel-title"><span class="icon">⚗️</span> 英雄融合 ${streakHtml?'<span style="float:right;font-size:12px">'+streakHtml+'</span>':''}</div>
-      <div class="merge-lucky-bar">
-        <div>
-          <div class="merge-lucky-label">🍀 幸运值</div>
-          <div class="merge-lucky-val">${luckyInfo.lucky}</div>
+      
+      <!-- 融合规则（可折叠） -->
+      <details style="margin-bottom:12px">
+        <summary style="cursor:pointer;color:var(--text2);font-size:12px;padding:6px 0">📖 查看融合规则</summary>
+        <div class="text-dim text-xs" style="line-height:1.8;padding:8px;background:rgba(0,0,0,.2);border-radius:6px;margin-top:6px">
+          <div>⚗️ 任意融合：任何2-3个英雄都可以融合</div>
+          <div>💰 合成消耗：金币 = (最高品质+1) × 1000</div>
+          <div>🎲 属性继承：材料平均值 × (0.6~1.8)随机</div>
+          <div>🍀 幸运值：每次普通合成+1，提升异变概率</div>
+          <div>🎯 保底机制：连续10次无特殊触发，下次品质+1</div>
+          <div>🔗 合成羁绊：特定职业组合获得属性加成</div>
         </div>
-        <div style="flex:1">
-          <div class="merge-lucky-label">异变概率 <span class="merge-lucky-bonus">${luckyInfo.rate}%</span></div>
-          <div class="merge-pity-bar"><div class="merge-pity-fill" style="width:${luckyInfo.rate/50*100}%"></div></div>
+      </details>
+      
+      <!-- 融合操作区 -->
+      <div style="background:linear-gradient(135deg,rgba(255,215,0,.05),rgba(255,107,0,.03));border:1px solid rgba(255,215,0,.15);border-radius:12px;padding:16px;margin-bottom:12px">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+          <div style="flex:1;min-width:200px">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+              <span style="font-size:12px;color:var(--text2)">🍀 幸运值</span>
+              <span style="font-weight:bold;color:var(--gold)">${luckyInfo.lucky}</span>
+              <span style="font-size:11px;color:var(--text3)">异变率 ${luckyInfo.rate}%</span>
+            </div>
+            <div class="merge-pity-bar" style="height:6px"><div class="merge-pity-fill" style="width:${luckyInfo.rate/50*100}%;height:100%"></div></div>
+          </div>
+          <div style="text-align:center;padding:8px 12px;background:rgba(0,0,0,.2);border-radius:8px">
+            <div style="font-size:10px;color:var(--text3)">🎯 保底</div>
+            <div style="font-size:16px;font-weight:bold;color:${luckyInfo.pity>=8?'#ff6b6b':'var(--text)'}">${luckyInfo.pity}/10</div>
+          </div>
         </div>
-        <div>
-          <div class="merge-lucky-label">🎯 保底</div>
-          <div class="merge-lucky-val" style="font-size:14px;color:${luckyInfo.pity>=8?'#ff6b6b':'var(--text)'}">${luckyInfo.pity}/10</div>
+        
+        <!-- 融合槽位 -->
+        <div style="display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin-bottom:12px">
+          <div class="merge-slot" id="merge-slot-0" style="width:70px;height:80px">?</div>
+          <div style="font-size:20px;color:var(--text3)">+</div>
+          <div class="merge-slot" id="merge-slot-1" style="width:70px;height:80px">?</div>
+          <div style="font-size:20px;color:var(--text3)">+</div>
+          <div class="merge-slot" id="merge-slot-2" style="width:70px;height:80px">?</div>
+          <div style="font-size:24px;color:var(--gold);margin:0 8px">→</div>
+          <div class="merge-result" id="merge-result" style="width:70px;height:80px;background:linear-gradient(135deg,rgba(255,215,0,.1),rgba(255,107,0,.05));border:2px dashed rgba(255,215,0,.3)">?</div>
         </div>
+        
+        ${bondHtml}
+        
+        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+          <div style="font-size:12px">💰 消耗: <b style="color:${canAfford?'var(--gold)':'var(--red)'}">${mergeCost}</b> 金币</div>
+          <div class="btn-group">
+            <button class="btn btn-sm" onclick="clearMerge()">清空</button>
+            <button class="btn btn-primary btn-sm" id="merge-btn" onclick="doMerge()" ${selectedHeroes.length<2||!canAfford?'disabled':''}>⚗️ 开始融合</button>
+          </div>
+        </div>
+        
+        ${undoHtml}
       </div>
-      <div class="merge-cost">💰 消耗: <b>${mergeCost}</b> 金币 ${canAfford?'':'<span class="text-red">(不足)</span>'}</div>
-      <div class="merge-slots" id="merge-slots">
-        <div class="merge-slot" id="merge-slot-0">?</div>
-        <div class="merge-slot" id="merge-slot-1">?</div>
-        <div class="merge-slot" id="merge-slot-2">?</div>
-        <div class="merge-arrow">→</div>
-        <div class="merge-result" id="merge-result">?</div>
+      
+      <div id="merge-preview" style="margin-bottom:12px">${selectedHeroes.length<2?'<div class="text-dim text-sm text-center">👇 点击下方英雄卡片添加到融合槽</div>':previewHTML}</div>
+      
+      <!-- 品质筛选 -->
+      <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid rgba(255,255,255,.05);padding-bottom:10px">
+        <span style="font-size:12px;color:var(--text2);margin-right:4px">筛选:</span>
+        <button class="tab-btn ${qualityFilter==='all'?'active':''}" onclick="setMergeQualityFilter('all')">全部(${G.heroes.length})</button>
+        ${['hidden','mythic','legendary','epic','rare','common'].map(function(q){
+          var cnt=(heroesByQuality[q]||[]).length;
+          return cnt>0?`<button class="tab-btn ${qualityFilter===q?'active':''}" onclick="setMergeQualityFilter('${q}')"><span class="q-${q}">${QUALITY_NAMES[q]}</span>(${cnt})</button>`:'';
+        }).join('')}
       </div>
-      ${bondHtml}
-      <div id="merge-preview" class="text-dim text-sm mt-8">${selectedHeroes.length<2?'请选择至少2个英雄进行融合':previewHTML}</div>
-      <div class="btn-group mt-8">
-        <button class="btn btn-primary" id="merge-btn" onclick="doMerge()" ${selectedHeroes.length<2||!canAfford?'disabled':''}>开始融合</button>
-        <button class="btn" onclick="clearMerge()">清空</button>
+      
+      <!-- 英雄列表（与英雄界面风格一致） -->
+      <div id="merge-hero-list" style="max-height:500px;overflow-y:auto">
+        ${heroesHTML}
       </div>
-      ${undoHtml}
-    </div>
-    <div class="panel">
-      <div class="panel-title"><span class="icon">👥</span> 可用英雄 (${heroCount})</div>
-      ${qualityFilterHTML}
-      <div style="max-height:400px;overflow-y:auto">${heroesHTML}</div>
     </div>
     ${historyHtml}
   `;
