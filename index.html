@@ -4621,6 +4621,48 @@ function showModal(title,contentHTML,buttons){
 }
 function closeModal(){document.getElementById('modal-root').innerHTML=''}
 
+// 显示单个技能详情
+function showSkillDetail(skillId){
+  var skillData=SKILLS?SKILLS[skillId]:null;
+  if(!skillData)return;
+  var html='<div style="text-align:center;padding:20px 0">'+
+    '<div style="font-size:48px;margin-bottom:12px">'+skillData.icon+'</div>'+
+    '<div style="font-size:18px;font-weight:bold;color:var(--gold);margin-bottom:8px">'+skillData.name+'</div>'+
+    '<div style="font-size:12px;color:#a855f7;margin-bottom:16px">🧬 变异技能</div>'+
+    '<div style="font-size:14px;color:var(--text);line-height:1.8;padding:0 16px">'+skillData.desc+'</div>';
+  if(skillData.mpCost){
+    html+='<div style="margin-top:16px;font-size:12px;color:var(--text2)">💧 消耗: '+skillData.mpCost+' MP</div>';
+  }
+  if(skillData.cooldown){
+    html+='<div style="font-size:12px;color:var(--text2)">⏱️ 冷却: '+skillData.cooldown+'回合</div>';
+  }
+  html+='</div>';
+  showModal('技能详情',html,[{text:'关闭',className:'btn',onclick:'closeModal()'}]);
+}
+
+// 显示多个变异技能详情
+function showMutatedSkillsDetail(skillIds){
+  if(!skillIds||skillIds.length===0)return;
+  var html='<div style="padding:8px 0">';
+  skillIds.forEach(function(skillId){
+    var skillData=SKILLS?SKILLS[skillId]:null;
+    if(skillData){
+      html+='<div style="padding:12px;margin-bottom:12px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.3);border-radius:8px">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
+        '<span style="font-size:24px">'+skillData.icon+'</span>'+
+        '<span style="font-size:15px;font-weight:bold;color:#d4a0ff">'+skillData.name+'</span>'+
+        '</div>'+
+        '<div style="font-size:12px;color:var(--text2);line-height:1.6">'+skillData.desc+'</div>';
+      if(skillData.mpCost){
+        html+='<div style="margin-top:6px;font-size:11px;color:var(--text3)">💧 '+skillData.mpCost+' MP</div>';
+      }
+      html+='</div>';
+    }
+  });
+  html+='</div>';
+  showModal('变异技能详情',html,[{text:'关闭',className:'btn',onclick:'closeModal()'}]);
+}
+
 // 美化确认弹窗（替代原生confirm）
 function showConfirm(title,message,onConfirm,confirmText,cancelText){
   confirmText=confirmText||'确定';
@@ -7889,19 +7931,21 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials){
   var mutatedNames=[];
   var skillsHtml=hero.skills.slice(0,6).map(function(s,i){
     var isMut=hasMutated&&hero.mutatedSkills.indexOf(i)>=0;
-    if(isMut) mutatedNames.push(s);
     var skillData=SKILLS?SKILLS[s]:null;
     var displayName=skillData?skillData.name:s;
+    if(isMut) mutatedNames.push(displayName);
     var tip=skillData?' title="🧬 变异技能 - '+(skillData.desc||'')+'"':'';
-    return '<span class="merge-result-skill'+(isMut?' merge-skill-mut':'')+'"'+tip+'>'+(isMut?'🧬':'')+displayName+(isMut?'✨':'')+'</span>';
+    var clickHandler=skillData?' onclick="showSkillDetail(\''+s+'\')" style="cursor:pointer"':'';
+    return '<span class="merge-result-skill'+(isMut?' merge-skill-mut':'')+'"'+tip+clickHandler+'>'+(isMut?'🧬':'')+displayName+(isMut?'✨':'')+'</span>';
   }).join('');
   
-  // 如果有变异技能，添加专门的变异提示区域
+  // 如果有变异技能，添加专门的变异提示区域（可点击查看详情）
   var mutateBanner='';
   if(hasMutated&&mutatedNames.length>0){
-    mutateBanner='<div style="margin:10px 0;padding:8px 12px;background:linear-gradient(135deg,rgba(168,85,247,.2),rgba(239,68,68,.15));border:1px solid #d4a0ff;border-radius:8px;text-align:center">'
+    mutateBanner='<div style="margin:10px 0;padding:8px 12px;background:linear-gradient(135deg,rgba(168,85,247,.2),rgba(239,68,68,.15));border:1px solid #d4a0ff;border-radius:8px;text-align:center;cursor:pointer" onclick="showMutatedSkillsDetail('+JSON.stringify(hero.skills.filter(function(s,i){return hero.mutatedSkills.indexOf(i)>=0}))+')">'
       +'<div style="font-size:13px;color:#d4a0ff;font-weight:bold">🧬 技能变异</div>'
       +'<div style="font-size:11px;color:var(--text2)">'+mutatedNames.join('、')+' 发生了变异</div>'
+      +'<div style="font-size:10px;color:#a855f7;margin-top:4px">点击查看详情</div>'
       +'</div>';
   }
   
@@ -9063,8 +9107,8 @@ function renderHeroCard(h){
       ${h.icon}
     </div>
     <div class="hero-info">
-      <div class="hero-name"><span class="q-${h.quality}">${h.name}</span> ${inTeam?'<span class="text-green text-xs">[队伍中]</span>':''}</div>
-      <div class="hero-meta">${role.icon} ${role.name} · ${QUALITY_NAMES[h.quality]} · Lv.${h.level} ${h.bonusSkills.length>0?'<span class="text-purple">★合成</span>':''}</div>
+      <div class="hero-name"><span class="q-${h.quality}">${h.name}</span> ${inTeam?'<span class="text-green text-xs">[队伍中]</span>':''} ${h.isMutation?'<span style="color:#a855f7;font-size:10px">☣️异变</span>':''}</div>
+      <div class="hero-meta">${role.icon} ${role.name} · ${QUALITY_NAMES[h.quality]} · Lv.${h.level} ${h.bonusSkills.length>0?'<span class="text-purple">★合成</span>':''} ${h.mutatedSkills&&h.mutatedSkills.length>0?'<span style="color:#d4a0ff;font-size:10px">🧬含变异</span>':''}</div>
       <div class="text-xs text-dim" style="margin:4px 0;padding:4px;background:rgba(0,0,0,.2);border-radius:4px">💡 ${roleTraits[h.role]||'未知职业'}</div>
       <div class="hero-stats">
         <span class="stat-tag" title="${statTips.maxHP}">❤️<b>${stats.maxHP}</b></span>
