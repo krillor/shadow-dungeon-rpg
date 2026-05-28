@@ -8382,7 +8382,7 @@ function showAccidentResult(accident) {
     + '<div style="font-size:64px;margin-bottom:12px;animation:bounce 0.5s ease">' + acc.icon + '</div>'
     + '<div style="font-size:18px;font-weight:bold;color:' + acc.color + ';margin-bottom:8px">合成事故：' + acc.name + '</div>'
     + '<div style="font-size:14px;color:var(--text);line-height:1.6;padding:0 16px">' + accident.message + '</div>'
-    + (acc.type === 'explosion' ? '<div style="margin-top:12px;font-size:12px;color:var(--gold)">💡 收集10个碎片可兑换任意传说英雄</div>' : '')
+    + (accident.type === 'explosion' ? '<div style="margin-top:12px;font-size:12px;color:var(--gold)">💡 收集10个碎片可兑换任意传说英雄</div>' : '')
     + '</div>';
   showModal(acc.icon + ' 合成事故', html, []);
 }
@@ -8488,7 +8488,16 @@ function initMergeChallenges() {
     ];
     // 随机选3个
     var shuffled = dailyPool.sort(function(){return Math.random()-0.5});
-    G.mergeChallenges.daily = shuffled.slice(0,3).map(function(c,i){return {id:'daily_'+i+'_'+Date.now(), ...c}});
+    G.mergeChallenges.daily = shuffled.slice(0,3).map(function(c,i){
+      return {
+        id:'daily_'+i+'_'+Date.now(),
+        desc:c.desc,
+        check:c.check,
+        reward:c.reward,
+        icon:c.icon,
+        special:c.special
+      };
+    });
     G.mergeChallenges.dailyDate = today;
   }
   // 生成本周挑战
@@ -8503,7 +8512,18 @@ function initMergeChallenges() {
       { id:'w_merge10', desc:'本周合成10次', check:function(){return true}, reward:{gold:3000}, icon:'⚗️', need:10, progress:0, special:'count' }
     ];
     var shuffled = weeklyPool.sort(function(){return Math.random()-0.5});
-    G.mergeChallenges.weekly = shuffled.slice(0,2).map(function(c,i){return {id:'weekly_'+i+'_'+Date.now(), ...c}});
+    G.mergeChallenges.weekly = shuffled.slice(0,2).map(function(c,i){
+      return {
+        id:'weekly_'+i+'_'+Date.now(),
+        desc:c.desc,
+        check:c.check,
+        reward:c.reward,
+        icon:c.icon,
+        need:c.need,
+        progress:c.progress,
+        special:c.special
+      };
+    });
     G.mergeChallenges.weeklyDate = weekKey;
   }
 }
@@ -8793,7 +8813,7 @@ function executeMerge(heroUids){
   // === 保存回溯数据 ===
   G.lastMerge={
     materials:heroes.map(function(h){return{uid:h.uid,id:h.id,name:h.name,icon:h.icon,quality:h.quality,level:h.level,maxHP:h.maxHP,atk:h.atk,def:h.def,spd:h.spd,maxMP:h.maxMP,skills:h.skills.slice(),bonusSkills:h.bonusSkills.slice(),equipment:JSON.parse(JSON.stringify(h.equipment)),exp:h.exp,role:h.role,lore:h.lore,isMutation:h.isMutation,isHidden:h.isHidden}}),
-    result:{uid:newHero.uid},
+    result:{uid:newHero.uid, quality:newHero.quality},
     timestamp:Date.now()
   };
   
