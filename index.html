@@ -3648,7 +3648,7 @@ function saveGame(){
       }];
     }
     saveSaveMeta(meta);
-    showToast('💾 已存档 (槽位'+(slotIdx+1)+')');
+    // 自动存档静默保存，不弹出提示
   }catch(e){
     if(e.name==='QuotaExceededError'){
       showToast('❌ 存档空间不足，请删除旧备份');
