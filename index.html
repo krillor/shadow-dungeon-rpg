@@ -8644,7 +8644,6 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
       '<div style="display:flex;gap:8px;margin-top:16px">'+
         '<button class="btn btn-primary" onclick="closeMergeResult();switchTab(\'heroes\')">查看英雄</button>'+
         '<button class="btn" onclick="closeMergeResult()">继续合成</button>'+
-        (G.lastMerge?'<button class="merge-undo-btn" onclick="undoMerge()">↩ 撤销('+getUndoMergeCost()+'💰)</button>':'')+
       '</div>'+
     '</div>'+
   '</div>';
@@ -11924,12 +11923,6 @@ function renderMerge(el){
     historyHtml+='</div></div>';
   }
   
-  // 回溯按钮
-  var undoHtml='';
-  if(G.lastMerge && (Date.now()-G.lastMerge.timestamp)<86400000){
-    undoHtml='<div style="margin-top:8px;text-align:center"><button class="merge-undo-btn" onclick="undoMerge()">↩ 撤销上次合成 ('+getUndoMergeCost()+'💰)</button></div>';
-  }
-  
   // 羁绊预览
   var bondHtml='';
   if(bondPreview){
@@ -11953,18 +11946,7 @@ function renderMerge(el){
     <div class="panel">
       <div class="panel-title"><span class="icon">⚗️</span> 英雄融合 ${streakHtml?'<span style="float:right;font-size:12px">'+streakHtml+'</span>':''}</div>
       
-      <!-- 融合规则（可折叠） -->
-      <details style="margin-bottom:12px">
-        <summary style="cursor:pointer;color:var(--text2);font-size:12px;padding:6px 0">📖 查看融合规则</summary>
-        <div class="text-dim text-xs" style="line-height:1.8;padding:8px;background:rgba(0,0,0,.2);border-radius:6px;margin-top:6px">
-          <div>⚗️ 任意融合：任何2-3个英雄都可以融合</div>
-          <div>💰 合成消耗：金币 = (最高品质+1) × 200</div>
-          <div>🎲 属性继承：材料平均值 × (0.6~1.8)随机</div>
-          <div>🍀 幸运值：每次普通合成+1，提升异变概率</div>
-          <div>🎯 保底机制：连续10次无特殊触发，下次品质+1</div>
-          <div>🔗 合成羁绊：特定职业组合获得属性加成</div>
-        </div>
-      </details>
+      <!-- 融合规则（已隐藏） -->
       
       <!-- 合成引导介绍（首次引导时显示） -->
       <div id="merge-intro" style="background:linear-gradient(135deg,rgba(168,85,247,.1),rgba(201,162,39,.05));border:2px solid rgba(168,85,247,.3);border-radius:12px;padding:16px;margin-bottom:12px;display:none">
@@ -12089,7 +12071,6 @@ function renderMerge(el){
           </div>
         </div>
         
-        ${undoHtml}
       </div>
       
       <!-- 融合预览已关闭 -->
