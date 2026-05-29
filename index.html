@@ -1353,6 +1353,7 @@ body{
 .merge-history-item.mythic{border-left-color:#ef4444}
 .merge-history-item.hidden{border-left-color:#00ffcc}
 .merge-history-item.quality-up{border-left-color:#2ecc71}
+.merge-history-item.accident{border-left-color:#ff4444;background:rgba(255,68,68,.1)}
 .merge-undo-btn{background:linear-gradient(135deg,rgba(52,152,219,.15),rgba(52,152,219,.05));border:1px solid rgba(52,152,219,.3);color:#5dade2;padding:4px 10px;border-radius:var(--radius-sm);font-size:11px;cursor:pointer;transition:var(--transition)}
 .merge-undo-btn:hover{background:rgba(52,152,219,.25);border-color:rgba(52,152,219,.5)}
 .merge-enhance-flash{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at center,rgba(46,204,113,.5),transparent 70%);pointer-events:none;z-index:299;animation:mutationFlash 1s ease-out forwards}
@@ -11578,10 +11579,16 @@ function renderMerge(el){
       if(rec.result.isUpset) cls='quality-up';
       var bondTag=rec.result.bondInfo?' <span class="merge-bond-tag">'+rec.result.bondInfo.name+'</span>':'';
       var upsetTag=rec.result.isUpset?' <span style="color:#2ecc71;font-size:10px">🍀</span>':'';
+      // 事故标记
+      var accidentTag='';
+      if(rec.accident){
+        accidentTag=' <span style="color:'+rec.accident.accident.color+';font-size:10px">'+rec.accident.icon+'</span>';
+        cls='accident';
+      }
       historyHtml+='<div class="merge-history-item '+cls+'">'
         +'<span>'+rec.materials.map(function(m){return m.icon}).join('+')+' → '+rec.result.icon+' '+rec.result.name
         +'<span class="q-'+rec.result.quality+'" style="font-size:10px;margin-left:4px">'+QUALITY_NAMES[rec.result.quality]+'</span>'
-        +bondTag+upsetTag
+        +accidentTag+bondTag+upsetTag
         +'<span class="text-dim" style="margin-left:auto;font-size:10px">×'+(rec.mult?rec.mult.toFixed(2):'?')+'</span>'
         +'</div>';
     });
