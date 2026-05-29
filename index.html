@@ -1927,14 +1927,14 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 .btn-breakthrough{animation:breakthroughGlow 2s ease infinite;border-color:var(--purple);color:var(--purple)}
 .btn-breakthrough:hover{background:linear-gradient(135deg,#1a0a2a,#2a1a3a);box-shadow:0 0 15px rgba(168,85,247,.4)}
 
-/* ===== 引导系统样式 ===== */
-#tutorial-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.98);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity 1.5s ease}
+/* ==================== 引导系统样式 ==================== */
+#tutorial-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity 1.5s ease}
 #tutorial-overlay.active{opacity:1}
 #tutorial-overlay.fade-out{opacity:0;pointer-events:none}
-.tutorial-text{color:#222;font-size:18px;line-height:2.2;text-align:center;max-width:600px;padding:20px;opacity:0;transform:translateY(20px);transition:all 1s ease}
+.tutorial-text{color:#fff;font-size:18px;line-height:2.2;text-align:center;max-width:80%;padding:40px;opacity:0;transform:translateY(20px);transition:all 1s ease}
 .tutorial-text.show{opacity:1;transform:translateY(0)}
-.tutorial-title{font-size:24px;font-weight:bold;margin-bottom:30px;color:#111}
-.tutorial-tip{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);color:#666;font-size:14px;animation:pulse 2s infinite}
+.tutorial-title{font-size:28px;font-weight:bold;margin-bottom:30px;color:#fff;text-shadow:0 0 20px rgba(255,255,255,0.3)}
+.tutorial-tip{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);color:#888;font-size:16px;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
 #guide-highlight{position:fixed;border:3px solid var(--gold);border-radius:12px;box-shadow:0 0 20px var(--gold-glow),0 0 40px rgba(212,175,55,.3);z-index:1000;pointer-events:none;animation:guidePulse 1.5s infinite}
 @keyframes guidePulse{0%,100%{box-shadow:0 0 20px var(--gold-glow),0 0 40px rgba(212,175,55,.3)}50%{box-shadow:0 0 30px var(--gold-glow),0 0 60px rgba(212,175,55,.5)}}
@@ -9815,6 +9815,10 @@ function recruitHero(templateId){
   checkAchievement('hero_7');
   checkAchievement('hero_10');
   
+  // 如果是在引导阶段，招募成功后自动完成步骤2
+  if(G_tutorialPhase==='guide' && G_tutorialStep===2){
+    G_tutorialStep=3;
+  }
   // 招募后保持在酒馆，已招募的显示为灰色禁用
   renderTavernRecruit();
 }
@@ -9829,6 +9833,8 @@ function switchTab(tab){
   document.querySelectorAll('.nav-btn').forEach(b=>{
     b.classList.toggle('active',b.dataset.tab===tab);
   });
+  // 切换tab时隐藏引导提示
+  hideGuideTip();
   renderCurrentTab();
 }
 
@@ -10092,9 +10098,40 @@ function renderTown(el){
       +'<button class="btn" style="margin-top:12px" onclick="location.reload()">🔄 刷新页面</button>'
     +'</div>';
   }
+  // 渲染完成后，根据引导步骤显示对应的引导提示
+  setTimeout(function(){
+    if(G_tutorialPhase==='guide'){
+      switch(G_tutorialStep){
+        case 1:
+          showGuideTip('town-recruit','🍺 招募英雄','欢迎来到城镇！\n\n首先，让我们招募一位英雄来扩充队伍。\n\n点击「招募」按钮进入酒馆。',null,'bottom');
+          break;
+        case 2:
+          // 步骤2时在酒馆中，不应该在城镇页面显示提示
+          hideGuideTip();
+          break;
+        case 3:
+          showGuideTip('auto-battle-btn','⚔️ 自动推图','太棒了！\n\n现在让我们开始战斗吧！\n\n点击「自动推图」开始挑战关卡！',null,'bottom');
+          break;
+        case 4:
+          showGuideTip('merge-nav-btn','⚗️ 合成系统','继续变强！\n\n「合成」是让英雄快速变强的捷径！\n\n点击进入合成界面。',null,'bottom');
+          break;
+        default:
+          hideGuideTip();
+      }
+    }else{
+      // 如果不在引导阶段，确保隐藏引导提示
+      hideGuideTip();
+    }
+  },100);
 }
 
 function renderTavernRecruit(){
+  // 进入酒馆时隐藏引导提示
+  hideGuideTip();
+  // 如果是在引导阶段，更新到第二步
+  if(G_tutorialPhase==='guide' && G_tutorialStep===1){
+    G_tutorialStep=2;
+  }
   const options=getRecruitOptions();
   const tavernLevel=G.buildings.tavern||1;
   const maxQuality=TAVERN_REFRESH.maxQualityByLevel[tavernLevel]||'common';
@@ -10231,6 +10268,13 @@ function renderTavernRecruit(){
       </div>
     </div>
   `;
+  
+  // 渲染完成后，如果是引导步骤2且已招募过英雄，显示返回提示
+  setTimeout(function(){
+    if(G_tutorialPhase==='guide' && G_tutorialStep===3){
+      showGuideTip('tavern-back-btn','返回城镇','太棒了！\n\n现在点击「返回城镇」按钮回到主界面吧！','left');
+    }
+  },100);
 }
 
 
