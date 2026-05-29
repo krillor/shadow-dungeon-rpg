@@ -1938,7 +1938,8 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
     <div class="nav-btn" data-tab="battle" title="战斗">💀<div class="nav-label">战斗</div></div>
     <div class="nav-btn" data-tab="merge" title="合成">⚗️<div class="nav-label">合成</div></div>
     <div class="nav-btn" data-tab="equip" title="装备">🗡️<div class="nav-label">装备</div></div>
-    <div class="nav-btn" data-tab="buildings" title="建筑">🏗️<div class="nav-label">建筑</div></div>
+    <!-- 屏蔽建筑模块 -->
+    <!-- <div class="nav-btn" data-tab="buildings" title="建筑">🏗️<div class="nav-label">建筑</div></div> -->
     <!-- 屏蔽竞技场模块 -->
     <!-- <div class="nav-btn" data-tab="arena" title="竞技场">🏟️<div class="nav-label">竞技场</div></div> -->
     <!-- 屏蔽突破模块 -->
@@ -3730,7 +3731,7 @@ const RESOURCE_DEFS = {
   stone:  {name:'石材',  icon:'🪨', desc:'建筑升级、装备锻造'},
   iron:   {name:'铁矿',  icon:'⛏️', desc:'装备锻造核心材料'},
   food:   {name:'食物',  icon:'🍞', desc:'酒馆刷新消耗'},
-  fame:   {name:'声望',  icon:'🏆', desc:'酒馆升级条件，竞技场获取'},
+  fame:   {name:'声望',  icon:'🏆', desc:'已废弃，酒馆升级改用宝石'},
   expPotion: {name:'经验药水', icon:'🧪', desc:'用于提升英雄经验，遣散英雄或关卡掉落获取'},
 };
 
@@ -3741,8 +3742,8 @@ const BUILDING_DEFS = {
     desc:'招募新英雄，升级解锁更高品质英雄',
     maxLevel:10,
     baseCost:{gold:200, stone:30, food:10},
-    // 声望需求随等级递增（前期低后期高）
-    upgradeReqByLevel:{2:{fame:3},3:{fame:8},4:{fame:15},5:{fame:25},6:{fame:40},7:{fame:60},8:{fame:85},9:{fame:120},10:{fame:160}},
+    // 宝石解锁（替代声望需求）
+    upgradeReqByLevel:{2:{gems:5},3:{gems:10},4:{gems:20},5:{gems:35},6:{gems:55},7:{gems:80},8:{gems:110},9:{gems:150},10:{gems:200}},
     effects:['解锁稀有品质 · 3个可选','稀有出现率+50% · 3个可选','解锁史诗品质 · 4个可选','史诗出现率+50% · 4个可选','解锁传说品质 · 4个可选','5个可选 · 传说出现率+50%','解锁神话品质 · 5个可选','神话出现率+50% · 5个可选','神话出现率+100% · 5个可选','6个可选 · 高级品质概率大幅提升']
   },
   farm:{
@@ -9669,10 +9670,10 @@ function renderTown(el){
         +'<div class="town-module-btn-name">装备</div>'
         +'<div class="town-module-btn-info">'+equipCount+' 件</div>'
       +'</div>'
-      +'<div class="town-module-btn" onclick="switchTab(\'buildings\')">'
-        +'<div class="town-module-btn-icon">🏰</div>'
-        +'<div class="town-module-btn-name">建筑</div>'
-        +'<div class="town-module-btn-info">Lv.'+(G.buildings.tavern||0)+'</div>'
+      +'<div class="town-module-btn" onclick="switchTab(\'leaderboard\')">'
+        +'<div class="town-module-btn-icon">🏆</div>'
+        +'<div class="town-module-btn-name">排行</div>'
+        +'<div class="town-module-btn-info">查看榜单</div>'
       +'</div>'
     +'</div>'
     +(G.offlineEarnings?'<div class="daily-bonus-banner" style="cursor:pointer;background:linear-gradient(135deg,rgba(100,200,255,.15),rgba(50,150,255,.05));border-color:rgba(100,200,255,.3)" onclick="claimOfflineEarnings()">'
@@ -12862,7 +12863,7 @@ function renderBuildings(el){
   el.innerHTML=`
     <div class="panel">
       <div class="panel-title"><span class="icon">🏗️</span> 城镇建筑</div>
-      <div class="text-dim text-sm mb-8">升级建筑解锁更多功能，酒馆升级需要声望</div>
+      <div class="text-dim text-sm mb-8">升级建筑解锁更多功能，酒馆升级需要宝石</div>
       
       <!-- 资源产出概览 -->
        <div style="background:rgba(0,0,0,0.2);border-radius:8px;padding:12px;margin-bottom:16px">
