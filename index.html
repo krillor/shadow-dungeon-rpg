@@ -8836,7 +8836,7 @@ function setMergeGamble(mode) {
 function getGambleInfo() {
   switch(G_mergeGamble) {
     case 'risk': return { name:'冒险合成', icon:'🎰', cost:10000, desc:'品质±1（不低于普通）', color:'#f39c12' };
-    case 'crazy': return { name:'疯狂合成', icon:'🃏', cost:100, costType:'gems', desc:'30%神话/30%全变异/40%崩塌', color:'#e74c3c' };
+    case 'crazy': return { name:'疯狂合成', icon:'🃏', cost:100, costType:'gems', desc:'30%神话/30%全变异/40%品质降', color:'#e74c3c' };
     default: return { name:'普通合成', icon:'⚗️', cost:0, desc:'标准概率', color:'var(--text)' };
   }
 }
@@ -8877,13 +8877,10 @@ function applyGambleResult(hero) {
       }
       hero._gambleResult = 'allMutate';
     } else {
-      // 崩塌
+      // 品质降低（不低于普通）
       var qi = QUALITIES.indexOf(hero.quality);
       if (qi > 1) hero.quality = QUALITIES[qi - 2];
       else if (qi > 0) hero.quality = QUALITIES[0];
-      hero.maxHP = Math.floor(hero.maxHP * 0.5);
-      hero.atk = Math.floor(hero.atk * 0.5);
-      hero.def = Math.floor(hero.def * 0.5);
       hero._gambleResult = 'collapse';
     }
   }
@@ -8897,7 +8894,7 @@ function getGambleResultText(gr) {
     case 'down': return '🎰 冒险失败...品质下降';
     case 'mythic': return '🃏 疯狂成功！直接神话品质！';
     case 'allMutate': return '🃏 疯狂成功！所有技能变异！';
-    case 'collapse': return '🃏 疯狂失败...属性崩塌';
+    case 'collapse': return '🃏 疯狂失败...品质降低';
     default: return '';
   }
 }
@@ -11998,7 +11995,7 @@ function renderMerge(el){
             <div>🃏 疯狂</div><div class="text-xs text-dim">100💎 赌神话</div>
           </button>
         </div>
-        ${G_mergeGamble!=='normal'?'<div style="margin-top:6px;font-size:10px;color:'+(G_mergeGamble==='crazy'?'#e74c3c':'#f39c12')+';text-align:center">⚠️ '+(G_mergeGamble==='risk'?'冒险模式：品质有升有降（不低于普通）':'疯狂模式：30%神话/30%全变异/40%崩塌')+'</div>':''}
+        ${G_mergeGamble!=='normal'?'<div style="margin-top:6px;font-size:10px;color:'+(G_mergeGamble==='crazy'?'#e74c3c':'#f39c12')+';text-align:center">⚠️ '+(G_mergeGamble==='risk'?'冒险模式：品质有升有降（不低于普通）':'疯狂模式：30%神话/30%全变异/40%品质降')+'</div>':''}
       </div>
       
       <!-- 合成挑战（已屏蔽） -->
