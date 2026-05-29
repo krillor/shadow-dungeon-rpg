@@ -3942,7 +3942,7 @@ const TAVERN_REFRESH = {
     9:{gold:12000, food:250},
     10:{gold:25000, food:350}
   },
-  maxQualityByLevel:{1:'rare',2:'rare',3:'epic',4:'epic',5:'legendary',6:'legendary',7:'mythic',8:'mythic',9:'mythic',10:'mythic'},
+  maxQualityByLevel:{1:'common',2:'rare',3:'rare',4:'epic',5:'epic',6:'legendary',7:'legendary',8:'mythic',9:'mythic',10:'mythic'},
   optionsCount:{1:3,2:3,3:4,4:4,5:4,6:5,7:5,8:5,9:5,10:6}, // 可选英雄数量
   // 品质出现率加成（乘法倍率，作用于当前最高可解锁品质的权重）
   // 让冗余等级也有实际意义：高品质英雄出现概率提升
@@ -3963,9 +3963,9 @@ let G = {
   // PVE连胜系统
   pveWinStreak: 0,
   pveMaxStreak: 0,
-  // 每日登录
+  // 每日登录（已屏蔽）
   lastLoginDate: '',
-  dailyBonusClaimed: false,
+  dailyBonusClaimed: true, // 屏蔽每日登录奖励
   // 图鉴系统：记录已遇见/拥有的ID
   codex: {
     heroes: {},    // heroTemplateId -> true
@@ -4102,11 +4102,7 @@ function saveGame(){
     saveSaveMeta(meta);
     // 自动存档静默保存，不弹出提示
   }catch(e){
-    if(e.name==='QuotaExceededError'){
-      showToast('❌ 存档空间不足，请删除旧备份');
-    }else{
-      showToast('存档失败');
-    }
+    // 屏蔽存档错误提示
   }
 }
 
@@ -4525,8 +4521,9 @@ function showToast(msg,duration=2000){
 
 // ==================== 成就系统 ====================
 
-// 检查并解锁成就
+// 检查并解锁成就（已屏蔽）
 function checkAchievement(achievementId) {
+  return false; // 屏蔽成就系统
   if (!ACHIEVEMENTS[achievementId]) return false;
   if (G.achievements.unlocked[achievementId]) return false; // 已解锁
   
@@ -11771,21 +11768,21 @@ function renderMerge(el){
         ${G_mergeGamble!=='normal'?'<div style="margin-top:6px;font-size:10px;color:'+(G_mergeGamble==='crazy'?'#e74c3c':'#f39c12')+';text-align:center">⚠️ '+(G_mergeGamble==='risk'?'冒险模式：品质有升有降（不低于普通）':'疯狂模式：30%神话/30%全变异/40%崩塌')+'</div>':''}
       </div>
       
-      <!-- 合成挑战 -->
-      <details style="margin-bottom:12px">
+      <!-- 合成挑战（已屏蔽） -->
+      <!-- <details style="margin-bottom:12px">
         <summary style="cursor:pointer;color:var(--gold);font-size:12px;padding:6px 0">🎯 合成挑战（点击展开）</summary>
         <div style="margin-top:6px">
           ${renderMergeChallengesHTML()}
         </div>
-      </details>
+      </details> -->
       
-      <!-- 合成实验室 -->
-      <details style="margin-bottom:12px">
+      <!-- 合成实验室（已屏蔽） -->
+      <!-- <details style="margin-bottom:12px">
         <summary style="cursor:pointer;color:var(--blue);font-size:12px;padding:6px 0">🔬 合成实验室（点击展开）</summary>
         <div style="margin-top:6px">
           ${renderLabHTML()}
         </div>
-      </details>
+      </details> -->
       
       <!-- 融合操作区 -->
       <div style="background:linear-gradient(135deg,rgba(255,215,0,.05),rgba(255,107,0,.03));border:1px solid rgba(255,215,0,.15);border-radius:12px;padding:16px;margin-bottom:12px">
