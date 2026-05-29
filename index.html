@@ -4784,7 +4784,7 @@ function showModal(title,contentHTML,buttons){
 }
 function closeModal(){
   document.getElementById('modal-root').innerHTML='';
-  // 事故弹窗关闭后自动显示合成结果
+  // 事件弹窗关闭后自动显示合成结果
   if(window._pendingMergeResult && window._accidentHero){
     window._pendingMergeResult = false;
     var hero = window._accidentHero;
@@ -8266,13 +8266,13 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
       +'</div>';
   }
   
-  // 事故信息横幅（非爆炸事故在合成结果弹窗中显示）
+  // 事件信息横幅（非爆炸事件在合成结果弹窗中显示）
   var accidentBanner='';
   if(accident && accident.accident){
     var accInfo=accident.accident;
     accidentBanner='<div style="margin:10px 0;padding:12px 14px;background:linear-gradient(135deg,rgba(255,68,68,.2),rgba(255,165,0,.1));border:1px solid '+accInfo.color+';border-radius:10px;text-align:center;box-shadow:0 0 16px rgba(255,68,68,.15)">'
       +'<div style="font-size:36px;margin-bottom:6px;animation:bounce 0.5s ease">'+accInfo.icon+'</div>'
-      +'<div style="font-size:15px;font-weight:bold;color:'+accInfo.color+';margin-bottom:4px">合成事故：'+accInfo.name+'</div>'
+      +'<div style="font-size:15px;font-weight:bold;color:'+accInfo.color+';margin-bottom:4px">合成事件：'+accInfo.name+'</div>'
       +'<div style="font-size:12px;color:var(--text);line-height:1.6">'+accident.message+'</div>'
       +'</div>';
   }
@@ -8316,7 +8316,7 @@ function closeMergeResult(){
   flashes.forEach(function(f){f.remove()});
 }
 
-// ==================== 合成事故系统 ====================
+// ==================== 合成事件系统 ====================
 const MERGE_ACCIDENTS = {
   explosion: { name:'爆炸', icon:'💥', color:'#ff4444', desc:'材料炸裂！获得碎片', weight:25 },
   timewarp: { name:'时空扭曲', icon:'🌀', color:'#9b59b6', desc:'属性互换！战士变法师面板', weight:20 },
@@ -8324,12 +8324,12 @@ const MERGE_ACCIDENTS = {
   clown: { name:'小丑英雄', icon:'🤡', color:'#f39c12', desc:'随机荒谬组合，可能是废物也可能是OP', weight:25 },
   mirror: { name:'镜像英雄', icon:'🪞', color:'#3498db', desc:'最强英雄的1.2倍镜像体（7天后消失）', weight:15 }
 };
-const MERGE_ACCIDENT_RATE = 0.15; // 15%事故率
+const MERGE_ACCIDENT_RATE = 0.15; // 15%事件率
 
 function rollMergeAccident(hero, materials) {
-  // 金手指强制事故：单次或持续模式
+  // 金手指强制事件：单次或持续模式
   var forceAccident = G_cheats.enabled && (G_cheats.forceAccident || G_cheats.alwaysAccident);
-  if (forceAccident) { /* 金手指强制事故，跳过随机判定 */ }
+  if (forceAccident) { /* 金手指强制事件，跳过随机判定 */ }
   else if (Math.random() >= MERGE_ACCIDENT_RATE) return null;
   var total = 0;
   for (var k in MERGE_ACCIDENTS) total += MERGE_ACCIDENTS[k].weight;
@@ -8348,7 +8348,7 @@ function rollMergeAccident(hero, materials) {
       if (!G.mergeFragments) G.mergeFragments = 0;
       G.mergeFragments += materials.length;
       result.hero = null; // 英雄消失
-      result.message = '💥 合成事故！材料炸裂，获得 ' + materials.length + ' 个碎片（共' + G.mergeFragments + '个）';
+      result.message = '💥 合成事件！材料炸裂，获得 ' + materials.length + ' 个碎片（共' + G.mergeFragments + '个）';
       break;
     case 'timewarp':
       // ATK和DEF互换，HP和SPD互换
@@ -8417,7 +8417,7 @@ function showAccidentResult(accident, newHero, isQualityUp, oldQuality, material
   var acc = accident.accident;
   var type = accident.type;
   
-  // 每种事故的详细机制说明
+  // 每种事件的详细机制说明
   var detailMap = {
     explosion: {
       detail: '💥 所有材料英雄炸裂消失，转化为合成碎片。',
@@ -8444,11 +8444,11 @@ function showAccidentResult(accident, newHero, isQualityUp, oldQuality, material
   
   var html = '<div style="text-align:center;padding:20px 0">'
     + '<div style="font-size:72px;margin-bottom:12px;animation:bounce 0.5s ease">' + acc.icon + '</div>'
-    + '<div style="font-size:20px;font-weight:bold;color:' + acc.color + ';margin-bottom:10px">合成事故：' + acc.name + '</div>'
+    + '<div style="font-size:20px;font-weight:bold;color:' + acc.color + ';margin-bottom:10px">合成事件：' + acc.name + '</div>'
     + '<div style="font-size:14px;color:var(--text);line-height:1.8;padding:0 16px;margin-bottom:12px">' + accident.message + '</div>'
     // 详细机制说明区域
     + '<div style="margin:12px 16px;padding:14px;background:rgba(0,0,0,.25);border:1px solid ' + acc.color + ';border-radius:10px;text-align:left">'
-    + '<div style="font-size:13px;font-weight:bold;color:' + acc.color + ';margin-bottom:8px">📋 事故机制</div>'
+    + '<div style="font-size:13px;font-weight:bold;color:' + acc.color + ';margin-bottom:8px">📋 事件机制</div>'
     + '<div style="font-size:13px;color:var(--text);line-height:1.8">' + (info.detail || acc.desc) + '</div>'
     + (info.extra ? '<div style="font-size:12px;color:var(--gold);margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">' + info.extra + '</div>' : '')
     + '</div>'
@@ -8457,7 +8457,7 @@ function showAccidentResult(accident, newHero, isQualityUp, oldQuality, material
     + '</div>';
   
   var buttons = [];
-  // 如果有合成结果英雄（非爆炸），关闭事故弹窗后显示合成结果
+  // 如果有合成结果英雄（非爆炸），关闭事件弹窗后显示合成结果
   if (newHero) {
     buttons.push({
       text: '查看合成结果',
@@ -8476,11 +8476,11 @@ function showAccidentResult(accident, newHero, isQualityUp, oldQuality, material
     if (newHero._gambleResult) {
       setTimeout(function(){ showToast(getGambleResultText(newHero._gambleResult)); }, 500);
     }
-    // 事故弹窗关闭后自动显示合成结果（无论用户点击关闭还是查看合成结果）
+    // 事件弹窗关闭后自动显示合成结果（无论用户点击关闭还是查看合成结果）
     window._pendingMergeResult = true;
   }
 
-  showModal(acc.icon + ' 合成事故', html, buttons);
+  showModal(acc.icon + ' 合成事件', html, buttons);
 }
 
 // ==================== 合成赌局系统 ====================
@@ -8580,7 +8580,7 @@ function initMergeChallenges() {
       { id:'d_mutate', desc:'合成一个变异英雄', check:function(h){return h.isMutation}, reward:{gems:1}, icon:'🧬' },
       { id:'d_epic', desc:'合成一个史诗及以上品质英雄', check:function(h){return QUALITIES.indexOf(h.quality)>=2}, reward:{gold:800}, icon:'⭐' },
       { id:'d_speed', desc:'合成一个速度>25的英雄', check:function(h){return h.spd>25}, reward:{gold:500}, icon:'💨' },
-      { id:'d_accident', desc:'触发一次合成事故', check:function(){return false}, reward:{gems:2}, icon:'💥', special:'accident' }
+      { id:'d_accident', desc:'触发一次合成事件', check:function(){return false}, reward:{gems:2}, icon:'💥', special:'accident' }
     ];
     // 随机选3个
     var shuffled = dailyPool.sort(function(){return Math.random()-0.5});
@@ -8604,7 +8604,7 @@ function initMergeChallenges() {
     var weeklyPool = [
       { id:'w_legend', desc:'本周合成一个传说品质英雄', check:function(h){return h.quality==='legendary'}, reward:{gems:5}, icon:'⚡', need:1, progress:0 },
       { id:'w_mythic', desc:'本周合成一个神话品质英雄', check:function(h){return h.quality==='mythic'}, reward:{gems:10}, icon:'🔥', need:1, progress:0 },
-      { id:'w_accident3', desc:'本周触发3次合成事故', check:function(){return false}, reward:{gems:5}, icon:'💥', need:3, progress:0, special:'accident' },
+      { id:'w_accident3', desc:'本周触发3次合成事件', check:function(){return false}, reward:{gems:5}, icon:'💥', need:3, progress:0, special:'accident' },
       { id:'w_merge10', desc:'本周合成10次', check:function(){return true}, reward:{gold:3000}, icon:'⚗️', need:10, progress:0, special:'count' }
     ];
     var shuffled = weeklyPool.sort(function(){return Math.random()-0.5});
@@ -8977,7 +8977,7 @@ function executeMerge(heroUids){
   // 添加新英雄
   G.heroes.push(newHero);
   
-  // === 合成事故判定（在添加英雄后、展示结果前） ===
+  // === 合成事件判定（在添加英雄后、展示结果前） ===
   var accident = rollMergeAccident(newHero, heroes);
   var isExplosion = false;
   if (accident) {
@@ -8987,14 +8987,14 @@ function executeMerge(heroUids){
       var aidx = G.heroes.indexOf(newHero);
       if (aidx >= 0) G.heroes.splice(aidx, 1);
     } else {
-      // 其他事故：用事故修改后的英雄替换
+      // 其他事件：用事件修改后的英雄替换
       var aidx = G.heroes.indexOf(newHero);
       if (aidx >= 0) G.heroes[aidx] = accident.hero;
       newHero = accident.hero;
     }
   }
   
-  // === 合成赌局效果应用（费用已前置扣除，爆炸事故时不执行） ===
+  // === 合成赌局效果应用（费用已前置扣除，爆炸事件时不执行） ===
   if (G_mergeGamble !== 'normal' && !isExplosion) {
     newHero = applyGambleResult(newHero);
     // 更新英雄列表中的引用
@@ -9004,20 +9004,20 @@ function executeMerge(heroUids){
     isQualityUp = QUALITIES.indexOf(newHero.quality) > maxQIdx;
   }
   
-  // === 合成图鉴记录（在事故判定后，记录最终结果） ===
+  // === 合成图鉴记录（在事件判定后，记录最终结果） ===
   if(!G.mergeHistory) G.mergeHistory=[];
-  // 爆炸事故时记录事故信息，非爆炸事故记录英雄信息
+  // 爆炸事件时记录事件信息，非爆炸事件记录英雄信息
   var historyEntry = {
     time:Date.now(),
     materials:heroes.map(function(h){return{name:h.name,icon:h.icon,quality:h.quality}}),
     mult:isExplosion ? 0 : newHero.inheritMult,
-    accident: accident ? { type: accident.type, name: accident.accident.name, icon: accident.accident.icon, message: accident.message } : null
+    accident: accident ? { type: accident.type, name: accident.accident.name, icon: accident.accident.icon, color: accident.accident.color, message: accident.message } : null
   };
   if (isExplosion) {
-    // 爆炸事故：记录事故结果
+    // 爆炸事件：记录事件结果
     historyEntry.result = {name:'💥 爆炸',icon:'💥',quality:'common',isMutation:false,isUpset:false,bondInfo:null,inheritMult:0};
   } else {
-    // 正常合成或其他事故：记录英雄信息
+    // 正常合成或其他事件：记录英雄信息
     historyEntry.result = {name:newHero.name,icon:newHero.icon,quality:newHero.quality,isMutation:newHero.isMutation,isUpset:newHero.isUpset,bondInfo:newHero.bondInfo,inheritMult:newHero.inheritMult};
   }
   G.mergeHistory.unshift(historyEntry);
@@ -9028,15 +9028,15 @@ function executeMerge(heroUids){
   
   // 显示合成结果
   if (isExplosion) {
-    // 爆炸事故：不显示合成结果弹窗，只显示事故弹窗
+    // 爆炸事件：不显示合成结果弹窗，只显示事件弹窗
     showToast(accident.message);
     setTimeout(function(){ showAccidentResult(accident); }, 300);
   } else if (accident) {
-    // 有非爆炸事故：先弹事故详情弹窗（优先），关闭后再显示合成结果
+    // 有非爆炸事件：先弹事件详情弹窗（优先），关闭后再显示合成结果
     showToast(accident.message);
     showAccidentResult(accident, newHero, isQualityUp, oldQuality, heroes);
   } else {
-    // 无事故：正常显示合成结果
+    // 无事件：正常显示合成结果
     showMergeResult(newHero, isQualityUp, oldQuality, heroes, null);
     // 显示赌局结果
     if (newHero._gambleResult) {
@@ -9054,12 +9054,12 @@ function executeMerge(heroUids){
   updateResUI();
   saveGame();
   
-  // 金手指：关闭单次强制事故（持续模式保持开启）
+  // 金手指：关闭单次强制事件（持续模式保持开启）
   if(G_cheats.enabled && G_cheats.forceAccident && !G_cheats.alwaysAccident){
     G_cheats.forceAccident = false;
   }
   
-  return true;
+  return { success: true, isExplosion: isExplosion, hasAccident: !!accident };
 }
 
 // ==================== 装备系统 ====================
@@ -11579,10 +11579,10 @@ function renderMerge(el){
       if(rec.result.isUpset) cls='quality-up';
       var bondTag=rec.result.bondInfo?' <span class="merge-bond-tag">'+rec.result.bondInfo.name+'</span>':'';
       var upsetTag=rec.result.isUpset?' <span style="color:#2ecc71;font-size:10px">🍀</span>':'';
-      // 事故标记
+      // 事件标记
       var accidentTag='';
       if(rec.accident){
-        accidentTag=' <span style="color:'+rec.accident.accident.color+';font-size:10px">'+rec.accident.icon+'</span>';
+        accidentTag=' <span style="color:'+(rec.accident.color||'#ff4444')+';font-size:10px">'+rec.accident.icon+'</span>';
         cls='accident';
       }
       historyHtml+='<div class="merge-history-item '+cls+'">'
@@ -11992,16 +11992,30 @@ function updateMergeUI(){
 
 function doMerge(){
   const activeSlots=window._mergeSlots.filter(Boolean);
-  if(executeMerge(activeSlots)){
-    // 清除所有英雄卡片的选中状态
-    for(var i=0;i<3;i++){
-      var heroUid = window._mergeSlots[i];
-      if(heroUid){
-        updateMergeHeroCardStyle(heroUid, false);
+  var result=executeMerge(activeSlots);
+  if(result && result.success){
+    if(result.isExplosion){
+      // 爆炸事件：清空融合框（材料已消失）
+      for(var i=0;i<3;i++){
+        var heroUid = window._mergeSlots[i];
+        if(heroUid){
+          updateMergeHeroCardStyle(heroUid, false);
+        }
       }
+      window._mergeSlots=[null,null,null];
+      renderMerge(document.getElementById('content'));
+    }else if(!result.hasAccident){
+      // 无事件：正常清空融合框
+      for(var i=0;i<3;i++){
+        var heroUid = window._mergeSlots[i];
+        if(heroUid){
+          updateMergeHeroCardStyle(heroUid, false);
+        }
+      }
+      window._mergeSlots=[null,null,null];
+      renderMerge(document.getElementById('content'));
     }
-    window._mergeSlots=[null,null,null];
-    renderMerge(document.getElementById('content'));
+    // 非爆炸事件：不清空融合框，保留当前选择
   }
 }
 
@@ -12939,8 +12953,8 @@ var G_cheats = {
   oneHitKill: false,
   forceMutation: false,
   showMergeResult: false,  // 默认隐藏合成结果
-  forceAccident: false,    // 强制事故（单次）
-  alwaysAccident: false,   // 持续事故（每次合成必出事故）
+  forceAccident: false,    // 强制事件（单次）
+  alwaysAccident: false,   // 持续事件（每次合成必出事件）
   // 英雄相关金手指
   forceQuality: null,      // 强制指定品质
   forceLegendary: false,   // 强制传说
@@ -13785,7 +13799,7 @@ function renderCheats(el){
           <div class="btn-group">
             <button class="btn ${G_cheats.forceMutation?'btn-primary':''}" onclick="cheatForceMutation()">${G_cheats.forceMutation?'☣️ 强制异变[开]':'☣️ 强制异变[关]'}</button>
             <button class="btn ${G_cheats.showMergeResult?'btn-primary':''}" onclick="cheatShowMergeResult()">${G_cheats.showMergeResult?'🔮 显示合成结果[开]':'🔮 显示合成结果[关]'}</button>
-            <button class="btn ${G_cheats.forceAccident?'btn-primary':''}" onclick="cheatForceAccident()">${G_cheats.forceAccident?'💥 强制事故[开]':'💥 强制事故[关]'}</button>
+            <button class="btn ${G_cheats.forceAccident?'btn-primary':''}" onclick="cheatForceAccident()">${G_cheats.forceAccident?'💥 强制事件[开]':'💥 强制事件[关]'}</button>
           </div>
           <div class="btn-group mt-8">
             <button class="btn ${G_cheats.forceQuality==='legendary'?'btn-primary':''}" onclick="cheatForceQuality(${G_cheats.forceQuality==='legendary'?'null':"'legendary'"})">${G_cheats.forceQuality==='legendary'?'⚡ 强制传说[开]':'⚡ 强制传说[关]'}</button>
@@ -14170,13 +14184,13 @@ function cheatShowMergeResult(){
 function cheatForceAccident(){
   if(!G_cheats.enabled){showToast('请先开启金手指');return;}
   G_cheats.forceAccident = !G_cheats.forceAccident;
-  showToast(G_cheats.forceAccident ? '💥 强制事故已开启（下次合成必定触发事故）' : '💥 强制事故已关闭');
+  showToast(G_cheats.forceAccident ? '💥 强制事件已开启（下次合成必定触发事件）' : '💥 强制事件已关闭');
 }
 
 function cheatAlwaysAccident(){
   if(!G_cheats.enabled){showToast('请先开启金手指');return;}
   G_cheats.alwaysAccident = !G_cheats.alwaysAccident;
-  showToast(G_cheats.alwaysAccident ? '💥 持续事故已开启（每次合成必出事故）' : '💥 持续事故已关闭');
+  showToast(G_cheats.alwaysAccident ? '💥 持续事件已开启（每次合成必出事件）' : '💥 持续事件已关闭');
 }
 
 function cheatSkipStage(){
@@ -14956,7 +14970,7 @@ function renderCheatFloatPanel(){
     html += '<button class="btn btn-sm '+(G_cheats.showMergeResult?'btn-primary':'')+'" onclick="cheatShowMergeResult();renderCheatFloatPanel()">🔮显示结果</button>';
     html += '<button class="btn btn-sm '+(G_cheats.forceQuality==='legendary'?'btn-primary':'')+'" onclick="cheatForceQuality('+(G_cheats.forceQuality==='legendary'?'null':"'legendary'")+');renderCheatFloatPanel()">⚡强制传说</button>';
     html += '<button class="btn btn-sm '+(G_cheats.forceQuality==='mythic'?'btn-primary':'')+'" onclick="cheatForceQuality('+(G_cheats.forceQuality==='mythic'?'null':"'mythic'")+');renderCheatFloatPanel()">🔥强制神话</button>';
-    html += '<button class="btn btn-sm '+(G_cheats.alwaysAccident?'btn-primary':'')+'" onclick="cheatAlwaysAccident();renderCheatFloatPanel()">💥持续事故'+(G_cheats.alwaysAccident?'[开]':'')+'</button>';
+    html += '<button class="btn btn-sm '+(G_cheats.alwaysAccident?'btn-primary':'')+'" onclick="cheatAlwaysAccident();renderCheatFloatPanel()">💥持续事件'+(G_cheats.alwaysAccident?'[开]':'')+'</button>';
     html += '</div>';
     html += '</div>';
     
