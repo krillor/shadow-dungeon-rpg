@@ -9467,7 +9467,7 @@ function refreshTavernOptions(){
 var G_tavernOptions = null;
 // 酒馆中已被招募的英雄ID集合
 var G_tavernRecruited = new Set();
-// 酒馆保底计数器（每10次刷新必出史诗/传说/神话，概率递减）
+// 酒馆保底计数器（每10次刷新必出当前最高品质）
 // 存放在G对象中自动存档，兼容旧存档（undefined时默认0）
 function getPity(){return G.tavernPity||0}
 function setPity(v){G.tavernPity=v}
@@ -9476,9 +9476,9 @@ function getRecruitOptions(){
   // 如果已有缓存，直接返回（招募后不重新随机）
   if(G_tavernOptions && G_tavernOptions.length > 0) return G_tavernOptions;
 
-  // 去掉品质限制，所有品质英雄都可能出现
+  // 恢复品质限制，根据酒馆等级
   const tavernLevel=G.buildings.tavern;
-  const maxQuality='mythic'; // 不限制品质上限
+  const maxQuality=TAVERN_REFRESH.maxQualityByLevel[tavernLevel]||'common';
   const maxQIdx=QUALITIES.indexOf(maxQuality);
   const pool=HERO_TEMPLATES.filter(t=>QUALITIES.indexOf(t.quality)<=maxQIdx);
   
@@ -9506,23 +9506,11 @@ function getRecruitOptions(){
     }
   }
   
-  // 保底机制：每10次刷新，史诗89% / 传说10% / 神话1%
+  // 保底机制：每10次刷新，必出当前酒馆可解锁的最高品质（传奇或更高）
   if(getPity() >= 10 && options.length > 0){
-    // 根据概率决定保底品质
-    const roll = Math.random();
-    let pityQuality;
-    if(roll < 0.89){
-      pityQuality = 'epic'; // 89% 史诗
-    }else if(roll < 0.99){
-      pityQuality = 'legendary'; // 10% 传说
-    }else{
-      pityQuality = 'mythic'; // 1% 神话
-    }
-    // 确保不超过当前酒馆解锁的最高品质
-    const pityQIdx = Math.min(QUALITIES.indexOf(pityQuality), maxQIdx);
-    const finalQuality = QUALITIES[pityQIdx];
-    
-    const pityPool = HERO_TEMPLATES.filter(t => t.quality === finalQuality);
+    // 保底必出当前酒馆可解锁的最高品质
+    const pityQuality = maxQuality; // 当前酒馆解锁的最高品质
+    const pityPool = HERO_TEMPLATES.filter(t => t.quality === pityQuality);
     if(pityPool.length > 0){
       options[options.length - 1] = pick(pityPool);
       setPity(0); // 重置保底计数
@@ -9892,7 +9880,7 @@ function renderTavernRecruit(){
   // 保底进度显示
   var _pity=getPity();
   var pityText=_pity>=10?'<span style="color:#ef4444;font-weight:bold">🎉 保底已触发！</span>':`保底进度: ${_pity}/10`;
-  var pityDesc='史诗89% / 传说10% / 神话1%';
+  var pityDesc='必出'+QUALITY_NAMES[maxQuality]+'品质';
   
   // 经验药水购买价格
   const potionPrice=50; // 50金币购买100经验药水
@@ -13482,6 +13470,7 @@ function renderLeaderboard(el){
       '</div>' +
     '</div>' +
   '</div>' +
+  /* 云存档已屏蔽
   '<div class="panel">' +
     '<div class="panel-title"><span class="icon">☁️</span> 云存档</div>' +
     '<div style="color:var(--text2);font-size:12px;margin-bottom:12px">手动保存/恢复完整游戏状态到云端，换设备不丢失</div>' +
@@ -13491,6 +13480,7 @@ function renderLeaderboard(el){
     '</div>' +
     '<div style="margin-top:10px;font-size:11px;color:var(--text3)">💡 上传会保存当前完整游戏状态，恢复将覆盖本地进度</div>' +
   '</div>' +
+  */
   '<div class="panel" style="margin-top:12px">' +
     '<div class="panel-title"><span class="icon">⚠️</span> 危险操作</div>' +
     '<button class="btn" style="width:100%;color:#ff6b6b;border-color:rgba(255,107,107,.3);background:rgba(255,107,107,.05)" onclick="showConfirm(\'⚠️ 重置游戏\',\'确定要重置游戏吗？\\n\\n所有数据将被清除且不可恢复！\',resetGame,\'确认重置\',\'取消\')">⚠️ 重置游戏</button>' +
