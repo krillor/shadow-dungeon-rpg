@@ -7360,6 +7360,11 @@ async function runBattle(stageId){
     G.resources.iron=Math.min((G.resources.iron||0)+finalIron, RESOURCE_LIMITS.iron);
     G.resources.gems=Math.min((G.resources.gems||0)+(rw.gems||0), RESOURCE_LIMITS.gems);
     if(stage.id>=G.stageProgress){G.stageProgress=stage.id+1}
+    // 羁绊系统解锁提示（通关第20关）
+    if(G.stageProgress===21 && !G._bondUnlockNotified){
+      G._bondUnlockNotified=true;
+      setTimeout(function(){showToast('🎉 羁绊系统已解锁！前往编队页面查看英雄羁绊加成');},1500);
+    }
     G_currentStageId=stage.id+1;
     // 战术大师特质：经验+20%
     teamHeroes.forEach(h=>{
@@ -9501,19 +9506,17 @@ function getRecruitOptions(){
     }
   }
   
-  // 保底机制：每10次刷新，史诗60% / 传说10% / 神话1% / 稀有29%
+  // 保底机制：每10次刷新，史诗89% / 传说10% / 神话1%
   if(getPity() >= 10 && options.length > 0){
     // 根据概率决定保底品质
     const roll = Math.random();
     let pityQuality;
-    if(roll < 0.60){
-      pityQuality = 'epic'; // 60% 史诗
-    }else if(roll < 0.70){
+    if(roll < 0.89){
+      pityQuality = 'epic'; // 89% 史诗
+    }else if(roll < 0.99){
       pityQuality = 'legendary'; // 10% 传说
-    }else if(roll < 0.71){
-      pityQuality = 'mythic'; // 1% 神话
     }else{
-      pityQuality = 'rare'; // 29% 稀有
+      pityQuality = 'mythic'; // 1% 神话
     }
     // 确保不超过当前酒馆解锁的最高品质
     const pityQIdx = Math.min(QUALITIES.indexOf(pityQuality), maxQIdx);
@@ -9887,7 +9890,7 @@ function renderTavernRecruit(){
   // 保底进度显示
   var _pity=getPity();
   var pityText=_pity>=10?'<span style="color:#ef4444;font-weight:bold">🎉 保底已触发！</span>':`保底进度: ${_pity}/10`;
-  var pityDesc='史诗60% / 传说10% / 神话1% / 稀有29%';
+  var pityDesc='史诗89% / 传说10% / 神话1%';
   
   // 经验药水购买价格
   const potionPrice=50; // 50金币购买100经验药水
@@ -11169,9 +11172,6 @@ function renderTeam(el){
   }
   html+='</div></div>';
 
-  // 羁绊预览
-  html+=renderBondPreview(G.team);
-
   // 可用英雄列表
   html+='<div class="panel"><div class="panel-title"><span class="icon">📋</span> 可用英雄 ('+available.length+')</div>';
   if(available.length===0){
@@ -11204,6 +11204,17 @@ function renderTeam(el){
     }
   }
   html+='</div>';
+
+  // 羁绊预览（通关20关后解锁，放到最下面）
+  var bondUnlocked = (G.stageProgress||0) >= 20;
+  if(bondUnlocked){
+    html+=renderBondPreview(G.team);
+  }else{
+    html+='<div class="panel" style="margin-top:12px">'
+      +'<div class="panel-title"><span class="icon">🔗</span> 英雄羁绊</div>'
+      +'<div class="text-dim text-sm" style="text-align:center;padding:16px">🔒 通关第20关后解锁羁绊系统（当前进度：第'+(G.stageProgress||0)+'关）</div>'
+      +'</div>';
+  }
 
   el.innerHTML=html;
 }
