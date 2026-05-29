@@ -11534,6 +11534,9 @@ function addToTeam(slotIdx,heroUid){
   const hero=G.heroes.find(h=>h.uid===heroUid);
   if(!hero)return;
   G.team[slotIdx]=hero;
+  if(onGuideQuickAdd()){
+    return;
+  }
   renderCurrentTab();
 }
 
