@@ -4504,7 +4504,7 @@ function loadGame(){
       G.arenaState.lastChallengeDate=today;
     }
     if(G.lastLoginDate!==today){
-      G.dailyBonusClaimed=false;
+      G.dailyBonusClaimed=true;
       G.lastLoginDate=today;
     }
     if(G.pveWinStreak===undefined) G.pveWinStreak=0;
@@ -9964,11 +9964,11 @@ function renderTown(el){
     equipCount=G.equipment.filter(function(e){return e&&e.heroUid===null}).length;
   }catch(e){console.error('[Town Error] equipCount:',e);}
   
-  // 检查离线收益
-  try{
-    var offline=calculateOfflineEarnings();
-    if(offline) G.offlineEarnings=offline;
-  }catch(e){console.error('[Town Error] offline:',e);}
+  // 检查离线收益（已屏蔽）
+  // try{
+  //   var offline=calculateOfflineEarnings();
+  //   if(offline) G.offlineEarnings=offline;
+  // }catch(e){console.error('[Town Error] offline:',e);}
   
   // 构建HTML
   try{
@@ -10028,14 +10028,15 @@ function renderTown(el){
         +'<div class="town-module-btn-info">查看榜单</div>'
       +'</div>'
     +'</div>'
-    +(G.offlineEarnings?'<div class="daily-bonus-banner" style="cursor:pointer;background:linear-gradient(135deg,rgba(100,200,255,.15),rgba(50,150,255,.05));border-color:rgba(100,200,255,.3)" onclick="claimOfflineEarnings()">'
-      +'<span style="font-size:16px">💤</span> 离线收益可领取！离线 '+G.offlineEarnings.hours.toFixed(1)+' 小时<br>'
-      +'<span class="text-xs">💰'+G.offlineEarnings.gold+' 🍞'+G.offlineEarnings.food+' 🪨'+G.offlineEarnings.stone+' ⛏️'+G.offlineEarnings.iron+'</span>'
-    +'</div>':'')
-    +(!G.dailyBonusClaimed?'<div class="daily-bonus-banner" style="cursor:pointer" onclick="claimDailyBonus()">'
-      +'<span style="font-size:16px">🎁</span> 点击领取每日登录奖励！<br>'
-      +'<span class="text-xs text-dim">随进度提升：约'+(200+G.stageProgress*30)+'💰 '+(100+G.stageProgress*10)+'🍞 '+(30+G.stageProgress*5)+'🪨 '+(15+G.stageProgress*3)+'⛏️</span>'
-    +'</div>':'')
+    // 离线收益和每日登录（已屏蔽）
+    // +(G.offlineEarnings?'<div class="daily-bonus-banner" style="cursor:pointer;background:linear-gradient(135deg,rgba(100,200,255,.15),rgba(50,150,255,.05));border-color:rgba(100,200,255,.3)" onclick="claimOfflineEarnings()">'
+    //   +'<span style="font-size:16px">💤</span> 离线收益可领取！离线 '+G.offlineEarnings.hours.toFixed(1)+' 小时<br>'
+    //   +'<span class="text-xs">💰'+G.offlineEarnings.gold+' 🍞'+G.offlineEarnings.food+' 🪨'+G.offlineEarnings.stone+' ⛏️'+G.offlineEarnings.iron+'</span>'
+    // +'</div>':'')
+    // +(!G.dailyBonusClaimed?'<div class="daily-bonus-banner" style="cursor:pointer" onclick="claimDailyBonus()">'
+    //   +'<span style="font-size:16px">🎁</span> 点击领取每日登录奖励！<br>'
+    //   +'<span class="text-xs text-dim">随进度提升：约'+(200+G.stageProgress*30)+'💰 '+(100+G.stageProgress*10)+'🍞 '+(30+G.stageProgress*5)+'🪨 '+(15+G.stageProgress*3)+'⛏️</span>'
+    // +'</div>':'')
   }catch(htmlErr){
     // HTML生成失败时显示原始错误
     console.error('[Town Error] HTML generation:',htmlErr);
