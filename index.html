@@ -2076,14 +2076,33 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 // ==================== 引导系统 ====================
 var G_tutorialStep=0;
 var G_tutorialPhase='';
-var G_guideHighlightEl=document.getElementById('guide-highlight');
-var G_guideTooltipEl=document.getElementById('guide-tooltip');
+// DOM元素延迟获取，确保DOM已加载
+var G_guideHighlightEl;
+var G_guideTooltipEl;
+
+function getTutorialDOMElements(){
+  if(!G_guideHighlightEl){
+    G_guideHighlightEl=document.getElementById('guide-highlight');
+  }
+  if(!G_guideTooltipEl){
+    G_guideTooltipEl=document.getElementById('guide-tooltip');
+  }
+}
 
 function startTutorial(){
-  if(G.tutorialDone)return;
+  getTutorialDOMElements();
+  // 如果已经完成引导或者tutorialDone未设置但有存档，直接返回
+  if(G.tutorialDone===true)return;
+  // 如果是旧存档，标记为已完成引导
+  if(G.tutorialDone===undefined && G.heroes && G.heroes.length>0){
+    G.tutorialDone=true;
+    saveGame();
+    return;
+  }
   G_tutorialPhase='story';
   G_tutorialStep=1;
   var overlay=document.getElementById('tutorial-overlay');
+  if(!overlay)return;
   overlay.classList.add('active');
   overlay.onclick=nextTutorialStep;
   showTutorialStep(1);
@@ -2129,9 +2148,10 @@ function startTownGuide(){
 }
 
 function showGuideTip(targetId,tipTitle,tipText,arrowDir){
+  getTutorialDOMElements();
   hideGuideTip();
   var targetEl=document.getElementById(targetId);
-  if(!targetEl)return;
+  if(!targetEl || !G_guideHighlightEl || !G_guideTooltipEl)return;
   var rect=targetEl.getBoundingClientRect();
   G_guideHighlightEl.style.display='block';
   G_guideHighlightEl.style.left=(rect.left-6)+'px';
@@ -2166,6 +2186,7 @@ function showGuideTip(targetId,tipTitle,tipText,arrowDir){
 }
 
 function hideGuideTip(){
+  getTutorialDOMElements();
   if(G_guideHighlightEl)G_guideHighlightEl.style.display='none';
   if(G_guideTooltipEl)G_guideTooltipEl.style.display='none';
 }
@@ -4431,6 +4452,14 @@ function loadGame(){
     if(G.pveMaxStreak===undefined) G.pveMaxStreak=0;
     if(!G.achievements) G.achievements={unlocked:{},progress:{},totalClaimed:0};
     if(!G.stats) G.stats={totalKills:0,totalHeroesRecruited:0,totalEquipmentForged:0,totalEquipmentMerged:0,totalGoldEarned:0,totalGemsEarned:0,maxStageReached:1,maxHeroLevel:0};
+    // 旧存档兼容性：如果没有tutorialDone且有英雄，自动标记为已完成
+    if(G.tutorialDone===undefined){
+      if(G.heroes && G.heroes.length>0){
+        G.tutorialDone=true;
+      }else{
+        G.tutorialDone=false;
+      }
+    }
     setTimeout(function(){checkAllAchievements();},1000);
     return true;
   }catch(e){console.error('读档失败',e);return false;}
