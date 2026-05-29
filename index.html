@@ -9462,7 +9462,7 @@ function refreshTavernOptions(){
 var G_tavernOptions = null;
 // 酒馆中已被招募的英雄ID集合
 var G_tavernRecruited = new Set();
-// 酒馆保底计数器（每10次刷新必出当前最高品质英雄）
+// 酒馆保底计数器（每10次刷新必出史诗/传说/神话，概率递减）
 // 存放在G对象中自动存档，兼容旧存档（undefined时默认0）
 function getPity(){return G.tavernPity||0}
 function setPity(v){G.tavernPity=v}
@@ -9500,12 +9500,23 @@ function getRecruitOptions(){
     }
   }
   
-  // 保底机制：每10次刷新，最后一个位置必出当前最高品质英雄
+  // 保底机制：每10次刷新，必出史诗/传说/神话（概率递减：史诗60% > 传说30% > 神话10%）
   if(getPity() >= 10 && options.length > 0){
-    // 保底必出当前最高可解锁品质
-    const pityPool = HERO_TEMPLATES.filter(t => 
-      QUALITIES.indexOf(t.quality) === maxQIdx // 只选最高品质
-    );
+    // 根据概率决定保底品质
+    const roll = Math.random();
+    let pityQuality;
+    if(roll < 0.60){
+      pityQuality = 'epic'; // 60% 史诗
+    }else if(roll < 0.90){
+      pityQuality = 'legendary'; // 30% 传说
+    }else{
+      pityQuality = 'mythic'; // 10% 神话
+    }
+    // 确保不超过当前酒馆解锁的最高品质
+    const pityQIdx = Math.min(QUALITIES.indexOf(pityQuality), maxQIdx);
+    const finalQuality = QUALITIES[pityQIdx];
+    
+    const pityPool = HERO_TEMPLATES.filter(t => t.quality === finalQuality);
     if(pityPool.length > 0){
       options[options.length - 1] = pick(pityPool);
       setPity(0); // 重置保底计数
@@ -9872,12 +9883,8 @@ function renderTavernRecruit(){
         }).join('');
   // 保底进度显示
   var _pity=getPity();
-  // 根据酒馆等级计算当前最高品质
-  var tavernLevel=G.buildings.tavern||1;
-  var maxQIdx=Math.min(Math.floor(tavernLevel/2)+1,QUALITIES.length-1);
-  var maxQuality=QUALITIES[maxQIdx];
-  var qName=QUALITY_NAMES[maxQuality]||maxQuality;
   var pityText=_pity>=10?'<span style="color:#ef4444;font-weight:bold">🎉 保底已触发！</span>':`保底进度: ${_pity}/10`;
+  var pityDesc='史诗60% > 传说30% > 神话10%';
   
   // 经验药水购买价格
   const potionPrice=50; // 50金币购买100经验药水
@@ -9888,7 +9895,7 @@ function renderTavernRecruit(){
       <div class="panel-title"><span class="icon">🍺</span> 酒馆招募</div>
       <div class="text-dim text-sm mb-8">酒馆等级：${G.buildings.tavern} | 可选英雄：${TAVERN_REFRESH.optionsCount[G.buildings.tavern]||3}个${(()=>{var b=TAVERN_REFRESH.qualityWeightBoost[G.buildings.tavern]||0;return b>0?' | 品质+'+(b*100)+'%':''})()}</div>
       <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:6px;padding:8px;margin-bottom:12px;font-size:12px;text-align:center">
-        🎲 ${pityText} <span class="text-dim">（每10次刷新必出${qName}英雄）</span>
+        🎲 ${pityText} <span class="text-dim">（每10次刷新必出高品质：${pityDesc}）</span>
       </div>
       <div class="grid-3">
         ${heroesHTML}
