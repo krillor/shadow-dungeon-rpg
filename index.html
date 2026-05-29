@@ -2074,8 +2074,7 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 
 <script>
 // ==================== 引导系统 ====================
-var G_tutorialStep=0;
-var G_tutorialPhase='';
+// 引导状态现在存储在 G 对象中，确保可存档
 // DOM元素延迟获取，确保DOM已加载
 var G_guideHighlightEl;
 var G_guideTooltipEl;
@@ -2099,8 +2098,8 @@ function startTutorial(){
     saveGame();
     return;
   }
-  G_tutorialPhase='story';
-  G_tutorialStep=1;
+  G.tutorialPhase='story';
+  G.tutorialStep=1;
   var overlay=document.getElementById('tutorial-overlay');
   if(!overlay)return;
   overlay.classList.add('active');
@@ -2118,10 +2117,10 @@ function showTutorialStep(step){
 }
 
 function nextTutorialStep(){
-  if(G_tutorialPhase==='story'){
-    G_tutorialStep++;
-    if(G_tutorialStep<=5){
-      showTutorialStep(G_tutorialStep);
+  if(G.tutorialPhase==='story'){
+    G.tutorialStep++;
+    if(G.tutorialStep<=5){
+      showTutorialStep(G.tutorialStep);
     }else{
       endTutorialStory();
     }
@@ -2142,8 +2141,8 @@ function endTutorialStory(){
 }
 
 function startTownGuide(){
-  G_tutorialPhase='guide';
-  G_tutorialStep=1;
+  G.tutorialPhase='guide';
+  G.tutorialStep=1;
   setTimeout(()=>showGuideTip('town-recruit','🍺 招募英雄','欢迎来到城镇！\n\n首先，让我们招募一位英雄来扩充队伍。\n\n点击「招募」按钮进入酒馆。',null,'bottom'),500);
 }
 
@@ -2193,12 +2192,12 @@ function hideGuideTip(){
 
 function completeGuideStep(){
   hideGuideTip();
-  G_tutorialStep++;
+  G.tutorialStep++;
   setTimeout(()=>executeNextGuideStep(),300);
 }
 
 function executeNextGuideStep(){
-  switch(G_tutorialStep){
+  switch(G.tutorialStep){
     case 2:
       showGuideTip('town-recruit','🍺 招募英雄','点击「招募」按钮进入酒馆招募英雄！',null,'bottom');
       break;
@@ -2241,19 +2240,19 @@ function skipTutorial(){
 }
 
 function checkTavernReturn(){
-  if(G_tutorialPhase==='guide' && G_tutorialStep===2){
+  if(G.tutorialPhase==='guide' && G.tutorialStep===2){
     completeGuideStep();
   }
 }
 
 function checkAutoBattleStart(){
-  if(G_tutorialPhase==='guide' && G_tutorialStep===3){
+  if(G.tutorialPhase==='guide' && G.tutorialStep===3){
     completeGuideStep();
   }
 }
 
 function checkMergeEnter(){
-  if(G_tutorialPhase==='guide' && G_tutorialStep===4){
+  if(G.tutorialPhase==='guide' && G.tutorialStep===4){
     completeGuideStep();
   }
 }
@@ -4452,7 +4451,7 @@ function loadGame(){
     if(G.pveMaxStreak===undefined) G.pveMaxStreak=0;
     if(!G.achievements) G.achievements={unlocked:{},progress:{},totalClaimed:0};
     if(!G.stats) G.stats={totalKills:0,totalHeroesRecruited:0,totalEquipmentForged:0,totalEquipmentMerged:0,totalGoldEarned:0,totalGemsEarned:0,maxStageReached:1,maxHeroLevel:0};
-    // 旧存档兼容性：如果没有tutorialDone且有英雄，自动标记为已完成
+    // 旧存档兼容性：引导相关变量
     if(G.tutorialDone===undefined){
       if(G.heroes && G.heroes.length>0){
         G.tutorialDone=true;
@@ -4460,6 +4459,8 @@ function loadGame(){
         G.tutorialDone=false;
       }
     }
+    if(G.tutorialPhase===undefined) G.tutorialPhase='';
+    if(G.tutorialStep===undefined) G.tutorialStep=0;
     setTimeout(function(){checkAllAchievements();},1000);
     return true;
   }catch(e){console.error('读档失败',e);return false;}
@@ -9816,11 +9817,11 @@ function recruitHero(templateId){
   checkAchievement('hero_10');
   
   // 如果是在引导阶段，招募成功后自动完成步骤2
-  if(G_tutorialPhase==='guide' && G_tutorialStep===2){
-    G_tutorialStep=3;
-  }
-  // 招募后保持在酒馆，已招募的显示为灰色禁用
-  renderTavernRecruit();
+    if(G.tutorialPhase==='guide' && G.tutorialStep===2){
+      G.tutorialStep=3;
+    }
+    // 招募后保持在酒馆，已招募的显示为灰色禁用
+    renderTavernRecruit();
 }
 
 // ==================== UI渲染 ====================
@@ -10100,8 +10101,8 @@ function renderTown(el){
   }
   // 渲染完成后，根据引导步骤显示对应的引导提示
   setTimeout(function(){
-    if(G_tutorialPhase==='guide'){
-      switch(G_tutorialStep){
+    if(G.tutorialPhase==='guide'){
+      switch(G.tutorialStep){
         case 1:
           showGuideTip('town-recruit','🍺 招募英雄','欢迎来到城镇！\n\n首先，让我们招募一位英雄来扩充队伍。\n\n点击「招募」按钮进入酒馆。',null,'bottom');
           break;
@@ -10129,8 +10130,8 @@ function renderTavernRecruit(){
   // 进入酒馆时隐藏引导提示
   hideGuideTip();
   // 如果是在引导阶段，更新到第二步
-  if(G_tutorialPhase==='guide' && G_tutorialStep===1){
-    G_tutorialStep=2;
+  if(G.tutorialPhase==='guide' && G.tutorialStep===1){
+    G.tutorialStep=2;
   }
   const options=getRecruitOptions();
   const tavernLevel=G.buildings.tavern||1;
@@ -10269,9 +10270,9 @@ function renderTavernRecruit(){
     </div>
   `;
   
-  // 渲染完成后，如果是引导步骤2且已招募过英雄，显示返回提示
+  // 渲染完成后，如果是引导步骤3，显示返回城镇的提示
   setTimeout(function(){
-    if(G_tutorialPhase==='guide' && G_tutorialStep===3){
+    if(G.tutorialPhase==='guide' && G.tutorialStep===3){
       showGuideTip('tavern-back-btn','返回城镇','太棒了！\n\n现在点击「返回城镇」按钮回到主界面吧！','left');
     }
   },100);
