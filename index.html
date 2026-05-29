@@ -9471,16 +9471,17 @@ function getRecruitOptions(){
   // 如果已有缓存，直接返回（招募后不重新随机）
   if(G_tavernOptions && G_tavernOptions.length > 0) return G_tavernOptions;
 
+  // 去掉品质限制，所有品质英雄都可能出现
   const tavernLevel=G.buildings.tavern;
-  const maxQuality=TAVERN_REFRESH.maxQualityByLevel[tavernLevel]||'common';
+  const maxQuality='mythic'; // 不限制品质上限
   const maxQIdx=QUALITIES.indexOf(maxQuality);
   const pool=HERO_TEMPLATES.filter(t=>QUALITIES.indexOf(t.quality)<=maxQIdx);
   
   // 根据酒馆等级决定选项数量
   const optionCount=TAVERN_REFRESH.optionsCount[tavernLevel]||2;
   
-  // 加权随机（基础权重）
-  const weights={common:50,rare:30,epic:15,legendary:4,mythic:1};
+  // 加权随机（基础权重）- 传说10% 神话1%
+  const weights={common:50,rare:30,epic:15,legendary:10,mythic:1};
   // 品质加成：提升当前最高可解锁品质的出现率
   const boost=TAVERN_REFRESH.qualityWeightBoost[tavernLevel]||0;
   if(boost>0){
@@ -12447,6 +12448,7 @@ function renderEquip(el){
     +'<div class="panel-title"><span class="icon">👤</span> 已装备 ('+equipped.length+'件)</div>'
     +(equipped.length===0?'<div class="text-dim">没有已装备的物品</div>':'<div class="equip-grid">'+equippedHTML+'</div>')
     +'</div>'
+    /* 铁匠铺UI已屏蔽
     +'<div class="panel">'
     +'<div class="panel-title"><span class="icon">🔨</span> 铁匠铺 <span class="text-blue">Lv.'+(G.buildings.blacksmith||0)+'</span></div>'
     +'<div class="text-dim text-sm mb-8">锻造装备需要铁矿，品质受铁匠铺等级限制</div>'
@@ -12461,7 +12463,8 @@ function renderEquip(el){
     +'<div style="color:var(--gold);margin-bottom:6px">💡 强化说明</div>'
     +'<div class="text-xs text-dim">强化消耗铁矿，每级+10%属性，最高+10。分解装备返还部分铁矿。</div>'
     +'</div>'
-    +'</div>';
+    +'</div>'
+    */
 }
 
 // 显示装备详情弹窗
