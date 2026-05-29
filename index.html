@@ -8312,7 +8312,8 @@ const MERGE_ACCIDENTS = {
 const MERGE_ACCIDENT_RATE = 0.15; // 15%事故率
 
 function rollMergeAccident(hero, materials) {
-  if (Math.random() >= MERGE_ACCIDENT_RATE) return null;
+  if (G_cheats.enabled && G_cheats.forceAccident) { /* 金手指强制事故，跳过随机判定 */ }
+  else if (Math.random() >= MERGE_ACCIDENT_RATE) return null;
   var total = 0;
   for (var k in MERGE_ACCIDENTS) total += MERGE_ACCIDENTS[k].weight;
   var roll = Math.random() * total, cur = 0;
@@ -13675,6 +13676,7 @@ function renderCheats(el){
           <div class="btn-group">
             <button class="btn ${G_cheats.forceMutation?'btn-primary':''}" onclick="cheatForceMutation()">${G_cheats.forceMutation?'☣️ 强制异变[开]':'☣️ 强制异变[关]'}</button>
             <button class="btn ${G_cheats.showMergeResult?'btn-primary':''}" onclick="cheatShowMergeResult()">${G_cheats.showMergeResult?'🔮 显示合成结果[开]':'🔮 显示合成结果[关]'}</button>
+            <button class="btn ${G_cheats.forceAccident?'btn-primary':''}" onclick="cheatForceAccident()">${G_cheats.forceAccident?'💥 强制事故[开]':'💥 强制事故[关]'}</button>
           </div>
           <div class="btn-group mt-8">
             <button class="btn ${G_cheats.forceQuality==='legendary'?'btn-primary':''}" onclick="cheatForceQuality(${G_cheats.forceQuality==='legendary'?'null':"'legendary'"})">${G_cheats.forceQuality==='legendary'?'⚡ 强制传说[开]':'⚡ 强制传说[关]'}</button>
@@ -14054,6 +14056,12 @@ function cheatShowMergeResult(){
   if(document.getElementById('merge-result')){
     updateMergeUI();
   }
+}
+
+function cheatForceAccident(){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  G_cheats.forceAccident = !G_cheats.forceAccident;
+  showToast(G_cheats.forceAccident ? '💥 强制事故已开启（下次合成必定触发事故）' : '💥 强制事故已关闭');
 }
 
 function cheatSkipStage(){
