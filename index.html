@@ -8442,10 +8442,14 @@ function showAccidentResult(accident, newHero, isQualityUp, oldQuality, material
   var buttons = [];
   // 如果有合成结果英雄（非爆炸），关闭事故弹窗后显示合成结果
   if (newHero) {
+    // 预先将 newHero 属性嵌入 action 字符串，避免丢失上下文
+    var heroQualityName = QUALITY_NAMES[newHero.quality];
+    var heroIcon = newHero.icon;
+    var heroName = newHero.name;
     buttons.push({
       text: '查看合成结果',
       cls: 'btn-primary',
-      action: "closeModal();showMergeResult(window._accidentHero," + isQualityUp + ",'" + oldQuality + "',window._accidentMats,null);showToast('融合成功！获得 '+QUALITY_NAMES[newHero.quality]+' 英雄：'+newHero.icon+' '+newHero.name)"
+      action: "closeModal();showMergeResult(window._accidentHero," + isQualityUp + ",'" + oldQuality + "',window._accidentMats,null);showToast('融合成功！获得 " + heroQualityName + " 英雄：" + heroIcon + " " + heroName + "')"
     });
   }
   
@@ -8945,16 +8949,6 @@ function executeMerge(heroUids){
   }
   // 连击×10：必定异变（已在generateFusedHero中通过streakForceMutation实现）
   
-  // === 合成图鉴记录 ===
-  if(!G.mergeHistory) G.mergeHistory=[];
-  G.mergeHistory.unshift({
-    time:Date.now(),
-    materials:heroes.map(function(h){return{name:h.name,icon:h.icon,quality:h.quality}}),
-    result:{name:newHero.name,icon:newHero.icon,quality:newHero.quality,isMutation:newHero.isMutation,isUpset:newHero.isUpset,bondInfo:newHero.bondInfo,inheritMult:newHero.inheritMult},
-    mult:newHero.inheritMult
-  });
-  if(G.mergeHistory.length>50) G.mergeHistory.length=50; // 最多保留50条
-  
   // 移除被融合的英雄
   heroes.forEach(h=>{
     const idx=G.heroes.findIndex(x=>x.uid===h.uid);
@@ -8994,6 +8988,17 @@ function executeMerge(heroUids){
     isQualityUp = QUALITIES.indexOf(newHero.quality) > maxQIdx;
   }
   
+  // === 合成图鉴记录（在事故判定后，记录最终结果） ===
+  if(!G.mergeHistory) G.mergeHistory=[];
+  G.mergeHistory.unshift({
+    time:Date.now(),
+    materials:heroes.map(function(h){return{name:h.name,icon:h.icon,quality:h.quality}}),
+    result:{name:newHero.name,icon:newHero.icon,quality:newHero.quality,isMutation:newHero.isMutation,isUpset:newHero.isUpset,bondInfo:newHero.bondInfo,inheritMult:newHero.inheritMult},
+    mult:newHero.inheritMult,
+    accident: accident ? { type: accident.type, name: accident.accident.name, icon: accident.accident.icon, message: accident.message } : null
+  });
+  if(G.mergeHistory.length>50) G.mergeHistory.length=50; // 最多保留50条
+  
   // === 合成挑战检测 ===
   checkMergeChallenge(accident ? accident.hero : newHero, accident);
   
@@ -9004,6 +9009,7 @@ function executeMerge(heroUids){
     setTimeout(function(){ showAccidentResult(accident); }, 300);
   } else if (accident) {
     // 有非爆炸事故：先弹事故详情弹窗（优先），关闭后再显示合成结果
+    showToast(accident.message);
     showAccidentResult(accident, newHero, isQualityUp, oldQuality, heroes);
   } else {
     // 无事故：正常显示合成结果
