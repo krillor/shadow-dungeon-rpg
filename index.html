@@ -12003,7 +12003,6 @@ function doMerge(){
         }
       }
       window._mergeSlots=[null,null,null];
-      renderMerge(document.getElementById('content'));
     }else if(!result.hasAccident){
       // 无事件：正常清空融合框
       for(var i=0;i<3;i++){
@@ -12013,9 +12012,10 @@ function doMerge(){
         }
       }
       window._mergeSlots=[null,null,null];
-      renderMerge(document.getElementById('content'));
     }
     // 非爆炸事件：不清空融合框，保留当前选择
+    // 无论哪种情况，都需要刷新界面以显示合成记录
+    renderMerge(document.getElementById('content'));
   }
 }
 
