@@ -8905,7 +8905,8 @@ function executeMerge(heroUids){
       }
     }
   }
-  
+
+  // 检查金币是否足够（合成费用始终需要金币）
   if((G.resources.gold||0) < mergeCost){
     showToast('💰 金币不足！需要 '+mergeCost+' 金币');
     return false;
@@ -11541,7 +11542,16 @@ function renderMerge(el){
     }
   }
   var bondPreview=selectedHeroes.length>=2?detectMergeBond(selectedHeroes):null;
-  var canAfford=(G.resources.gold||0)>=mergeCost&&(G_mergeGamble==='normal'||gambleInfo.costType==='gems'?(G.resources.gems||0)>=(gambleInfo.cost||0):(G.resources.gold||0)>=(mergeCost+(gambleInfo.cost||0)));
+  // 金币始终需要足够支付合成费用
+  var canAfford=(G.resources.gold||0)>=mergeCost;
+  // 赌局额外费用检查
+  if(canAfford&&G_mergeGamble!=='normal'&&gambleInfo.cost>0){
+    if(gambleInfo.costType==='gems'){
+      canAfford=(G.resources.gems||0)>=(gambleInfo.cost||0);
+    }else{
+      canAfford=(G.resources.gold||0)>=(mergeCost+(gambleInfo.cost||0));
+    }
+  }
   
   // 合成历史
   var historyHtml='';
@@ -11749,14 +11759,14 @@ function quickAddMergeHeroes(mode){
   var usedSet=new Set(usedUids.filter(Boolean));
   var teamUids=G.team.filter(h=>h!==null).map(h=>h.uid);
   var available=G.heroes.filter(function(h){return !usedSet.has(h.uid)&&!teamUids.includes(h.uid)&&!h.locked;});
-  
+
   if(available.length===0){
     showToast('没有可用英雄');
     return;
   }
-  
+
   var toAdd=[];
-  
+
   if(mode==='highest'){
     // 添加最高品质的英雄
     var qualityOrder=['hidden','mythic','legendary','epic','rare','common'];
@@ -11798,22 +11808,38 @@ function quickAddMergeHeroes(mode){
     // 按品质全选
     toAdd=available.filter(function(h){return h.quality===mode;}).slice(0,3);
   }
-  
+
   if(toAdd.length<2){
     showToast('可用英雄不足2个');
     return;
   }
-  
+
+  // 清除所有现有选中英雄的卡片状态
+  for(var i=0;i<3;i++){
+    var heroUid = window._mergeSlots[i];
+    if(heroUid){
+      updateMergeHeroCardStyle(heroUid, false);
+    }
+  }
+
   // 清空后添加
   window._mergeSlots=[null,null,null];
   for(var i=0;i<Math.min(toAdd.length,3);i++){
     window._mergeSlots[i]=toAdd[i].uid;
+    updateMergeHeroCardStyle(toAdd[i].uid, true);
   }
-  
+
   renderMerge(document.getElementById('content'));
 }
 
 function addMergeHero(heroUid){
+  // 检查英雄是否已经在槽位中
+  for(var i=0;i<3;i++){
+    if(window._mergeSlots[i]===heroUid){
+      return; // 已在槽位中，不重复添加
+    }
+  }
+  // 寻找空槽位添加
   for(var i=0;i<3;i++){
     if(!window._mergeSlots[i]){
       window._mergeSlots[i]=heroUid;
@@ -11872,7 +11898,13 @@ function showMergePicker(slotIdx){
 }
 
 function pickMergeHero(slotIdx,heroUid){
+  // 如果该槽位已有英雄，先取消选中状态
+  var oldHeroUid = window._mergeSlots[slotIdx];
+  if(oldHeroUid){
+    updateMergeHeroCardStyle(oldHeroUid, false);
+  }
   window._mergeSlots[slotIdx]=heroUid;
+  updateMergeHeroCardStyle(heroUid, true);
   closeModal();
   updateMergeUI();
 }
@@ -11889,7 +11921,7 @@ function updateMergeUI(){
     }else{
       el.innerHTML='<span class="slot-placeholder">?</span><span class="slot-hint">点击添加</span>';
       el.className='merge-slot';
-      el.onclick=(function(idx){return function(){openMergeSlotPicker(idx)}})(i);
+      el.onclick=(function(idx){return function(){showMergePicker(idx)}})(i);
     }
   }
   const activeSlots=slots.filter(Boolean);
@@ -11928,7 +11960,8 @@ function updateMergeUI(){
       btn.disabled=true;
     }
   }else{
-    resultEl.innerHTML='?';
+    resultEl.innerHTML='<span class="result-placeholder">?</span><span class="result-hint">融合结果</span>';
+    resultEl.className='merge-result';
     previewEl.innerHTML='请选择至少2个英雄进行融合';
     btn.disabled=true;
   }
@@ -11937,17 +11970,35 @@ function updateMergeUI(){
 function doMerge(){
   const activeSlots=window._mergeSlots.filter(Boolean);
   if(executeMerge(activeSlots)){
+    // 清除所有英雄卡片的选中状态
+    for(var i=0;i<3;i++){
+      var heroUid = window._mergeSlots[i];
+      if(heroUid){
+        updateMergeHeroCardStyle(heroUid, false);
+      }
+    }
     window._mergeSlots=[null,null,null];
     renderMerge(document.getElementById('content'));
   }
 }
 
 function clearMerge(){
+  // 清除所有英雄卡片的选中状态
+  for(var i=0;i<3;i++){
+    var heroUid = window._mergeSlots[i];
+    if(heroUid){
+      updateMergeHeroCardStyle(heroUid, false);
+    }
+  }
   window._mergeSlots=[null,null,null];
   renderMerge(document.getElementById('content'));
 }
 
 function removeMergeSlot(slotIdx){
+  var heroUid = window._mergeSlots[slotIdx];
+  if(heroUid){
+    updateMergeHeroCardStyle(heroUid, false);
+  }
   window._mergeSlots[slotIdx]=null;
   updateMergeUI();
 }
@@ -11965,7 +12016,7 @@ function updateMergeSlotUI(slotIdx, heroUid){
       slot.style.boxShadow='0 0 10px rgba(255,215,0,.3)';
     }
   }else{
-    slot.innerHTML='?';
+    slot.innerHTML='<span class="slot-placeholder">?</span><span class="slot-hint">点击添加</span>';
     slot.style.borderColor='';
     slot.style.boxShadow='';
   }
@@ -11975,6 +12026,16 @@ function updateMergeSlotUI(slotIdx, heroUid){
 function updateMergeHeroCardStyle(heroUid, isSelected){
   var card=document.querySelector('.hero-card[data-uid="'+heroUid+'"]');
   if(!card)return;
+
+  // 获取英雄信息
+  var hero=G.heroes.find(function(h){return h.uid===heroUid});
+  if(!hero)return;
+
+  // 检查英雄是否已上阵或锁定
+  var teamUids=G.team.filter(function(h){return h!==null}).map(function(h){return h.uid});
+  var isInTeam=teamUids.includes(heroUid);
+  var isLocked=hero.locked;
+  var canClick=!isInTeam && !isLocked;
 
   if(isSelected){
     card.style.boxShadow='0 0 12px rgba(255,215,0,.4)';
@@ -11988,16 +12049,22 @@ function updateMergeHeroCardStyle(heroUid, isSelected){
       badge.textContent='✓ 已选';
       card.appendChild(badge);
     }
-    // 更新点击事件
-    card.onclick=function(){removeMergeHero(heroUid);};
+    // 更新点击事件（只有可点击的英雄才能移除）
+    if(canClick){
+      card.onclick=function(){removeMergeHero(heroUid);};
+    }
   }else{
     card.style.boxShadow='';
     card.style.borderColor='';
     // 移除已选标记
     var badge=card.querySelector('.merge-selected-badge');
     if(badge)badge.remove();
-    // 更新点击事件
-    card.onclick=function(){addMergeHero(heroUid);};
+    // 更新点击事件（只有可点击的英雄才能添加）
+    if(canClick){
+      card.onclick=function(){addMergeHero(heroUid);};
+    }else{
+      card.onclick=null;
+    }
   }
 }
 
