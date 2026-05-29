@@ -11994,27 +11994,15 @@ function doMerge(){
   const activeSlots=window._mergeSlots.filter(Boolean);
   var result=executeMerge(activeSlots);
   if(result && result.success){
-    if(result.isExplosion){
-      // 爆炸事件：清空融合框（材料已消失）
-      for(var i=0;i<3;i++){
-        var heroUid = window._mergeSlots[i];
-        if(heroUid){
-          updateMergeHeroCardStyle(heroUid, false);
-        }
+    // 所有成功合成（包括爆炸事件和非爆炸事件）都清空融合框并刷新渲染
+    for(var i=0;i<3;i++){
+      var heroUid = window._mergeSlots[i];
+      if(heroUid){
+        updateMergeHeroCardStyle(heroUid, false);
       }
-      window._mergeSlots=[null,null,null];
-    }else if(!result.hasAccident){
-      // 无事件：正常清空融合框
-      for(var i=0;i<3;i++){
-        var heroUid = window._mergeSlots[i];
-        if(heroUid){
-          updateMergeHeroCardStyle(heroUid, false);
-        }
-      }
-      window._mergeSlots=[null,null,null];
     }
-    // 非爆炸事件：不清空融合框，保留当前选择
-    // 无论哪种情况，都需要刷新界面以显示合成记录
+    window._mergeSlots=[null,null,null];
+    // 刷新界面以显示合成记录和更新融合框
     renderMerge(document.getElementById('content'));
   }
 }
