@@ -8022,7 +8022,7 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
     case 'heal':
       var totalHeal=0;
       var healMult=isMutated?1.4:1.0;
-      var hasAntiHeal=enemyUnits&&enemyUnits.some(function(e){return e._antiHeal&&e.alive});
+      var hasAntiHeal=allUnits&&allUnits.some(function(e){return e._antiHeal&&e.alive&&e.isEnemy});
       if(hasAntiHeal)healMult*=0.5;
       targets.forEach(t=>{
         if(!t.alive)return;
