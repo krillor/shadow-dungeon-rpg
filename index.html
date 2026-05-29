@@ -8567,16 +8567,25 @@ function initMergeChallenges() {
       completed: {}
     };
   }
+  // === 旧存档兼容：清除使用check函数的旧挑战，强制重新生成 ===
+  if (G.mergeChallenges.daily && G.mergeChallenges.daily.length > 0 && !G.mergeChallenges.daily[0].checkId) {
+    G.mergeChallenges.daily = null;
+    G.mergeChallenges.dailyDate = '';
+  }
+  if (G.mergeChallenges.weekly && G.mergeChallenges.weekly.length > 0 && !G.mergeChallenges.weekly[0].checkId) {
+    G.mergeChallenges.weekly = null;
+    G.mergeChallenges.weeklyDate = '';
+  }
   // 生成每日挑战
   var today = new Date().toDateString();
   if (G.mergeChallenges.dailyDate !== today) {
     var dailyPool = [
-      { id:'d_atk', desc:'合成一个攻击力>80的英雄', check:function(h){return h.atk>80}, reward:{gold:500}, icon:'⚔️' },
-      { id:'d_skill3', desc:'合成一个有3个以上技能的英雄', check:function(h){return h.skills&&h.skills.length>=3}, reward:{gold:500}, icon:'📚' },
-      { id:'d_mutate', desc:'合成一个变异英雄', check:function(h){return h.isMutation}, reward:{gems:1}, icon:'🧬' },
-      { id:'d_epic', desc:'合成一个史诗及以上品质英雄', check:function(h){return QUALITIES.indexOf(h.quality)>=2}, reward:{gold:800}, icon:'⭐' },
-      { id:'d_speed', desc:'合成一个速度>25的英雄', check:function(h){return h.spd>25}, reward:{gold:500}, icon:'💨' },
-      { id:'d_accident', desc:'触发一次合成事件', check:function(){return false}, reward:{gems:2}, icon:'💥', special:'accident' }
+      { id:'d_atk', desc:'合成一个攻击力>80的英雄', checkId:'atk80', reward:{gold:500}, icon:'⚔️' },
+      { id:'d_skill3', desc:'合成一个有3个以上技能的英雄', checkId:'skill3', reward:{gold:500}, icon:'📚' },
+      { id:'d_mutate', desc:'合成一个变异英雄', checkId:'mutate', reward:{gems:1}, icon:'🧬' },
+      { id:'d_epic', desc:'合成一个史诗及以上品质英雄', checkId:'epic', reward:{gold:800}, icon:'⭐' },
+      { id:'d_speed', desc:'合成一个速度>25的英雄', checkId:'speed25', reward:{gold:500}, icon:'💨' },
+      { id:'d_accident', desc:'触发一次合成事件', checkId:'accident', reward:{gems:2}, icon:'💥', special:'accident' }
     ];
     // 随机选3个
     var shuffled = dailyPool.sort(function(){return Math.random()-0.5});
@@ -8584,7 +8593,7 @@ function initMergeChallenges() {
       return {
         id:'daily_'+i+'_'+Date.now(),
         desc:c.desc,
-        check:c.check,
+        checkId:c.checkId,
         reward:c.reward,
         icon:c.icon,
         special:c.special
@@ -8598,17 +8607,17 @@ function initMergeChallenges() {
   var weekKey = weekStart.toDateString();
   if (G.mergeChallenges.weeklyDate !== weekKey) {
     var weeklyPool = [
-      { id:'w_legend', desc:'本周合成一个传说品质英雄', check:function(h){return h.quality==='legendary'}, reward:{gems:5}, icon:'⚡', need:1, progress:0 },
-      { id:'w_mythic', desc:'本周合成一个神话品质英雄', check:function(h){return h.quality==='mythic'}, reward:{gems:10}, icon:'🔥', need:1, progress:0 },
-      { id:'w_accident3', desc:'本周触发3次合成事件', check:function(){return false}, reward:{gems:5}, icon:'💥', need:3, progress:0, special:'accident' },
-      { id:'w_merge10', desc:'本周合成10次', check:function(){return true}, reward:{gold:3000}, icon:'⚗️', need:10, progress:0, special:'count' }
+      { id:'w_legend', desc:'本周合成一个传说品质英雄', checkId:'legend', reward:{gems:5}, icon:'⚡', need:1, progress:0 },
+      { id:'w_mythic', desc:'本周合成一个神话品质英雄', checkId:'mythic', reward:{gems:10}, icon:'🔥', need:1, progress:0 },
+      { id:'w_accident3', desc:'本周触发3次合成事件', checkId:'accident', reward:{gems:5}, icon:'💥', need:3, progress:0, special:'accident' },
+      { id:'w_merge10', desc:'本周合成10次', checkId:'count', reward:{gold:3000}, icon:'⚗️', need:10, progress:0, special:'count' }
     ];
     var shuffled = weeklyPool.sort(function(){return Math.random()-0.5});
     G.mergeChallenges.weekly = shuffled.slice(0,2).map(function(c,i){
       return {
         id:'weekly_'+i+'_'+Date.now(),
         desc:c.desc,
-        check:c.check,
+        checkId:c.checkId,
         reward:c.reward,
         icon:c.icon,
         need:c.need,
@@ -8617,6 +8626,22 @@ function initMergeChallenges() {
       };
     });
     G.mergeChallenges.weeklyDate = weekKey;
+  }
+}
+
+// 根据checkId动态判断挑战是否完成
+function checkChallengeCondition(checkId, hero, accident) {
+  switch(checkId) {
+    case 'atk80': return hero && hero.atk > 80;
+    case 'skill3': return hero && hero.skills && hero.skills.length >= 3;
+    case 'mutate': return hero && hero.isMutation;
+    case 'epic': return hero && QUALITIES.indexOf(hero.quality) >= 2;
+    case 'speed25': return hero && hero.spd > 25;
+    case 'accident': return !!accident;
+    case 'legend': return hero && hero.quality === 'legendary';
+    case 'mythic': return hero && hero.quality === 'mythic';
+    case 'count': return true;
+    default: return false;
   }
 }
 
@@ -8629,7 +8654,7 @@ function checkMergeChallenge(hero, accident) {
       if (G.mergeChallenges.completed[ch.id]) return;
       var passed = false;
       if (ch.special === 'accident' && accident) passed = true;
-      else if (hero && ch.check(hero)) passed = true;
+      else if (checkChallengeCondition(ch.checkId, hero, accident)) passed = true;
       if (passed) {
         G.mergeChallenges.completed[ch.id] = true;
         if (ch.reward.gold) { G.resources.gold = (G.resources.gold||0) + ch.reward.gold; rewards.push(ch.icon + ' +' + ch.reward.gold + '💰'); }
@@ -8643,7 +8668,7 @@ function checkMergeChallenge(hero, accident) {
       if (G.mergeChallenges.completed[ch.id]) return;
       if (ch.special === 'accident' && accident) { ch.progress = (ch.progress||0) + 1; }
       else if (ch.special === 'count') { ch.progress = (ch.progress||0) + 1; }
-      else if (hero && ch.check(hero)) { ch.progress = (ch.progress||0) + 1; }
+      else if (checkChallengeCondition(ch.checkId, hero, accident)) { ch.progress = (ch.progress||0) + 1; }
       if (ch.progress >= ch.need) {
         G.mergeChallenges.completed[ch.id] = true;
         if (ch.reward.gold) { G.resources.gold = (G.resources.gold||0) + ch.reward.gold; rewards.push(ch.icon + ' +' + ch.reward.gold + '💰'); }
