@@ -2214,10 +2214,7 @@ function skipTutorial(){
     overlay.onclick=null;
   }
   hideGuideTip();
-  G.tutorialDone=true;
-  G.tutorialPhase='';
-  G.tutorialStep=0;
-  saveGame();
+  startTownGuide();
 }
 
 function finishTutorial(){
