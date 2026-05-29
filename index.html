@@ -1928,24 +1928,24 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 .btn-breakthrough:hover{background:linear-gradient(135deg,#1a0a2a,#2a1a3a);box-shadow:0 0 15px rgba(168,85,247,.4)}
 
 /* ==================== 引导系统样式 ==================== */
-#tutorial-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity 1.5s ease}
+#tutorial-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.98);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity 2s ease;cursor:pointer}
 #tutorial-overlay.active{display:flex;opacity:1}
-#tutorial-overlay.fade-out{opacity:0;pointer-events:none}
-.tutorial-text{color:#fff;font-size:18px;line-height:2;text-align:center;max-width:520px;padding:0 20px;opacity:0;transform:translateY(20px);transition:all 1s ease;word-wrap:break-word}
+#tutorial-overlay.fade-out{opacity:0;pointer-events:none;transition:opacity 1.5s ease}
+.tutorial-text{color:#e0e0e0;font-size:17px;line-height:2.2;text-align:center;max-width:480px;padding:0 24px;opacity:0;transform:translateY(30px);transition:opacity 1.2s ease,transform 1.2s ease;word-wrap:break-word;letter-spacing:.5px}
 .tutorial-text.show{opacity:1;transform:translateY(0)}
-.tutorial-title{font-size:26px;font-weight:bold;margin-bottom:40px;color:#fff;text-shadow:0 0 20px rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;gap:10px}
-.tutorial-tip{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);color:#888;font-size:14px;animation:pulse 2s infinite;background:rgba(255,255,255,0.05);padding:12px 24px;border-radius:20px}
-@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
-#guide-highlight{position:fixed;border:3px solid var(--gold);border-radius:12px;box-shadow:0 0 20px var(--gold-glow),0 0 40px rgba(212,175,55,.3);z-index:1000;pointer-events:none;animation:guidePulse 1.5s infinite}
-@keyframes guidePulse{0%,100%{box-shadow:0 0 20px var(--gold-glow),0 0 40px rgba(212,175,55,.3)}50%{box-shadow:0 0 30px var(--gold-glow),0 0 60px rgba(212,175,55,.5)}}
-#guide-tooltip{position:fixed;background:linear-gradient(145deg,#1a1a2e,#141428);border:2px solid var(--gold);border-radius:16px;padding:18px 22px;max-width:300px;z-index:1001;color:var(--text);font-size:14px;line-height:1.7;box-shadow:0 8px 32px rgba(0,0,0,.6),0 0 20px rgba(212,175,55,.1);animation:fadeInScale .3s ease}
-#guide-tooltip::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
-.guide-title{color:var(--gold);font-weight:bold;margin-bottom:10px;font-size:16px}
-.guide-arrow{position:absolute;font-size:24px;color:var(--gold);animation:bounce 1s infinite}
-@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-.guide-skip{position:fixed;top:20px;right:20px;color:#999;font-size:13px;cursor:pointer;z-index:1002;padding:10px 20px;background:rgba(255,255,255,0.05);border-radius:30px;border:1px solid rgba(255,255,255,0.1);transition:all .3s ease}
-.guide-skip:hover{color:#fff;border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.08)}
-@keyframes fadeInScale{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+.tutorial-title{font-size:24px;font-weight:bold;margin-bottom:36px;color:#fff;text-shadow:0 0 30px rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;gap:12px;letter-spacing:2px}
+.tutorial-tip{position:fixed;bottom:50px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.4);font-size:13px;animation:tipPulse 2.5s ease-in-out infinite;background:rgba(255,255,255,.03);padding:10px 28px;border-radius:24px;border:1px solid rgba(255,255,255,.06);letter-spacing:1px}
+@keyframes tipPulse{0%,100%{opacity:.3}50%{opacity:.7}}
+#guide-highlight{position:fixed;border:2px solid var(--gold);border-radius:10px;box-shadow:0 0 15px var(--gold-glow),0 0 30px rgba(212,175,55,.2),inset 0 0 15px rgba(212,175,55,.05);z-index:1000;pointer-events:none;animation:guidePulse 2s ease-in-out infinite;transition:all .3s ease}
+@keyframes guidePulse{0%,100%{box-shadow:0 0 15px var(--gold-glow),0 0 30px rgba(212,175,55,.2),inset 0 0 15px rgba(212,175,55,.05)}50%{box-shadow:0 0 25px var(--gold-glow),0 0 50px rgba(212,175,55,.35),inset 0 0 20px rgba(212,175,55,.08)}}
+#guide-tooltip{position:fixed;background:linear-gradient(160deg,#1e1e36,#15152a);border:1px solid rgba(212,175,55,.5);border-radius:14px;padding:16px 20px;max-width:280px;z-index:1001;color:var(--text);font-size:13px;line-height:1.8;box-shadow:0 6px 24px rgba(0,0,0,.7),0 0 15px rgba(212,175,55,.08);animation:guideFadeIn .4s ease}
+#guide-tooltip::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,175,55,.6),transparent)}
+.guide-title{color:var(--gold);font-weight:bold;margin-bottom:8px;font-size:15px;letter-spacing:.5px}
+.guide-arrow{position:absolute;font-size:20px;color:var(--gold);animation:bounce 1.2s ease-in-out infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.guide-skip{position:fixed;top:16px;right:16px;color:rgba(255,255,255,.35);font-size:12px;cursor:pointer;z-index:1002;padding:8px 18px;background:rgba(255,255,255,.03);border-radius:20px;border:1px solid rgba(255,255,255,.08);transition:all .3s ease;letter-spacing:.5px}
+.guide-skip:hover{color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.06)}
+@keyframes guideFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
 </style>
 </head>
@@ -2036,63 +2036,49 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 <div id="toast-root"></div>
 
 <div id="tutorial-overlay">
-  <div class="guide-skip" onclick="skipTutorial()">跳过引导 ×</div>
+  <div class="guide-skip" onclick="skipTutorial()">跳过 ×</div>
   <div class="tutorial-text" id="tut-1">
-    <div class="tutorial-title">🌑 序章：黑暗降临</div>
-    很久很久以前，这片大陆曾经繁荣昌盛。<br><br>
-    人类、精灵、矮人在这片土地上和平共处，<br>
-    建造了辉煌的文明。
+    <div class="tutorial-title">🌑 序章</div>
+    很久很久以前，这片大陆曾经繁荣昌盛。<br>
+    人类、精灵、矮人和平共处，建造了辉煌的文明。
   </div>
   <div class="tutorial-text" id="tut-2">
-    然而，一场突如其来的灾难打破了一切。<br><br>
-    黑暗从地底深处涌出，<br>
-    亡灵与恶魔在废墟中肆虐横行。
+    然而，一场突如其来的灾难打破了一切。<br>
+    黑暗从地底深处涌出，亡灵与恶魔在废墟中肆虐横行。
   </div>
   <div class="tutorial-text" id="tut-3">
-    曾经的帝国已经覆灭，<br>
-    曾经的勇士已经消逝。<br><br>
+    曾经的帝国已经覆灭，曾经的勇士已经消逝。<br>
     但希望的火种从未熄灭。
   </div>
   <div class="tutorial-text" id="tut-4">
-    <div class="tutorial-title">⚔️ 你是最后的希望</div>
-    一位流浪的指挥官，<br>
-    带着仅存的英雄们，<br>
+    <div class="tutorial-title">⚔️ 最后的希望</div>
+    一位流浪的指挥官，带着仅存的英雄们，<br>
     踏上了冲出地牢的征程。
   </div>
   <div class="tutorial-text" id="tut-5">
-    <div class="tutorial-title">🎯 目标：冲出地牢</div>
-    探索无尽的地牢深处，<br>
-    击败强大的敌人，<br>
-    收集资源，<br>
-    变得更强！<br><br>
+    <div class="tutorial-title">🎯 冲出地牢</div>
+    探索地牢深处，击败强大的敌人，<br>
+    收集资源，变得更强！<br><br>
     <span style="color:#e74c3c;font-weight:bold">最终目标：突破99层，重见天日！</span>
   </div>
-  <div class="tutorial-tip" id="tut-tip" style="display:none">点击任意处继续</div>
+  <div class="tutorial-tip" id="tut-tip" style="display:none">点击继续</div>
 </div>
 <div id="guide-highlight" style="display:none"></div>
 <div id="guide-tooltip" style="display:none"></div>
 
 <script>
 // ==================== 引导系统 ====================
-// 引导状态现在存储在 G 对象中，确保可存档
-// DOM元素延迟获取，确保DOM已加载
 var G_guideHighlightEl;
 var G_guideTooltipEl;
 
 function getTutorialDOMElements(){
-  if(!G_guideHighlightEl){
-    G_guideHighlightEl=document.getElementById('guide-highlight');
-  }
-  if(!G_guideTooltipEl){
-    G_guideTooltipEl=document.getElementById('guide-tooltip');
-  }
+  if(!G_guideHighlightEl) G_guideHighlightEl=document.getElementById('guide-highlight');
+  if(!G_guideTooltipEl) G_guideTooltipEl=document.getElementById('guide-tooltip');
 }
 
 function startTutorial(){
   getTutorialDOMElements();
-  // 如果已经完成引导或者tutorialDone未设置但有存档，直接返回
-  if(G.tutorialDone===true)return;
-  // 如果是旧存档，标记为已完成引导
+  if(G.tutorialDone===true) return;
   if(G.tutorialDone===undefined && G.heroes && G.heroes.length>0){
     G.tutorialDone=true;
     saveGame();
@@ -2101,33 +2087,30 @@ function startTutorial(){
   G.tutorialPhase='story';
   G.tutorialStep=1;
   var overlay=document.getElementById('tutorial-overlay');
-  if(!overlay)return;
-  // 先显示，再加active类触发动画
+  if(!overlay) return;
   overlay.style.display='flex';
-  setTimeout(()=>{
-    overlay.classList.add('active');
-  },10);
   overlay.onclick=nextTutorialStep;
+  setTimeout(function(){overlay.classList.add('active')},50);
   showTutorialStep(1);
 }
 
 function showTutorialStep(step){
   var tip=document.getElementById('tut-tip');
-  document.querySelectorAll('.tutorial-text').forEach(el=>el.classList.remove('show'));
+  document.querySelectorAll('.tutorial-text').forEach(function(el){el.classList.remove('show')});
   var el=document.getElementById('tut-'+step);
   if(el){
-    setTimeout(()=>{el.classList.add('show');tip.style.display='block'},300);
+    tip.style.display='none';
+    setTimeout(function(){el.classList.add('show');tip.style.display='block'},400);
   }
 }
 
 function nextTutorialStep(){
-  if(G.tutorialPhase==='story'){
-    G.tutorialStep++;
-    if(G.tutorialStep<=5){
-      showTutorialStep(G.tutorialStep);
-    }else{
-      endTutorialStory();
-    }
+  if(G.tutorialPhase!=='story') return;
+  G.tutorialStep++;
+  if(G.tutorialStep<=5){
+    showTutorialStep(G.tutorialStep);
+  }else{
+    endTutorialStory();
   }
 }
 
@@ -2135,11 +2118,12 @@ function endTutorialStory(){
   var overlay=document.getElementById('tutorial-overlay');
   var tip=document.getElementById('tut-tip');
   tip.style.display='none';
-  document.querySelectorAll('.tutorial-text').forEach(el=>el.classList.remove('show'));
+  document.querySelectorAll('.tutorial-text').forEach(function(el){el.classList.remove('show')});
   overlay.classList.add('fade-out');
-  setTimeout(()=>{
+  setTimeout(function(){
     overlay.classList.remove('active','fade-out');
     overlay.style.display='none';
+    overlay.onclick=null;
     startTownGuide();
   },1500);
 }
@@ -2148,60 +2132,55 @@ function startTownGuide(){
   hideGuideTip();
   G.tutorialPhase='guide';
   G.tutorialStep=1;
-  setTimeout(()=>{
-    if(G.tutorialPhase==='guide' && G.tutorialStep===1){
-      showGuideTip('town-recruit','🍺 招募英雄','欢迎来到城镇！\n\n首先，让我们招募一位英雄来扩充队伍。\n\n点击「招募」按钮进入酒馆。',null,'bottom');
+  saveGame();
+  setTimeout(function(){
+    if(G.tutorialPhase==='guide' && G.tutorialStep===1 && currentTab==='town'){
+      showGuideTip('town-recruit','🍺 招募英雄','欢迎来到城镇！\n\n点击「招募」按钮，前往酒馆招募更多英雄。');
     }
-  },600);
+  },500);
 }
 
 function showGuideTip(targetId,tipTitle,tipText,arrowDir){
   getTutorialDOMElements();
   hideGuideTip();
   var targetEl=document.getElementById(targetId);
-  if(!targetEl || !G_guideHighlightEl || !G_guideTooltipEl)return;
+  if(!targetEl || !G_guideHighlightEl || !G_guideTooltipEl) return;
   var rect=targetEl.getBoundingClientRect();
   G_guideHighlightEl.style.display='block';
-  G_guideHighlightEl.style.left=(rect.left-8)+'px';
-  G_guideHighlightEl.style.top=(rect.top-8)+'px';
-  G_guideHighlightEl.style.width=(rect.width+16)+'px';
-  G_guideHighlightEl.style.height=(rect.height+16)+'px';
+  G_guideHighlightEl.style.left=(rect.left-6)+'px';
+  G_guideHighlightEl.style.top=(rect.top-6)+'px';
+  G_guideHighlightEl.style.width=(rect.width+12)+'px';
+  G_guideHighlightEl.style.height=(rect.height+12)+'px';
   var tooltip=G_guideTooltipEl;
   tooltip.style.display='block';
-  tooltip.innerHTML='<div class="guide-title">'+tipTitle+'</div><div style="white-space:pre-line;line-height:1.7">'+tipText+'</div>';
-  // 获取提示框实际尺寸
+  tooltip.innerHTML='<div class="guide-title">'+tipTitle+'</div><div style="white-space:pre-line">'+tipText+'</div>';
   var tooltipRect=tooltip.getBoundingClientRect();
-  var tooltipW=tooltipRect.width||300;
-  var tooltipH=tooltipRect.height||140;
+  var tooltipW=tooltipRect.width||260;
+  var tooltipH=tooltipRect.height||120;
   var left,top;
-  // 默认自动选择最优方向
   if(!arrowDir){
-    if(rect.top>tooltipH+60){
-      arrowDir='bottom';
-    }else if(rect.bottom+tooltipH+60<window.innerHeight){
-      arrowDir='top';
-    }else if(rect.left>tooltipW+40){
-      arrowDir='right';
-    }else{
-      arrowDir='left';
-    }
+    var spaceBelow=window.innerHeight-rect.bottom;
+    var spaceAbove=rect.top;
+    if(spaceBelow>tooltipH+40) arrowDir='below';
+    else if(spaceAbove>tooltipH+40) arrowDir='above';
+    else if(rect.left+rect.width/2<window.innerWidth/2) arrowDir='right';
+    else arrowDir='left';
   }
-  if(arrowDir==='bottom'){
-    left=rect.left+(rect.width/2)-tooltipW/2;
-    top=rect.bottom+20;
-  }else if(arrowDir==='top'){
-    left=rect.left+(rect.width/2)-tooltipW/2;
-    top=rect.top-tooltipH-20;
-  }else if(arrowDir==='left'){
-    left=rect.right+20;
-    top=rect.top+(rect.height/2)-tooltipH/2;
+  if(arrowDir==='below'){
+    left=rect.left+rect.width/2-tooltipW/2;
+    top=rect.bottom+16;
+  }else if(arrowDir==='above'){
+    left=rect.left+rect.width/2-tooltipW/2;
+    top=rect.top-tooltipH-16;
   }else if(arrowDir==='right'){
-    left=rect.left-tooltipW-20;
-    top=rect.top+(rect.height/2)-tooltipH/2;
+    left=rect.right+16;
+    top=rect.top+rect.height/2-tooltipH/2;
+  }else{
+    left=rect.left-tooltipW-16;
+    top=rect.top+rect.height/2-tooltipH/2;
   }
-  // 边界检测，确保不超出屏幕
-  left=Math.max(15,Math.min(left,window.innerWidth-tooltipW-15));
-  top=Math.max(15,Math.min(top,window.innerHeight-tooltipH-15));
+  left=Math.max(10,Math.min(left,window.innerWidth-tooltipW-10));
+  top=Math.max(10,Math.min(top,window.innerHeight-tooltipH-10));
   tooltip.style.left=left+'px';
   tooltip.style.top=top+'px';
   tooltip.onclick=function(e){e.stopPropagation()};
@@ -2209,80 +2188,87 @@ function showGuideTip(targetId,tipTitle,tipText,arrowDir){
 
 function hideGuideTip(){
   getTutorialDOMElements();
-  if(G_guideHighlightEl)G_guideHighlightEl.style.display='none';
-  if(G_guideTooltipEl)G_guideTooltipEl.style.display='none';
+  if(G_guideHighlightEl) G_guideHighlightEl.style.display='none';
+  if(G_guideTooltipEl) G_guideTooltipEl.style.display='none';
 }
 
-function completeGuideStep(){
-  hideGuideTip();
-  G.tutorialStep++;
-  setTimeout(()=>executeNextGuideStep(),300);
-}
-
-function executeNextGuideStep(){
-  switch(G.tutorialStep){
-    case 2:
-      showGuideTip('town-recruit','🍺 招募英雄','点击「招募」按钮进入酒馆招募英雄！',null,'bottom');
-      break;
-    case 3:
-      showGuideTip('tavern-back-btn','返回城镇','招募完成后，点击「返回城镇」按钮回到主界面。','left');
-      break;
-    case 4:
-      showGuideTip('auto-battle-btn','⚔️ 自动推图','太棒了！\n\n现在让我们开始战斗吧！\n\n点击「自动推图」开始挑战关卡！',null,'bottom');
-      break;
-    case 5:
-      showGuideTip('merge-nav-btn','⚗️ 合成系统','继续变强！\n\n「合成」是让英雄快速变强的捷径！\n\n点击进入合成界面。',null,'bottom');
-      break;
-    case 6:
-      var mergeIntro=document.getElementById('merge-intro');
-      if(mergeIntro){
-        mergeIntro.style.display='block';
-      }
-      setTimeout(()=>{
-        showGuideTip('merge-intro','⚗️ 合成系统介绍','这就是合成界面！\n\n选择2-3个英雄进行融合，\n可以大幅提升实力或获得高品质英雄！\n\n点击「开始融合」试试吧！',null,'top');
-      },500);
-      break;
-    default:
-      finishTutorial();
+function skipTutorial(){
+  var overlay=document.getElementById('tutorial-overlay');
+  if(overlay){
+    overlay.style.display='none';
+    overlay.classList.remove('active','fade-out');
+    overlay.onclick=null;
   }
+  hideGuideTip();
+  G.tutorialDone=true;
+  G.tutorialPhase='';
+  G.tutorialStep=0;
+  saveGame();
 }
 
 function finishTutorial(){
   hideGuideTip();
   G.tutorialDone=true;
+  G.tutorialPhase='';
+  G.tutorialStep=0;
   saveGame();
   showToast('🎉 引导完成！祝你游戏愉快！');
 }
 
-function skipTutorial(){
-  var overlay=document.getElementById('tutorial-overlay');
-  overlay.style.display='none';
-  overlay.classList.remove('active','fade-out');
-  hideGuideTip();
-  G.tutorialDone=true;
-  saveGame();
-}
-
-function checkTavernReturn(){
-  if(G.tutorialPhase==='guide' && G.tutorialStep===2){
-    completeGuideStep();
+function onGuideRecruitClick(){
+  if(G.tutorialPhase==='guide' && G.tutorialStep===1){
+    G.tutorialStep=2;
+    hideGuideTip();
+    saveGame();
   }
+  renderTavernRecruit();
 }
 
-function checkAutoBattleStart(){
+function onGuideRecruitHero(){
+  if(G.tutorialPhase==='guide' && G.tutorialStep===2){
+    G.tutorialStep=3;
+    saveGame();
+    setTimeout(function(){switchTab('town')},800);
+    return true;
+  }
+  return false;
+}
+
+function onGuideAutoBattle(){
   if(G.tutorialPhase==='guide' && G.tutorialStep===3){
     G.tutorialStep=4;
     saveGame();
+    return true;
   }
+  return false;
 }
 
-function checkMergeEnter(){
+function onGuideMergeClick(){
   if(G.tutorialPhase==='guide' && G.tutorialStep===4){
-    G.tutorialDone=true;
-    G.tutorialPhase='';
-    saveGame();
     finishTutorial();
+    return true;
   }
+  return false;
+}
+
+function showTownGuideIfNeeded(){
+  if(G.tutorialPhase!=='guide' || currentTab!=='town') return;
+  setTimeout(function(){
+    if(G.tutorialPhase!=='guide' || currentTab!=='town'){hideGuideTip();return}
+    switch(G.tutorialStep){
+      case 1:
+        showGuideTip('town-recruit','🍺 招募英雄','欢迎来到城镇！\n\n点击「招募」按钮，前往酒馆招募更多英雄。');
+        break;
+      case 3:
+        showGuideTip('auto-battle-btn','⚔️ 自动推图','太棒了！\n\n现在点击「自动推图」开始挑战关卡！');
+        break;
+      case 4:
+        showGuideTip('merge-nav-btn','⚗️ 合成系统','继续变强！\n\n点击左侧「合成」进入合成界面，\n这是英雄快速变强的捷径！');
+        break;
+      default:
+        hideGuideTip();
+    }
+  },200);
 }
 
 // ==================== 游戏数据定义 ====================
@@ -9844,37 +9830,27 @@ function recruitHero(templateId){
   checkAchievement('hero_7');
   checkAchievement('hero_10');
   
-  // 如果是在引导阶段，招募成功后自动完成步骤2并切回城镇
-    if(G.tutorialPhase==='guide' && G.tutorialStep===2){
-      G.tutorialStep=3;
-      // 延迟一点时间让玩家看到成功提示后再切回城镇
-      setTimeout(()=>{
-        switchTab('town');
-      },1000);
-    }else{
-      // 招募后保持在酒馆，已招募的显示为灰色禁用
-      renderTavernRecruit();
-    }
+  // 如果是在引导阶段，招募成功后自动切回城镇
+  if(onGuideRecruitHero()){
+    // 引导中，延迟切回城镇
+  }else{
+    renderTavernRecruit();
+  }
 }
 
 // ==================== UI渲染 ====================
 let currentTab='town';
 
 function switchTab(tab){
-  // H5独立模式禁入金手指
   if(G_isH5Package&&tab==='cheats'){showToast('📦 H5版已禁用金手指');return;}
   currentTab=tab;
   document.querySelectorAll('.nav-btn').forEach(b=>{
     b.classList.toggle('active',b.dataset.tab===tab);
   });
-  // 切换tab时隐藏引导提示
   hideGuideTip();
   renderCurrentTab();
-  // 如果是合成页面且在引导阶段，检查是否需要完成最后一步引导
   if(tab==='merge' && G.tutorialPhase==='guide' && G.tutorialStep===4){
-    setTimeout(()=>{
-      checkMergeEnter();
-    },500);
+    onGuideMergeClick();
   }
 }
 
@@ -10023,42 +9999,14 @@ function renderTown(el){
       +'<button class="btn" style="margin-top:12px" onclick="location.reload()">🔄 刷新页面</button>'
     +'</div>';
   }
-  // 渲染完成后，根据引导步骤显示对应的引导提示
-  setTimeout(function(){
-    if(G.tutorialPhase==='guide' && currentTab==='town'){
-      switch(G.tutorialStep){
-        case 1:
-          // 只有在步骤1且不在其他页面时才显示招募提示
-          showGuideTip('town-recruit','🍺 招募英雄','欢迎来到城镇！\n\n首先，让我们招募一位英雄来扩充队伍。\n\n点击「招募」按钮进入酒馆。',null,'bottom');
-          break;
-        case 2:
-          // 步骤2时应该在酒馆中，城镇页面隐藏提示
-          hideGuideTip();
-          break;
-        case 3:
-          // 步骤3回到城镇页面，显示自动推图提示
-          showGuideTip('auto-battle-btn','⚔️ 自动推图','太棒了！\n\n现在让我们开始战斗吧！\n\n点击「自动推图」开始挑战关卡！',null,'bottom');
-          break;
-        case 4:
-          // 步骤4显示合成系统提示
-          showGuideTip('merge-nav-btn','⚗️ 合成系统','继续变强！\n\n「合成」是让英雄快速变强的捷径！\n\n点击进入合成界面。',null,'bottom');
-          break;
-        default:
-          hideGuideTip();
-      }
-    }else{
-      // 如果不在引导阶段，确保隐藏引导提示
-      hideGuideTip();
-    }
-  },150);
+  showTownGuideIfNeeded();
 }
 
 function renderTavernRecruit(){
-  // 进入酒馆时隐藏引导提示
   hideGuideTip();
-  // 如果是在引导阶段，更新到第二步
   if(G.tutorialPhase==='guide' && G.tutorialStep===1){
     G.tutorialStep=2;
+    saveGame();
   }
   const options=getRecruitOptions();
   const tavernLevel=G.buildings.tavern||1;
@@ -10114,7 +10062,7 @@ function renderTavernRecruit(){
         ${heroesHTML}
       </div>
       <div class="btn-group mt-12">
-        <button class="btn" id="tavern-back-btn" onclick="checkTavernReturn();renderTown(document.getElementById('content'))">返回城镇</button>
+        <button class="btn" id="tavern-back-btn" onclick="hideGuideTip();switchTab('town')">返回城镇</button>
         ${(()=>{
           const cost=getTavernRefreshCost();
           const costStr=Object.entries(cost).map(([k,v])=>`${RESOURCE_DEFS[k]?.icon||''}${v}`).join(' ');
@@ -11624,7 +11572,7 @@ function hideBattlePanel(){
 }
 
 function startAutoBattle(fromStage){
-  checkAutoBattleStart();
+  onGuideAutoBattle();
   showToast('🚀 开始自动推图...');
   
   G_autoBattle=true;
@@ -15074,7 +15022,9 @@ function initNewGame(){
 // 导航事件
 document.querySelectorAll('.nav-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
-    if(btn.dataset.tab==='merge') checkMergeEnter();
+    if(btn.dataset.tab==='merge' && G.tutorialPhase==='guide' && G.tutorialStep===4){
+      onGuideMergeClick();
+    }
     switchTab(btn.dataset.tab);
   });
 });
