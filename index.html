@@ -7464,10 +7464,12 @@ async function runBattle(stageId){
 
   let playerUnits=teamHeroes.map(h=>createBattleUnit(h,false));
 
-  // 羁绊系统
+  // 羁绊系统（20关前关闭战斗效果）
   window._battleBondEffects=[];
   var activeBonds=detectActiveBonds(teamHeroes);
-  applyBondEffects(playerUnits,activeBonds);
+  if(stage.id>=20){
+    applyBondEffects(playerUnits,activeBonds);
+  }
 
   let enemyUnits=stage.enemies.map(e=>{
     const tpl=HERO_TEMPLATES.find(t=>t.name===e.name)||HERO_TEMPLATES.find(t=>t.role===e.role&&t.quality===e.quality);
