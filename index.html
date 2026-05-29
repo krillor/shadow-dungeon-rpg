@@ -9003,13 +9003,21 @@ function executeMerge(heroUids){
   
   // === 合成图鉴记录（在事故判定后，记录最终结果） ===
   if(!G.mergeHistory) G.mergeHistory=[];
-  G.mergeHistory.unshift({
+  // 爆炸事故时记录事故信息，非爆炸事故记录英雄信息
+  var historyEntry = {
     time:Date.now(),
     materials:heroes.map(function(h){return{name:h.name,icon:h.icon,quality:h.quality}}),
-    result:{name:newHero.name,icon:newHero.icon,quality:newHero.quality,isMutation:newHero.isMutation,isUpset:newHero.isUpset,bondInfo:newHero.bondInfo,inheritMult:newHero.inheritMult},
-    mult:newHero.inheritMult,
+    mult:isExplosion ? 0 : newHero.inheritMult,
     accident: accident ? { type: accident.type, name: accident.accident.name, icon: accident.accident.icon, message: accident.message } : null
-  });
+  };
+  if (isExplosion) {
+    // 爆炸事故：记录事故结果
+    historyEntry.result = {name:'💥 爆炸',icon:'💥',quality:'common',isMutation:false,isUpset:false,bondInfo:null,inheritMult:0};
+  } else {
+    // 正常合成或其他事故：记录英雄信息
+    historyEntry.result = {name:newHero.name,icon:newHero.icon,quality:newHero.quality,isMutation:newHero.isMutation,isUpset:newHero.isUpset,bondInfo:newHero.bondInfo,inheritMult:newHero.inheritMult};
+  }
+  G.mergeHistory.unshift(historyEntry);
   if(G.mergeHistory.length>50) G.mergeHistory.length=50; // 最多保留50条
   
   // === 合成挑战检测 ===
