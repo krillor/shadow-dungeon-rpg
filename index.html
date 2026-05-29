@@ -1928,14 +1928,16 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 .btn-breakthrough:hover{background:linear-gradient(135deg,#1a0a2a,#2a1a3a);box-shadow:0 0 15px rgba(168,85,247,.4)}
 
 /* ==================== 引导系统样式 ==================== */
-#tutorial-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.98);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity 2s ease;cursor:pointer}
+#tutorial-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.98);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity 2s ease;cursor:pointer;overflow:hidden}
 #tutorial-overlay.active{display:flex;opacity:1}
 #tutorial-overlay.fade-out{opacity:0;pointer-events:none;transition:opacity 1.5s ease}
-.tutorial-text{color:#e0e0e0;font-size:17px;line-height:2.2;text-align:center;max-width:480px;padding:0 24px;opacity:0;transform:translateY(30px);transition:opacity 1.2s ease,transform 1.2s ease;word-wrap:break-word;letter-spacing:.5px}
-.tutorial-text.show{opacity:1;transform:translateY(0)}
-.tutorial-title{font-size:24px;font-weight:bold;margin-bottom:36px;color:#fff;text-shadow:0 0 30px rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;gap:12px;letter-spacing:2px}
-.tutorial-tip{position:fixed;bottom:50px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.4);font-size:13px;animation:tipPulse 2.5s ease-in-out infinite;background:rgba(255,255,255,.03);padding:10px 28px;border-radius:24px;border:1px solid rgba(255,255,255,.06);letter-spacing:1px}
-@keyframes tipPulse{0%,100%{opacity:.3}50%{opacity:.7}}
+.tutorial-text{color:#d8d8d8;font-size:17px;line-height:2.4;text-align:center;max-width:440px;padding:0 20px;opacity:0;transform:translateY(30px) scale(1);transition:opacity 1.2s ease,transform 1.2s ease;word-wrap:break-word;letter-spacing:1px;position:relative}
+.tutorial-text.show{opacity:1;transform:translateY(0) scale(1)}
+.tutorial-text.dissolve{animation:sandDissolve 2s ease-out forwards}
+@keyframes sandDissolve{0%{opacity:1;transform:scale(1);filter:blur(0)}30%{opacity:.7;transform:scale(1.02);filter:blur(1px)}100%{opacity:0;transform:scale(1.1) translateY(-30px);filter:blur(8px)}}
+.tutorial-title{font-size:22px;font-weight:bold;margin-bottom:32px;color:#fff;text-shadow:0 0 30px rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;gap:10px;letter-spacing:3px}
+.tutorial-tip{position:fixed;bottom:50px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.35);font-size:12px;animation:tipPulse 2.5s ease-in-out infinite;background:rgba(255,255,255,.02);padding:8px 24px;border-radius:20px;border:1px solid rgba(255,255,255,.05);letter-spacing:1px}
+@keyframes tipPulse{0%,100%{opacity:.25}50%{opacity:.6}}
 #guide-highlight{position:fixed;border:2px solid var(--gold);border-radius:10px;box-shadow:0 0 15px var(--gold-glow),0 0 30px rgba(212,175,55,.2),inset 0 0 15px rgba(212,175,55,.05);z-index:1000;pointer-events:none;animation:guidePulse 2s ease-in-out infinite;transition:all .3s ease}
 @keyframes guidePulse{0%,100%{box-shadow:0 0 15px var(--gold-glow),0 0 30px rgba(212,175,55,.2),inset 0 0 15px rgba(212,175,55,.05)}50%{box-shadow:0 0 25px var(--gold-glow),0 0 50px rgba(212,175,55,.35),inset 0 0 20px rgba(212,175,55,.08)}}
 #guide-tooltip{position:fixed;background:linear-gradient(160deg,#1e1e36,#15152a);border:1px solid rgba(212,175,55,.5);border-radius:14px;padding:16px 20px;max-width:280px;z-index:1001;color:var(--text);font-size:13px;line-height:1.8;box-shadow:0 6px 24px rgba(0,0,0,.7),0 0 15px rgba(212,175,55,.08);animation:guideFadeIn .4s ease}
@@ -1955,7 +1957,7 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
     <div class="nav-btn active" data-tab="town" title="城镇">🏰<div class="nav-label">城镇</div></div>
     <div class="nav-btn" data-tab="heroes" title="英雄">⚔️<div class="nav-label">英雄</div></div>
     <div class="nav-btn" data-tab="team" title="编队">🛡️<div class="nav-label">编队</div></div>
-    <div class="nav-btn" data-tab="battle" title="战斗">💀<div class="nav-label">战斗</div></div>
+    <div class="nav-btn" id="battle-nav-btn" data-tab="battle" title="战斗">💀<div class="nav-label">战斗</div></div>
     <div class="nav-btn" id="merge-nav-btn" data-tab="merge" title="合成">⚗️<div class="nav-label">合成</div></div>
     <div class="nav-btn" data-tab="equip" title="装备">🗡️<div class="nav-label">装备</div></div>
     <!-- 屏蔽建筑模块 -->
@@ -2096,7 +2098,7 @@ function startTutorial(){
 
 function showTutorialStep(step){
   var tip=document.getElementById('tut-tip');
-  document.querySelectorAll('.tutorial-text').forEach(function(el){el.classList.remove('show')});
+  document.querySelectorAll('.tutorial-text').forEach(function(el){el.classList.remove('show','dissolve')});
   var el=document.getElementById('tut-'+step);
   if(el){
     tip.style.display='none';
@@ -2106,11 +2108,17 @@ function showTutorialStep(step){
 
 function nextTutorialStep(){
   if(G.tutorialPhase!=='story') return;
+  var currentEl=document.getElementById('tut-'+G.tutorialStep);
+  if(currentEl){
+    currentEl.classList.add('dissolve');
+  }
+  var tip=document.getElementById('tut-tip');
+  tip.style.display='none';
   G.tutorialStep++;
   if(G.tutorialStep<=5){
-    showTutorialStep(G.tutorialStep);
+    setTimeout(function(){showTutorialStep(G.tutorialStep)},800);
   }else{
-    endTutorialStory();
+    setTimeout(function(){endTutorialStory()},800);
   }
 }
 
@@ -2118,7 +2126,6 @@ function endTutorialStory(){
   var overlay=document.getElementById('tutorial-overlay');
   var tip=document.getElementById('tut-tip');
   tip.style.display='none';
-  document.querySelectorAll('.tutorial-text').forEach(function(el){el.classList.remove('show')});
   overlay.classList.add('fade-out');
   setTimeout(function(){
     overlay.classList.remove('active','fade-out');
@@ -2243,8 +2250,17 @@ function onGuideAutoBattle(){
   return false;
 }
 
-function onGuideMergeClick(){
+function onGuideBattleClick(){
   if(G.tutorialPhase==='guide' && G.tutorialStep===4){
+    G.tutorialStep=5;
+    saveGame();
+    return true;
+  }
+  return false;
+}
+
+function onGuideMergeClick(){
+  if(G.tutorialPhase==='guide' && G.tutorialStep===5){
     finishTutorial();
     return true;
   }
@@ -2260,9 +2276,12 @@ function showTownGuideIfNeeded(){
         showGuideTip('town-recruit','🍺 招募英雄','欢迎来到城镇！\n\n点击「招募」按钮，前往酒馆招募更多英雄。');
         break;
       case 3:
-        showGuideTip('auto-battle-btn','⚔️ 自动推图','太棒了！\n\n现在点击「自动推图」开始挑战关卡！');
+        showGuideTip('auto-battle-btn','⚔️ 自动推图','太棒了！\n\n点击「自动推图」开始挑战关卡！');
         break;
       case 4:
+        showGuideTip('battle-nav-btn','💀 战斗','推图已开始！\n\n点击左侧「战斗」查看战斗画面。');
+        break;
+      case 5:
         showGuideTip('merge-nav-btn','⚗️ 合成系统','继续变强！\n\n点击左侧「合成」进入合成界面，\n这是英雄快速变强的捷径！');
         break;
       default:
@@ -9849,7 +9868,7 @@ function switchTab(tab){
   });
   hideGuideTip();
   renderCurrentTab();
-  if(tab==='merge' && G.tutorialPhase==='guide' && G.tutorialStep===4){
+  if(tab==='merge' && G.tutorialPhase==='guide' && G.tutorialStep===5){
     onGuideMergeClick();
   }
 }
@@ -10145,12 +10164,11 @@ function renderTavernRecruit(){
     </div>
   `;
   
-  // 渲染完成后，如果是引导步骤3，显示返回城镇的提示
   setTimeout(function(){
-    if(G.tutorialPhase==='guide' && G.tutorialStep===3){
-      showGuideTip('tavern-back-btn','返回城镇','太棒了！\n\n现在点击「返回城镇」按钮回到主界面吧！','left');
+    if(G.tutorialPhase==='guide' && G.tutorialStep===2){
+      showGuideTip('tavern-back-btn','🍺 酒馆','选择一位英雄点击「招募」！\n\n招募完成后会自动返回城镇。','left');
     }
-  },100);
+  },200);
 }
 
 
@@ -15022,7 +15040,10 @@ function initNewGame(){
 // 导航事件
 document.querySelectorAll('.nav-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
-    if(btn.dataset.tab==='merge' && G.tutorialPhase==='guide' && G.tutorialStep===4){
+    if(btn.dataset.tab==='battle' && G.tutorialPhase==='guide' && G.tutorialStep===4){
+      onGuideBattleClick();
+    }
+    if(btn.dataset.tab==='merge' && G.tutorialPhase==='guide' && G.tutorialStep===5){
       onGuideMergeClick();
     }
     switchTab(btn.dataset.tab);
