@@ -11413,6 +11413,15 @@ function quickClear(stageId){
 
 function renderMerge(el){
   var heroCount=G.heroes.length;
+  // 清理无效的融合槽位引用（英雄已被移除的情况）
+  if(window._mergeSlots){
+    var heroUidSet=new Set(G.heroes.map(function(h){return h.uid}));
+    for(var i=0;i<window._mergeSlots.length;i++){
+      if(window._mergeSlots[i]!==null && !heroUidSet.has(window._mergeSlots[i])){
+        window._mergeSlots[i]=null;
+      }
+    }
+  }
   // 获取已选英雄
   var usedUids=window._mergeSlots||[null,null,null];
   var usedSet=new Set(usedUids.filter(Boolean));
@@ -12129,10 +12138,22 @@ function updateMergeButtonState(){
   var btn=document.getElementById('merge-btn');
   if(!btn)return;
 
-  var usedUids=window._mergeSlots||[null,null,null];
-  var selectedCount=usedUids.filter(Boolean).length;
+  // 清理无效的融合槽位引用（英雄已被移除的情况）
+  if(window._mergeSlots){
+    var heroUidSet=new Set(G.heroes.map(function(h){return h.uid}));
+    for(var i=0;i<window._mergeSlots.length;i++){
+      if(window._mergeSlots[i]!==null && !heroUidSet.has(window._mergeSlots[i])){
+        window._mergeSlots[i]=null;
+      }
+    }
+  }
 
-  var qualities=usedUids.filter(Boolean).map(function(uid){var h=G.heroes.find(function(x){return x.uid===uid});return h?QUALITIES.indexOf(h.quality):0;});
+  var usedUids=window._mergeSlots||[null,null,null];
+  // 只统计有效英雄（在G.heroes中存在的）
+  var validHeroes=usedUids.filter(Boolean).map(function(uid){return G.heroes.find(function(x){return x.uid===uid})}).filter(Boolean);
+  var selectedCount=validHeroes.length;
+
+  var qualities=validHeroes.map(function(h){return QUALITIES.indexOf(h.quality)});
   var maxQ=qualities.length>0?Math.max.apply(null,qualities):0;
   var mergeCost=selectedCount>=2?(maxQ+1)*200:0;
   // 加入赌局费用检查
