@@ -8326,7 +8326,9 @@ const MERGE_ACCIDENTS = {
 const MERGE_ACCIDENT_RATE = 0.15; // 15%事故率
 
 function rollMergeAccident(hero, materials) {
-  if (G_cheats.enabled && G_cheats.forceAccident) { /* 金手指强制事故，跳过随机判定 */ }
+  // 金手指强制事故：单次或持续模式
+  var forceAccident = G_cheats.enabled && (G_cheats.forceAccident || G_cheats.alwaysAccident);
+  if (forceAccident) { /* 金手指强制事故，跳过随机判定 */ }
   else if (Math.random() >= MERGE_ACCIDENT_RATE) return null;
   var total = 0;
   for (var k in MERGE_ACCIDENTS) total += MERGE_ACCIDENTS[k].weight;
@@ -9050,6 +9052,12 @@ function executeMerge(heroUids){
   
   updateResUI();
   saveGame();
+  
+  // 金手指：关闭单次强制事故（持续模式保持开启）
+  if(G_cheats.enabled && G_cheats.forceAccident && !G_cheats.alwaysAccident){
+    G_cheats.forceAccident = false;
+  }
+  
   return true;
 }
 
@@ -12924,6 +12932,8 @@ var G_cheats = {
   oneHitKill: false,
   forceMutation: false,
   showMergeResult: false,  // 默认隐藏合成结果
+  forceAccident: false,    // 强制事故（单次）
+  alwaysAccident: false,   // 持续事故（每次合成必出事故）
   // 英雄相关金手指
   forceQuality: null,      // 强制指定品质
   forceLegendary: false,   // 强制传说
@@ -14156,6 +14166,12 @@ function cheatForceAccident(){
   showToast(G_cheats.forceAccident ? '💥 强制事故已开启（下次合成必定触发事故）' : '💥 强制事故已关闭');
 }
 
+function cheatAlwaysAccident(){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  G_cheats.alwaysAccident = !G_cheats.alwaysAccident;
+  showToast(G_cheats.alwaysAccident ? '💥 持续事故已开启（每次合成必出事故）' : '💥 持续事故已关闭');
+}
+
 function cheatSkipStage(){
   if(!G_cheats.enabled){showToast('请先开启金手指');return;}
   G.stageProgress++;
@@ -14933,6 +14949,7 @@ function renderCheatFloatPanel(){
     html += '<button class="btn btn-sm '+(G_cheats.showMergeResult?'btn-primary':'')+'" onclick="cheatShowMergeResult();renderCheatFloatPanel()">🔮显示结果</button>';
     html += '<button class="btn btn-sm '+(G_cheats.forceQuality==='legendary'?'btn-primary':'')+'" onclick="cheatForceQuality('+(G_cheats.forceQuality==='legendary'?'null':"'legendary'")+');renderCheatFloatPanel()">⚡强制传说</button>';
     html += '<button class="btn btn-sm '+(G_cheats.forceQuality==='mythic'?'btn-primary':'')+'" onclick="cheatForceQuality('+(G_cheats.forceQuality==='mythic'?'null':"'mythic'")+');renderCheatFloatPanel()">🔥强制神话</button>';
+    html += '<button class="btn btn-sm '+(G_cheats.alwaysAccident?'btn-primary':'')+'" onclick="cheatAlwaysAccident();renderCheatFloatPanel()">💥持续事故'+(G_cheats.alwaysAccident?'[开]':'')+'</button>';
     html += '</div>';
     html += '</div>';
     
