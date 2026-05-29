@@ -8445,7 +8445,7 @@ function showAccidentResult(accident, newHero, isQualityUp, oldQuality, material
     buttons.push({
       text: '查看合成结果',
       cls: 'btn-primary',
-      action: "closeModal();showMergeResult(window._accidentHero," + isQualityUp + ",'" + oldQuality + "',window._accidentMats,null)"
+      action: "closeModal();showMergeResult(window._accidentHero," + isQualityUp + ",'" + oldQuality + "',window._accidentMats,null);showToast('融合成功！获得 '+QUALITY_NAMES[newHero.quality]+' 英雄：'+newHero.icon+' '+newHero.name)"
     });
   }
   
@@ -8459,7 +8459,6 @@ function showAccidentResult(accident, newHero, isQualityUp, oldQuality, material
     if (newHero._gambleResult) {
       setTimeout(function(){ showToast(getGambleResultText(newHero._gambleResult)); }, 500);
     }
-    showToast('融合成功！获得 '+QUALITY_NAMES[newHero.quality]+' 英雄：'+newHero.icon+' '+newHero.name);
   }
   
   showModal(acc.icon + ' 合成事故', html, buttons);
