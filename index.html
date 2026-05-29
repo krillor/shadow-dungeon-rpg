@@ -1927,6 +1927,26 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 .btn-breakthrough{animation:breakthroughGlow 2s ease infinite;border-color:var(--purple);color:var(--purple)}
 .btn-breakthrough:hover{background:linear-gradient(135deg,#1a0a2a,#2a1a3a);box-shadow:0 0 15px rgba(168,85,247,.4)}
 
+/* ===== 引导系统样式 ===== */
+#tutorial-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.98);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity 1.5s ease}
+#tutorial-overlay.active{opacity:1}
+#tutorial-overlay.fade-out{opacity:0;pointer-events:none}
+.tutorial-text{color:#222;font-size:18px;line-height:2.2;text-align:center;max-width:600px;padding:20px;opacity:0;transform:translateY(20px);transition:all 1s ease}
+.tutorial-text.show{opacity:1;transform:translateY(0)}
+.tutorial-title{font-size:24px;font-weight:bold;margin-bottom:30px;color:#111}
+.tutorial-tip{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);color:#666;font-size:14px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+#guide-highlight{position:fixed;border:3px solid var(--gold);border-radius:12px;box-shadow:0 0 20px var(--gold-glow),0 0 40px rgba(212,175,55,.3);z-index:1000;pointer-events:none;animation:guidePulse 1.5s infinite}
+@keyframes guidePulse{0%,100%{box-shadow:0 0 20px var(--gold-glow),0 0 40px rgba(212,175,55,.3)}50%{box-shadow:0 0 30px var(--gold-glow),0 0 60px rgba(212,175,55,.5)}}
+#guide-tooltip{position:fixed;background:linear-gradient(145deg,#1a1a2e,#141428);border:2px solid var(--gold);border-radius:12px;padding:16px 20px;max-width:280px;z-index:1001;color:var(--text);font-size:14px;line-height:1.6;box-shadow:0 8px 32px rgba(0,0,0,.5);animation:fadeInScale .3s ease}
+#guide-tooltip::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.guide-title{color:var(--gold);font-weight:bold;margin-bottom:8px;font-size:15px}
+.guide-arrow{position:absolute;font-size:24px;color:var(--gold);animation:bounce 1s infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.guide-skip{position:fixed;top:20px;right:20px;color:#888;font-size:12px;cursor:pointer;z-index:1002;padding:8px 16px;background:rgba(0,0,0,.1);border-radius:20px}
+.guide-skip:hover{color:#333}
+@keyframes fadeInScale{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+
 </style>
 </head>
 <body>
@@ -1936,7 +1956,7 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
     <div class="nav-btn" data-tab="heroes" title="英雄">⚔️<div class="nav-label">英雄</div></div>
     <div class="nav-btn" data-tab="team" title="编队">🛡️<div class="nav-label">编队</div></div>
     <div class="nav-btn" data-tab="battle" title="战斗">💀<div class="nav-label">战斗</div></div>
-    <div class="nav-btn" data-tab="merge" title="合成">⚗️<div class="nav-label">合成</div></div>
+    <div class="nav-btn" id="merge-nav-btn" data-tab="merge" title="合成">⚗️<div class="nav-label">合成</div></div>
     <div class="nav-btn" data-tab="equip" title="装备">🗡️<div class="nav-label">装备</div></div>
     <!-- 屏蔽建筑模块 -->
     <!-- <div class="nav-btn" data-tab="buildings" title="建筑">🏗️<div class="nav-label">建筑</div></div> -->
@@ -2015,7 +2035,208 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 <div id="modal-root" style="z-index:9999;position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none"></div>
 <div id="toast-root"></div>
 
+<div id="tutorial-overlay">
+  <div class="guide-skip" onclick="skipTutorial()">跳过引导 ×</div>
+  <div class="tutorial-text" id="tut-1">
+    <div class="tutorial-title">🌑 序章：黑暗降临</div>
+    很久很久以前，这片大陆曾经繁荣昌盛。<br><br>
+    人类、精灵、矮人在这片土地上和平共处，<br>
+    建造了辉煌的文明。
+  </div>
+  <div class="tutorial-text" id="tut-2">
+    然而，一场突如其来的灾难打破了一切。<br><br>
+    黑暗从地底深处涌出，<br>
+    亡灵与恶魔在废墟中肆虐横行。
+  </div>
+  <div class="tutorial-text" id="tut-3">
+    曾经的帝国已经覆灭，<br>
+    曾经的勇士已经消逝。<br><br>
+    但希望的火种从未熄灭。
+  </div>
+  <div class="tutorial-text" id="tut-4">
+    <div class="tutorial-title">⚔️ 你是最后的希望</div>
+    一位流浪的指挥官，<br>
+    带着仅存的英雄们，<br>
+    踏上了冲出地牢的征程。
+  </div>
+  <div class="tutorial-text" id="tut-5">
+    <div class="tutorial-title">🎯 目标：冲出地牢</div>
+    探索无尽的地牢深处，<br>
+    击败强大的敌人，<br>
+    收集资源，<br>
+    变得更强！<br><br>
+    <span style="color:#e74c3c;font-weight:bold">最终目标：突破99层，重见天日！</span>
+  </div>
+  <div class="tutorial-tip" id="tut-tip" style="display:none">点击任意处继续</div>
+</div>
+<div id="guide-highlight" style="display:none"></div>
+<div id="guide-tooltip" style="display:none"></div>
+
 <script>
+// ==================== 引导系统 ====================
+var G_tutorialStep=0;
+var G_tutorialPhase='';
+var G_guideHighlightEl=document.getElementById('guide-highlight');
+var G_guideTooltipEl=document.getElementById('guide-tooltip');
+
+function startTutorial(){
+  if(G.tutorialDone)return;
+  G_tutorialPhase='story';
+  G_tutorialStep=1;
+  var overlay=document.getElementById('tutorial-overlay');
+  overlay.classList.add('active');
+  overlay.onclick=nextTutorialStep;
+  showTutorialStep(1);
+}
+
+function showTutorialStep(step){
+  var tip=document.getElementById('tut-tip');
+  document.querySelectorAll('.tutorial-text').forEach(el=>el.classList.remove('show'));
+  var el=document.getElementById('tut-'+step);
+  if(el){
+    setTimeout(()=>{el.classList.add('show');tip.style.display='block'},300);
+  }
+}
+
+function nextTutorialStep(){
+  if(G_tutorialPhase==='story'){
+    G_tutorialStep++;
+    if(G_tutorialStep<=5){
+      showTutorialStep(G_tutorialStep);
+    }else{
+      endTutorialStory();
+    }
+  }
+}
+
+function endTutorialStory(){
+  var overlay=document.getElementById('tutorial-overlay');
+  var tip=document.getElementById('tut-tip');
+  tip.style.display='none';
+  document.querySelectorAll('.tutorial-text').forEach(el=>el.classList.remove('show'));
+  overlay.classList.add('fade-out');
+  setTimeout(()=>{
+    overlay.style.display='none';
+    overlay.classList.remove('active','fade-out');
+    startTownGuide();
+  },1500);
+}
+
+function startTownGuide(){
+  G_tutorialPhase='guide';
+  G_tutorialStep=1;
+  setTimeout(()=>showGuideTip('town-recruit','🍺 招募英雄','欢迎来到城镇！\n\n首先，让我们招募一位英雄来扩充队伍。\n\n点击「招募」按钮进入酒馆。',null,'bottom'),500);
+}
+
+function showGuideTip(targetId,tipTitle,tipText,arrowDir){
+  hideGuideTip();
+  var targetEl=document.getElementById(targetId);
+  if(!targetEl)return;
+  var rect=targetEl.getBoundingClientRect();
+  G_guideHighlightEl.style.display='block';
+  G_guideHighlightEl.style.left=(rect.left-6)+'px';
+  G_guideHighlightEl.style.top=(rect.top-6)+'px';
+  G_guideHighlightEl.style.width=(rect.width+12)+'px';
+  G_guideHighlightEl.style.height=(rect.height+12)+'px';
+  var tooltip=G_guideTooltipEl;
+  tooltip.style.display='block';
+  var tooltipW=280;
+  var tooltipH=120;
+  var left=rect.left+(rect.width/2)-tooltipW/2;
+  var top=rect.top+(rect.height/2)-tooltipH-30;
+  if(arrowDir==='bottom'){
+    left=rect.left+(rect.width/2)-tooltipW/2;
+    top=rect.top+rect.height+15;
+  }else if(arrowDir==='top'){
+    left=rect.left+(rect.width/2)-tooltipW/2;
+    top=rect.top-tooltipH-15;
+  }else if(arrowDir==='left'){
+    left=rect.right+15;
+    top=rect.top+(rect.height/2)-tooltipH/2;
+  }else if(arrowDir==='right'){
+    left=rect.left-tooltipW-15;
+    top=rect.top+(rect.height/2)-tooltipH/2;
+  }
+  left=Math.max(10,Math.min(left,window.innerWidth-tooltipW-10));
+  top=Math.max(10,Math.min(top,window.innerHeight-tooltipH-10));
+  tooltip.style.left=left+'px';
+  tooltip.style.top=top+'px';
+  tooltip.innerHTML='<div class="guide-title">'+tipTitle+'</div><div style="white-space:pre-line;line-height:1.6">'+tipText+'</div>';
+  tooltip.onclick=function(e){e.stopPropagation()};
+}
+
+function hideGuideTip(){
+  if(G_guideHighlightEl)G_guideHighlightEl.style.display='none';
+  if(G_guideTooltipEl)G_guideTooltipEl.style.display='none';
+}
+
+function completeGuideStep(){
+  hideGuideTip();
+  G_tutorialStep++;
+  setTimeout(()=>executeNextGuideStep(),300);
+}
+
+function executeNextGuideStep(){
+  switch(G_tutorialStep){
+    case 2:
+      showGuideTip('town-recruit','🍺 招募英雄','点击「招募」按钮进入酒馆招募英雄！',null,'bottom');
+      break;
+    case 3:
+      showGuideTip('tavern-back-btn','返回城镇','招募完成后，点击「返回城镇」按钮回到主界面。','left');
+      break;
+    case 4:
+      showGuideTip('auto-battle-btn','⚔️ 自动推图','太棒了！\n\n现在让我们开始战斗吧！\n\n点击「自动推图」开始挑战关卡！',null,'bottom');
+      break;
+    case 5:
+      showGuideTip('merge-nav-btn','⚗️ 合成系统','继续变强！\n\n「合成」是让英雄快速变强的捷径！\n\n点击进入合成界面。',null,'bottom');
+      break;
+    case 6:
+      var mergeIntro=document.getElementById('merge-intro');
+      if(mergeIntro){
+        mergeIntro.style.display='block';
+      }
+      setTimeout(()=>{
+        showGuideTip('merge-intro','⚗️ 合成系统介绍','这就是合成界面！\n\n选择2-3个英雄进行融合，\n可以大幅提升实力或获得高品质英雄！\n\n点击「开始融合」试试吧！',null,'top');
+      },500);
+      break;
+    default:
+      finishTutorial();
+  }
+}
+
+function finishTutorial(){
+  hideGuideTip();
+  G.tutorialDone=true;
+  saveGame();
+  showToast('🎉 引导完成！祝你游戏愉快！');
+}
+
+function skipTutorial(){
+  document.getElementById('tutorial-overlay').style.display='none';
+  document.getElementById('tutorial-overlay').classList.remove('active','fade-out');
+  hideGuideTip();
+  G.tutorialDone=true;
+  saveGame();
+}
+
+function checkTavernReturn(){
+  if(G_tutorialPhase==='guide' && G_tutorialStep===2){
+    completeGuideStep();
+  }
+}
+
+function checkAutoBattleStart(){
+  if(G_tutorialPhase==='guide' && G_tutorialStep===3){
+    completeGuideStep();
+  }
+}
+
+function checkMergeEnter(){
+  if(G_tutorialPhase==='guide' && G_tutorialStep===4){
+    completeGuideStep();
+  }
+}
+
 // ==================== 游戏数据定义 ====================
 
 const QUALITIES = ['common','rare','epic','legendary','mythic','hidden'];
@@ -9674,8 +9895,8 @@ function renderTown(el){
     +'<div class="panel">'
       +'<div class="panel-title"><span class="icon">⚔️</span> 快速入口</div>'
       +'<div class="town-quick-btns">'
-        +'<button class="btn btn-primary auto-battle-btn" style="flex:1" onclick="startAutoBattle(G.stageProgress)">▶️ 自动推图</button>'
-        +'<button class="btn" style="flex:1" onclick="renderTavernRecruit()">🍺 招募</button>'
+        +'<button class="btn btn-primary auto-battle-btn" id="auto-battle-btn" style="flex:1" onclick="startAutoBattle(G.stageProgress)">▶️ 自动推图</button>'
+        +'<button class="btn" id="town-recruit" style="flex:1" onclick="renderTavernRecruit()">🍺 招募</button>'
       +'</div>'
     +'</div>'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
@@ -9899,7 +10120,7 @@ function renderTavernRecruit(){
         ${heroesHTML}
       </div>
       <div class="btn-group mt-12">
-        <button class="btn" onclick="renderTown(document.getElementById('content'))">返回城镇</button>
+        <button class="btn" id="tavern-back-btn" onclick="checkTavernReturn();renderTown(document.getElementById('content'))">返回城镇</button>
         ${(()=>{
           const cost=getTavernRefreshCost();
           const costStr=Object.entries(cost).map(([k,v])=>`${RESOURCE_DEFS[k]?.icon||''}${v}`).join(' ');
@@ -11402,7 +11623,7 @@ function hideBattlePanel(){
 }
 
 function startAutoBattle(fromStage){
-  // 点击反馈
+  checkAutoBattleStart();
   showToast('🚀 开始自动推图...');
   
   G_autoBattle=true;
@@ -11744,6 +11965,23 @@ function renderMerge(el){
           <div>🔗 合成羁绊：特定职业组合获得属性加成</div>
         </div>
       </details>
+      
+      <!-- 合成引导介绍（首次引导时显示） -->
+      <div id="merge-intro" style="background:linear-gradient(135deg,rgba(168,85,247,.1),rgba(201,162,39,.05));border:2px solid rgba(168,85,247,.3);border-radius:12px;padding:16px;margin-bottom:12px;display:none">
+        <div style="color:#a855f7;font-weight:bold;margin-bottom:12px;font-size:15px">⚗️ 合成系统介绍</div>
+        <div style="font-size:13px;line-height:1.8">
+          <div style="margin-bottom:8px"><b style="color:var(--gold)">🎯 核心玩法：</b></div>
+          <div>• 选择2-3个英雄，点击「开始融合」消耗金币进行合成</div>
+          <div>• 合成后保留1个英雄，继承材料属性和技能</div>
+          <div>• 异变概率30%，可大幅提升品质！</div>
+          <div style="margin-top:12px;margin-bottom:8px"><b style="color:var(--gold)">🎁 特殊事件：</b></div>
+          <div>• 随机触发特殊事件，可能直接获得强力英雄</div>
+          <div>• 连续合成触发连击，获得额外奖励！</div>
+          <div style="margin-top:12px;margin-bottom:8px"><b style="color:var(--gold)">🛡️ 保底机制：</b></div>
+          <div>• 每10次刷新必出高品质英雄</div>
+          <div>• 品质顺序：普通→稀有→史诗→传说→神话→隐藏</div>
+        </div>
+      </div>
       
       <!-- 合成异象显示 -->
       ${(function(){
@@ -14796,6 +15034,9 @@ function initGame(){
 
 // 初始化新游戏
 function initNewGame(){
+  // 标记首次游戏
+  G.tutorialDone=false;
+  
   // 给玩家初始英雄
   const starter1=createHero('swordsman',1);
   const starter2=createHero('squire',1);
@@ -14817,11 +15058,17 @@ function initNewGame(){
   G.stageProgress=1;
   startAutoProduction();
   switchTab('town');
+  
+  // 启动新手引导
+  setTimeout(startTutorial,1000);
 }
 
 // 导航事件
 document.querySelectorAll('.nav-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>switchTab(btn.dataset.tab));
+  btn.addEventListener('click',()=>{
+    if(btn.dataset.tab==='merge') checkMergeEnter();
+    switchTab(btn.dataset.tab);
+  });
 });
 
 // 启动游戏
