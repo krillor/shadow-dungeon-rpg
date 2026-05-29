@@ -690,7 +690,7 @@ body{
 /* ===== 合成结果展示 ===== */
 .merge-result-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:300;display:flex;align-items:center;justify-content:center;animation:fadeIn .3s ease}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(.98)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
 @keyframes btnGlow{0%,100%{box-shadow:0 0 5px rgba(255,165,0,.3)}50%{box-shadow:0 0 15px rgba(255,165,0,.6)}}
 .merge-result-card{background:var(--panel);border:2px solid var(--gold);border-radius:16px;padding:24px;max-width:360px;width:90%;text-align:center;position:relative;animation:cardPop .5s cubic-bezier(.34,1.56,.64,1)}
 @keyframes cardPop{0%{opacity:0;transform:scale(.3) translateY(50px)}70%{transform:scale(1.05) translateY(-10px)}100%{opacity:1;transform:scale(1) translateY(0)}}
@@ -1935,10 +1935,10 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 .tutorial-text.show{opacity:1;transform:translateY(0) scale(1)}
 .tutorial-text.dissolve{animation:sandDissolve 2s ease-out forwards}
 @keyframes sandDissolve{0%{opacity:1;transform:scale(1);filter:blur(0)}30%{opacity:.7;transform:scale(1.02);filter:blur(1px)}100%{opacity:0;transform:scale(1.1) translateY(-30px);filter:blur(8px)}}
-.tutorial-title{font-size:22px;font-weight:bold;margin-bottom:32px;color:#fff;text-shadow:0 0 30px rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;gap:10px;letter-spacing:3px}
+.tutorial-title{font-size:22px;font-weight:bold;margin-bottom:32px;color:#fff;text-shadow:0 0 30px rgba(255,255,255,.2);text-align:center;letter-spacing:4px}
 .tutorial-tip{position:fixed;bottom:50px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.35);font-size:12px;animation:tipPulse 2.5s ease-in-out infinite;background:rgba(255,255,255,.02);padding:8px 24px;border-radius:20px;border:1px solid rgba(255,255,255,.05);letter-spacing:1px}
 @keyframes tipPulse{0%,100%{opacity:.25}50%{opacity:.6}}
-#guide-highlight{position:fixed;border:2px solid var(--gold);border-radius:10px;box-shadow:0 0 15px var(--gold-glow),0 0 30px rgba(212,175,55,.2),inset 0 0 15px rgba(212,175,55,.05);z-index:1000;pointer-events:none;animation:guidePulse 2s ease-in-out infinite;transition:all .3s ease}
+#guide-highlight{position:fixed;border:2px solid var(--gold);border-radius:10px;box-shadow:0 0 15px var(--gold-glow),0 0 30px rgba(212,175,55,.2),inset 0 0 15px rgba(212,175,55,.05);z-index:1000;pointer-events:none;animation:guidePulse 2s ease-in-out infinite;transition:left .3s ease,top .3s ease,width .3s ease,height .3s ease}
 @keyframes guidePulse{0%,100%{box-shadow:0 0 15px var(--gold-glow),0 0 30px rgba(212,175,55,.2),inset 0 0 15px rgba(212,175,55,.05)}50%{box-shadow:0 0 25px var(--gold-glow),0 0 50px rgba(212,175,55,.35),inset 0 0 20px rgba(212,175,55,.08)}}
 #guide-tooltip{position:fixed;background:linear-gradient(160deg,#1e1e36,#15152a);border:1px solid rgba(212,175,55,.5);border-radius:14px;padding:16px 20px;max-width:280px;z-index:1001;color:var(--text);font-size:13px;line-height:1.8;box-shadow:0 6px 24px rgba(0,0,0,.7),0 0 15px rgba(212,175,55,.08);animation:guideFadeIn .4s ease}
 #guide-tooltip::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,175,55,.6),transparent)}
@@ -2040,28 +2040,31 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 <div id="tutorial-overlay">
   <div class="guide-skip" onclick="skipTutorial()">跳过 ×</div>
   <div class="tutorial-text" id="tut-1">
-    <div class="tutorial-title">🌑 序章</div>
-    很久很久以前，这片大陆曾经繁荣昌盛。<br>
-    人类、精灵、矮人和平共处，建造了辉煌的文明。
+    <div class="tutorial-title">序 章</div>
+    很久以前，这片大陆繁荣昌盛，<br>
+    人类、精灵与矮人和平共处，<br>
+    共同建造了辉煌的文明。
   </div>
   <div class="tutorial-text" id="tut-2">
-    然而，一场突如其来的灾难打破了一切。<br>
-    黑暗从地底深处涌出，亡灵与恶魔在废墟中肆虐横行。
+    然而灾难骤降，<br>
+    黑暗自地底涌出，<br>
+    亡灵与恶魔在废墟间肆虐横行。
   </div>
   <div class="tutorial-text" id="tut-3">
-    曾经的帝国已经覆灭，曾经的勇士已经消逝。<br>
+    帝国覆灭，勇士消逝，<br>
     但希望的火种从未熄灭。
   </div>
   <div class="tutorial-text" id="tut-4">
-    <div class="tutorial-title">⚔️ 最后的希望</div>
-    一位流浪的指挥官，带着仅存的英雄们，<br>
-    踏上了冲出地牢的征程。
+    <div class="tutorial-title">最后的希望</div>
+    一位流浪的指挥官，<br>
+    带领仅存的英雄，<br>
+    踏上了冲出地牢的征途。
   </div>
   <div class="tutorial-text" id="tut-5">
-    <div class="tutorial-title">🎯 冲出地牢</div>
-    探索地牢深处，击败强大的敌人，<br>
-    收集资源，变得更强！<br><br>
-    <span style="color:#e74c3c;font-weight:bold">最终目标：突破99层，重见天日！</span>
+    <div class="tutorial-title">冲出地牢</div>
+    深入地牢，击败强敌，<br>
+    收集资源，不断变强。<br><br>
+    <span style="color:#c0392b;font-weight:bold">突破九十九层，重见天日。</span>
   </div>
   <div class="tutorial-tip" id="tut-tip" style="display:none">点击继续</div>
 </div>
@@ -2244,7 +2247,9 @@ function onGuideRecruitHero(){
 function onGuideAutoBattle(){
   if(G.tutorialPhase==='guide' && G.tutorialStep===3){
     G.tutorialStep=4;
+    hideGuideTip();
     saveGame();
+    setTimeout(function(){showTownGuideIfNeeded()},1500);
     return true;
   }
   return false;
