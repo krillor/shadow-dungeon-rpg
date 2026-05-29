@@ -2989,19 +2989,18 @@ const STAGES = [
     {name:'腐化蝙蝠',icon:'🦇',role:'assassin',quality:'common',level:2,skills:['backstab']},
     {name:'矿坑骷髅',icon:'💀',role:'warrior',quality:'common',level:2,skills:['cleave']},
   ],rewards:{gold:100,exp:40,stone:25}},
-  {id:3,name:'水晶洞穴',icon:'💎',desc:'闪烁着诡异光芒的水晶洞穴',enemies:[
+  {id:3,name:'水晶洞穴',icon:'💎',desc:'闪烁着诡异光芒的水晶洞穴',modifiers:['high_dodge'],enemies:[
     {name:'矿坑骷髅',icon:'💀',role:'warrior',quality:'common',level:3,skills:['cleave','shield_bash']},
     {name:'水晶蜘蛛',icon:'🕷️',role:'ranger',quality:'common',level:3,skills:['aimed_shot']},
     {name:'水晶蜘蛛',icon:'🕷️',role:'ranger',quality:'common',level:3,skills:['aimed_shot']},
   ],rewards:{gold:120,exp:50,stone:30,herbs:10}},
-  {id:4,name:'矿脉深处',icon:'⛏️',desc:'越往深处走，亡灵越强大',enemies:[
+  {id:4,name:'矿脉深处',icon:'⛏️',desc:'越往深处走，亡灵越强大',modifiers:['physical_resist'],enemies:[
     {name:'暗影矿工',icon:'⛏️',role:'warrior',quality:'rare',level:4,skills:['cleave','berserker']},
     {name:'腐化蝙蝠',icon:'🦇',role:'assassin',quality:'common',level:4,skills:['poison_blade','backstab']},
     {name:'腐化蝙蝠',icon:'🦇',role:'assassin',quality:'common',level:4,skills:['backstab']},
   ],rewards:{gold:150,exp:60,stone:35,herbs:15}},
   // ★ 小Boss：第一章Boss
-  {id:5,name:'💀 矿坑领主',icon:'💀',desc:'矿坑的统治者，一位堕落的矮人领主',isBoss:true,bossType:'mini',
-    enemies:[
+  {id:5,name:'💀 矿坑领主',icon:'💀',desc:'矿坑的统治者，一位堕落的矮人领主',isBoss:true,bossType:'mini',modifiers:['shield_start'],enemies:[
     {name:'矿坑骷髅',icon:'💀',role:'warrior',quality:'common',level:4,skills:['cleave']},
     {name:'矿坑骷髅',icon:'💀',role:'warrior',quality:'common',level:4,skills:['shield_bash']},
     {name:'矿坑领主',icon:'👹',role:'warrior',quality:'rare',level:6,skills:['berserker','cleave','shield_bash']},
@@ -3013,24 +3012,23 @@ const STAGES = [
     {name:'暗影狼',icon:'🐺',role:'assassin',quality:'common',level:5,skills:['poison_blade']},
     {name:'树人守卫',icon:'🌳',role:'guardian',quality:'rare',level:5,skills:['taunt','iron_wall']},
   ],rewards:{gold:180,exp:70,stone:40,herbs:20}},
-  {id:7,name:'毒雾沼泽',icon:'🌫️',desc:'弥漫着毒雾的沼泽地',enemies:[
+  {id:7,name:'毒雾沼泽',icon:'🌫️',desc:'弥漫着毒雾的沼泽地',modifiers:['magic_resist'],enemies:[
     {name:'毒蛙',icon:'🐸',role:'warlock',quality:'common',level:6,skills:['curse']},
     {name:'毒蛙',icon:'🐸',role:'warlock',quality:'common',level:6,skills:['life_drain']},
     {name:'沼泽巨蟒',icon:'🐍',role:'warrior',quality:'rare',level:6,skills:['poison_blade','cleave']},
   ],rewards:{gold:200,exp:80,stone:45,herbs:25}},
-  {id:8,name:'精灵废墟',icon:'🏛️',desc:'精灵族曾经的圣地，如今已成废墟',enemies:[
+  {id:8,name:'精灵废墟',icon:'🏛️',desc:'精灵族曾经的圣地，如今已成废墟',modifiers:['high_dodge'],enemies:[
     {name:'堕落精灵',icon:'🧝',role:'ranger',quality:'rare',level:7,skills:['aimed_shot','rain_arrows']},
     {name:'堕落精灵',icon:'🧝',role:'ranger',quality:'rare',level:7,skills:['aimed_shot']},
     {name:'暗影狼',icon:'🐺',role:'assassin',quality:'common',level:7,skills:['backstab','shadow_step']},
   ],rewards:{gold:230,exp:90,stone:50,herbs:30}},
-  {id:9,name:'古树之心',icon:'🌳',desc:'森林中央的千年古树，散发着诡异的力量',enemies:[
+  {id:9,name:'古树之心',icon:'🌳',desc:'森林中央的千年古树，散发着诡异的力量',modifiers:['regen'],enemies:[
     {name:'树精',icon:'🌳',role:'guardian',quality:'rare',level:8,skills:['taunt','iron_wall']},
     {name:'树精',icon:'🌳',role:'guardian',quality:'rare',level:8,skills:['taunt']},
     {name:'花妖',icon:'🌸',role:'mage',quality:'rare',level:8,skills:['blizzard','arcane_shield']},
   ],rewards:{gold:260,exp:100,stone:55,herbs:35}},
   // ★ 小Boss：第二章Boss
-  {id:10,name:'🐺 森林守卫者',icon:'🐺',desc:'森林的最终守卫，一只被黑暗侵蚀的远古巨狼',isBoss:true,bossType:'mini',
-    enemies:[
+  {id:10,name:'🐺 森林守卫者',icon:'🐺',desc:'森林的最终守卫，一只被黑暗侵蚀的远古巨狼',isBoss:true,bossType:'mini',modifiers:['rage','high_dodge'],enemies:[
     {name:'树精',icon:'🌳',role:'guardian',quality:'rare',level:8,skills:['taunt','iron_wall']},
     {name:'花妖',icon:'🌸',role:'mage',quality:'rare',level:8,skills:['blizzard']},
     {name:'远古巨狼',icon:'🐺',role:'assassin',quality:'epic',level:10,skills:['shadow_step','backstab','poison_blade']},
@@ -3042,55 +3040,53 @@ const STAGES = [
     {name:'哥布林战士',icon:'👺',role:'warrior',quality:'rare',level:9,skills:['cleave']},
     {name:'哥布林弓手',icon:'🏹',role:'ranger',quality:'common',level:9,skills:['aimed_shot','rain_arrows']},
   ],rewards:{gold:280,exp:110,stone:60,herbs:35}},
-  {id:12,name:'哥布林营地',icon:'🔥',desc:'哥布林部落的核心营地',enemies:[
+  {id:12,name:'哥布林营地',icon:'🔥',desc:'哥布林部落的核心营地',modifiers:['anti_heal'],enemies:[
     {name:'哥布林战士',icon:'👺',role:'warrior',quality:'rare',level:10,skills:['berserker','cleave']},
     {name:'哥布林萨满',icon:'🧙',role:'mage',quality:'rare',level:10,skills:['fireball','blizzard']},
     {name:'哥布林弓手',icon:'🏹',role:'ranger',quality:'rare',level:10,skills:['rain_arrows','trap']},
   ],rewards:{gold:320,exp:130,stone:65,herbs:40}},
-  {id:13,name:'哥布林矿场',icon:'⛏️',desc:'哥布林强迫奴隶开采的矿场',enemies:[
+  {id:13,name:'哥布林矿场',icon:'⛏️',desc:'哥布林强迫奴隶开采的矿场',modifiers:['high_def'],enemies:[
     {name:'哥布林监工',icon:'👹',role:'warrior',quality:'epic',level:11,skills:['berserker','cleave','shield_bash']},
     {name:'哥布林萨满',icon:'🧙',role:'mage',quality:'rare',level:11,skills:['fireball','curse']},
     {name:'哥布林弓手',icon:'🏹',role:'ranger',quality:'rare',level:11,skills:['aimed_shot']},
   ],rewards:{gold:360,exp:150,stone:70,herbs:45}},
-  {id:14,name:'哥布林要塞',icon:'🏰',desc:'坚固的哥布林要塞，防御森严',enemies:[
+  {id:14,name:'哥布林要塞',icon:'🏰',desc:'坚固的哥布林要塞，防御森严',modifiers:['shield_start','counter'],enemies:[
     {name:'哥布林精锐',icon:'👺',role:'warrior',quality:'epic',level:12,skills:['berserker','cleave']},
     {name:'哥布林精锐',icon:'👺',role:'warrior',quality:'epic',level:12,skills:['shield_bash','cleave']},
     {name:'哥布林萨满',icon:'🧙',role:'mage',quality:'epic',level:12,skills:['blizzard','fireball']},
     {name:'哥布林弓手',icon:'🏹',role:'ranger',quality:'rare',level:12,skills:['rain_arrows']},
   ],rewards:{gold:400,exp:170,stone:80,herbs:50}},
   // ★ 小Boss：第三章Boss
-  {id:15,name:'👹 哥布林王',icon:'👹',desc:'哥布林部落的至高统治者，残暴而狡猾',isBoss:true,bossType:'mini',
-    enemies:[
+  {id:15,name:'👹 哥布林王',icon:'👹',desc:'哥布林部落的至高统治者，残暴而狡猾',isBoss:true,bossType:'mini',modifiers:['rage','shield_start','stun_immune'],enemies:[
     {name:'哥布林精锐',icon:'👺',role:'warrior',quality:'epic',level:12,skills:['berserker','cleave']},
     {name:'哥布林萨满',icon:'🧙',role:'mage',quality:'epic',level:12,skills:['blizzard','fireball']},
     {name:'哥布林王',icon:'👹',role:'warrior',quality:'epic',level:14,skills:['berserker','cleave','shield_bash']},
   ],rewards:{gold:600,exp:250,stone:100,herbs:60,gems:3}},
 
   // === 第四章：地下墓穴 (16-20) ===
-  {id:16,name:'墓穴入口',icon:'⚰️',desc:'古代王族的墓地入口，阴风阵阵',enemies:[
+  {id:16,name:'墓穴入口',icon:'⚰️',desc:'古代王族的墓地入口，阴风阵阵',modifiers:['dot_immune'],enemies:[
     {name:'亡灵骑士',icon:'💀',role:'warrior',quality:'epic',level:13,skills:['cleave','shield_bash']},
     {name:'亡灵法师',icon:'👻',role:'mage',quality:'epic',level:13,skills:['blizzard','soul_burn']},
     {name:'骷髅弓手',icon:'🏹',role:'ranger',quality:'rare',level:13,skills:['aimed_shot','rain_arrows']},
   ],rewards:{gold:420,exp:180,stone:85,herbs:50}},
-  {id:17,name:'地下墓穴',icon:'💀',desc:'墓穴深处，亡灵的力量越来越强',enemies:[
+  {id:17,name:'地下墓穴',icon:'💀',desc:'墓穴深处，亡灵的力量越来越强',modifiers:['regen','anti_heal'],enemies:[
     {name:'亡灵骑士',icon:'💀',role:'warrior',quality:'epic',level:14,skills:['berserker','cleave']},
     {name:'亡灵法师',icon:'👻',role:'mage',quality:'epic',level:14,skills:['soul_burn','blizzard','arcane_shield']},
     {name:'墓穴守卫',icon:'🗿',role:'guardian',quality:'epic',level:14,skills:['taunt','iron_wall']},
   ],rewards:{gold:460,exp:200,stone:90,herbs:55}},
-  {id:18,name:'王族灵殿',icon:'👑',desc:'古代国王的灵殿，充满了诅咒之力',enemies:[
+  {id:18,name:'王族灵殿',icon:'👑',desc:'古代国王的灵殿，充满了诅咒之力',modifiers:['physical_resist','magic_resist'],enemies:[
     {name:'暗影骑士',icon:'💀',role:'warrior',quality:'legendary',level:15,skills:['berserker','cleave','shield_bash']},
     {name:'亡灵法师',icon:'👻',role:'mage',quality:'epic',level:15,skills:['soul_burn','blizzard']},
     {name:'暗影刺客',icon:'👤',role:'assassin',quality:'epic',level:15,skills:['shadow_step','backstab','poison_blade']},
   ],rewards:{gold:500,exp:220,stone:100,herbs:60,gems:2}},
-  {id:19,name:'深渊之门',icon:'🌀',desc:'通往深渊的大门，黑暗力量的源头',enemies:[
+  {id:19,name:'深渊之门',icon:'🌀',desc:'通往深渊的大门，黑暗力量的源头',modifiers:['rage','high_def','counter'],enemies:[
     {name:'暗影骑士',icon:'💀',role:'warrior',quality:'legendary',level:16,skills:['berserker','cleave','shield_bash']},
     {name:'暗影法师',icon:'👻',role:'mage',quality:'legendary',level:16,skills:['soul_burn','blizzard','arcane_shield']},
     {name:'深渊守卫',icon:'🗿',role:'guardian',quality:'legendary',level:16,skills:['taunt','iron_wall','shield_bash_g']},
     {name:'暗影刺客',icon:'👤',role:'assassin',quality:'epic',level:16,skills:['shadow_step','backstab']},
   ],rewards:{gold:550,exp:250,stone:110,herbs:65,gems:3}},
   // ★★★ 大Boss：最终Boss ★★★
-  {id:20,name:'😈 深渊领主',icon:'😈',desc:'深渊的最终统治者，一切黑暗力量的源头',isBoss:true,bossType:'final',
-    enemies:[
+  {id:20,name:'😈 深渊领主',icon:'😈',desc:'深渊的最终统治者，一切黑暗力量的源头',isBoss:true,bossType:'final',modifiers:['rage','shield_start','stun_immune','regen'],enemies:[
     {name:'深渊守卫',icon:'🗿',role:'guardian',quality:'legendary',level:16,skills:['taunt','iron_wall']},
     {name:'暗影法师',icon:'👻',role:'mage',quality:'legendary',level:17,skills:['soul_burn','blizzard','arcane_shield']},
     {name:'深渊领主',icon:'😈',role:'warlock',quality:'mythic',level:20,skills:['curse','life_drain','soul_burn']},
@@ -3121,7 +3117,14 @@ var AREA_THEMES=[
 ];
 
 function getStage(id){
-  if(id<=STAGES.length)return STAGES[id-1];
+  if(id<=STAGES.length){
+    var s=STAGES[id-1];
+    if(s.modifiers&&typeof s.modifiers[0]==='string'){
+      s.modifiers=s.modifiers.map(function(k){return STAGE_MODIFIERS[k]}).filter(function(m){return m});
+    }
+    if(!s.modifiers)s.modifiers=[];
+    return s;
+  }
   return generateStage(id);
 }
 
@@ -3194,8 +3197,8 @@ const STAGE_CONFIG = {
   },
   // 技能数量: 随进度增加
   skillCount: function(cycle, posInCycle, isBoss) {
-    if (isBoss) return 3;
-    return Math.min(3, 1 + Math.floor(cycle / 2) + Math.floor(posInCycle / 10));
+    if (isBoss) return 4;
+    return Math.min(4, 2 + Math.floor(cycle / 2) + Math.floor(posInCycle / 10));
   }
 };
 
@@ -3232,19 +3235,19 @@ function generateStage(id){
   if(isFinalBoss){
     // 最终Boss: 6人完整阵容，高品质
     var bi=cycle%BOSS_NAMES.length;
-    enemies.push({name:BOSS_NAMES[bi].name,icon:BOSS_NAMES[bi].icon,role:BOSS_NAMES[bi].role,quality:'mythic',level:baseLevel+5,skills:pickRandomSkills(BOSS_NAMES[bi].role,3)});
+    enemies.push({name:BOSS_NAMES[bi].name,icon:BOSS_NAMES[bi].icon,role:BOSS_NAMES[bi].role,quality:'mythic',level:baseLevel+5,skills:pickRandomSkills(BOSS_NAMES[bi].role,4)});
     enemies.push({name:'深渊守卫',icon:'🗿',role:'guardian',quality:'legendary',level:baseLevel+3,skills:pickRandomSkills('guardian',3)});
     enemies.push({name:'暗影刺客',icon:'👤',role:'assassin',quality:'legendary',level:baseLevel+3,skills:pickRandomSkills('assassin',3)});
     enemies.push({name:'混沌法师',icon:'🔮',role:'mage',quality:'legendary',level:baseLevel+3,skills:pickRandomSkills('mage',3)});
-    enemies.push({name:'虚空祭司',icon:'👁️',role:'warlock',quality:'epic',level:baseLevel+2,skills:pickRandomSkills('warlock',2)});
-    enemies.push({name:'黑暗医师',icon:'💀',role:'healer',quality:'epic',level:baseLevel+2,skills:pickRandomSkills('healer',2)});
+    enemies.push({name:'虚空祭司',icon:'👁️',role:'warlock',quality:'epic',level:baseLevel+2,skills:pickRandomSkills('warlock',3)});
+    enemies.push({name:'黑暗医师',icon:'💀',role:'healer',quality:'epic',level:baseLevel+2,skills:pickRandomSkills('healer',3)});
   }else if(isBoss){
     // 小Boss: 4人阵容
     var bi=cycle%BOSS_NAMES.length;
     enemies.push({name:BOSS_NAMES[bi].name,icon:BOSS_NAMES[bi].icon,role:BOSS_NAMES[bi].role,quality:bossQuality,level:baseLevel+3,skills:pickRandomSkills(BOSS_NAMES[bi].role,3)});
-    enemies.push({name:'精英守卫',icon:'🛡️',role:'guardian',quality:enemyQuality,level:baseLevel+1,skills:pickRandomSkills('guardian',2)});
-    enemies.push({name:'暗影法师',icon:'👻',role:'mage',quality:enemyQuality,level:baseLevel+1,skills:pickRandomSkills('mage',2)});
-    enemies.push({name:'黑暗医师',icon:'💀',role:'healer',quality:enemyQuality,level:baseLevel,skills:pickRandomSkills('healer',1)});
+    enemies.push({name:'精英守卫',icon:'🛡️',role:'guardian',quality:enemyQuality,level:baseLevel+1,skills:pickRandomSkills('guardian',3)});
+    enemies.push({name:'暗影法师',icon:'👻',role:'mage',quality:enemyQuality,level:baseLevel+1,skills:pickRandomSkills('mage',3)});
+    enemies.push({name:'黑暗医师',icon:'💀',role:'healer',quality:enemyQuality,level:baseLevel,skills:pickRandomSkills('healer',2)});
   }else{
     // 普通关卡: 根据位置决定人数和阵容
     var count=STAGE_CONFIG.enemyCount(posInCycle,isBoss,isFinalBoss);
@@ -3339,35 +3342,76 @@ function generateStage(id){
     }
   }
 
+  // 关卡特性
+  var modifiers=getStageModifiers(id,posInCycle);
+  if(modifiers.length>0){
+    modifiers.forEach(function(mod){
+      mod.apply(enemies);
+    });
+  }
+
+  var modDesc=modifiers.length>0?modifiers.map(function(m){return m.name+': '+m.desc}).join(' | '):'';
+
   return {
     id:id,
     name:(isFinalBoss?'★★★ ':isBoss?'★ ':'')+theme.prefix+theme.suffix+nameSuffix,
     icon:theme.icon,
-    desc:'第'+(cycle+1)+'章 第'+posInCycle+'关 · 敌人'+enemies.length+'人',
+    desc:'第'+(cycle+1)+'章 第'+posInCycle+'关 · 敌人'+enemies.length+'人'+(modDesc?' | '+modDesc:''),
     isBoss:isBoss,
     bossType:isFinalBoss?'final':isBoss?'mini':null,
     enemies:enemies,
     rewards:{gold:goldR,exp:expR,food:foodR,stone:stoneR,iron:ironR,gems:gemsR},
-    difficultyMult: DYNAMIC_DIFFICULTY.getDifficultyMult()
+    difficultyMult: DYNAMIC_DIFFICULTY.getDifficultyMult(),
+    modifiers:modifiers
   };
 }
 
 function pickRandomSkills(role,count){
-  var all={
-    warrior:['cleave','shield_bash','berserker'],
-    guardian:['taunt','iron_wall','shield_bash'],
-    mage:['fireball','blizzard','arcane_shield','soul_burn'],
-    healer:['heal','group_heal','purify','divine_shield'],
-    assassin:['backstab','shadow_step','poison_blade'],
-    ranger:['aimed_shot','rain_arrows','trap'],
-    warlock:['curse','life_drain','soul_burn'],
-    paladin:['holy_strike','divine_shield','holy_light'],
-  };
-  var pool=all[role]||all.warrior;
+  var pool=ROLE_SKILLS[role]||ROLE_SKILLS.warrior;
   var result=[];
   var shuffled=pool.slice().sort(function(){return Math.random()-0.5});
   for(var i=0;i<Math.min(count,shuffled.length);i++)result.push(shuffled[i]);
   return result;
+}
+
+// ==================== 关卡特性系统 ====================
+var STAGE_MODIFIERS={
+  physical_resist:{name:'🛡️ 物理抗性',desc:'敌方受到物理伤害减少30%',apply:function(enemies){enemies.forEach(function(e){e._physResist=0.3})}},
+  magic_resist:{name:'🔮 魔法抗性',desc:'敌方受到魔法伤害减少30%',apply:function(enemies){enemies.forEach(function(e){e._magicResist=0.3})}},
+  high_dodge:{name:'💨 高闪避',desc:'敌方闪避率+25%',apply:function(enemies){enemies.forEach(function(e){e._dodgeBonus=(e._dodgeBonus||0)+0.25})}},
+  high_def:{name:'🏰 铁壁',desc:'敌方防御力+50%',apply:function(enemies){enemies.forEach(function(e){e.def=Math.floor(e.def*1.5);e._defBonus=(e._defBonus||0)+0.5})}},
+  regen:{name:'💚 生命回复',desc:'敌方每回合恢复10%最大生命',apply:function(enemies){enemies.forEach(function(e){e._regenPct=0.1})}},
+  rage:{name:'🔥 狂暴',desc:'敌方攻击力+40%',apply:function(enemies){enemies.forEach(function(e){e.atk=Math.floor(e.atk*1.4);e._atkBonus=(e._atkBonus||0)+0.4})}},
+  stun_immune:{name:'✨ 免疫眩晕',desc:'敌方免疫眩晕效果',apply:function(enemies){enemies.forEach(function(e){e._stunImmune=true})}},
+  anti_heal:{name:'☠️ 禁疗',desc:'我方治疗效果降低50%',apply:function(enemies){enemies.forEach(function(e){e._antiHeal=true})}},
+  speed_boost:{name:'⚡ 迅捷',desc:'敌方速度+30%',apply:function(enemies){enemies.forEach(function(e){e.spd=Math.floor(e.spd*1.3)})}},
+  shield_start:{name:'🔰 护盾',desc:'敌方开局获得30%最大生命护盾',apply:function(enemies){enemies.forEach(function(e){e.shield=Math.floor(e.maxHP*0.3)})}},
+  dot_immune:{name:'🧪 免疫DOT',desc:'敌方免疫中毒和灼烧',apply:function(enemies){enemies.forEach(function(e){e._dotImmune=true})}},
+  counter:{name:'↩️ 反击',desc:'敌方受到攻击时反弹20%伤害',apply:function(enemies){enemies.forEach(function(e){e._counterPct=0.2})}},
+};
+
+var MODIFIER_SCHEDULE=[
+  {every:3,pool:['physical_resist','magic_resist','high_dodge']},
+  {every:5,pool:['high_def','regen','rage','speed_boost']},
+  {every:8,pool:['stun_immune','anti_heal','shield_start','dot_immune','counter']},
+];
+
+function getStageModifiers(stageId,posInCycle){
+  var mods=[];
+  MODIFIER_SCHEDULE.forEach(function(schedule){
+    if(posInCycle>=schedule.every&&posInCycle%schedule.every===0){
+      var idx=Math.floor(Math.random()*schedule.pool.length);
+      var modKey=schedule.pool[(idx+stageId)%schedule.pool.length];
+      mods.push(STAGE_MODIFIERS[modKey]);
+    }
+  });
+  if(posInCycle>=7&&Math.random()<0.3){
+    var allKeys=Object.keys(STAGE_MODIFIERS);
+    var rk=allKeys[Math.floor(Math.random()*allKeys.length)];
+    var already=mods.some(function(m){return m===STAGE_MODIFIERS[rk]});
+    if(!already)mods.push(STAGE_MODIFIERS[rk]);
+  }
+  return mods;
 }
 
 // 装备数据
@@ -6815,12 +6859,21 @@ function calcDamage(attacker,defender,skill=null,skillIdx=-1){
   // 闪避计算（考虑职业闪避率 + 英雄特质闪避率）
   let dodgeChance=defenderRole&&defenderRole.dodgeRate?defenderRole.dodgeRate:0.05;
   defender.buffs.forEach(b=>{if(b.stat==='dodge')dodgeChance+=0.3});
+  if(defender._dodgeBonus)dodgeChance+=defender._dodgeBonus;
   // 英雄特质：灵动 +8%闪避
   if(defender.traits) defender.traits.forEach(t=>{if(t.id==='nimble')dodgeChance+=0.08});
   // 羁绊闪避加成
   if(defender._bondDodge) dodgeChance+=defender._bondDodge;
   if(skill&&skill.alwaysHit)dodgeChance=0;
   if(Math.random()<dodgeChance)return{dmg:0,dodged:true,crit:false};
+  
+  // 关卡特性：物理/魔法抗性
+  if(defender._physResist&&attacker.role!=='mage'&&attacker.role!=='warlock'&&attacker.role!=='healer'){
+    dmg=Math.floor(dmg*(1-defender._physResist));
+  }
+  if(defender._magicResist&&(attacker.role==='mage'||attacker.role==='warlock'||attacker.role==='healer')){
+    dmg=Math.floor(dmg*(1-defender._magicResist));
+  }
   
   // 术士：灵魂虹吸 - 造成伤害的15%转化为生命恢复
   if(attacker.role==='warlock' && !attacker.isEnemy){
@@ -7427,7 +7480,19 @@ async function runBattle(stageId){
         maxMP:calcStat(ROLES[e.role]?ROLES[e.role].baseMP:40,QUALITY_MULT[e.quality]||1,e.level),
         hp:0,mp:0,equipment:{weapon:null,armor:null,accessory:null}};
     fakeHero.hp=fakeHero.maxHP;fakeHero.mp=fakeHero.maxMP;
-    return createBattleUnit(fakeHero,true);
+    var unit=createBattleUnit(fakeHero,true);
+    if(e._physResist)unit._physResist=e._physResist;
+    if(e._magicResist)unit._magicResist=e._magicResist;
+    if(e._dodgeBonus)unit._dodgeBonus=e._dodgeBonus;
+    if(e._defBonus)unit._defBonus=e._defBonus;
+    if(e._regenPct)unit._regenPct=e._regenPct;
+    if(e._atkBonus)unit._atkBonus=e._atkBonus;
+    if(e._stunImmune)unit._stunImmune=e._stunImmune;
+    if(e._antiHeal)unit._antiHeal=e._antiHeal;
+    if(e._dotImmune)unit._dotImmune=e._dotImmune;
+    if(e._counterPct)unit._counterPct=e._counterPct;
+    if(e.shield>0)unit.shield=e.shield;
+    return unit;
   });
   let allUnits=[...playerUnits,...enemyUnits];
   
@@ -7458,6 +7523,9 @@ async function runBattle(stageId){
   const roundBadge=document.getElementById('battle-round-badge');
   logEl.innerHTML='';
   battleInfoEl.innerHTML=`<div class="log-title">⚔️ 第${stage.id}章：${stage.name}</div><div class="text-dim text-sm">${stage.desc}</div>`;
+  if(stage.modifiers&&stage.modifiers.length>0){
+    battleInfoEl.innerHTML+='<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">'+stage.modifiers.map(function(m){return '<span style="background:rgba(231,76,60,0.2);color:#e74c3c;padding:2px 8px;border-radius:4px;font-size:11px;border:1px solid rgba(231,76,60,0.3)">'+m.name+' '+m.desc+'</span>'}).join('')+'</div>';
+  }
 
   // 显示激活的羁绊
   if(activeBonds.length>0){
@@ -7552,11 +7620,20 @@ async function runBattle(stageId){
         u.hp=Math.min(u.maxHP,u.hp+regen);
         showFloat(u,'+'+regen+' 生命恢复','heal');
       }
+      // 关卡特性：敌方生命回复
+      if(u._regenPct&&u.isEnemy){
+        var regenAmt=Math.floor(u.maxHP*u._regenPct);
+        u.hp=Math.min(u.maxHP,u.hp+regenAmt);
+        log(u.icon+u.name+' 回复了 '+regenAmt+' 生命','heal');
+        showFloat(u,'+'+regenAmt,'heal');
+      }
 
       // 装备特殊技能触发 - 回合开始 turnStart
       checkEquipSpecialSkill(u,'turnStart',null,allUnits);
 
       u.dot=u.dot.filter(d=>{
+        // 关卡特性：免疫DOT
+        if(u._dotImmune){d.duration--;return d.duration>0}
         // 术士：DOT伤害+50%
         let dotDmg=d.dmg;
         if(d.sourceRole==='warlock'){
@@ -7904,12 +7981,25 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
         recordBattleStat(t,'damageTaken',dmg);
         if(r.crit)recordBattleStat(user,'crit',1);
         if(skill.stunChance&&Math.random()<skill.stunChance){
-          t.buffs.push({stat:'stun',duration:1,name:'眩晕'});
-          logFn(t.icon+t.name+' 被眩晕了！','debuff');
-          showFloat(t,'眩晕!','debuff-text');
-          recordBattleStat(user,'control',1);
+          if(!t._stunImmune){
+            t.buffs.push({stat:'stun',duration:1,name:'眩晕'});
+            logFn(t.icon+t.name+' 被眩晕了！','debuff');
+            showFloat(t,'眩晕!','debuff-text');
+            recordBattleStat(user,'control',1);
+          }else{
+            logFn(t.icon+t.name+' 免疫眩晕！','info');
+            showFloat(t,'免疫!','buff-text');
+          }
         }
-        if(skill.dot){t.dot.push({dmg:Math.floor(user.atk*skill.dot.dmgPct),duration:skill.dot.duration,name:skill.dot.name,sourceRole:user.role});logFn(t.icon+t.name+' 被施加了 '+skill.dot.name+'！','debuff');showFloat(t,'☠'+skill.dot.name,'debuff-text')}
+        if(skill.dot){
+          if(!t._dotImmune){
+            t.dot.push({dmg:Math.floor(user.atk*skill.dot.dmgPct),duration:skill.dot.duration,name:skill.dot.name,sourceRole:user.role});
+            logFn(t.icon+t.name+' 被施加了 '+skill.dot.name+'！','debuff');
+            showFloat(t,'☠'+skill.dot.name,'debuff-text');
+          }else{
+            logFn(t.icon+t.name+' 免疫DOT！','info');
+          }
+        }
         if(skill.debuff){const db=skill.debuff;if(db.stat==='all'){t.buffs.push({stat:'atk',mult:db.mult,duration:db.duration,name:'诅咒-攻'});t.buffs.push({stat:'def',mult:db.mult,duration:db.duration,name:'诅咒-防'})}else{t.buffs.push({stat:db.stat,mult:db.mult,duration:db.duration,name:'削弱'})}logFn(t.icon+t.name+' 被削弱了！','debuff');showFloat(t,'▼削弱','debuff-text')}
         if(skill.healPct){
           var healAmt=Math.floor(user.maxHP*skill.healPct);
@@ -7918,18 +8008,28 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
           showFloat(user,'+'+healAmt,'heal');
         }
         if(t.hp<=0){t.alive=false;logFn(t.icon+' '+t.name+' 倒下了...','death');animUnit(t,'dying',700)}
+        // 关卡特性：反击
+        if(t.alive&&t._counterPct&&dmg>0){
+          var counterDmg=Math.floor(dmg*t._counterPct);
+          user.hp=Math.max(0,user.hp-counterDmg);
+          logFn(t.icon+t.name+' 反击了 '+user.icon+user.name+'，造成 '+counterDmg+' 伤害','damage');
+          showFloat(user,'-'+counterDmg+' 反击','damage');
+          if(user.hp<=0){user.alive=false;logFn(user.icon+' '+user.name+' 倒下了...','death');animUnit(user,'dying',700)}
+        }
       });
       updateBattleStatsBoard();
       break;
     case 'heal':
       var totalHeal=0;
       var healMult=isMutated?1.4:1.0;
+      var hasAntiHeal=enemyUnits&&enemyUnits.some(function(e){return e._antiHeal&&e.alive});
+      if(hasAntiHeal)healMult*=0.5;
       targets.forEach(t=>{
         if(!t.alive)return;
         const heal=Math.floor(t.maxHP*skill.healPct*healMult);
         t.hp=Math.min(t.maxHP,t.hp+heal);
-        logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+(isMutated?' 🧬':'')+'，恢复 '+t.icon+t.name+' '+heal+' 点生命'+(isMutated?' ✨变异+40%':''),'heal');
-        showFloat(t,'+'+heal+(isMutated?'🧬':''),'heal');animUnit(t,'heal-target',500);
+        logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+(isMutated?' 🧬':'')+'，恢复 '+t.icon+t.name+' '+heal+' 点生命'+(hasAntiHeal?' (禁疗减半)':'')+(isMutated?' ✨变异+40%':''),'heal');
+        showFloat(t,'+'+heal+(isMutated?'🧬':'')+(hasAntiHeal?'⚠️':''),'heal');animUnit(t,'heal-target',500);
         totalHeal+=heal;
       });
       // 记录施法者的治疗输出量（治疗自己或别人的总量）
@@ -11728,6 +11828,7 @@ function renderBattle(el){
             +'<span class="stage-icon">'+s.icon+'</span>'
             +'<span>'+(s.name.length>8?s.name.substring(0,8)+'…':s.name)+(s.isBoss?' <span class="text-gold">★'+(s.bossType==='final'?'★★':'')+'Boss</span>':'')+'</span>'
             +'<span class="text-xs text-dim">Lv.'+s.enemies[0].level+'</span>'
+            +(s.modifiers&&s.modifiers.length>0?'<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:2px">'+s.modifiers.map(function(m){return '<span style="background:rgba(231,76,60,0.15);color:#e74c3c;padding:0 4px;border-radius:3px;font-size:9px">'+m.name+'</span>'}).join('')+'</div>':'')
             +(cleared?'<span class="text-green text-xs">✓</span>':'')
             +(isCurrent?'<span class="text-xs" style="color:#ff6b00">▶ 当前</span>':'')
             +'</div>';
@@ -11788,9 +11889,14 @@ function startBattle(stageId){
 function stageAction(stageId){
   var stage=getStage(stageId);
   if(!stage)return;
+  var modHtml='';
+  if(stage.modifiers&&stage.modifiers.length>0){
+    modHtml='<div style="margin:8px 0;display:flex;flex-wrap:wrap;gap:4px">'+stage.modifiers.map(function(m){return '<span style="background:rgba(231,76,60,0.15);color:#e74c3c;padding:2px 6px;border-radius:4px;font-size:10px;border:1px solid rgba(231,76,60,0.25)">'+m.name+'</span>'}).join('')+'</div>';
+  }
   openModal('<div class="panel" style="max-width:300px">'
     +'<div style="font-size:16px;font-weight:bold;margin-bottom:12px">'+stage.icon+' '+stage.name+'</div>'
     +'<div class="text-dim text-sm mb-8">'+stage.desc+'</div>'
+    +modHtml
     +'<div style="display:flex;flex-direction:column;gap:8px">'
     +'<button class="btn btn-primary" onclick="closeModal();startBattle('+stageId+')">⚔️ 重新战斗</button>'
     +'<button class="btn" style="background:rgba(100,200,255,.2)" onclick="closeModal();quickClear('+stageId+')">⚡ 快速扫荡</button>'
