@@ -7464,10 +7464,11 @@ async function runBattle(stageId){
 
   let playerUnits=teamHeroes.map(h=>createBattleUnit(h,false));
 
-  // 羁绊系统（20关前关闭战斗效果）
+  // 羁绊系统（通关20关后才生效）
   window._battleBondEffects=[];
   var activeBonds=detectActiveBonds(teamHeroes);
-  if(stage.id>=20){
+  var bondUnlocked=G.stageProgress>20;
+  if(bondUnlocked){
     applyBondEffects(playerUnits,activeBonds);
   }
 
@@ -7530,7 +7531,7 @@ async function runBattle(stageId){
   }
 
   // 显示激活的羁绊
-  if(activeBonds.length>0){
+  if(bondUnlocked&&activeBonds.length>0){
     battleInfoEl.innerHTML+='<div style="margin-top:8px" id="battle-bonds-display">'+renderBondsHTML(activeBonds,true)+'</div>';
   }
 
