@@ -8104,11 +8104,7 @@ function generateFusedHero(heroes){
   var mutationPrefix=isDirectHidden?'✦异变·':isMutation?'☣️异变·':'';
   var newName=mutationPrefix+(qualityPrefix[newQuality]||'')+prefix+suffix;
   
-  // 7. 继承最高等级
-  var maxLevel=0;
-  heroes.forEach(function(h){if(h.level>maxLevel)maxLevel=h.level});
-  
-  // 8. 创建英雄对象
+  // 7. 创建英雄对象（maxLevel已在上面计算，含隐藏规则修正）
   var newHero={
     uid:++G.heroIdCounter,
     id:'fused_'+hash%100000+(isMutation?'_mut':''),
@@ -12000,6 +11996,12 @@ function updateMergeUI(){
 }
 
 function doMerge(){
+  // === 防重复点击保护 ===
+  if(window._merging){
+    showToast('⏳ 合成进行中，请稍候...');
+    return;
+  }
+  
   const activeSlots=window._mergeSlots.filter(Boolean);
   // 检查是否至少选了2个英雄
   if(activeSlots.length < 2){
@@ -12012,21 +12014,68 @@ function doMerge(){
     showToast('选中的英雄不存在，请重新选择');
     return;
   }
+  
+  // === 检查是否有锁定的英雄 ===
+  var lockedHeroes=validHeroes.filter(function(h){return h.locked});
+  if(lockedHeroes.length>0){
+    showToast('🔒 '+lockedHeroes[0].name+' 已锁定，无法作为合成材料！请先解锁。');
+    return;
+  }
+  
   var qualities=validHeroes.map(function(h){return QUALITIES.indexOf(h.quality)});
   var maxQ=qualities.length>0?Math.max.apply(null,qualities):0;
   var mergeCost=(maxQ+1)*200;
-  // 检查金币是否足够
+  
+  // === 检查赌局费用 ===
+  var gambleInfo=getGambleInfo();
+  var gambleCost=0;
+  var gambleCostType='gold';
+  if(G_mergeGamble!=='normal'){
+    gambleCost=gambleInfo.cost;
+    gambleCostType=gambleInfo.costType||'gold';
+    if(gambleCostType==='gems'){
+      if((G.resources.gems||0) < gambleCost){
+        showToast('💎 宝石不足！需要 '+gambleCost+' 宝石');
+        return;
+      }
+    }else{
+      if((G.resources.gold||0) < mergeCost+gambleCost){
+        showToast('💰 金币不足！需要 '+(mergeCost+gambleCost)+' 金币（含赌局费用'+gambleCost+'）');
+        return;
+      }
+    }
+  }
+  
+  // 检查金币是否足够（合成费用）
   if((G.resources.gold||0) < mergeCost){
-    showToast('金币不足！需要 '+mergeCost+'💰，您只有 '+(G.resources.gold||0)+'💰');
+    showToast('💰 金币不足！需要 '+mergeCost+'💰，您只有 '+(G.resources.gold||0)+'💰');
     return;
   }
-  var result=executeMerge(activeSlots);
-  if(result && result.success){
-    // 所有成功合成（包括爆炸事件和非爆炸事件）都清空融合框并刷新渲染
+  
+  // === 标记合成进行中，防止重复点击 ===
+  window._merging=true;
+  
+  try{
+    var result=executeMerge(activeSlots);
+    if(result && result.success){
+      // 所有成功合成（包括爆炸事件和非爆炸事件）都清空融合框并刷新渲染
+      window._mergeSlots=[null,null,null];
+    }
+  }catch(e){
+    console.error('[Merge] doMerge error:', e);
+    showToast('⚠️ 合成过程出错，请重试');
+    // 出错时也清空槽位，避免卡死
     window._mergeSlots=[null,null,null];
-    // 刷新界面以显示合成记录和更新融合框
-    renderMerge(document.getElementById('content'));
   }
+  
+  // === 无论成功失败，都刷新UI ===
+  var contentEl=document.getElementById('content');
+  if(contentEl){
+    renderMerge(contentEl);
+  }
+  
+  // === 释放锁定 ===
+  window._merging=false;
 }
 
 function clearMerge(){
