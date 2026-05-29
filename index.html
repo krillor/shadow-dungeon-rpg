@@ -8931,7 +8931,7 @@ function executeMerge(heroUids){
   G.mergeStreak.lastTime=now;
   
   // 即时生成融合英雄（此时streakCount已更新，generateFusedHero可正确读取）
-  const newHero=generateFusedHero(heroes);
+  let newHero=generateFusedHero(heroes);
   
   // 判断是否品质提升
   var isQualityUp=QUALITIES.indexOf(newHero.quality)>maxQIdx;
@@ -12063,7 +12063,7 @@ function doMerge(){
     }
   }catch(e){
     console.error('[Merge] executeMerge error:', e);
-    showToast('⚠️ 合成过程出错，请重试');
+    showToast('⚠️ 合成出错: ' + (e.message || e));
     // 出错时也清空槽位，避免卡死
     window._mergeSlots=[null,null,null];
   }
