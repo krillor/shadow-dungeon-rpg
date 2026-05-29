@@ -1931,20 +1931,20 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 #tutorial-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity 1.5s ease}
 #tutorial-overlay.active{display:flex;opacity:1}
 #tutorial-overlay.fade-out{opacity:0;pointer-events:none}
-.tutorial-text{color:#fff;font-size:18px;line-height:2.2;text-align:center;max-width:80%;padding:40px;opacity:0;transform:translateY(20px);transition:all 1s ease}
+.tutorial-text{color:#fff;font-size:18px;line-height:2;text-align:center;max-width:520px;padding:0 20px;opacity:0;transform:translateY(20px);transition:all 1s ease;word-wrap:break-word}
 .tutorial-text.show{opacity:1;transform:translateY(0)}
-.tutorial-title{font-size:28px;font-weight:bold;margin-bottom:30px;color:#fff;text-shadow:0 0 20px rgba(255,255,255,0.3)}
-.tutorial-tip{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);color:#888;font-size:16px;animation:pulse 2s infinite}
+.tutorial-title{font-size:26px;font-weight:bold;margin-bottom:40px;color:#fff;text-shadow:0 0 20px rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;gap:10px}
+.tutorial-tip{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);color:#888;font-size:14px;animation:pulse 2s infinite;background:rgba(255,255,255,0.05);padding:12px 24px;border-radius:20px}
 @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
 #guide-highlight{position:fixed;border:3px solid var(--gold);border-radius:12px;box-shadow:0 0 20px var(--gold-glow),0 0 40px rgba(212,175,55,.3);z-index:1000;pointer-events:none;animation:guidePulse 1.5s infinite}
 @keyframes guidePulse{0%,100%{box-shadow:0 0 20px var(--gold-glow),0 0 40px rgba(212,175,55,.3)}50%{box-shadow:0 0 30px var(--gold-glow),0 0 60px rgba(212,175,55,.5)}}
-#guide-tooltip{position:fixed;background:linear-gradient(145deg,#1a1a2e,#141428);border:2px solid var(--gold);border-radius:12px;padding:16px 20px;max-width:280px;z-index:1001;color:var(--text);font-size:14px;line-height:1.6;box-shadow:0 8px 32px rgba(0,0,0,.5);animation:fadeInScale .3s ease}
+#guide-tooltip{position:fixed;background:linear-gradient(145deg,#1a1a2e,#141428);border:2px solid var(--gold);border-radius:16px;padding:18px 22px;max-width:300px;z-index:1001;color:var(--text);font-size:14px;line-height:1.7;box-shadow:0 8px 32px rgba(0,0,0,.6),0 0 20px rgba(212,175,55,.1);animation:fadeInScale .3s ease}
 #guide-tooltip::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
-.guide-title{color:var(--gold);font-weight:bold;margin-bottom:8px;font-size:15px}
+.guide-title{color:var(--gold);font-weight:bold;margin-bottom:10px;font-size:16px}
 .guide-arrow{position:absolute;font-size:24px;color:var(--gold);animation:bounce 1s infinite}
 @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-.guide-skip{position:fixed;top:20px;right:20px;color:#888;font-size:12px;cursor:pointer;z-index:1002;padding:8px 16px;background:rgba(0,0,0,.1);border-radius:20px}
-.guide-skip:hover{color:#333}
+.guide-skip{position:fixed;top:20px;right:20px;color:#999;font-size:13px;cursor:pointer;z-index:1002;padding:10px 20px;background:rgba(255,255,255,0.05);border-radius:30px;border:1px solid rgba(255,255,255,0.1);transition:all .3s ease}
+.guide-skip:hover{color:#fff;border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.08)}
 @keyframes fadeInScale{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
 
 </style>
@@ -2157,34 +2157,48 @@ function showGuideTip(targetId,tipTitle,tipText,arrowDir){
   if(!targetEl || !G_guideHighlightEl || !G_guideTooltipEl)return;
   var rect=targetEl.getBoundingClientRect();
   G_guideHighlightEl.style.display='block';
-  G_guideHighlightEl.style.left=(rect.left-6)+'px';
-  G_guideHighlightEl.style.top=(rect.top-6)+'px';
-  G_guideHighlightEl.style.width=(rect.width+12)+'px';
-  G_guideHighlightEl.style.height=(rect.height+12)+'px';
+  G_guideHighlightEl.style.left=(rect.left-8)+'px';
+  G_guideHighlightEl.style.top=(rect.top-8)+'px';
+  G_guideHighlightEl.style.width=(rect.width+16)+'px';
+  G_guideHighlightEl.style.height=(rect.height+16)+'px';
   var tooltip=G_guideTooltipEl;
   tooltip.style.display='block';
-  var tooltipW=280;
-  var tooltipH=120;
-  var left=rect.left+(rect.width/2)-tooltipW/2;
-  var top=rect.top+(rect.height/2)-tooltipH-30;
+  tooltip.innerHTML='<div class="guide-title">'+tipTitle+'</div><div style="white-space:pre-line;line-height:1.7">'+tipText+'</div>';
+  // 获取提示框实际尺寸
+  var tooltipRect=tooltip.getBoundingClientRect();
+  var tooltipW=tooltipRect.width||300;
+  var tooltipH=tooltipRect.height||140;
+  var left,top;
+  // 默认自动选择最优方向
+  if(!arrowDir){
+    if(rect.top>tooltipH+60){
+      arrowDir='bottom';
+    }else if(rect.bottom+tooltipH+60<window.innerHeight){
+      arrowDir='top';
+    }else if(rect.left>tooltipW+40){
+      arrowDir='right';
+    }else{
+      arrowDir='left';
+    }
+  }
   if(arrowDir==='bottom'){
     left=rect.left+(rect.width/2)-tooltipW/2;
-    top=rect.top+rect.height+15;
+    top=rect.bottom+20;
   }else if(arrowDir==='top'){
     left=rect.left+(rect.width/2)-tooltipW/2;
-    top=rect.top-tooltipH-15;
+    top=rect.top-tooltipH-20;
   }else if(arrowDir==='left'){
-    left=rect.right+15;
+    left=rect.right+20;
     top=rect.top+(rect.height/2)-tooltipH/2;
   }else if(arrowDir==='right'){
-    left=rect.left-tooltipW-15;
+    left=rect.left-tooltipW-20;
     top=rect.top+(rect.height/2)-tooltipH/2;
   }
-  left=Math.max(10,Math.min(left,window.innerWidth-tooltipW-10));
-  top=Math.max(10,Math.min(top,window.innerHeight-tooltipH-10));
+  // 边界检测，确保不超出屏幕
+  left=Math.max(15,Math.min(left,window.innerWidth-tooltipW-15));
+  top=Math.max(15,Math.min(top,window.innerHeight-tooltipH-15));
   tooltip.style.left=left+'px';
   tooltip.style.top=top+'px';
-  tooltip.innerHTML='<div class="guide-title">'+tipTitle+'</div><div style="white-space:pre-line;line-height:1.6">'+tipText+'</div>';
   tooltip.onclick=function(e){e.stopPropagation()};
 }
 
