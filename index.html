@@ -4781,7 +4781,21 @@ function showModal(title,contentHTML,buttons){
     '</div>' +
   '</div>';
 }
-function closeModal(){document.getElementById('modal-root').innerHTML=''}
+function closeModal(){
+  document.getElementById('modal-root').innerHTML='';
+  // 事故弹窗关闭后自动显示合成结果
+  if(window._pendingMergeResult && window._accidentHero){
+    window._pendingMergeResult = false;
+    var hero = window._accidentHero;
+    var isQualityUp = window._accidentIsQualityUp;
+    var oldQuality = window._accidentOldQuality;
+    var materials = window._accidentMats;
+    setTimeout(function(){
+      showMergeResult(hero, isQualityUp, oldQuality, materials, null);
+      showToast('融合成功！获得 '+QUALITY_NAMES[hero.quality]+' 英雄：'+hero.icon+' '+hero.name);
+    }, 200);
+  }
+}
 
 // 显示单个技能详情（isMutated: 是否变异技能，默认false）
 function showSkillDetail(skillId,isMutated){
@@ -8442,14 +8456,10 @@ function showAccidentResult(accident, newHero, isQualityUp, oldQuality, material
   var buttons = [];
   // 如果有合成结果英雄（非爆炸），关闭事故弹窗后显示合成结果
   if (newHero) {
-    // 预先将 newHero 属性嵌入 action 字符串，避免丢失上下文
-    var heroQualityName = QUALITY_NAMES[newHero.quality];
-    var heroIcon = newHero.icon;
-    var heroName = newHero.name;
     buttons.push({
       text: '查看合成结果',
       cls: 'btn-primary',
-      action: "closeModal();showMergeResult(window._accidentHero," + isQualityUp + ",'" + oldQuality + "',window._accidentMats,null);showToast('融合成功！获得 " + heroQualityName + " 英雄：" + heroIcon + " " + heroName + "')"
+      action: "closeModal()"
     });
   }
   
@@ -8463,8 +8473,10 @@ function showAccidentResult(accident, newHero, isQualityUp, oldQuality, material
     if (newHero._gambleResult) {
       setTimeout(function(){ showToast(getGambleResultText(newHero._gambleResult)); }, 500);
     }
+    // 事故弹窗关闭后自动显示合成结果（无论用户点击关闭还是查看合成结果）
+    window._pendingMergeResult = true;
   }
-  
+
   showModal(acc.icon + ' 合成事故', html, buttons);
 }
 
