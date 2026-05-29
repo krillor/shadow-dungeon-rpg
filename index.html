@@ -9000,6 +9000,7 @@ function executeMerge(heroUids){
   // 显示合成结果
   if (isExplosion) {
     // 爆炸事故：不显示合成结果弹窗，只显示事故弹窗
+    showToast(accident.message);
     setTimeout(function(){ showAccidentResult(accident); }, 300);
   } else if (accident) {
     // 有非爆炸事故：先弹事故详情弹窗（优先），关闭后再显示合成结果
