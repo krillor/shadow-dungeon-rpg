@@ -2007,17 +2007,6 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
           <button class="btn btn-sm" id="speed-8" onclick="setBattleSpeed(8)" style="padding:2px 8px;font-size:10px">x8</button>
         </div>
         <div id="battle-info"></div>
-        <!-- 战斗数据看板 -->
-        <div id="battle-stats-board" style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap">
-          <div style="flex:1;min-width:0;background:rgba(0,100,200,0.1);border-radius:8px;padding:8px">
-            <div style="font-weight:bold;color:#4a9eff;margin-bottom:6px;font-size:12px">🔵 我方数据</div>
-            <div id="ally-stats" style="font-size:11px;line-height:1.6"></div>
-          </div>
-          <div style="flex:1;min-width:0;background:rgba(200,50,50,0.1);border-radius:8px;padding:8px">
-            <div style="font-weight:bold;color:#ff6b6b;margin-bottom:6px;font-size:12px">🔴 敌方数据</div>
-            <div id="enemy-stats" style="font-size:11px;line-height:1.6"></div>
-          </div>
-        </div>
         <div class="battle-scene" id="battle-scene">
           <div class="battle-vs">
             <div class="ally-side">
@@ -2035,6 +2024,17 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
           </div>
         </div>
         <div id="battle-log" style="margin-top:10px"></div>
+        <!-- 战斗数据看板 -->
+        <div id="battle-stats-board" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <div style="flex:1;min-width:0;background:rgba(0,100,200,0.1);border-radius:8px;padding:8px">
+            <div style="font-weight:bold;color:#4a9eff;margin-bottom:6px;font-size:12px">🔵 我方数据</div>
+            <div id="ally-stats" style="font-size:11px;line-height:1.6"></div>
+          </div>
+          <div style="flex:1;min-width:0;background:rgba(200,50,50,0.1);border-radius:8px;padding:8px">
+            <div style="font-weight:bold;color:#ff6b6b;margin-bottom:6px;font-size:12px">🔴 敌方数据</div>
+            <div id="enemy-stats" style="font-size:11px;line-height:1.6"></div>
+          </div>
+        </div>
         <div id="battle-buttons" class="btn-group mt-8"></div>
       </div>
     </div>
@@ -2852,45 +2852,69 @@ const SKILLS = {
   cleave:      {name:'旋风斩',icon:'🌀',desc:'对敌方全体造成60%攻击力的伤害',type:'damage',target:'all_enemies',mult:0.6,mpCost:15,cooldown:2},
   shield_bash: {name:'盾击',icon:'💥',desc:'对单体造成120%伤害，30%概率眩晕1回合',type:'damage',target:'single_enemy',mult:1.2,mpCost:10,cooldown:1,stunChance:0.3},
   berserker:   {name:'狂暴',icon:'🔥',desc:'自身攻击力提升40%，持续3回合',type:'buff',target:'self',buff:{stat:'atk',mult:1.4,duration:3},mpCost:20,cooldown:4},
+  war_cry:     {name:'战吼',icon:'📢',desc:'提升全体队友攻击20%，持续2回合',type:'buff',target:'all_allies',buff:{stat:'atk',mult:1.2,duration:2},mpCost:25,cooldown:4},
+  execute:     {name:'处决',icon:'⚔️',desc:'对单体造成160%伤害，目标生命低于30%时伤害翻倍',type:'damage',target:'single_enemy',mult:1.6,mpCost:22,cooldown:3,executeThreshold:0.3},
+  iron_will:   {name:'铁血意志',icon:'🩸',desc:'恢复自身20%最大生命值，攻击力提升15%持续2回合',type:'buff',target:'self',buff:{stat:'atk',mult:1.15,duration:2},healPct:0.2,mpCost:18,cooldown:3},
   // 守护者技能
   taunt:       {name:'嘲讽',icon:'😤',desc:'嘲讽所有敌人攻击自己2回合',type:'buff',target:'self',buff:{stat:'taunt',duration:2},mpCost:12,cooldown:3},
   iron_wall:   {name:'铁壁',icon:'🧱',desc:'全体队友防御提升50%，持续2回合',type:'buff',target:'all_allies',buff:{stat:'def',mult:1.5,duration:2},mpCost:20,cooldown:4},
   shield_bash_g:{name:'盾牌猛击',icon:'🔨',desc:'造成100%伤害并降低目标攻击20%',type:'damage',target:'single_enemy',mult:1.0,mpCost:10,cooldown:2,debuff:{stat:'atk',mult:0.8,duration:2}},
+  fortify:     {name:'坚守',icon:'🏰',desc:'自身防御提升80%，持续3回合',type:'buff',target:'self',buff:{stat:'def',mult:1.8,duration:3},mpCost:18,cooldown:4},
+  sacrifice:   {name:'牺牲',icon:'🛡️',desc:'为生命最低的队友添加护盾，吸收40%最大生命值伤害',type:'shield',target:'single_ally',shieldPct:0.4,mpCost:22,cooldown:3},
+  ground_slam: {name:'大地震击',icon:'🌋',desc:'对全体造成50%伤害并降低攻击15%持续2回合',type:'damage',target:'all_enemies',mult:0.5,mpCost:20,cooldown:3,debuff:{stat:'atk',mult:0.85,duration:2}},
   // 法师技能
   fireball:    {name:'火球术',icon:'🔥',desc:'对单体造成180%魔法伤害',type:'damage',target:'single_enemy',mult:1.8,mpCost:20,cooldown:1},
   blizzard:    {name:'暴风雪',icon:'❄️',desc:'对全体造成70%伤害，30%概率冰冻',type:'damage',target:'all_enemies',mult:0.7,mpCost:30,cooldown:3,stunChance:0.3},
   arcane_shield:{name:'奥术护盾',icon:'💠',desc:'为全体队友添加护盾，吸收最大生命15%的伤害',type:'shield',target:'all_allies',shieldPct:0.15,mpCost:25,cooldown:4},
+  thunder:     {name:'雷霆',icon:'⚡',desc:'对单体造成200%伤害，25%概率眩晕',type:'damage',target:'single_enemy',mult:2.0,mpCost:28,cooldown:3,stunChance:0.25},
+  meteor:      {name:'陨石术',icon:'☄️',desc:'对全体造成90%伤害',type:'damage',target:'all_enemies',mult:0.9,mpCost:35,cooldown:4},
+  mana_burst:  {name:'魔力爆发',icon:'💎',desc:'消耗30%当前MP，对单体造成消耗MP值3倍的伤害',type:'damage',target:'single_enemy',mult:1.5,mpCost:0,cooldown:4,manaBurst:true},
   // 治愈者技能
   heal:        {name:'治疗术',icon:'💚',desc:'恢复单体40%最大生命值',type:'heal',target:'single_ally',healPct:0.4,mpCost:15,cooldown:1},
   group_heal:  {name:'群体治疗',icon:'🌈',desc:'恢复全体25%最大生命值',type:'heal',target:'all_allies',healPct:0.25,mpCost:30,cooldown:3},
   purify:      {name:'净化',icon:'✨',desc:'移除全体队友的负面效果',type:'cleanse',target:'all_allies',mpCost:20,cooldown:3},
+  regen:       {name:'再生术',icon:'🌿',desc:'恢复单体55%最大生命值',type:'heal',target:'single_ally',healPct:0.55,mpCost:25,cooldown:2},
+  revive:      {name:'复活术',icon:'🕊️',desc:'复活一个已阵亡队友，恢复30%生命值',type:'revive',target:'single_ally',revivePct:0.3,mpCost:40,cooldown:5},
+  blessing:    {name:'祝福',icon:'🌟',desc:'提升全体队友防御25%和速度15%持续3回合',type:'buff',target:'all_allies',buff:{stat:'def',mult:1.25,duration:3},mpCost:28,cooldown:4},
   // 刺客技能
   backstab:    {name:'背刺',icon:'🔪',desc:'对单体造成200%伤害，暴击率+30%',type:'damage',target:'single_enemy',mult:2.0,mpCost:18,cooldown:1,critBonus:0.3},
   shadow_step: {name:'暗影步',icon:'👤',desc:'闪避率提升50%，持续2回合',type:'buff',target:'self',buff:{stat:'dodge',mult:1.5,duration:2},mpCost:15,cooldown:3},
   poison_blade:{name:'毒刃',icon:'☠️',desc:'造成120%伤害并附加中毒(每回合10%攻击力，3回合)',type:'damage',target:'single_enemy',mult:1.2,mpCost:12,cooldown:2,dot:{name:'中毒',dmgPct:0.1,duration:3}},
+  assassinate: {name:'暗杀',icon:'💀',desc:'对单体造成250%伤害，暴击率+20%',type:'damage',target:'single_enemy',mult:2.5,mpCost:30,cooldown:3,critBonus:0.2},
+  smoke_bomb:  {name:'烟幕弹',icon:'💨',desc:'全体队友闪避率提升30%持续2回合',type:'buff',target:'all_allies',buff:{stat:'dodge',mult:1.3,duration:2},mpCost:22,cooldown:4},
+  fan_knives:  {name:'飞刀',icon:'🗡️',desc:'对全体造成65%伤害',type:'damage',target:'all_enemies',mult:0.65,mpCost:18,cooldown:2},
   // 游侠技能
   aimed_shot:  {name:'精准射击',icon:'🎯',desc:'对单体造成160%伤害，必中',type:'damage',target:'single_enemy',mult:1.6,mpCost:15,cooldown:1,alwaysHit:true},
   rain_arrows: {name:'箭雨',icon:'🌧️',desc:'对全体造成55%伤害',type:'damage',target:'all_enemies',mult:0.55,mpCost:22,cooldown:2},
   trap:        {name:'陷阱',icon:'🪤',desc:'设置陷阱，下次受到攻击时反弹50%伤害',type:'buff',target:'self',buff:{stat:'reflect',mult:0.5,duration:2},mpCost:12,cooldown:3},
+  poison_arrow:{name:'毒箭',icon:'🏹',desc:'造成130%伤害并附加中毒(每回合8%攻击力，3回合)',type:'damage',target:'single_enemy',mult:1.3,mpCost:16,cooldown:2,dot:{name:'中毒',dmgPct:0.08,duration:3}},
+  eagle_eye:   {name:'鹰眼',icon:'🦅',desc:'自身攻击力提升35%持续3回合',type:'buff',target:'self',buff:{stat:'atk',mult:1.35,duration:3},mpCost:18,cooldown:4},
+  multi_shot:  {name:'多重射击',icon:'🎯',desc:'对全体造成75%伤害，暴击率+10%',type:'damage',target:'all_enemies',mult:0.75,mpCost:28,cooldown:3,critBonus:0.1},
   // 术士技能
   curse:       {name:'诅咒',icon:'🌑',desc:'降低目标攻击和防御25%，持续3回合',type:'debuff',target:'single_enemy',debuff:{stat:'all',mult:0.75,duration:3},mpCost:18,cooldown:2},
   life_drain:  {name:'生命汲取',icon:'🩸',desc:'造成130%伤害并恢复等量生命',type:'drain',target:'single_enemy',mult:1.3,mpCost:20,cooldown:2},
   soul_burn:   {name:'灵魂灼烧',icon:'💀',desc:'对单体造成150%伤害，附加灼烧(每回合8%攻击力，3回合)',type:'damage',target:'single_enemy',mult:1.5,mpCost:25,cooldown:3,dot:{name:'灼烧',dmgPct:0.08,duration:3}},
+  dark_pact:   {name:'黑暗契约',icon:'👁️',desc:'牺牲20%当前生命，对单体造成250%伤害',type:'damage',target:'single_enemy',mult:2.5,mpCost:15,cooldown:3,selfDamagePct:0.2},
+  plague:      {name:'瘟疫',icon:'🦠',desc:'对全体造成45%伤害并附加中毒(每回合6%攻击力，3回合)',type:'damage',target:'all_enemies',mult:0.45,mpCost:30,cooldown:4,dot:{name:'瘟疫',dmgPct:0.06,duration:3}},
+  soul_chain:  {name:'灵魂锁链',icon:'⛓️',desc:'降低全体敌人攻击20%持续2回合',type:'debuff',target:'all_enemies',debuff:{stat:'atk',mult:0.8,duration:2},mpCost:25,cooldown:3},
   // 圣骑士技能
   holy_strike: {name:'圣光打击',icon:'⚡',desc:'对单体造成140%伤害，对亡灵类额外50%',type:'damage',target:'single_enemy',mult:1.4,mpCost:15,cooldown:1},
   holy_light:  {name:'圣光术',icon:'🌟',desc:'恢复全体20%生命值',type:'heal',target:'all_allies',healPct:0.2,mpCost:25,cooldown:3},
-  divine_shield:{name:'圣盾术',icon:'🔰',desc:'为单体添加护盾，吸收30%最大生命值伤害',type:'shield',target:'single_ally',shieldPct:0.3,mpCost:20,cooldown:3}
+  divine_shield:{name:'圣盾术',icon:'🔰',desc:'为单体添加护盾，吸收30%最大生命值伤害',type:'shield',target:'single_ally',shieldPct:0.3,mpCost:20,cooldown:3},
+  judgment:    {name:'审判',icon:'⚖️',desc:'对单体造成180%伤害，20%概率眩晕',type:'damage',target:'single_enemy',mult:1.8,mpCost:22,cooldown:2,stunChance:0.2},
+  consecration:{name:'圣光洗礼',icon:'✝️',desc:'对全体造成60%伤害并恢复全体15%生命',type:'damage',target:'all_enemies',mult:0.6,mpCost:30,cooldown:4,healPct:0.15},
+  holy_armor:  {name:'神圣护甲',icon:'🛡️',desc:'自身防御提升60%并获得20%生命护盾',type:'shield',target:'self',shieldPct:0.2,mpCost:20,cooldown:3,buff:{stat:'def',mult:1.6,duration:2}}
 };
 
 var ROLE_SKILLS={
-  warrior:['cleave','shield_bash','berserker'],
-  guardian:['taunt','iron_wall','shield_bash_g'],
-  mage:['fireball','blizzard','arcane_shield'],
-  healer:['heal','group_heal','purify'],
-  assassin:['backstab','shadow_step','poison_blade'],
-  ranger:['aimed_shot','rain_arrows','trap'],
-  warlock:['curse','life_drain','soul_burn'],
-  paladin:['holy_strike','holy_light','divine_shield']
+  warrior:['cleave','shield_bash','berserker','war_cry','execute','iron_will'],
+  guardian:['taunt','iron_wall','shield_bash_g','fortify','sacrifice','ground_slam'],
+  mage:['fireball','blizzard','arcane_shield','thunder','meteor','mana_burst'],
+  healer:['heal','group_heal','purify','regen','revive','blessing'],
+  assassin:['backstab','shadow_step','poison_blade','assassinate','smoke_bomb','fan_knives'],
+  ranger:['aimed_shot','rain_arrows','trap','poison_arrow','eagle_eye','multi_shot'],
+  warlock:['curse','life_drain','soul_burn','dark_pact','plague','soul_chain'],
+  paladin:['holy_strike','holy_light','divine_shield','judgment','consecration','holy_armor']
 };
 
 // 英雄模板
@@ -7019,12 +7043,19 @@ function smartChooseSkill(unit,allUnits){
 
   // 按角色定位分策略
   if(role==='healer'){
-    // 治愈者：优先治疗，其次净化
+    // 治愈者：复活>群体治疗>单体治疗>净化>祝福
+    var deadAllies=allies.filter(function(a){return !a.alive});
+    if(deadAllies.length>0&&allyCriticalCount<2){
+      var rev=available.find(function(s){return s.skill.type==='revive'});
+      if(rev)return rev;
+    }
     if(allyCriticalCount>=2){
       var gh=available.find(function(s){return s.skill.type==='heal'&&s.skill.target==='all_allies'});
       if(gh)return gh;
     }
     if(allyHurtCount>0||selfHurtPct<0.6){
+      var regen=available.find(function(s){return s.skill.type==='heal'&&s.skill.target==='single_ally'&&s.skill.healPct>=0.5});
+      if(regen&&lowestPct<0.4)return regen;
       var heal=available.find(function(s){return s.skill.type==='heal'&&s.skill.target==='single_ally'});
       if(heal)return heal;
       var gh2=available.find(function(s){return s.skill.type==='heal'});
@@ -7034,18 +7065,28 @@ function smartChooseSkill(unit,allUnits){
       var cleanse=available.find(function(s){return s.skill.type==='cleanse'});
       if(cleanse)return cleanse;
     }
-    return null; // 没治疗需求就普攻
+    var blessing=available.find(function(s){return s.skill.type==='buff'&&s.skill.buff&&s.skill.buff.stat==='def'});
+    if(blessing&&!allies.some(function(a){return a.buffs.some(function(b){return b.name===blessing.skill.name})}))return blessing;
+    return null;
   }
 
   if(role==='guardian'){
-    // 守护者：嘲讽>铁壁>盾击
+    // 守护者：嘲讽>铁壁>坚守>牺牲>盾击>大地震击
     if(!unit.buffs.some(function(b){return b.stat==='taunt'})){
       var taunt=available.find(function(s){return s.skill.type==='buff'&&s.skill.buff&&s.skill.buff.stat==='taunt'});
       if(taunt&&enemyCount>1)return taunt;
     }
     if(allyHurtCount>=2){
-      var iw=available.find(function(s){return s.skill.type==='buff'&&s.skill.buff&&s.skill.buff.stat==='def'});
+      var iw=available.find(function(s){return s.skill.type==='buff'&&s.skill.buff&&s.skill.buff.stat==='def'&&s.skill.target==='all_allies'});
       if(iw)return iw;
+    }
+    if(selfHurtPct<0.5){
+      var fortify=available.find(function(s){return s.skill.type==='buff'&&s.skill.buff&&s.skill.buff.stat==='def'&&s.skill.target==='self'&&s.skill.buff.mult>=1.5});
+      if(fortify&&!unit.buffs.some(function(b){return b.name===fortify.skill.name}))return fortify;
+    }
+    if(lowestAlly&&lowestPct<0.4){
+      var sac=available.find(function(s){return s.skill.type==='shield'&&s.skill.shieldPct>=0.4});
+      if(sac)return sac;
     }
     var dmg=available.find(function(s){return s.skill.type==='damage'});
     if(dmg)return dmg;
@@ -7053,33 +7094,42 @@ function smartChooseSkill(unit,allUnits){
   }
 
   if(role==='paladin'){
-    // 圣骑士：治疗>护盾>输出
+    // 圣骑士：治疗>护盾>审判>圣光洗礼>圣光打击>神圣护甲
     if(allyCriticalCount>=2){
       var gh=available.find(function(s){return s.skill.type==='heal'&&s.skill.target==='all_allies'});
       if(gh)return gh;
     }
     if(lowestAlly&&lowestPct<0.4){
-      var ds=available.find(function(s){return s.skill.type==='shield'});
+      var ds=available.find(function(s){return s.skill.type==='shield'&&s.skill.shieldPct>=0.3});
       if(ds)return ds;
       var heal=available.find(function(s){return s.skill.type==='heal'});
       if(heal)return heal;
     }
+    if(selfHurtPct<0.5){
+      var ha=available.find(function(s){return s.skill.type==='shield'&&s.skill.buff&&s.skill.buff.stat==='def'});
+      if(ha&&!unit.buffs.some(function(b){return b.name===ha.skill.name}))return ha;
+    }
+    var judg=available.find(function(s){return s.skill.stunChance});
+    if(judg)return judg;
     var atk=available.find(function(s){return s.skill.type==='damage'});
     if(atk)return atk;
     return null;
   }
 
   if(role==='mage'){
-    // 法师：AOE>护盾>单体爆发
-    if(enemyCount>=2){
-      var aoe=available.find(function(s){return s.skill.type==='damage'&&s.skill.target==='all_enemies'});
+    // 法师：陨石>暴风雪>雷霆>火球>奥术护盾>魔力爆发
+    if(enemyCount>=3){
+      var aoe=available.find(function(s){return s.skill.type==='damage'&&s.skill.target==='all_enemies'&&s.skill.mult>=0.8});
       if(aoe)return aoe;
+    }
+    if(enemyCount>=2){
+      var aoe2=available.find(function(s){return s.skill.type==='damage'&&s.skill.target==='all_enemies'});
+      if(aoe2)return aoe2;
     }
     if(allyHurtCount>=2){
       var sh=available.find(function(s){return s.skill.type==='shield'});
       if(sh)return sh;
     }
-    // 单体高伤害
     var singles=available.filter(function(s){return s.skill.type==='damage'&&s.skill.target==='single_enemy'});
     singles.sort(function(a,b){return b.skill.mult-a.skill.mult});
     if(singles.length>0)return singles[0];
@@ -7087,26 +7137,35 @@ function smartChooseSkill(unit,allUnits){
   }
 
   if(role==='assassin'){
-    // 刺客：暗影步(低血量时)>毒刃>背刺
+    // 刺客：暗影步(低血量时)>烟幕弹>暗杀>毒刃>背刺>飞刀
     if(selfHurtPct<0.5){
-      var ss=available.find(function(s){return s.skill.type==='buff'&&s.skill.buff&&s.skill.buff.stat==='dodge'});
+      var ss=available.find(function(s){return s.skill.type==='buff'&&s.skill.buff&&s.skill.buff.stat==='dodge'&&s.skill.target==='self'});
       if(ss)return ss;
     }
-    // 优先给没DOT的目标上毒
+    if(allyHurtCount>=2){
+      var smoke=available.find(function(s){return s.skill.type==='buff'&&s.skill.buff&&s.skill.buff.stat==='dodge'&&s.skill.target==='all_allies'});
+      if(smoke)return smoke;
+    }
     var poison=available.find(function(s){return s.skill.dot});
     if(poison){
       var noDotEnemy=enemies.find(function(e){return e.dot.length===0});
       if(noDotEnemy)return poison;
     }
-    var highDmg=available.find(function(s){return s.skill.type==='damage'&&s.skill.mult>=1.5});
-    if(highDmg)return highDmg;
+    var highDmg=available.filter(function(s){return s.skill.type==='damage'&&s.skill.mult>=1.5});
+    highDmg.sort(function(a,b){return b.skill.mult-a.skill.mult});
+    if(highDmg.length>0)return highDmg[0];
     var anyDmg=available.find(function(s){return s.skill.type==='damage'});
     if(anyDmg)return anyDmg;
     return null;
   }
 
   if(role==='warlock'){
-    // 术士：诅咒>生命汲取>灵魂灼烧
+    // 术士：灵魂锁链>诅咒>瘟疫>生命汲取>黑暗契约>灵魂灼烧
+    var aoeDebuff=available.find(function(s){return s.skill.type==='debuff'&&s.skill.target==='all_enemies'});
+    if(aoeDebuff){
+      var noDebuff=enemies.find(function(e){return !e.buffs.some(function(b){return b.stat==='atk'&&b.mult<1})});
+      if(noDebuff)return aoeDebuff;
+    }
     var curse=available.find(function(s){return s.skill.type==='debuff'});
     if(curse){
       var noCurse=enemies.find(function(e){return !e.buffs.some(function(b){return b.stat==='atk'&&b.mult<1})});
@@ -7127,10 +7186,18 @@ function smartChooseSkill(unit,allUnits){
   }
 
   if(role==='ranger'){
-    // 游侠：AOE>精准射击>陷阱
+    // 游侠：多重射击>箭雨>鹰眼>精准射击>毒箭>陷阱
     if(enemyCount>=3){
-      var aoe=available.find(function(s){return s.skill.type==='damage'&&s.skill.target==='all_enemies'});
+      var aoe=available.find(function(s){return s.skill.type==='damage'&&s.skill.target==='all_enemies'&&s.skill.mult>=0.7});
       if(aoe)return aoe;
+    }
+    if(enemyCount>=2){
+      var aoe2=available.find(function(s){return s.skill.type==='damage'&&s.skill.target==='all_enemies'});
+      if(aoe2)return aoe2;
+    }
+    if(!unit.buffs.some(function(b){return b.stat==='atk'&&b.mult>1})){
+      var eagle=available.find(function(s){return s.skill.type==='buff'&&s.skill.buff&&s.skill.buff.stat==='atk'});
+      if(eagle)return eagle;
     }
     var aimed=available.find(function(s){return s.skill.type==='damage'&&s.skill.alwaysHit});
     if(aimed)return aimed;
@@ -7143,12 +7210,18 @@ function smartChooseSkill(unit,allUnits){
     return null;
   }
 
-  // 战士(默认)：先开buff>AOE>单体
+  // 战士(默认)：战吼>狂暴>处决>旋风斩>盾击>铁血意志
   if(role==='warrior'){
-    var atkBuff=available.find(function(s){return s.skill.type==='buff'&&s.skill.buff&&s.skill.buff.stat==='atk'});
+    if(enemyCount>=2){
+      var warCry=available.find(function(s){return s.skill.type==='buff'&&s.skill.buff&&s.skill.buff.stat==='atk'&&s.skill.target==='all_allies'});
+      if(warCry&&!allies.some(function(a){return a.buffs.some(function(b){return b.name===warCry.skill.name})}))return warCry;
+    }
+    var atkBuff=available.find(function(s){return s.skill.type==='buff'&&s.skill.buff&&s.skill.buff.stat==='atk'&&s.skill.target==='self'});
     if(atkBuff&&!unit.buffs.some(function(b){return b.stat==='atk'&&b.mult>1})){
       if(enemyCount>=2||enemies.some(function(e){return e.hp>e.maxHP*0.5}))return atkBuff;
     }
+    var exec=available.find(function(s){return s.skill.executeThreshold});
+    if(exec&&enemies.some(function(e){return e.hp<e.maxHP*0.3}))return exec;
     if(enemyCount>=2){
       var aoe=available.find(function(s){return s.skill.type==='damage'&&s.skill.target==='all_enemies'});
       if(aoe)return aoe;
@@ -7793,9 +7866,28 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
   }
   switch(skill.type){
     case 'damage':
+      if(skill.selfDamagePct){
+        var selfDmg=Math.floor(user.hp*skill.selfDamagePct);
+        user.hp=Math.max(1,user.hp-selfDmg);
+        logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+'，消耗自身 '+selfDmg+' 生命！','debuff');
+        showFloat(user,'-'+selfDmg,'damage');
+      }
+      if(skill.manaBurst){
+        var burstCost=Math.floor(user.mp*0.3);
+        user.mp=Math.max(0,user.mp-burstCost);
+        var burstDmg=burstCost*3;
+        skill={...skill,_burstDmg:burstDmg};
+      }
       targets.forEach(t=>{
         if(!t.alive)return;
-        const r=calcDamage(user,t,skill);
+        var useSkill=skill;
+        var r=calcDamage(user,t,useSkill);
+        if(skill.executeThreshold&&t.hp<t.maxHP*skill.executeThreshold){
+          r.dmg*=2;
+        }
+        if(skill._burstDmg){
+          r.dmg=skill._burstDmg;
+        }
         if(r.dodged){
           logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+'，但 '+t.icon+t.name+' 闪避了！','info');
           showFloat(t,'闪避!','dodge');
@@ -7805,10 +7897,9 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
         let dmg=r.dmg;
         if(t.shield>0){const absorbed=Math.min(t.shield,dmg);t.shield-=absorbed;dmg-=absorbed;if(absorbed>0)showFloat(t,'🛡-'+absorbed,'shield-num')}
         t.hp=Math.max(0,t.hp-dmg);
-        logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+(isMutated?' 🧬':'')+' 对 '+t.icon+t.name+' 造成 '+dmg+' 点伤害'+(r.crit?' 💥暴击！':'')+(isMutated?' ✨变异':''),r.crit?'crit':'damage');
+        logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+(isMutated?' 🧬':'')+' 对 '+t.icon+t.name+' 造成 '+dmg+' 点伤害'+(r.crit?' 💥暴击！':'')+(skill.executeThreshold&&t.hp<t.maxHP*skill.executeThreshold?' ⚔️处决！':'')+(isMutated?' ✨变异':''),r.crit?'crit':'damage');
         showFloat(t,(r.crit?'💥':'')+(isMutated?'🧬':'')+dmg,r.crit?'crit':'damage');
         animUnit(t,'hit',300);
-        // 记录统计数据
         recordBattleStat(user,'damage',dmg);
         recordBattleStat(t,'damageTaken',dmg);
         if(r.crit)recordBattleStat(user,'crit',1);
@@ -7818,8 +7909,14 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
           showFloat(t,'眩晕!','debuff-text');
           recordBattleStat(user,'control',1);
         }
-        if(skill.dot){t.dot.push({dmg:Math.floor(user.atk*skill.dot.dmgPct),duration:skill.dot.duration,name:'中毒',sourceRole:user.role});logFn(t.icon+t.name+' 被施加了 '+skill.dot.name+'！','debuff');showFloat(t,'☠中毒','debuff-text')}
+        if(skill.dot){t.dot.push({dmg:Math.floor(user.atk*skill.dot.dmgPct),duration:skill.dot.duration,name:skill.dot.name,sourceRole:user.role});logFn(t.icon+t.name+' 被施加了 '+skill.dot.name+'！','debuff');showFloat(t,'☠'+skill.dot.name,'debuff-text')}
         if(skill.debuff){const db=skill.debuff;if(db.stat==='all'){t.buffs.push({stat:'atk',mult:db.mult,duration:db.duration,name:'诅咒-攻'});t.buffs.push({stat:'def',mult:db.mult,duration:db.duration,name:'诅咒-防'})}else{t.buffs.push({stat:db.stat,mult:db.mult,duration:db.duration,name:'削弱'})}logFn(t.icon+t.name+' 被削弱了！','debuff');showFloat(t,'▼削弱','debuff-text')}
+        if(skill.healPct){
+          var healAmt=Math.floor(user.maxHP*skill.healPct);
+          user.hp=Math.min(user.maxHP,user.hp+healAmt);
+          logFn(user.icon+' '+user.name+' 恢复了 '+healAmt+' 生命','heal');
+          showFloat(user,'+'+healAmt,'heal');
+        }
         if(t.hp<=0){t.alive=false;logFn(t.icon+' '+t.name+' 倒下了...','death');animUnit(t,'dying',700)}
       });
       updateBattleStatsBoard();
@@ -7852,6 +7949,7 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
         if(!t.alive)return;
         const amt=Math.floor(t.maxHP*skill.shieldPct*shieldMult);
         t.shield+=amt;
+        if(skill.buff){t.buffs.push({...skill.buff,name:skill.name})}
         logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+(isMutated?' 🧬':'')+'，为 '+t.icon+t.name+' 添加 '+amt+' 点护盾'+(isMutated?' ✨变异+40%':''),'buff');
         showFloat(t,'🛡+'+amt,'shield-num');animUnit(t,'shield-up',400);
       });break;
@@ -7889,6 +7987,22 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
         logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+'，清除了 '+t.icon+t.name+' 的 '+negCount+' 个负面效果','heal');
         showFloat(t,'✨净化','buff-text');animUnit(t,'heal-target',500);
       });break;
+    case 'revive':
+      var deadAllies=allUnits.filter(function(u){return !u.alive&&u.isEnemy===user.isEnemy});
+      if(deadAllies.length>0){
+        var target2=deadAllies[0];
+        target2.alive=true;
+        target2.hp=Math.floor(target2.maxHP*skill.revivePct);
+        target2.shield=0;
+        target2.buffs=[];
+        target2.dot=[];
+        logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+'，复活了 '+target2.icon+target2.name+'！','heal');
+        showFloat(target2,'🕊️复活!','heal');animUnit(target2,'heal-target',700);
+        recordBattleStat(user,'heal',target2.hp);
+      }else{
+        logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+'，但没有可复活的目标','info');
+      }
+      break;
   }
 }
 
@@ -8568,11 +8682,6 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
       +'<div style="font-size:11px;color:var(--text2)">材料: '+materials.map(function(h){
         return '<span class="q-'+h.quality+'" style="margin-right:6px">'+h.icon+h.name+' Lv.'+h.level+'</span>';
       }).join('')+'</div>'
-      +(hero.inheritMult?'<div style="margin-top:4px;font-size:11px;color:var(--text2)">🎲 继承倍率: <b style="color:'+(hero.inheritMult>=1.0?'#2ecc71':'#e74c3c')+'">×'+hero.inheritMult.toFixed(2)+'</b>'
-      +(hero.bondInfo?' | 🔗 '+hero.bondInfo.name+' ×'+hero.bondInfo.mult.toFixed(2):'')
-      +(hero.isMutation?' | ☣️ 异变 ×1.30':'')
-      +(hero.isHidden?' | ✦ 隐藏 ×1.30':'')
-      +'</div>':'')
       +'<div style="margin-top:4px;font-size:11px;color:var(--text2)">技能: '+hero.skills.length+'个'
       +(hero.mutatedSkills&&hero.mutatedSkills.length>0?' <span style="color:#d4a0ff">🧬 含变异技能</span>':'')
       +'</div>'
