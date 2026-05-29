@@ -12001,15 +12001,28 @@ function updateMergeUI(){
 
 function doMerge(){
   const activeSlots=window._mergeSlots.filter(Boolean);
+  // 检查是否至少选了2个英雄
+  if(activeSlots.length < 2){
+    showToast('请选择至少2个英雄进行融合');
+    return;
+  }
+  // 计算合成费用
+  var validHeroes=activeSlots.map(function(uid){return G.heroes.find(function(h){return h.uid===uid})}).filter(Boolean);
+  if(validHeroes.length < 2){
+    showToast('选中的英雄不存在，请重新选择');
+    return;
+  }
+  var qualities=validHeroes.map(function(h){return QUALITIES.indexOf(h.quality)});
+  var maxQ=qualities.length>0?Math.max.apply(null,qualities):0;
+  var mergeCost=(maxQ+1)*200;
+  // 检查金币是否足够
+  if((G.resources.gold||0) < mergeCost){
+    showToast('金币不足！需要 '+mergeCost+'💰，您只有 '+(G.resources.gold||0)+'💰');
+    return;
+  }
   var result=executeMerge(activeSlots);
   if(result && result.success){
     // 所有成功合成（包括爆炸事件和非爆炸事件）都清空融合框并刷新渲染
-    for(var i=0;i<3;i++){
-      var heroUid = window._mergeSlots[i];
-      if(heroUid){
-        updateMergeHeroCardStyle(heroUid, false);
-      }
-    }
     window._mergeSlots=[null,null,null];
     // 刷新界面以显示合成记录和更新融合框
     renderMerge(document.getElementById('content'));
