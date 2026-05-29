@@ -12062,19 +12062,23 @@ function doMerge(){
       window._mergeSlots=[null,null,null];
     }
   }catch(e){
-    console.error('[Merge] doMerge error:', e);
+    console.error('[Merge] executeMerge error:', e);
     showToast('⚠️ 合成过程出错，请重试');
     // 出错时也清空槽位，避免卡死
     window._mergeSlots=[null,null,null];
   }
   
-  // === 无论成功失败，都刷新UI ===
-  var contentEl=document.getElementById('content');
-  if(contentEl){
-    renderMerge(contentEl);
+  // === 无论成功失败，都刷新UI（单独try-catch防止异常导致_merging卡死） ===
+  try{
+    var contentEl=document.getElementById('content');
+    if(contentEl){
+      renderMerge(contentEl);
+    }
+  }catch(e){
+    console.error('[Merge] renderMerge error:', e);
   }
   
-  // === 释放锁定 ===
+  // === 无论如何都释放锁定 ===
   window._merging=false;
 }
 
