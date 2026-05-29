@@ -8262,7 +8262,7 @@ function generateFusedHero(heroes){
   allRoles.forEach(function(r){if(uniqueRoles.indexOf(r)===-1)uniqueRoles.push(r)});
   var mainRole=uniqueRoles[hash%uniqueRoles.length];
   
-  // 4. 确定新技能 - 从职业技能池选取，优先材料中同职业技能
+  // 4. 确定新技能 - 从职业技能池选取，优先材料中同职业技能，材料越多继承越多
   var roleSkillPool=ROLE_SKILLS[mainRole]||[];
   
   var prioritySkills=[];
@@ -8275,14 +8275,21 @@ function generateFusedHero(heroes){
     });
   });
   
-  var remainingSkills=roleSkillPool.filter(function(s){return prioritySkills.indexOf(s)===-1});
-  var extraSkills=remainingSkills.filter(function(){return Math.random()<0.5});
+  var maxSkillCount=roleSkillPool.length;
+  var skillCountByMaterials=Math.min(maxSkillCount,heroes.length);
   
   var newSkills;
   if(isDirectHidden){
     newSkills=roleSkillPool.slice();
   }else{
-    newSkills=prioritySkills.concat(extraSkills);
+    if(prioritySkills.length>=skillCountByMaterials){
+      newSkills=prioritySkills.slice(0,skillCountByMaterials);
+    }else{
+      var remainingSkills=roleSkillPool.filter(function(s){return prioritySkills.indexOf(s)===-1});
+      var need=skillCountByMaterials-prioritySkills.length;
+      var extraSkills=remainingSkills.slice(0,need);
+      newSkills=prioritySkills.concat(extraSkills);
+    }
   }
   
   if(newSkills.length===0&&roleSkillPool.length>0){
@@ -8330,30 +8337,47 @@ function generateFusedHero(heroes){
     }
   }
   
-  // 5. 确定新属性 - 属性继承依赖材料数量和品质，增幅1.2
+  // 5. 确定新属性 - 随机选取属性增幅，品质越高选取越多/全属性概率越大，以材料平均值为基准
   var maxLevel=Math.max.apply(null,heroes.map(function(h){return h.level}));
   
-  var maxMaterialHP=Math.max.apply(null,heroes.map(function(h){return h.maxHP}));
-  var maxMaterialATK=Math.max.apply(null,heroes.map(function(h){return h.atk}));
-  var maxMaterialDEF=Math.max.apply(null,heroes.map(function(h){return h.def}));
-  var maxMaterialSPD=Math.max.apply(null,heroes.map(function(h){return h.spd}));
-  var maxMaterialMP=Math.max.apply(null,heroes.map(function(h){return h.maxMP}));
-  
-  var quantityBonus=1+(heroes.length-2)*0.1;
+  var avgMaterialHP=Math.floor(heroes.reduce(function(s,h){return s+h.maxHP},0)/heroes.length);
+  var avgMaterialATK=Math.floor(heroes.reduce(function(s,h){return s+h.atk},0)/heroes.length);
+  var avgMaterialDEF=Math.floor(heroes.reduce(function(s,h){return s+h.def},0)/heroes.length);
+  var avgMaterialSPD=Math.floor(heroes.reduce(function(s,h){return s+h.spd},0)/heroes.length);
+  var avgMaterialMP=Math.floor(heroes.reduce(function(s,h){return s+h.maxMP},0)/heroes.length);
   
   var qualityIdxMap={common:0,rare:1,epic:2,legendary:3,mythic:4,hidden:5};
-  var avgQualityIdx=heroes.reduce(function(s,h){return s+(qualityIdxMap[h.quality]||0)},0)/heroes.length;
-  var qualityBonus=1+avgQualityIdx*0.05;
+  var newQIdx=QUALITIES.indexOf(newQuality);
+  var resultQualityIdx=newQIdx>=0?newQIdx:0;
   
+  var minBoost=Math.max(1,1+Math.floor(resultQualityIdx/2));
+  var maxBoost=5;
+  var allBoostChance=0.05+resultQualityIdx*0.08;
+  
+  var statKeys=['maxHP','atk','def','spd','maxMP'];
+  var statValues={maxHP:avgMaterialHP,atk:avgMaterialATK,def:avgMaterialDEF,spd:avgMaterialSPD,maxMP:avgMaterialMP};
+  
+  var boostedStats;
+  if(isDirectHidden||Math.random()<allBoostChance){
+    boostedStats=statKeys.slice();
+  }else{
+    var boostCount=minBoost+Math.floor(Math.random()*(maxBoost-minBoost+1));
+    boostCount=Math.min(boostCount,statKeys.length);
+    var shuffled=statKeys.slice().sort(function(){return Math.random()-0.5});
+    boostedStats=shuffled.slice(0,boostCount);
+  }
+  
+  var quantityBonus=1+(heroes.length-2)*0.1;
+  var qualityBonus=1+resultQualityIdx*0.05;
   var inheritMult=1.2*quantityBonus*qualityBonus*bondMult;
   if(upsetBonus)inheritMult+=0.2;
   if(streakCount>=3)inheritMult+=0.1;
   
-  var maxHP=Math.floor(maxMaterialHP*inheritMult);
-  var atk=Math.floor(maxMaterialATK*inheritMult);
-  var def=Math.floor(maxMaterialDEF*inheritMult);
-  var spd=Math.floor(maxMaterialSPD*inheritMult);
-  var maxMP=Math.floor(maxMaterialMP*inheritMult);
+  var maxHP=Math.floor(avgMaterialHP*(boostedStats.indexOf('maxHP')>=0?inheritMult:1.0));
+  var atk=Math.floor(avgMaterialATK*(boostedStats.indexOf('atk')>=0?inheritMult:1.0));
+  var def=Math.floor(avgMaterialDEF*(boostedStats.indexOf('def')>=0?inheritMult:1.0));
+  var spd=Math.floor(avgMaterialSPD*(boostedStats.indexOf('spd')>=0?inheritMult:1.0));
+  var maxMP=Math.floor(avgMaterialMP*(boostedStats.indexOf('maxMP')>=0?inheritMult:1.0));
   
   if(isDirectHidden||isMutation||isQualityUp||isDirectLegendary||isDirectMythic){
     maxHP=Math.floor(maxHP*1.3);
@@ -8595,14 +8619,14 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
       +'</div>';
   }
   
-  var maxMatHP=materials&&materials.length>0?Math.max.apply(null,materials.map(function(h){return h.maxHP})):0;
-  var maxMatATK=materials&&materials.length>0?Math.max.apply(null,materials.map(function(h){return h.atk})):0;
-  var maxMatDEF=materials&&materials.length>0?Math.max.apply(null,materials.map(function(h){return h.def})):0;
-  var maxMatSPD=materials&&materials.length>0?Math.max.apply(null,materials.map(function(h){return h.spd})):0;
-  var maxMatMP=materials&&materials.length>0?Math.max.apply(null,materials.map(function(h){return h.maxMP})):0;
-  var maxMatPow=0;
+  var avgMatHP=materials&&materials.length>0?Math.floor(materials.reduce(function(s,h){return s+h.maxHP},0)/materials.length):0;
+  var avgMatATK=materials&&materials.length>0?Math.floor(materials.reduce(function(s,h){return s+h.atk},0)/materials.length):0;
+  var avgMatDEF=materials&&materials.length>0?Math.floor(materials.reduce(function(s,h){return s+h.def},0)/materials.length):0;
+  var avgMatSPD=materials&&materials.length>0?Math.floor(materials.reduce(function(s,h){return s+h.spd},0)/materials.length):0;
+  var avgMatMP=materials&&materials.length>0?Math.floor(materials.reduce(function(s,h){return s+h.maxMP},0)/materials.length):0;
+  var avgMatPow=0;
   if(materials&&materials.length>0){
-    maxMatPow=Math.max.apply(null,materials.map(function(h){return calcHeroPower?calcHeroPower(h):0}));
+    avgMatPow=Math.floor(materials.reduce(function(s,h){return s+(calcHeroPower?calcHeroPower(h):0)},0)/materials.length);
   }
   
   function growthTag(cur,base){
@@ -8625,12 +8649,12 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
       '<div class="merge-result-name">'+hero.name+'</div>'+
       '<div style="font-size:12px;color:var(--text2);margin-bottom:4px">'+(ROLES[hero.role]?ROLES[hero.role].icon+' '+ROLES[hero.role].name:'')+' · Lv.'+hero.level+'</div>'+
       '<div class="merge-result-stats">'+
-        '<div class="merge-result-stat">❤️ 生命<b>'+stats.maxHP+growthTag(stats.maxHP,maxMatHP)+'</b></div>'+
-        '<div class="merge-result-stat">⚔️ 攻击<b>'+stats.atk+growthTag(stats.atk,maxMatATK)+'</b></div>'+
-        '<div class="merge-result-stat">🛡️ 防御<b>'+stats.def+growthTag(stats.def,maxMatDEF)+'</b></div>'+
-        '<div class="merge-result-stat">💨 速度<b>'+stats.spd+growthTag(stats.spd,maxMatSPD)+'</b></div>'+
-        '<div class="merge-result-stat">💎 魔法<b>'+stats.maxMP+growthTag(stats.maxMP,maxMatMP)+'</b></div>'+
-        '<div class="merge-result-stat">⚡ 战力<b>'+heroPower+growthTag(heroPower,maxMatPow)+'</b></div>'+
+        '<div class="merge-result-stat">❤️ 生命<b>'+stats.maxHP+growthTag(stats.maxHP,avgMatHP)+'</b></div>'+
+        '<div class="merge-result-stat">⚔️ 攻击<b>'+stats.atk+growthTag(stats.atk,avgMatATK)+'</b></div>'+
+        '<div class="merge-result-stat">🛡️ 防御<b>'+stats.def+growthTag(stats.def,avgMatDEF)+'</b></div>'+
+        '<div class="merge-result-stat">💨 速度<b>'+stats.spd+growthTag(stats.spd,avgMatSPD)+'</b></div>'+
+        '<div class="merge-result-stat">💎 魔法<b>'+stats.maxMP+growthTag(stats.maxMP,avgMatMP)+'</b></div>'+
+        '<div class="merge-result-stat">⚡ 战力<b>'+heroPower+growthTag(heroPower,avgMatPow)+'</b></div>'+
       '</div>'+
       '<div class="merge-result-skills">'+skillsHtml+'</div>'+
       mutateBanner+
