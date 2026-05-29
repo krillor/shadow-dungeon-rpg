@@ -1928,8 +1928,8 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 .btn-breakthrough:hover{background:linear-gradient(135deg,#1a0a2a,#2a1a3a);box-shadow:0 0 15px rgba(168,85,247,.4)}
 
 /* ==================== 引导系统样式 ==================== */
-#tutorial-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity 1.5s ease}
-#tutorial-overlay.active{opacity:1}
+#tutorial-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity 1.5s ease}
+#tutorial-overlay.active{display:flex;opacity:1}
 #tutorial-overlay.fade-out{opacity:0;pointer-events:none}
 .tutorial-text{color:#fff;font-size:18px;line-height:2.2;text-align:center;max-width:80%;padding:40px;opacity:0;transform:translateY(20px);transition:all 1s ease}
 .tutorial-text.show{opacity:1;transform:translateY(0)}
@@ -2232,8 +2232,9 @@ function finishTutorial(){
 }
 
 function skipTutorial(){
-  document.getElementById('tutorial-overlay').style.display='none';
-  document.getElementById('tutorial-overlay').classList.remove('active','fade-out');
+  var overlay=document.getElementById('tutorial-overlay');
+  overlay.style.display='none';
+  overlay.classList.remove('active','fade-out');
   hideGuideTip();
   G.tutorialDone=true;
   saveGame();
@@ -15092,6 +15093,13 @@ function getPlayerRank(scoreType) {
 function initGame(){
   // 初始化 Supabase（后台连接，不阻塞游戏启动）
   initSupabase();
+  
+  // 确保引导遮罩初始状态是隐藏的
+  var overlay=document.getElementById('tutorial-overlay');
+  if(overlay){
+    overlay.style.display='none';
+    overlay.classList.remove('active','fade-out');
+  }
   
   // 尝试读档
   if(loadGame()){
