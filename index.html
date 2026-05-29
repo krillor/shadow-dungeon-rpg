@@ -702,6 +702,9 @@ body{
 .merge-result-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0;padding:12px;background:rgba(0,0,0,.3);border-radius:8px}
 .merge-result-stat{font-size:11px;color:var(--text2)}
 .merge-result-stat b{display:block;color:var(--text);font-size:14px;margin-top:2px}
+.merge-stat-growth{font-size:11px;font-weight:bold;margin-left:4px}
+.merge-stat-growth.up{color:#2ecc71}
+.merge-stat-growth.down{color:#e74c3c}
 .merge-result-skills{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:12px 0}
 .merge-result-skill{background:rgba(41,128,185,.2);color:var(--blue);padding:3px 8px;border-radius:4px;font-size:10px;border:1px solid rgba(41,128,185,.3)}
 /* 异变特效 */
@@ -8534,46 +8537,19 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
   if(hero.isUpset) effects+='<div class="merge-upset-flash"></div>';
   if(G.mergeStreak && G.mergeStreak.count>=3) effects+='<div class="merge-streak-flash"></div>';
   
-  // 材料对比区域
+  // 材料信息区域（精简版）
   var matHtml='';
   if(materials && materials.length>0){
-    // 计算材料平均值
-    var avgHP=Math.floor(materials.reduce(function(s,h){return s+h.maxHP},0)/materials.length);
-    var avgATK=Math.floor(materials.reduce(function(s,h){return s+h.atk},0)/materials.length);
-    var avgDEF=Math.floor(materials.reduce(function(s,h){return s+h.def},0)/materials.length);
-    var avgSPD=Math.floor(materials.reduce(function(s,h){return s+h.spd},0)/materials.length);
-    var avgMP=Math.floor(materials.reduce(function(s,h){return s+h.maxMP},0)/materials.length);
-    var avgPower=Math.floor(materials.reduce(function(s,h){return s+(calcHeroPower?calcHeroPower(h):0)},0)/materials.length);
-    
-    function diffTag(cur,avg){
-      var d=cur-avg;
-      if(d>0) return '<span style="color:#2ecc71;font-size:11px;margin-left:4px">+'+d+'</span>';
-      if(d<0) return '<span style="color:#e74c3c;font-size:11px;margin-left:4px">'+d+'</span>';
-      return '<span style="color:#888;font-size:11px;margin-left:4px">=</span>';
-    }
-    
     matHtml='<div style="margin-top:12px;padding:10px 12px;background:rgba(0,0,0,.2);border-radius:8px;border:1px solid rgba(255,255,255,.06)">'
-      +'<div style="font-size:12px;color:var(--text2);margin-bottom:8px">📊 属性变化（材料平均 → 合成结果）</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12px">'
-      +'<div>❤️ 生命: <span style="color:var(--text2)">'+avgHP+'</span> → <b>'+hero.maxHP+'</b>'+diffTag(hero.maxHP,avgHP)+'</div>'
-      +'<div>⚔️ 攻击: <span style="color:var(--text2)">'+avgATK+'</span> → <b>'+hero.atk+'</b>'+diffTag(hero.atk,avgATK)+'</div>'
-      +'<div>🛡️ 防御: <span style="color:var(--text2)">'+avgDEF+'</span> → <b>'+hero.def+'</b>'+diffTag(hero.def,avgDEF)+'</div>'
-      +'<div>💨 速度: <span style="color:var(--text2)">'+avgSPD+'</span> → <b>'+hero.spd+'</b>'+diffTag(hero.spd,avgSPD)+'</div>'
-      +'<div>💎 魔法: <span style="color:var(--text2)">'+avgMP+'</span> → <b>'+hero.maxMP+'</b>'+diffTag(hero.maxMP,avgMP)+'</div>'
-      +'<div>⚡ 战力: <span style="color:var(--text2)">'+avgPower+'</span> → <b>'+(calcHeroPower?calcHeroPower(hero):0)+'</b>'+diffTag(calcHeroPower?calcHeroPower(hero):0,avgPower)+'</div>'
-      +'</div>'
-      // 材料英雄列表
-      +'<div style="margin-top:8px;font-size:11px;color:var(--text2)">材料: '+materials.map(function(h){
+      +'<div style="font-size:11px;color:var(--text2)">材料: '+materials.map(function(h){
         return '<span class="q-'+h.quality+'" style="margin-right:6px">'+h.icon+h.name+' Lv.'+h.level+'</span>';
       }).join('')+'</div>'
-      // 继承倍率
       +(hero.inheritMult?'<div style="margin-top:4px;font-size:11px;color:var(--text2)">🎲 继承倍率: <b style="color:'+(hero.inheritMult>=1.0?'#2ecc71':'#e74c3c')+'">×'+hero.inheritMult.toFixed(2)+'</b>'
       +(hero.bondInfo?' | 🔗 '+hero.bondInfo.name+' ×'+hero.bondInfo.mult.toFixed(2):'')
-      +(hero.isMutation?' | ☣️ 异变 ×1.10':'')
+      +(hero.isMutation?' | ☣️ 异变 ×1.30':'')
       +(hero.isHidden?' | ✦ 隐藏 ×1.30':'')
       +'</div>':'')
-      // 技能变化
-      +'<div style="margin-top:6px;font-size:11px;color:var(--text2)">技能: '+hero.skills.length+'个'
+      +'<div style="margin-top:4px;font-size:11px;color:var(--text2)">技能: '+hero.skills.length+'个'
       +(hero.mutatedSkills&&hero.mutatedSkills.length>0?' <span style="color:#d4a0ff">🧬 含变异技能</span>':'')
       +'</div>'
       +'</div>';
@@ -8619,6 +8595,26 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
       +'</div>';
   }
   
+  var maxMatHP=materials&&materials.length>0?Math.max.apply(null,materials.map(function(h){return h.maxHP})):0;
+  var maxMatATK=materials&&materials.length>0?Math.max.apply(null,materials.map(function(h){return h.atk})):0;
+  var maxMatDEF=materials&&materials.length>0?Math.max.apply(null,materials.map(function(h){return h.def})):0;
+  var maxMatSPD=materials&&materials.length>0?Math.max.apply(null,materials.map(function(h){return h.spd})):0;
+  var maxMatMP=materials&&materials.length>0?Math.max.apply(null,materials.map(function(h){return h.maxMP})):0;
+  var maxMatPow=0;
+  if(materials&&materials.length>0){
+    maxMatPow=Math.max.apply(null,materials.map(function(h){return calcHeroPower?calcHeroPower(h):0}));
+  }
+  
+  function growthTag(cur,base){
+    if(!base||base===0)return'';
+    var d=cur-base;
+    if(d>0)return'<span class="merge-stat-growth up">▲+'+d+'</span>';
+    if(d<0)return'<span class="merge-stat-growth down">▼'+d+'</span>';
+    return'<span class="merge-stat-growth" style="color:#888">—</span>';
+  }
+  
+  var heroPower=calcHeroPower?calcHeroPower(hero):0;
+  
   var html=effects+'<div class="merge-result-overlay" onclick="closeMergeResult()">'+
     '<div class="merge-result-card" onclick="event.stopPropagation()" style="max-height:90vh;overflow-y:auto">'+
       '<div class="merge-result-avatar" style="background:'+qualityBg[hero.quality]+';border-color:'+qualityColors[hero.quality]+'">'+hero.icon+'</div>'+
@@ -8629,12 +8625,12 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
       '<div class="merge-result-name">'+hero.name+'</div>'+
       '<div style="font-size:12px;color:var(--text2);margin-bottom:4px">'+(ROLES[hero.role]?ROLES[hero.role].icon+' '+ROLES[hero.role].name:'')+' · Lv.'+hero.level+'</div>'+
       '<div class="merge-result-stats">'+
-        '<div class="merge-result-stat">❤️ 生命<b>'+stats.maxHP+'</b></div>'+
-        '<div class="merge-result-stat">⚔️ 攻击<b>'+stats.atk+'</b></div>'+
-        '<div class="merge-result-stat">🛡️ 防御<b>'+stats.def+'</b></div>'+
-        '<div class="merge-result-stat">💨 速度<b>'+stats.spd+'</b></div>'+
-        '<div class="merge-result-stat">💎 魔法<b>'+stats.maxMP+'</b></div>'+
-        '<div class="merge-result-stat">⚡ 战力<b>'+calcHeroPower(hero)+'</b></div>'+
+        '<div class="merge-result-stat">❤️ 生命<b>'+stats.maxHP+growthTag(stats.maxHP,maxMatHP)+'</b></div>'+
+        '<div class="merge-result-stat">⚔️ 攻击<b>'+stats.atk+growthTag(stats.atk,maxMatATK)+'</b></div>'+
+        '<div class="merge-result-stat">🛡️ 防御<b>'+stats.def+growthTag(stats.def,maxMatDEF)+'</b></div>'+
+        '<div class="merge-result-stat">💨 速度<b>'+stats.spd+growthTag(stats.spd,maxMatSPD)+'</b></div>'+
+        '<div class="merge-result-stat">💎 魔法<b>'+stats.maxMP+growthTag(stats.maxMP,maxMatMP)+'</b></div>'+
+        '<div class="merge-result-stat">⚡ 战力<b>'+heroPower+growthTag(heroPower,maxMatPow)+'</b></div>'+
       '</div>'+
       '<div class="merge-result-skills">'+skillsHtml+'</div>'+
       mutateBanner+
