@@ -7097,7 +7097,7 @@ function smartChooseSkill(unit,allUnits){
   // 按角色定位分策略
   if(role==='healer'){
     // 治愈者：复活>群体治疗>单体治疗>净化>祝福
-    var deadAllies=allies.filter(function(a){return !a.alive});
+    var deadAllies=allUnits.filter(function(a){return !a.alive&&a.isEnemy===unit.isEnemy});
     if(deadAllies.length>0&&allyCriticalCount<2){
       var rev=available.find(function(s){return s.skill.type==='revive'});
       if(rev)return rev;
@@ -8022,7 +8022,7 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
     case 'heal':
       var totalHeal=0;
       var healMult=isMutated?1.4:1.0;
-      var hasAntiHeal=enemyUnits&&enemyUnits.some(function(e){return e._antiHeal&&e.alive});
+      var hasAntiHeal=allUnits.some(function(e){return e.isEnemy&&e._antiHeal&&e.alive});
       if(hasAntiHeal)healMult*=0.5;
       targets.forEach(t=>{
         if(!t.alive)return;
