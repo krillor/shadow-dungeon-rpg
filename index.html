@@ -3895,6 +3895,38 @@ const ARENA_CONFIG = {
   }
 };
 
+// 酒馆品质宝石解锁配置（独立于建筑升级）
+const TAVERN_QUALITY_UNLOCK = {
+  2: {name:'解锁稀有品质', desc:'可招募稀有英雄 · 3个可选', gems:30, icon:'💎'},
+  3: {name:'稀有出现率+50%', desc:'稀有英雄出现概率大幅提升 · 3个可选', gems:60, icon:'✨'},
+  4: {name:'解锁史诗品质', desc:'可招募史诗英雄 · 4个可选', gems:150, icon:'🔮'},
+  5: {name:'史诗出现率+50%', desc:'史诗英雄出现概率大幅提升 · 4个可选', gems:300, icon:'💫'},
+  6: {name:'解锁传说品质', desc:'可招募传说英雄 · 5个可选', gems:600, icon:'⚜️'},
+  7: {name:'传说出现率+50%', desc:'传说英雄出现概率大幅提升 · 5个可选', gems:1000, icon:'🌟'},
+  8: {name:'解锁神话品质', desc:'可招募神话英雄 · 5个可选', gems:2000, icon:'👑'},
+  9: {name:'神话出现率+100%', desc:'神话英雄出现概率翻倍 · 5个可选', gems:3500, icon:'🌠'},
+  10:{name:'终极品质强化', desc:'6个可选 · 高级品质概率大幅提升', gems:6000, icon:'✦'}
+};
+
+// 酒馆宝石解锁品质上限
+function unlockTavernQuality(level){
+  var cfg=TAVERN_QUALITY_UNLOCK[level];
+  if(!cfg){showToast('❌ 无效的解锁等级');return;}
+  var curLevel=G.buildings.tavern||1;
+  if(level<=curLevel){showToast('❌ 已经解锁');return;}
+  if(level>curLevel+1){showToast('❌ 需要按顺序逐级解锁');return;}
+  if((G.resources.gems||0)<cfg.gems){showToast('❌ 宝石不足，需要💎'+cfg.gems);return;}
+  G.resources.gems-=cfg.gems;
+  G.buildings.tavern=level;
+  G_tavernOptions=null;
+  G_tavernRecruited=new Set();
+  setPity(0);
+  updateResUI();
+  saveGame();
+  showToast('🎉 '+cfg.name+' 解锁成功！');
+  renderTavernRecruit();
+}
+
 // 酒馆刷新配置
 const TAVERN_REFRESH = {
   // 刷新费用：前期便宜、后期贵（指数增长）
@@ -9871,6 +9903,37 @@ function renderTavernRecruit(){
           const costStr=Object.entries(cost).map(([k,v])=>`${RESOURCE_DEFS[k]?.icon||''}${v}`).join(' ');
           const canRefresh=canRefreshTavern();
           return`<button class="btn ${canRefresh?'':'disabled'}" ${canRefresh?`onclick="refreshTavernOptions()"`:''}>🔄 刷新 (${costStr})</button>`;
+        })()}
+      </div>
+    </div>
+    
+    <!-- 品质解锁区域 -->
+    <div class="panel" style="margin-top:12px">
+      <div class="panel-title"><span class="icon">💎</span> 品质解锁</div>
+      <div class="text-dim text-sm mb-8">花费宝石解锁更高品质英雄，需按顺序逐级解锁</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${(()=>{
+          var curLv=G.buildings.tavern||1;
+          var html='';
+          for(var lv=2;lv<=10;lv++){
+            var cfg=TAVERN_QUALITY_UNLOCK[lv];
+            var unlocked=lv<=curLv;
+            var isNext=lv===curLv+1;
+            var canAfford=isNext&&(G.resources.gems||0)>=cfg.gems;
+            html+=`<div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;background:${unlocked?'rgba(46,213,115,.1)':'rgba(0,0,0,.2)'};border:1px solid ${unlocked?'rgba(46,213,115,.3)':'var(--border)'}">
+              <div style="font-size:24px;width:36px;text-align:center">${unlocked?'✅':cfg.icon}</div>
+              <div style="flex:1">
+                <div style="font-weight:bold;font-size:13px;${unlocked?'color:var(--green)':''}">${cfg.name}</div>
+                <div class="text-xs text-dim">${cfg.desc}</div>
+              </div>
+              <div style="text-align:right;min-width:80px">
+                ${unlocked?'<span class="text-xs" style="color:var(--green)">已解锁</span>'
+                :`<div class="text-sm" style="color:var(--gold)">💎 ${cfg.gems}</div>
+                  <button class="btn btn-sm mt-4 ${canAfford?'btn-primary':''}" ${canAfford?`onclick="unlockTavernQuality(${lv})"`:'disabled'}>${isNext?'解锁':'🔒'}</button>`}
+              </div>
+            </div>`;
+          }
+          return html;
         })()}
       </div>
     </div>
