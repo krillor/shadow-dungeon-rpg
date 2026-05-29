@@ -8835,8 +8835,8 @@ function setMergeGamble(mode) {
 
 function getGambleInfo() {
   switch(G_mergeGamble) {
-    case 'risk': return { name:'冒险合成', icon:'🎰', cost:1000, desc:'品质±1（不低于普通）', color:'#f39c12' };
-    case 'crazy': return { name:'疯狂合成', icon:'🃏', cost:1, costType:'gems', desc:'30%神话/30%全变异/40%崩塌', color:'#e74c3c' };
+    case 'risk': return { name:'冒险合成', icon:'🎰', cost:10000, desc:'品质±1（不低于普通）', color:'#f39c12' };
+    case 'crazy': return { name:'疯狂合成', icon:'🃏', cost:100, costType:'gems', desc:'30%神话/30%全变异/40%崩塌', color:'#e74c3c' };
     default: return { name:'普通合成', icon:'⚗️', cost:0, desc:'标准概率', color:'var(--text)' };
   }
 }
@@ -11992,10 +11992,10 @@ function renderMerge(el){
             <div>⚗️ 普通</div><div class="text-xs text-dim">标准概率</div>
           </button>
           <button class="btn btn-sm ${G_mergeGamble==='risk'?'btn-primary':''}" onclick="setMergeGamble('risk')" style="font-size:11px;padding:8px 4px">
-            <div>🎰 冒险</div><div class="text-xs text-dim">1000💰 品质±1</div>
+            <div>🎰 冒险</div><div class="text-xs text-dim">10000💰 品质±1</div>
           </button>
           <button class="btn btn-sm ${G_mergeGamble==='crazy'?'btn-primary':''}" onclick="setMergeGamble('crazy')" style="font-size:11px;padding:8px 4px">
-            <div>🃏 疯狂</div><div class="text-xs text-dim">1💎 赌神话</div>
+            <div>🃏 疯狂</div><div class="text-xs text-dim">100💎 赌神话</div>
           </button>
         </div>
         ${G_mergeGamble!=='normal'?'<div style="margin-top:6px;font-size:10px;color:'+(G_mergeGamble==='crazy'?'#e74c3c':'#f39c12')+';text-align:center">⚠️ '+(G_mergeGamble==='risk'?'冒险模式：品质有升有降（不低于普通）':'疯狂模式：30%神话/30%全变异/40%崩塌')+'</div>':''}
