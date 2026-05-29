@@ -2879,6 +2879,17 @@ const SKILLS = {
   divine_shield:{name:'圣盾术',icon:'🔰',desc:'为单体添加护盾，吸收30%最大生命值伤害',type:'shield',target:'single_ally',shieldPct:0.3,mpCost:20,cooldown:3}
 };
 
+var ROLE_SKILLS={
+  warrior:['cleave','shield_bash','berserker'],
+  guardian:['taunt','iron_wall','shield_bash_g'],
+  mage:['fireball','blizzard','arcane_shield'],
+  healer:['heal','group_heal','purify'],
+  assassin:['backstab','shadow_step','poison_blade'],
+  ranger:['aimed_shot','rain_arrows','trap'],
+  warlock:['curse','life_drain','soul_burn'],
+  paladin:['holy_strike','holy_light','divine_shield']
+};
+
 // 英雄模板
 const HERO_TEMPLATES = [
   // ========== 普通 (10个) ==========
@@ -8248,31 +8259,31 @@ function generateFusedHero(heroes){
   allRoles.forEach(function(r){if(uniqueRoles.indexOf(r)===-1)uniqueRoles.push(r)});
   var mainRole=uniqueRoles[hash%uniqueRoles.length];
   
-  // 4. 确定新技能
-  var allSkillPool=[];
+  // 4. 确定新技能 - 从职业技能池选取，优先材料中同职业技能
+  var roleSkillPool=ROLE_SKILLS[mainRole]||[];
+  
+  var prioritySkills=[];
   heroes.forEach(function(h){
-    h.skills.forEach(function(s){if(allSkillPool.indexOf(s)===-1)allSkillPool.push(s)});
-    h.bonusSkills.forEach(function(s){if(allSkillPool.indexOf(s)===-1)allSkillPool.push(s)});
+    h.skills.forEach(function(s){
+      if(roleSkillPool.indexOf(s)!==-1&&prioritySkills.indexOf(s)===-1)prioritySkills.push(s);
+    });
+    h.bonusSkills.forEach(function(s){
+      if(roleSkillPool.indexOf(s)!==-1&&prioritySkills.indexOf(s)===-1)prioritySkills.push(s);
+    });
   });
-  // 加入目标角色的基础技能
-  var roleData=ROLES[mainRole];
-  if(roleData&&roleData.skills){
-    roleData.skills.forEach(function(s){if(allSkillPool.indexOf(s)===-1)allSkillPool.push(s)});
+  
+  var remainingSkills=roleSkillPool.filter(function(s){return prioritySkills.indexOf(s)===-1});
+  var extraSkills=remainingSkills.filter(function(){return Math.random()<0.5});
+  
+  var newSkills;
+  if(isDirectHidden){
+    newSkills=roleSkillPool.slice();
+  }else{
+    newSkills=prioritySkills.concat(extraSkills);
   }
   
-  // 隐藏品质：可选择所有素材英雄的全部技能（最多6个）
-  var skillCount;
-  if(isDirectHidden){
-    // 隐藏品质：收集所有素材技能，最多6个
-    skillCount=Math.min(6,allSkillPool.length);
-    var shuffled=allSkillPool.slice().sort(function(){return Math.random()-0.5});
-    var newSkills=shuffled.slice(0,skillCount);
-  }else{
-    // 异变英雄额外获得1-2个技能
-    var baseSkillCount=2+Math.floor(hash%3);
-    skillCount=isMutation?Math.min(allSkillPool.length,baseSkillCount+1+Math.floor(Math.random()*2)):baseSkillCount;
-    var shuffled=allSkillPool.slice().sort(function(){return Math.random()-0.5});
-    var newSkills=shuffled.slice(0,skillCount);
+  if(newSkills.length===0&&roleSkillPool.length>0){
+    newSkills=[roleSkillPool[Math.floor(Math.random()*roleSkillPool.length)]];
   }
   
   // === 获取当前天象加成 ===
@@ -8316,49 +8327,37 @@ function generateFusedHero(heroes){
     }
   }
   
-  // 5. 确定新属性 - 统一逻辑：max(职业品质标准, 材料最高属性)
-  var roleData=ROLES[mainRole];
-  var baseHP=roleData?roleData.baseHP:100;
-  var baseATK=roleData?roleData.baseATK:15;
-  var baseDEF=roleData?roleData.baseDEF:10;
-  var baseSPD=roleData?roleData.baseSPD:10;
-  var baseMP=roleData?roleData.baseMP:40;
-  
-  // 取材料最高等级
+  // 5. 确定新属性 - 属性继承依赖材料数量和品质，增幅1.2
   var maxLevel=Math.max.apply(null,heroes.map(function(h){return h.level}));
   
-  // 取材料中各属性的平均值
-  var avgMaterialHP=Math.floor(heroes.reduce(function(s,h){return s+h.maxHP},0)/heroes.length);
-  var avgMaterialATK=Math.floor(heroes.reduce(function(s,h){return s+h.atk},0)/heroes.length);
-  var avgMaterialDEF=Math.floor(heroes.reduce(function(s,h){return s+h.def},0)/heroes.length);
-  var avgMaterialSPD=Math.floor(heroes.reduce(function(s,h){return s+h.spd},0)/heroes.length);
-  var avgMaterialMP=Math.floor(heroes.reduce(function(s,h){return s+h.maxMP},0)/heroes.length);
+  var maxMaterialHP=Math.max.apply(null,heroes.map(function(h){return h.maxHP}));
+  var maxMaterialATK=Math.max.apply(null,heroes.map(function(h){return h.atk}));
+  var maxMaterialDEF=Math.max.apply(null,heroes.map(function(h){return h.def}));
+  var maxMaterialSPD=Math.max.apply(null,heroes.map(function(h){return h.spd}));
+  var maxMaterialMP=Math.max.apply(null,heroes.map(function(h){return h.maxMP}));
   
-  // 属性继承：材料平均值的0.6~1.8倍随机
-  // 连击×3：属性下限提升到0.8
-  var minMult = upsetBonus ? 1.0 : (streakCount>=3 ? 0.8 : 0.6);
-  var inheritMult=minMult+Math.random()*(1.8-minMult);
-  // 羁绊加成
-  inheritMult *= bondMult;
-  var maxHP=Math.floor(avgMaterialHP*inheritMult);
-  var atk=Math.floor(avgMaterialATK*inheritMult);
-  var def=Math.floor(avgMaterialDEF*inheritMult);
-  var spd=Math.floor(avgMaterialSPD*inheritMult);
-  var maxMP=Math.floor(avgMaterialMP*inheritMult);
+  var quantityBonus=1+(heroes.length-2)*0.1;
   
-  // 异变/品质提升时额外加成10%，隐藏品质额外加成30%
-  if(isDirectHidden){
+  var qualityIdxMap={common:0,rare:1,epic:2,legendary:3,mythic:4,hidden:5};
+  var avgQualityIdx=heroes.reduce(function(s,h){return s+(qualityIdxMap[h.quality]||0)},0)/heroes.length;
+  var qualityBonus=1+avgQualityIdx*0.05;
+  
+  var inheritMult=1.2*quantityBonus*qualityBonus*bondMult;
+  if(upsetBonus)inheritMult+=0.2;
+  if(streakCount>=3)inheritMult+=0.1;
+  
+  var maxHP=Math.floor(maxMaterialHP*inheritMult);
+  var atk=Math.floor(maxMaterialATK*inheritMult);
+  var def=Math.floor(maxMaterialDEF*inheritMult);
+  var spd=Math.floor(maxMaterialSPD*inheritMult);
+  var maxMP=Math.floor(maxMaterialMP*inheritMult);
+  
+  if(isDirectHidden||isMutation||isQualityUp||isDirectLegendary||isDirectMythic){
     maxHP=Math.floor(maxHP*1.3);
     atk=Math.floor(atk*1.3);
     def=Math.floor(def*1.3);
     spd=Math.floor(spd*1.3);
     maxMP=Math.floor(maxMP*1.3);
-  }else if(isMutation||isQualityUp||isDirectLegendary||isDirectMythic){
-    maxHP=Math.floor(maxHP*1.1);
-    atk=Math.floor(atk*1.1);
-    def=Math.floor(def*1.1);
-    spd=Math.floor(spd*1.1);
-    maxMP=Math.floor(maxMP*1.1);
   }
   
   // === 天象属性加成 ===
