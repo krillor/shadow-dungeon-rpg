@@ -9501,17 +9501,19 @@ function getRecruitOptions(){
     }
   }
   
-  // 保底机制：每10次刷新，必出史诗/传说/神话（概率递减：史诗60% > 传说30% > 神话10%）
+  // 保底机制：每10次刷新，史诗60% / 传说10% / 神话1% / 稀有29%
   if(getPity() >= 10 && options.length > 0){
     // 根据概率决定保底品质
     const roll = Math.random();
     let pityQuality;
     if(roll < 0.60){
       pityQuality = 'epic'; // 60% 史诗
-    }else if(roll < 0.90){
-      pityQuality = 'legendary'; // 30% 传说
+    }else if(roll < 0.70){
+      pityQuality = 'legendary'; // 10% 传说
+    }else if(roll < 0.71){
+      pityQuality = 'mythic'; // 1% 神话
     }else{
-      pityQuality = 'mythic'; // 10% 神话
+      pityQuality = 'rare'; // 29% 稀有
     }
     // 确保不超过当前酒馆解锁的最高品质
     const pityQIdx = Math.min(QUALITIES.indexOf(pityQuality), maxQIdx);
@@ -9885,7 +9887,7 @@ function renderTavernRecruit(){
   // 保底进度显示
   var _pity=getPity();
   var pityText=_pity>=10?'<span style="color:#ef4444;font-weight:bold">🎉 保底已触发！</span>':`保底进度: ${_pity}/10`;
-  var pityDesc='史诗60% > 传说30% > 神话10%';
+  var pityDesc='史诗60% / 传说10% / 神话1% / 稀有29%';
   
   // 经验药水购买价格
   const potionPrice=50; // 50金币购买100经验药水
