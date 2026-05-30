@@ -8615,10 +8615,21 @@ function generateFusedHero(heroes){
     }
   }
   
-  // === 未知英雄判定：1%概率生成未知品质英雄 ===
+  // === 未知英雄判定：1%概率生成未知品质英雄（金手指强制最高优先级） ===
   var isUnknownHero = false;
   var unknownTemplate = null;
-  if(Math.random() < UNKNOWN_HERO_CONFIG.mergeChance){
+  if(G_cheats.enabled && G_cheats.forceUnknown){
+    isUnknownHero = true;
+    newQuality = 'unknown';
+    newQIdx = QUALITIES.indexOf('unknown');
+    // 金手指指定模板或随机选择
+    if(G_cheats.forceUnknownTemplate){
+      unknownTemplate = UNKNOWN_HERO_TEMPLATES.find(function(t){return t.id===G_cheats.forceUnknownTemplate}) || UNKNOWN_HERO_TEMPLATES[0];
+    }else{
+      unknownTemplate = UNKNOWN_HERO_TEMPLATES[Math.floor(Math.random() * UNKNOWN_HERO_TEMPLATES.length)];
+    }
+    isMutation = true;
+  }else if(Math.random() < UNKNOWN_HERO_CONFIG.mergeChance){
     isUnknownHero = true;
     newQuality = 'unknown';
     newQIdx = QUALITIES.indexOf('unknown');
@@ -8914,11 +8925,23 @@ function generateFusedHero(heroes){
     // 未知英雄特有属性
     isUnknown: isUnknownHero,
     unknownTemplate: isUnknownHero ? unknownTemplate : null,
-    isUnlocked: !isUnknownHero, // 未知英雄初始未解锁
+    isUnlocked: isUnknownHero ? (G_cheats.enabled && G_cheats.unlockAllUnknown) : true, // 未知英雄初始未解锁（金手指自动解锁模式除外）
     displayName: isUnknownHero ? UNKNOWN_HERO_CONFIG.displayName : newName,
     displayIcon: isUnknownHero ? UNKNOWN_HERO_CONFIG.displayIcon : icon,
     displayRole: isUnknownHero ? UNKNOWN_HERO_CONFIG.displayRole : mainRole
   };
+  
+  // 金手指自动解锁：融合生成未知英雄时立即解锁
+  if(isUnknownHero && G_cheats.enabled && G_cheats.unlockAllUnknown && unknownTemplate){
+    newHero.isUnlocked = true;
+    newHero.name = unknownTemplate.name;
+    newHero.icon = unknownTemplate.icon;
+    newHero.role = unknownTemplate.role;
+    newHero.lore = unknownTemplate.lore;
+    newHero.displayName = unknownTemplate.name;
+    newHero.displayIcon = unknownTemplate.icon;
+    newHero.displayRole = unknownTemplate.role;
+  }
   
   // === 更新幸运值和保底 ===
   if(!G.mergeLucky) G.mergeLucky = 0;
@@ -13848,7 +13871,11 @@ var G_cheats = {
   forceLegendary: false,   // 强制传说
   forceMythic: false,      // 强制神话
   infiniteRecruit: false,  // 无限招募
-  freeEnhance: false       // 免费强化
+  freeEnhance: false,      // 免费强化
+  // 未知英雄相关金手指
+  forceUnknown: false,     // 强制生成未知英雄
+  unlockAllUnknown: false, // 强制解锁所有未知英雄
+  forceUnknownTemplate: null // 强制指定未知英雄模板ID
 };
 
 // ==================== 图鉴系统 ====================
@@ -14702,6 +14729,22 @@ function renderCheats(el){
             <button class="btn ${G_cheats.forceQuality==='hidden'?'btn-primary':''}" onclick="cheatForceQuality(${G_cheats.forceQuality==='hidden'?'null':"'hidden'"})">${G_cheats.forceQuality==='hidden'?'✦ 强制隐藏[开]':'✦ 强制隐藏[关]'}</button>
           </div>
         </div>
+        <div class="panel" style="background:rgba(255,0,255,.08);border-color:rgba(255,0,255,.3)">
+          <div class="panel-title">🌌 未知英雄</div>
+          <div class="text-xs text-dim mb-8" style="color:rgba(255,0,255,.7)">神秘系统的金手指选项</div>
+          <div class="btn-group">
+            <button class="btn ${G_cheats.forceUnknown?'btn-primary':''}" onclick="cheatForceUnknown()" style="${G_cheats.forceUnknown?'background:linear-gradient(90deg,#ff00ff,#cc00ff);border-color:#ff00ff':''}">${G_cheats.forceUnknown?'🌌 强制未知[开]':'🌌 强制未知[关]'}</button>
+            <button class="btn ${G_cheats.unlockAllUnknown?'btn-primary':''}" onclick="cheatUnlockAllUnknown()" style="${G_cheats.unlockAllUnknown?'background:linear-gradient(90deg,#ff00ff,#cc00ff);border-color:#ff00ff':''}">${G_cheats.unlockAllUnknown?'🔓 解锁全部未知[开]':'🔓 解锁全部未知[关]'}</button>
+          </div>
+          <div class="btn-group mt-8">
+            ${UNKNOWN_HERO_TEMPLATES.map(function(tpl){
+              return '<button class="btn" onclick="cheatSpawnUnknownHero(\''+tpl.id+'\')" style="font-size:11px">'+tpl.icon+' 生成'+tpl.name+'</button>';
+            }).join('')}
+          </div>
+          <div class="btn-group mt-8">
+            <button class="btn" onclick="cheatSpawnRandomUnknown()" style="background:rgba(255,0,255,.1);border-color:rgba(255,0,255,.4)">🎲 随机生成未知英雄</button>
+          </div>
+        </div>
         <div class="panel" style="background:rgba(230,126,34,.1);border-color:rgba(230,126,34,.3)">
           <div class="panel-title">🍺 酒馆/装备</div>
           <div class="btn-group">
@@ -15073,6 +15116,111 @@ function cheatInfiniteMP(){
   if(!G_cheats.enabled){showToast('请先开启金手指');return;}
   G_cheats.infiniteMP = !G_cheats.infiniteMP;
   showToast(G_cheats.infiniteMP ? '🔮 无限蓝量已开启' : '🔮 无限蓝量已关闭');
+}
+
+// ==================== 未知英雄金手指函数 ====================
+function cheatForceUnknown(){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  G_cheats.forceUnknown = !G_cheats.forceUnknown;
+  if(G_cheats.forceUnknown){
+    // 开启强制未知时，自动关闭强制品质（避免冲突）
+    G_cheats.forceQuality = null;
+  }
+  showToast(G_cheats.forceUnknown ? '🌌 强制未知英雄已开启（下次融合必出未知英雄）' : '🌌 强制未知英雄已关闭');
+}
+
+function cheatUnlockAllUnknown(){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  G_cheats.unlockAllUnknown = !G_cheats.unlockAllUnknown;
+  if(G_cheats.unlockAllUnknown){
+    // 立即解锁所有已拥有的未知英雄
+    var unlocked = 0;
+    G.heroes.forEach(function(h){
+      if(h.isUnknown && !h.isUnlocked){
+        var tpl = h.unknownTemplate;
+        if(tpl){
+          h.isUnlocked = true;
+          h.name = tpl.name;
+          h.icon = tpl.icon;
+          h.role = tpl.role;
+          h.lore = tpl.lore;
+          h.displayName = tpl.name;
+          h.displayIcon = tpl.icon;
+          h.displayRole = tpl.role;
+          unlocked++;
+        }
+      }
+    });
+    showToast('🔓 已解锁 ' + unlocked + ' 个未知英雄！（持续模式：新获得也会自动解锁）');
+  }else{
+    showToast('🔓 自动解锁未知英雄已关闭');
+  }
+}
+
+function cheatSpawnUnknownHero(templateId){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  var tpl = UNKNOWN_HERO_TEMPLATES.find(function(t){return t.id===templateId});
+  if(!tpl){showToast('❌ 未知英雄模板不存在');return;}
+  
+  var hero = {
+    uid: ++G.heroIdCounter,
+    id: tpl.id,
+    name: UNKNOWN_HERO_CONFIG.displayName,
+    icon: UNKNOWN_HERO_CONFIG.displayIcon,
+    role: UNKNOWN_HERO_CONFIG.displayRole,
+    quality: 'unknown',
+    level: 1,
+    maxHP: tpl.hiddenStats.maxHP,
+    hp: tpl.hiddenStats.maxHP,
+    atk: tpl.hiddenStats.atk,
+    def: tpl.hiddenStats.def,
+    spd: tpl.hiddenStats.spd,
+    maxMP: tpl.hiddenStats.maxMP,
+    mp: tpl.hiddenStats.maxMP,
+    skills: tpl.skills.slice(),
+    bonusSkills: [],
+    equipment: {weapon:null,armor:null,accessory:null},
+    exp: 0,
+    lore: '一个神秘的存在，其真实身份被未知的力量所遮蔽。完成特定的试炼任务后，或许能够揭开其真面目...',
+    deathDefyUsed: false,
+    isMutation: true,
+    isHidden: false,
+    isUpset: false,
+    bondInfo: null,
+    mutatedSkills: [],
+    hiddenRule: null,
+    inheritMult: 1.0,
+    // 未知英雄特有属性
+    isUnknown: true,
+    unknownTemplate: tpl,
+    isUnlocked: false,
+    displayName: UNKNOWN_HERO_CONFIG.displayName,
+    displayIcon: UNKNOWN_HERO_CONFIG.displayIcon,
+    displayRole: UNKNOWN_HERO_CONFIG.displayRole
+  };
+  
+  // 如果开启了自动解锁，直接解锁
+  if(G_cheats.unlockAllUnknown){
+    hero.isUnlocked = true;
+    hero.name = tpl.name;
+    hero.icon = tpl.icon;
+    hero.role = tpl.role;
+    hero.lore = tpl.lore;
+    hero.displayName = tpl.name;
+    hero.displayIcon = tpl.icon;
+    hero.displayRole = tpl.role;
+  }
+  
+  G.heroes.push(hero);
+  saveGame();
+  showToast('🌌 已生成未知英雄：' + (hero.isUnlocked ? tpl.icon + ' ' + tpl.name : '❓ ???'));
+  renderCurrentTab();
+}
+
+function cheatSpawnRandomUnknown(){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  var tpl = UNKNOWN_HERO_TEMPLATES[Math.floor(Math.random() * UNKNOWN_HERO_TEMPLATES.length)];
+  cheatSpawnUnknownHero(tpl.id);
 }
 
 function cheatForceMutation(){
