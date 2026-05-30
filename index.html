@@ -2669,6 +2669,7 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 // ==================== 引导系统 ====================
 var G_guideHighlightEl;
 var G_guideTooltipEl;
+var G_tutorialTimer=null;
 
 function getTutorialDOMElements(){
   if(!G_guideHighlightEl) G_guideHighlightEl=document.getElementById('guide-highlight');
@@ -2715,18 +2716,18 @@ function nextTutorialStep(){
   tip.style.display='none';
   G.tutorialStep++;
   if(G.tutorialStep<=5){
-    setTimeout(function(){showTutorialStep(G.tutorialStep)},1500);
+    G_tutorialTimer=setTimeout(function(){showTutorialStep(G.tutorialStep)},1500);
   }else{
-    setTimeout(function(){endTutorialStory()},1500);
+    G_tutorialTimer=setTimeout(function(){endTutorialStory()},1500);
   }
 }
 
 function endTutorialStory(){
   var overlay=document.getElementById('tutorial-overlay');
   var tip=document.getElementById('tut-tip');
-  tip.style.display='none';
+  if(tip) tip.style.display='none';
   overlay.classList.add('fade-out');
-  setTimeout(function(){
+  G_tutorialTimer=setTimeout(function(){
     overlay.classList.remove('active','fade-out');
     overlay.style.display='none';
     overlay.onclick=null;
@@ -2799,18 +2800,25 @@ function hideGuideTip(){
 }
 
 function skipTutorial(){
+  if(G_tutorialTimer){clearTimeout(G_tutorialTimer);G_tutorialTimer=null;}
   var overlay=document.getElementById('tutorial-overlay');
   if(overlay){
     overlay.style.display='none';
     overlay.classList.remove('active','fade-out');
     overlay.onclick=null;
+    // 隐藏所有教程文字
+    document.querySelectorAll('.tutorial-text').forEach(function(el){el.classList.remove('show','ash')});
   }
   hideGuideTip();
+  G.tutorialPhase='';
+  G.tutorialStep=0;
   startTownGuide();
 }
 
 function finishTutorial(){
   hideGuideTip();
+  var mergeIntro=document.getElementById('merge-intro');
+  if(mergeIntro) mergeIntro.style.display='none';
   G.tutorialDone=true;
   G.tutorialPhase='';
   G.tutorialStep=0;
@@ -2872,7 +2880,11 @@ function onGuideBattleClick(){
 
 function onGuideMergeClick(){
   if(G.tutorialPhase==='guide' && G.tutorialStep===6){
-    finishTutorial();
+    // 显示合成引导介绍面板
+    var mergeIntro=document.getElementById('merge-intro');
+    if(mergeIntro) mergeIntro.style.display='block';
+    // 延迟完成引导，让用户有时间阅读介绍
+    setTimeout(function(){finishTutorial()},8000);
     return true;
   }
   return false;
@@ -5413,9 +5425,12 @@ function loadGame(){
       common_merged: 0,
       enemies_killed: 0
     };
-    // 旧存档兼容性：引导相关变量
+    // 引导状态恢复：如果在引导中途存档，正确恢复引导状态
     if(G.tutorialDone===undefined){
-      if(G.heroes && G.heroes.length>0){
+      // 如果存档中有引导阶段信息且未完成，说明在引导中途存档
+      if(G.tutorialPhase && G.tutorialPhase!==''){
+        G.tutorialDone=false;
+      }else if(G.heroes && G.heroes.length>0){
         G.tutorialDone=true;
       }else{
         G.tutorialDone=false;
@@ -16078,6 +16093,13 @@ function renderCheats(el){
             <button class="btn" onclick="cheatSkipStage()">跳过当前关卡</button>
           </div>
         </div>
+        <div class="panel" style="background:rgba(241,196,15,.1);border-color:rgba(241,196,15,.3)">
+          <div class="panel-title">📖 引导重播</div>
+          <div class="btn-group">
+            <button class="btn" onclick="cheatReplayTutorial()">🔄 重新观看新手引导</button>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px">重新播放序章故事和交互引导</div>
+        </div>
         <div class="panel" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.3)">
           <div class="panel-title">☁️ 云端数据管理（管理员）</div>
           <div class="btn-group">
@@ -16567,6 +16589,25 @@ function cheatAlwaysAccident(){
   if(!G_cheats.enabled){showToast('请先开启金手指');return;}
   G_cheats.alwaysAccident = !G_cheats.alwaysAccident;
   showToast(G_cheats.alwaysAccident ? '💥 持续事件已开启（每次合成必出事件）' : '💥 持续事件已关闭');
+}
+
+function cheatReplayTutorial(){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  // 清除引导完成标记，重置状态
+  G.tutorialDone=false;
+  G.tutorialPhase='';
+  G.tutorialStep=0;
+  saveGame();
+  closeModal();
+  showToast('🔄 正在重新启动新手引导...');
+  setTimeout(function(){
+    document.getElementById('tutorial-overlay').style.display='none';
+    document.getElementById('tutorial-overlay').classList.remove('active','fade-out');
+    document.getElementById('tutorial-overlay').onclick=null;
+    document.querySelectorAll('.tutorial-text').forEach(function(el){el.classList.remove('show','ash')});
+    hideGuideTip();
+    startTutorial();
+  },500);
 }
 
 function cheatSkipStage(){
