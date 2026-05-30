@@ -846,10 +846,6 @@ body{
   .battle-ctrl-btn{padding:5px 8px;font-size:10px}
   .battle-ctrl-btn.btn-speed{min-width:30px;padding:5px 6px;font-size:10px}
   .battle-toolbar-sep{display:none}
-  .hero-detail-overlay{padding:12px}
-  .hero-detail-panel{max-height:90vh}
-  .hd-stat-grid{grid-template-columns:repeat(2,1fr)}
-  .hd-actions .btn{min-width:60px;font-size:11px}
 }
 .town-hero-summary{
   display:grid;
@@ -2464,8 +2460,8 @@ body{
 }
 
 /* ===== 英雄详情弹窗增强样式 ===== */
-.hero-detail-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:150;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .25s ease;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.hero-detail-panel{background:linear-gradient(180deg,#1a1a3a,#12122a);border:1px solid var(--border);border-radius:var(--radius-lg);width:100%;max-width:460px;max-height:85vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;box-shadow:var(--shadow-lg),0 0 40px rgba(0,0,0,0.5);position:relative;animation:fadeInScale .3s ease}
+.hero-detail-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:150;display:flex;align-items:center;justify-content:center;padding:10px;animation:fadeIn .25s ease;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.hero-detail-panel{background:linear-gradient(180deg,#1a1a3a,#12122a);border:1px solid var(--border);border-radius:var(--radius-lg);width:100%;max-width:520px;max-height:88vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;box-shadow:var(--shadow-lg);position:relative}
 .hero-detail-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.3}
 .hero-detail-panel::-webkit-scrollbar{width:4px}
 .hero-detail-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
@@ -2509,28 +2505,10 @@ body{
 .hd-equip-slot{background:rgba(0,0,0,.2);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:8px}
 .hd-equip-slot-empty{color:var(--text3);font-size:11px}
 .hd-equip-icon{font-size:20px}
-.hd-equip-info{flex:1;min-width:0}
+.hd-equip-info{flex:1}
 .hd-equip-name{font-size:12px;font-weight:bold}
 .hd-equip-stats{font-size:10px;color:var(--green)}
 .hd-equip-enhance{font-size:9px;color:var(--blue)}
-.hd-equip-actions{display:flex;gap:4px;flex-shrink:0;margin-left:auto}
-.hd-equip-btn{
-  padding:4px 8px;
-  font-size:10px;
-  font-weight:600;
-  border-radius:4px;
-  border:1px solid var(--border);
-  background:transparent;
-  cursor:pointer;
-  transition:var(--transition);
-  white-space:nowrap;
-}
-.hd-equip-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
-.hd-equip-btn:active{transform:translateY(0)}
-.hd-equip-btn.btn-unequip{border-color:rgba(255,107,107,0.3);color:#ff6b7a}
-.hd-equip-btn.btn-unequip:hover{border-color:#ff4757;background:rgba(255,71,87,0.1);box-shadow:0 0 8px rgba(255,71,87,0.2)}
-.hd-equip-btn.btn-equip{border-color:rgba(93,173,226,0.3);color:#5dade2}
-.hd-equip-btn.btn-equip:hover{border-color:#5dade2;background:rgba(93,173,226,0.1);box-shadow:0 0 8px rgba(93,173,226,0.2)}
 .hd-trait-tag{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:4px;font-size:10px;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.2);color:var(--gold2)}
 .hd-growth-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11px}
 .hd-growth-label{color:var(--text2);width:50px;flex-shrink:0}
@@ -2695,72 +2673,6 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 @keyframes breakthroughGlow{0%,100%{box-shadow:0 0 5px rgba(168,85,247,.3)}50%{box-shadow:0 0 15px rgba(168,85,247,.6)}}
 .btn-breakthrough{animation:breakthroughGlow 2s ease infinite;border-color:var(--purple);color:var(--purple)}
 .btn-breakthrough:hover{background:linear-gradient(135deg,#1a0a2a,#2a1a3a);box-shadow:0 0 15px rgba(168,85,247,.4)}
-
-/* ===== 天赋树侧滑面板样式 ===== */
-.tt-slide-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:10000;animation:fadeIn .25s ease;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.tt-slide-panel{position:fixed;top:0;right:0;bottom:0;width:92%;max-width:420px;background:linear-gradient(180deg,#1a1a3a,#12122a);border-left:1px solid var(--border);z-index:10001;display:flex;flex-direction:column;animation:ttSlideIn .3s cubic-bezier(.4,0,.2,1);overflow:hidden;box-shadow:-8px 0 40px rgba(0,0,0,.5)}
-.tt-slide-panel.tt-slide-out{animation:ttSlideOut .25s cubic-bezier(.4,0,.2,1) forwards}
-@keyframes ttSlideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
-@keyframes ttSlideOut{from{transform:translateX(0)}to{transform:translateX(100%)}}
-.tt-slide-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 14px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;background:linear-gradient(90deg,rgba(168,85,247,.06),transparent)}
-.tt-slide-title{color:var(--gold);font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;letter-spacing:.5px}
-.tt-slide-title .icon{font-size:20px;filter:drop-shadow(0 0 6px rgba(212,175,55,.4))}
-.tt-slide-close{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text3);background:rgba(255,255,255,.05);border:1px solid var(--border);cursor:pointer;transition:var(--transition);flex-shrink:0}
-.tt-slide-close:hover{background:rgba(255,255,255,.1);color:var(--text)}
-.tt-slide-body{flex:1;overflow-y:auto;padding:16px 18px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
-.tt-slide-body::-webkit-scrollbar{width:4px}
-.tt-slide-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-.tt-slide-footer{padding:12px 18px;border-top:1px solid var(--border);flex-shrink:0;background:rgba(0,0,0,.15)}
-
-/* ===== 天赋树样式 ===== */
-.tt-tabs{display:flex;gap:4px;margin-bottom:16px}
-.tt-tab{flex:1;padding:8px 4px;border:1px solid var(--border);background:var(--panel2);color:var(--text2);cursor:pointer;border-radius:var(--radius-sm);font-size:12px;font-family:inherit;text-align:center;transition:var(--transition)}
-.tt-tab.active{background:rgba(168,85,247,.15);border-color:var(--purple);color:var(--purple);font-weight:bold}
-.tt-tab:hover{border-color:var(--border-light)}
-.tt-branch{display:none}
-.tt-branch.active{display:block}
-.tt-node{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);position:relative}
-.tt-node:hover{border-color:var(--border-light);background:var(--panel3)}
-.tt-node.tt-can-add{border-color:rgba(201,162,39,.3)}
-.tt-node.tt-can-add:hover{border-color:var(--gold);box-shadow:0 0 12px rgba(201,162,39,.15);transform:translateX(3px)}
-.tt-node.tt-maxed{border-color:rgba(168,85,247,.3);background:rgba(168,85,247,.06)}
-.tt-node.tt-locked{opacity:.45;cursor:not-allowed}
-.tt-node.tt-locked:hover{transform:none;border-color:var(--border);box-shadow:none}
-.tt-node.tt-empty{opacity:.5;cursor:not-allowed}
-.tt-node.tt-empty:hover{transform:none;border-color:var(--border);box-shadow:none}
-.tt-node.tt-ultimate{border-color:rgba(201,162,39,.25);background:linear-gradient(135deg,rgba(201,162,39,.06),rgba(168,85,247,.06))}
-.tt-node.tt-ultimate.tt-maxed{border-color:rgba(201,162,39,.5);box-shadow:0 0 16px rgba(201,162,39,.2)}
-.tt-node-left{flex-shrink:0}
-.tt-node-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid var(--border);background:rgba(0,0,0,.2);transition:var(--transition)}
-.tt-can-add .tt-node-icon{border-color:var(--gold);box-shadow:0 0 8px rgba(201,162,39,.25)}
-.tt-maxed .tt-node-icon{border-color:var(--purple);background:rgba(168,85,247,.15);box-shadow:0 0 10px rgba(168,85,247,.3)}
-.tt-node-center{flex:1;min-width:0}
-.tt-node-name{font-size:13px;font-weight:bold;color:var(--text);margin-bottom:2px}
-.tt-maxed .tt-node-name{color:var(--purple)}
-.tt-can-add .tt-node-name{color:var(--gold)}
-.tt-node-desc{font-size:10px;color:var(--text2);line-height:1.3;margin-bottom:4px}
-.tt-node-dots{display:flex;gap:3px}
-.tt-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid var(--border)}
-.tt-dot-filled{background:var(--purple);border-color:var(--purple);box-shadow:0 0 4px rgba(168,85,247,.4)}
-.tt-can-add .tt-dot-filled{background:var(--gold);border-color:var(--gold);box-shadow:0 0 4px rgba(201,162,39,.4)}
-.tt-node-right{flex-shrink:0;text-align:right}
-.tt-node-level{font-size:12px;font-weight:bold;color:var(--text2)}
-.tt-maxed .tt-node-level{color:var(--purple)}
-.tt-can-add .tt-node-level{color:var(--gold)}
-.tt-node-tag{font-size:9px;color:var(--gold);background:rgba(201,162,39,.15);padding:1px 6px;border-radius:3px;margin-top:2px;display:inline-block}
-.tt-line{text-align:center;padding:2px 0}
-.tt-line-inner{width:2px;height:16px;margin:0 auto;background:var(--border);border-radius:1px;transition:var(--transition)}
-.tt-line-active .tt-line-inner{background:var(--purple);box-shadow:0 0 4px rgba(168,85,247,.3)}
-.tt-line-ready .tt-line-inner{background:var(--gold);opacity:.5}
-.tt-line-locked .tt-line-inner{background:var(--border);opacity:.3}
-.tt-actions{display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
-.tt-actions .btn{flex:1}
-.tt-points-item{text-align:center}
-.tt-points-val{font-size:18px;font-weight:bold}
-.tt-points-val.available{color:var(--gold)}
-.tt-points-val.used{color:var(--purple)}
-.tt-points-val.total{color:var(--text2)}
-.tt-points-lbl{font-size:10px;color:var(--text3)}
 
 /* ==================== 引导系统样式 ==================== */
 #tutorial-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:9999;display:none;align-items:center;justify-content:center;opacity:0;transition:opacity 2.5s ease;cursor:pointer;overflow:hidden}
@@ -6848,13 +6760,6 @@ function getHeroStats(hero){
   if(talentEffects.def) s.def=Math.floor(s.def*(1+talentEffects.def));
   if(talentEffects.spd) s.spd=Math.floor(s.spd*(1+talentEffects.spd));
   if(talentEffects.mpMax) s.maxMP=Math.floor(s.maxMP*(1+talentEffects.mpMax));
-  if(talentEffects.critChance) s.critRate=(s.critRate||0)+talentEffects.critChance;
-  if(talentEffects.critDamage) s.critDmg=(s.critDmg||1)+talentEffects.critDamage;
-  if(talentEffects.damageReduce) s.dmgReduce=(s.dmgReduce||0)+talentEffects.damageReduce;
-  if(talentEffects.lifeSteal) s.lifeSteal=(s.lifeSteal||0)+talentEffects.lifeSteal;
-  if(talentEffects.dodge) s.dodgeRate=(s.dodgeRate||0)+talentEffects.dodge;
-  if(talentEffects.hpRegen) s.hpRegen=(s.hpRegen||0)+talentEffects.hpRegen;
-  if(talentEffects.mpRegen) s.mpRegen=(s.mpRegen||0)+talentEffects.mpRegen;
   // 确保当前HP/MP不超过最大值
   if(s.hp>s.maxHP) s.hp=s.maxHP;
   if(s.mp>s.maxMP) s.mp=s.maxMP;
@@ -11228,72 +11133,6 @@ function unequipItem(heroUid,slot){
   hero.equipment[slot]=null;
 }
 
-// 为英雄详情页弹出装备选择器
-function showEquipPickerForHero(heroUid,slot){
-  var hero=G.heroes.find(function(h){return h.uid===heroUid});
-  if(!hero)return;
-  var slotNames={weapon:'武器',armor:'护甲',accessory:'饰品'};
-  var slotIcons={weapon:'⚔️',armor:'🛡️',accessory:'💍'};
-  // 获取该槽位类型的未装备装备
-  var available=G.equipment.filter(function(e){
-    if(e.heroUid!==null)return false;
-    var tpl=EQUIP_TEMPLATES.find(function(t){return t.id===e.id});
-    if(!tpl)return false;
-    var eqSlot=tpl.type==='weapon'?'weapon':tpl.type==='armor'?'armor':'accessory';
-    return eqSlot===slot;
-  });
-  // 按品质排序
-  var qualityOrder={mythic:5,legendary:4,epic:3,rare:2,common:1,hidden:6};
-  available.sort(function(a,b){
-    var qa=qualityOrder[(EQUIP_TEMPLATES.find(function(t){return t.id===a.id})||{}).quality]||0;
-    var qb=qualityOrder[(EQUIP_TEMPLATES.find(function(t){return t.id===b.id})||{}).quality]||0;
-    return qb-qa;
-  });
-  var itemsHtml='';
-  if(available.length===0){
-    itemsHtml='<div style="text-align:center;padding:20px;color:var(--text3)">没有可用的'+slotNames[slot]+'</div>';
-  }else{
-    itemsHtml='<div style="display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow-y:auto">';
-    for(var i=0;i<available.length;i++){
-      var eq=available[i];
-      var tpl=EQUIP_TEMPLATES.find(function(t){return t.id===eq.id});
-      if(!tpl)continue;
-      var enhanceLevel=eq.enhance||0;
-      var enhanceBonus=enhanceLevel>0?' <span style="color:var(--blue);font-size:10px">+'+enhanceLevel+'</span>':'';
-      var statsStr=Object.entries(tpl.stats).map(function(entry){
-        var k=entry[0],v=entry[1];
-        var finalVal=Math.floor(v*(1+enhanceLevel*0.1));
-        var statNames={atk:'攻击',def:'防御',hp:'生命',mp:'魔法',spd:'速度'};
-        return (statNames[k]||k)+'+'+finalVal;
-      }).join(' ');
-      var affixHtml='';
-      if(eq.affixes&&eq.affixes.length>0){
-        affixHtml=' <span style="font-size:9px;color:var(--purple)">🔮'+eq.affixes.length+'</span>';
-      }
-      itemsHtml+='<div class="equip-item quality-'+tpl.quality+'" style="cursor:pointer" onclick="equipItemAndRefresh('+heroUid+','+eq.uid+')">'
-        +'<span class="equip-icon">'+tpl.icon+'</span>'
-        +'<span class="equip-name q-'+tpl.quality+'">'+tpl.name+enhanceBonus+'</span>'
-        +affixHtml
-        +'<span class="equip-stats" style="margin-left:auto;white-space:nowrap">'+statsStr+'</span>'
-        +'</div>';
-    }
-    itemsHtml+='</div>';
-  }
-  openModal('<div class="panel" style="max-width:380px">'
-    +'<div class="panel-title">'+slotIcons[slot]+' 选择'+slotNames[slot]+'</div>'
-    +'<div class="text-xs text-dim mb-8">为 <b style="color:var(--gold)">'+hero.name+'</b> 选择一件'+slotNames[slot]+'</div>'
-    +itemsHtml
-    +'<div class="btn-group mt-8"><button class="btn" onclick="closeModal()">取消</button></div>'
-    +'</div>');
-}
-
-// 装备后刷新英雄详情页
-function equipItemAndRefresh(heroUid,equipUid){
-  equipItem(heroUid,equipUid);
-  closeModal();
-  showHeroDetail(heroUid);
-}
-
 // ==================== 建筑系统 ====================
 function getBuildingCost(buildingId,level){
   const def=BUILDING_DEFS[buildingId];
@@ -12390,9 +12229,7 @@ function showHeroDetail(uid){
               +skillInfoHtml
               +setInfoHtml
               +'</div>'
-              +'<div class="hd-equip-actions">'
-              +'<button class="hd-equip-btn btn-unequip" onclick="event.stopPropagation();unequipItem('+h.uid+',\''+slot+'\');closeModal();showHeroDetail('+h.uid+')">卸下</button>'
-              +'</div>'
+              +'<span class="text-xs text-dim">'+slotIcons[slot]+' '+slotNames[slot]+'</span>'
               +'</div>';
             continue;
           }
@@ -12401,9 +12238,6 @@ function showHeroDetail(uid){
       html+=`<div class="hd-equip-slot">
         <div class="hd-equip-icon" style="opacity:.3">${slotIcons[slot]}</div>
         <div class="hd-equip-slot-empty">未装备${slotNames[slot]}</div>
-        <div class="hd-equip-actions">
-          <button class="hd-equip-btn btn-equip" onclick="event.stopPropagation();showEquipPickerForHero(${h.uid},'${slot}')">装备</button>
-        </div>
       </div>`;
     }
     return html;
@@ -13076,6 +12910,7 @@ function showTalentTree(heroUid){
   const branchKeys=Object.keys(tree.branches);
   const branchTabs=branchKeys.map((key,i)=>{
     const b=tree.branches[key];
+    const branchUsed=Object.values(hero.talents).reduce((s,p)=>s+p,0);
     return `<button class="tt-tab ${i===0?'active':''}" onclick="switchTalentBranch(${heroUid},'${key}',this)">${b.icon} ${b.name}</button>`;
   }).join('');
   
@@ -13135,45 +12970,99 @@ function showTalentTree(heroUid){
     }
     return nodesHtml;
   }
+  
+  const html=`
+    <style>
+      .tt-panel{max-width:480px;margin:0 auto;padding:4px}
+      .tt-header{text-align:center;margin-bottom:16px;padding:12px;background:linear-gradient(135deg,rgba(168,85,247,.08),rgba(201,162,39,.08));border-radius:var(--radius-md);border:1px solid rgba(168,85,247,.15)}
+      .tt-hero{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px}
+      .tt-hero-icon{font-size:32px}
+      .tt-hero-name{font-size:16px;font-weight:bold;color:var(--gold)}
+      .tt-points-bar{display:flex;align-items:center;justify-content:center;gap:16px}
+      .tt-points-item{text-align:center}
+      .tt-points-val{font-size:18px;font-weight:bold}
+      .tt-points-val.available{color:var(--gold)}
+      .tt-points-val.used{color:var(--purple)}
+      .tt-points-val.total{color:var(--text2)}
+      .tt-points-lbl{font-size:10px;color:var(--text3)}
+      .tt-tabs{display:flex;gap:4px;margin-bottom:16px}
+      .tt-tab{flex:1;padding:8px 4px;border:1px solid var(--border);background:var(--panel2);color:var(--text2);cursor:pointer;border-radius:var(--radius-sm);font-size:12px;font-family:inherit;text-align:center;transition:var(--transition)}
+      .tt-tab.active{background:rgba(168,85,247,.15);border-color:var(--purple);color:var(--purple);font-weight:bold}
+      .tt-tab:hover{border-color:var(--border-light)}
+      .tt-branch{display:none}
+      .tt-branch.active{display:block}
+      .tt-node{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);position:relative}
+      .tt-node:hover{border-color:var(--border-light);background:var(--panel3)}
+      .tt-node.tt-can-add{border-color:rgba(201,162,39,.3)}
+      .tt-node.tt-can-add:hover{border-color:var(--gold);box-shadow:0 0 12px rgba(201,162,39,.15);transform:translateX(3px)}
+      .tt-node.tt-maxed{border-color:rgba(168,85,247,.3);background:rgba(168,85,247,.06)}
+      .tt-node.tt-locked{opacity:.45;cursor:not-allowed}
+      .tt-node.tt-locked:hover{transform:none;border-color:var(--border);box-shadow:none}
+      .tt-node.tt-empty{opacity:.5;cursor:not-allowed}
+      .tt-node.tt-empty:hover{transform:none;border-color:var(--border);box-shadow:none}
+      .tt-node.tt-ultimate{border-color:rgba(201,162,39,.25);background:linear-gradient(135deg,rgba(201,162,39,.06),rgba(168,85,247,.06))}
+      .tt-node.tt-ultimate.tt-maxed{border-color:rgba(201,162,39,.5);box-shadow:0 0 16px rgba(201,162,39,.2)}
+      .tt-node-left{flex-shrink:0}
+      .tt-node-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid var(--border);background:rgba(0,0,0,.2);transition:var(--transition)}
+      .tt-can-add .tt-node-icon{border-color:var(--gold);box-shadow:0 0 8px rgba(201,162,39,.25)}
+      .tt-maxed .tt-node-icon{border-color:var(--purple);background:rgba(168,85,247,.15);box-shadow:0 0 10px rgba(168,85,247,.3)}
+      .tt-node-center{flex:1;min-width:0}
+      .tt-node-name{font-size:13px;font-weight:bold;color:var(--text);margin-bottom:2px}
+      .tt-maxed .tt-node-name{color:var(--purple)}
+      .tt-can-add .tt-node-name{color:var(--gold)}
+      .tt-node-desc{font-size:10px;color:var(--text2);line-height:1.3;margin-bottom:4px}
+      .tt-node-dots{display:flex;gap:3px}
+      .tt-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid var(--border)}
+      .tt-dot-filled{background:var(--purple);border-color:var(--purple);box-shadow:0 0 4px rgba(168,85,247,.4)}
+      .tt-can-add .tt-dot-filled{background:var(--gold);border-color:var(--gold);box-shadow:0 0 4px rgba(201,162,39,.4)}
+      .tt-node-right{flex-shrink:0;text-align:right}
+      .tt-node-level{font-size:12px;font-weight:bold;color:var(--text2)}
+      .tt-maxed .tt-node-level{color:var(--purple)}
+      .tt-can-add .tt-node-level{color:var(--gold)}
+      .tt-node-tag{font-size:9px;color:var(--gold);background:rgba(201,162,39,.15);padding:1px 6px;border-radius:3px;margin-top:2px;display:inline-block}
+      .tt-line{text-align:center;padding:2px 0}
+      .tt-line-inner{width:2px;height:16px;margin:0 auto;background:var(--border);border-radius:1px;transition:var(--transition)}
+      .tt-line-active .tt-line-inner{background:var(--purple);box-shadow:0 0 4px rgba(168,85,247,.3)}
+      .tt-line-ready .tt-line-inner{background:var(--gold);opacity:.5}
+      .tt-line-locked .tt-line-inner{background:var(--border);opacity:.3}
+      .tt-actions{display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
+      .tt-actions .btn{flex:1}
+    /* ===== 突破系统样式 ===== */
+.arena-diff-btn{padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;transition:all .2s}
+.arena-diff-btn:hover{transform:translateY(-2px);border-color:var(--gold);box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.arena-diff-btn.locked{opacity:0.5;cursor:not-allowed}
+.arena-diff-btn.locked:hover{transform:none;border-color:var(--border);box-shadow:none}
+.arena-diff-btn.active{background:var(--panel);border-color:var(--gold);box-shadow:0 0 8px rgba(201,162,39,.3)}
 
-  // 使用侧滑面板渲染天赋树
-  var slideHtml = '<div class="tt-slide-overlay" id="tt-slide-overlay" onclick="closeTalentPanel()"></div>'
-    +'<div class="tt-slide-panel" id="tt-slide-panel">'
-      +'<div class="tt-slide-header">'
-        +'<div class="tt-slide-title"><span class="icon">🌟</span> 天赋树 <span style="font-size:12px;color:var(--text2);font-weight:normal">'+hero.icon+' '+hero.name+' Lv.'+hero.level+'</span></div>'
-        +'<div class="tt-slide-close" onclick="closeTalentPanel()">✕</div>'
-      +'</div>'
-      +'<div class="tt-slide-body">'
-        +'<div class="tt-points-bar" style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:12px;padding:8px;background:rgba(0,0,0,.2);border-radius:var(--radius-sm)">'
-          +'<div class="tt-points-item" style="text-align:center"><div class="tt-points-val available" style="font-size:18px;font-weight:bold;color:var(--gold)">'+availablePoints+'</div><div class="tt-points-lbl" style="font-size:10px;color:var(--text3)">可用</div></div>'
-          +'<div class="tt-points-item" style="text-align:center"><div class="tt-points-val used" style="font-size:18px;font-weight:bold;color:var(--purple)">'+usedPoints+'</div><div class="tt-points-lbl" style="font-size:10px;color:var(--text3)">已用</div></div>'
-          +'<div class="tt-points-item" style="text-align:center"><div class="tt-points-val total" style="font-size:18px;font-weight:bold;color:var(--text2)">'+hero.talentPoints+'</div><div class="tt-points-lbl" style="font-size:10px;color:var(--text3)">总计</div></div>'
-        +'</div>'
-        +'<div class="tt-tabs">'+branchTabs+'</div>'
-        +branchKeys.map(function(key,i){return '<div class="tt-branch '+(i===0?'active':'')+'" id="tt-branch-'+key+'">'+renderBranch(key)+'</div>'}).join('')
-      +'</div>'
-      +'<div class="tt-slide-footer">'
-        +'<div class="tt-actions" style="display:flex;gap:8px">'
-          +'<button class="btn" style="flex:1" onclick="closeTalentPanel();showHeroDetail('+heroUid+')">← 返回详情</button>'
-          +'<button class="btn" style="flex:1;background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.3);color:#ff6b6b" onclick="resetTalents('+heroUid+')">🔄 重置天赋</button>'
-        +'</div>'
-      +'</div>'
-    +'</div>';
-  document.getElementById('modal-root').innerHTML = slideHtml;
-}
+/* 突破按钮特效 */
+@keyframes breakthroughGlow{0%,100%{box-shadow:0 0 5px rgba(168,85,247,.3)}50%{box-shadow:0 0 15px rgba(168,85,247,.6)}}
+.btn-breakthrough{animation:breakthroughGlow 2s ease infinite;border-color:var(--purple);color:var(--purple)}
+.btn-breakthrough:hover{background:linear-gradient(135deg,#1a0a2a,#2a1a3a);box-shadow:0 0 15px rgba(168,85,247,.4)}
 
-// 关闭天赋侧滑面板
-function closeTalentPanel(){
-  var panel = document.getElementById('tt-slide-panel');
-  var overlay = document.getElementById('tt-slide-overlay');
-  if(panel){
-    panel.classList.add('tt-slide-out');
-    setTimeout(function(){
-      document.getElementById('modal-root').innerHTML = '';
-    }, 250);
-  } else {
-    document.getElementById('modal-root').innerHTML = '';
-  }
+</style>
+    <div class="tt-panel">
+      <div class="tt-header">
+        <div class="tt-hero">
+          <span class="tt-hero-icon">${hero.icon}</span>
+          <span class="tt-hero-name">${hero.name}</span>
+          <span style="font-size:11px;color:var(--text3)">Lv.${hero.level}</span>
+        </div>
+        <div class="tt-points-bar">
+          <div class="tt-points-item"><div class="tt-points-val available">${availablePoints}</div><div class="tt-points-lbl">可用</div></div>
+          <div class="tt-points-item"><div class="tt-points-val used">${usedPoints}</div><div class="tt-points-lbl">已用</div></div>
+          <div class="tt-points-item"><div class="tt-points-val total">${hero.talentPoints}</div><div class="tt-points-lbl">总计</div></div>
+        </div>
+      </div>
+      <div class="tt-tabs">${branchTabs}</div>
+      ${branchKeys.map((key,i)=>`<div class="tt-branch ${i===0?'active':''}" id="tt-branch-${key}">${renderBranch(key)}</div>`).join('')}
+      <div class="tt-actions">
+        <button class="btn" onclick="closeModal();showHeroDetail(${heroUid})">← 返回</button>
+        <button class="btn" style="background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.3);color:#ff6b6b" onclick="resetTalents(${heroUid})">🔄 重置</button>
+      </div>
+    </div>
+  `;
+  
+  showModal('天赋树',html);
 }
 
 // 切换天赋分支Tab
@@ -13300,9 +13189,9 @@ function confirmResetTalents(heroUid){
   
   saveGame();
   updateResourceBar();
-  closeTalentPanel();
+  closeModal();
   showToast(`🔄 天赋已重置，返还 ${usedPoints} 点天赋点！`);
-  setTimeout(function(){ showTalentTree(heroUid); }, 300);
+  showTalentTree(heroUid);
 }
 
 // 获取英雄天赋效果汇总
@@ -16080,17 +15969,8 @@ function cheatMaxAllStats(){
     h.talentPoints = 99;
     // 所有天赋升满
     if(!h.talents) h.talents = {};
-    // 根据职业天赋树数据，将所有天赋升满
-    var tree = TALENT_TREES[h.role];
-    if(tree){
-      for(var bk in tree.branches){
-        var branch = tree.branches[bk];
-        for(var ti=0;ti<branch.talents.length;ti++){
-          var talent = branch.talents[ti];
-          h.talents[talent.id] = talent.maxPoints;
-        }
-      }
-    }
+    var allTalents = ['hpBoost','atkBoost','defBoost','spdBoost','critRate','critDmg','lifeSteal','dmgReduce','mpRegen','skillDmg'];
+    allTalents.forEach(function(t){h.talents[t]=5;});
     // 添加所有技能
     var roleSkills = ROLES[h.role].skills || [];
     roleSkills.forEach(function(s){
