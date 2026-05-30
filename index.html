@@ -2696,6 +2696,22 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 .btn-breakthrough{animation:breakthroughGlow 2s ease infinite;border-color:var(--purple);color:var(--purple)}
 .btn-breakthrough:hover{background:linear-gradient(135deg,#1a0a2a,#2a1a3a);box-shadow:0 0 15px rgba(168,85,247,.4)}
 
+/* ===== 天赋树侧滑面板样式 ===== */
+.tt-slide-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:10000;animation:fadeIn .25s ease;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.tt-slide-panel{position:fixed;top:0;right:0;bottom:0;width:92%;max-width:420px;background:linear-gradient(180deg,#1a1a3a,#12122a);border-left:1px solid var(--border);z-index:10001;display:flex;flex-direction:column;animation:ttSlideIn .3s cubic-bezier(.4,0,.2,1);overflow:hidden;box-shadow:-8px 0 40px rgba(0,0,0,.5)}
+.tt-slide-panel.tt-slide-out{animation:ttSlideOut .25s cubic-bezier(.4,0,.2,1) forwards}
+@keyframes ttSlideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+@keyframes ttSlideOut{from{transform:translateX(0)}to{transform:translateX(100%)}}
+.tt-slide-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 14px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;background:linear-gradient(90deg,rgba(168,85,247,.06),transparent)}
+.tt-slide-title{color:var(--gold);font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;letter-spacing:.5px}
+.tt-slide-title .icon{font-size:20px;filter:drop-shadow(0 0 6px rgba(212,175,55,.4))}
+.tt-slide-close{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text3);background:rgba(255,255,255,.05);border:1px solid var(--border);cursor:pointer;transition:var(--transition);flex-shrink:0}
+.tt-slide-close:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.tt-slide-body{flex:1;overflow-y:auto;padding:16px 18px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.tt-slide-body::-webkit-scrollbar{width:4px}
+.tt-slide-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.tt-slide-footer{padding:12px 18px;border-top:1px solid var(--border);flex-shrink:0;background:rgba(0,0,0,.15)}
+
 /* ===== 天赋树样式 ===== */
 .tt-tabs{display:flex;gap:4px;margin-bottom:16px}
 .tt-tab{flex:1;padding:8px 4px;border:1px solid var(--border);background:var(--panel2);color:var(--text2);cursor:pointer;border-radius:var(--radius-sm);font-size:12px;font-family:inherit;text-align:center;transition:var(--transition)}
@@ -13120,23 +13136,44 @@ function showTalentTree(heroUid){
     return nodesHtml;
   }
 
-  openModal('<div class="panel" style="max-width:480px">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.06);position:relative">'
-      +'<div class="panel-title" style="margin-bottom:0;padding-bottom:0;border-bottom:none"><span class="icon">🌟</span> 天赋树 <span class="text-xs text-dim">'+hero.icon+' '+hero.name+' Lv.'+hero.level+'</span></div>'
-      +'<button class="btn btn-sm" onclick="closeModal()" style="padding:2px 8px;font-size:16px;color:var(--text3);background:rgba(255,255,255,.05);border-color:var(--border);flex-shrink:0">✕</button>'
-    +'</div>'
-    +'<div class="tt-points-bar" style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:12px;padding:8px;background:rgba(0,0,0,.2);border-radius:var(--radius-sm)">'
-      +'<div class="tt-points-item" style="text-align:center"><div class="tt-points-val available" style="font-size:18px;font-weight:bold;color:var(--gold)">'+availablePoints+'</div><div class="tt-points-lbl" style="font-size:10px;color:var(--text3)">可用</div></div>'
-      +'<div class="tt-points-item" style="text-align:center"><div class="tt-points-val used" style="font-size:18px;font-weight:bold;color:var(--purple)">'+usedPoints+'</div><div class="tt-points-lbl" style="font-size:10px;color:var(--text3)">已用</div></div>'
-      +'<div class="tt-points-item" style="text-align:center"><div class="tt-points-val total" style="font-size:18px;font-weight:bold;color:var(--text2)">'+hero.talentPoints+'</div><div class="tt-points-lbl" style="font-size:10px;color:var(--text3)">总计</div></div>'
-    +'</div>'
-    +'<div class="tt-tabs">'+branchTabs+'</div>'
-    +branchKeys.map(function(key,i){return '<div class="tt-branch '+(i===0?'active':'')+'" id="tt-branch-'+key+'">'+renderBranch(key)+'</div>'}).join('')
-    +'<div class="tt-actions" style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">'
-      +'<button class="btn" style="flex:1" onclick="closeModal();showHeroDetail('+heroUid+')">← 返回详情</button>'
-      +'<button class="btn" style="flex:1;background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.3);color:#ff6b6b" onclick="resetTalents('+heroUid+')">🔄 重置天赋</button>'
-    +'</div>'
-    +'</div>');
+  // 使用侧滑面板渲染天赋树
+  var slideHtml = '<div class="tt-slide-overlay" id="tt-slide-overlay" onclick="closeTalentPanel()"></div>'
+    +'<div class="tt-slide-panel" id="tt-slide-panel">'
+      +'<div class="tt-slide-header">'
+        +'<div class="tt-slide-title"><span class="icon">🌟</span> 天赋树 <span style="font-size:12px;color:var(--text2);font-weight:normal">'+hero.icon+' '+hero.name+' Lv.'+hero.level+'</span></div>'
+        +'<div class="tt-slide-close" onclick="closeTalentPanel()">✕</div>'
+      +'</div>'
+      +'<div class="tt-slide-body">'
+        +'<div class="tt-points-bar" style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:12px;padding:8px;background:rgba(0,0,0,.2);border-radius:var(--radius-sm)">'
+          +'<div class="tt-points-item" style="text-align:center"><div class="tt-points-val available" style="font-size:18px;font-weight:bold;color:var(--gold)">'+availablePoints+'</div><div class="tt-points-lbl" style="font-size:10px;color:var(--text3)">可用</div></div>'
+          +'<div class="tt-points-item" style="text-align:center"><div class="tt-points-val used" style="font-size:18px;font-weight:bold;color:var(--purple)">'+usedPoints+'</div><div class="tt-points-lbl" style="font-size:10px;color:var(--text3)">已用</div></div>'
+          +'<div class="tt-points-item" style="text-align:center"><div class="tt-points-val total" style="font-size:18px;font-weight:bold;color:var(--text2)">'+hero.talentPoints+'</div><div class="tt-points-lbl" style="font-size:10px;color:var(--text3)">总计</div></div>'
+        +'</div>'
+        +'<div class="tt-tabs">'+branchTabs+'</div>'
+        +branchKeys.map(function(key,i){return '<div class="tt-branch '+(i===0?'active':'')+'" id="tt-branch-'+key+'">'+renderBranch(key)+'</div>'}).join('')
+      +'</div>'
+      +'<div class="tt-slide-footer">'
+        +'<div class="tt-actions" style="display:flex;gap:8px">'
+          +'<button class="btn" style="flex:1" onclick="closeTalentPanel();showHeroDetail('+heroUid+')">← 返回详情</button>'
+          +'<button class="btn" style="flex:1;background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.3);color:#ff6b6b" onclick="resetTalents('+heroUid+')">🔄 重置天赋</button>'
+        +'</div>'
+      +'</div>'
+    +'</div>';
+  document.getElementById('modal-root').innerHTML = slideHtml;
+}
+
+// 关闭天赋侧滑面板
+function closeTalentPanel(){
+  var panel = document.getElementById('tt-slide-panel');
+  var overlay = document.getElementById('tt-slide-overlay');
+  if(panel){
+    panel.classList.add('tt-slide-out');
+    setTimeout(function(){
+      document.getElementById('modal-root').innerHTML = '';
+    }, 250);
+  } else {
+    document.getElementById('modal-root').innerHTML = '';
+  }
 }
 
 // 切换天赋分支Tab
@@ -13263,9 +13300,9 @@ function confirmResetTalents(heroUid){
   
   saveGame();
   updateResourceBar();
-  closeModal();
+  closeTalentPanel();
   showToast(`🔄 天赋已重置，返还 ${usedPoints} 点天赋点！`);
-  showTalentTree(heroUid);
+  setTimeout(function(){ showTalentTree(heroUid); }, 300);
 }
 
 // 获取英雄天赋效果汇总
