@@ -5746,11 +5746,26 @@ function getTraitEffect(trait){
   return '';
 }
 
+// 格式化资源数值（使用万/亿单位）
+function formatResource(num){
+  if(num === undefined || num === null) return '0';
+  num = Number(num);
+  if(num >= 100000000){
+    // 亿
+    return (num / 100000000).toFixed(2).replace(/\.?0+$/, '') + '亿';
+  }else if(num >= 10000){
+    // 万
+    return (num / 10000).toFixed(1).replace(/\.?0+$/, '') + '万';
+  }else{
+    return num.toString();
+  }
+}
+
 function updateResUI(){
-  document.getElementById('res-gold').textContent=G.resources.gold;
-  document.getElementById('res-gems').textContent=G.resources.gems;
-  document.getElementById('res-food').textContent=G.resources.food;
-  document.getElementById('res-expPotion').textContent=G.resources.expPotion||0;
+  document.getElementById('res-gold').textContent=formatResource(G.resources.gold);
+  document.getElementById('res-gems').textContent=formatResource(G.resources.gems);
+  document.getElementById('res-food').textContent=formatResource(G.resources.food);
+  document.getElementById('res-expPotion').textContent=formatResource(G.resources.expPotion||0);
 }
 
 // 资源栏更新别名（兼容不同调用）
@@ -6113,13 +6128,13 @@ var G_productionTimer=null;
 
 // 资源上限配置
 const RESOURCE_LIMITS = {
-  gold: 999999999,    // 金币上限 9.9亿
-  gems: 99999999,     // 宝石上限 9999万
-  food: 999999999,    // 食物上限 9.9亿
-  stone: 999999999,   // 石材上限 9.9亿
-  iron: 999999999,    // 铁矿上限 9.9亿
-  fame: 999999999,    // 声望上限 9.9亿
-  expPotion: 999999999 // 经验药水上限 9.9亿
+  gold: 888888888,    // 金币上限 8.88亿
+  gems: 888888888,    // 宝石上限 8.88亿
+  food: 888888888,    // 食物上限 8.88亿
+  stone: 888888888,   // 石材上限 8.88亿
+  iron: 888888888,    // 铁矿上限 8.88亿
+  fame: 888888888,    // 声望上限 8.88亿
+  expPotion: 888888888 // 经验药水上限 8.88亿
 };
 
 function produceResources(){
