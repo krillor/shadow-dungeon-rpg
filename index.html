@@ -846,6 +846,10 @@ body{
   .battle-ctrl-btn{padding:5px 8px;font-size:10px}
   .battle-ctrl-btn.btn-speed{min-width:30px;padding:5px 6px;font-size:10px}
   .battle-toolbar-sep{display:none}
+  .hero-detail-overlay{padding:12px}
+  .hero-detail-panel{max-height:90vh}
+  .hd-stat-grid{grid-template-columns:repeat(2,1fr)}
+  .hd-actions .btn{min-width:60px;font-size:11px}
 }
 .town-hero-summary{
   display:grid;
@@ -2460,8 +2464,8 @@ body{
 }
 
 /* ===== 英雄详情弹窗增强样式 ===== */
-.hero-detail-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:150;display:flex;align-items:center;justify-content:center;padding:10px;animation:fadeIn .25s ease;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.hero-detail-panel{background:linear-gradient(180deg,#1a1a3a,#12122a);border:1px solid var(--border);border-radius:var(--radius-lg);width:100%;max-width:520px;max-height:88vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;box-shadow:var(--shadow-lg);position:relative}
+.hero-detail-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:150;display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeIn .25s ease;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.hero-detail-panel{background:linear-gradient(180deg,#1a1a3a,#12122a);border:1px solid var(--border);border-radius:var(--radius-lg);width:100%;max-width:460px;max-height:85vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;box-shadow:var(--shadow-lg),0 0 40px rgba(0,0,0,0.5);position:relative;animation:fadeInScale .3s ease}
 .hero-detail-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.3}
 .hero-detail-panel::-webkit-scrollbar{width:4px}
 .hero-detail-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
@@ -2505,10 +2509,28 @@ body{
 .hd-equip-slot{background:rgba(0,0,0,.2);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:8px}
 .hd-equip-slot-empty{color:var(--text3);font-size:11px}
 .hd-equip-icon{font-size:20px}
-.hd-equip-info{flex:1}
+.hd-equip-info{flex:1;min-width:0}
 .hd-equip-name{font-size:12px;font-weight:bold}
 .hd-equip-stats{font-size:10px;color:var(--green)}
 .hd-equip-enhance{font-size:9px;color:var(--blue)}
+.hd-equip-actions{display:flex;gap:4px;flex-shrink:0;margin-left:auto}
+.hd-equip-btn{
+  padding:4px 8px;
+  font-size:10px;
+  font-weight:600;
+  border-radius:4px;
+  border:1px solid var(--border);
+  background:transparent;
+  cursor:pointer;
+  transition:var(--transition);
+  white-space:nowrap;
+}
+.hd-equip-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+.hd-equip-btn:active{transform:translateY(0)}
+.hd-equip-btn.btn-unequip{border-color:rgba(255,107,107,0.3);color:#ff6b7a}
+.hd-equip-btn.btn-unequip:hover{border-color:#ff4757;background:rgba(255,71,87,0.1);box-shadow:0 0 8px rgba(255,71,87,0.2)}
+.hd-equip-btn.btn-equip{border-color:rgba(93,173,226,0.3);color:#5dade2}
+.hd-equip-btn.btn-equip:hover{border-color:#5dade2;background:rgba(93,173,226,0.1);box-shadow:0 0 8px rgba(93,173,226,0.2)}
 .hd-trait-tag{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:4px;font-size:10px;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.2);color:var(--gold2)}
 .hd-growth-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11px}
 .hd-growth-label{color:var(--text2);width:50px;flex-shrink:0}
@@ -12229,7 +12251,9 @@ function showHeroDetail(uid){
               +skillInfoHtml
               +setInfoHtml
               +'</div>'
-              +'<span class="text-xs text-dim">'+slotIcons[slot]+' '+slotNames[slot]+'</span>'
+              +'<div class="hd-equip-actions">'
+              +'<button class="hd-equip-btn btn-unequip" onclick="event.stopPropagation();unequipItem('+h.uid+',\''+slot+'\');closeModal();showHeroDetail('+h.uid+')">卸下</button>'
+              +'</div>'
               +'</div>';
             continue;
           }
@@ -12238,6 +12262,9 @@ function showHeroDetail(uid){
       html+=`<div class="hd-equip-slot">
         <div class="hd-equip-icon" style="opacity:.3">${slotIcons[slot]}</div>
         <div class="hd-equip-slot-empty">未装备${slotNames[slot]}</div>
+        <div class="hd-equip-actions">
+          <button class="hd-equip-btn btn-equip" onclick="event.stopPropagation();closeModal();switchTab('equip')">装备</button>
+        </div>
       </div>`;
     }
     return html;
