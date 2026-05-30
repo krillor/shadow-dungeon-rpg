@@ -10513,49 +10513,115 @@ function getRecruitOptions(){
   return options;
 }
 
-// 计算一键招募的成本（根据品质筛选）
-function calcRecruitAllCost(minQuality){
-  var options = G_tavernOptions || getRecruitOptions();
-  var cost = {gold: 0, gems: 0, count: 0};
-  var goldCosts={common:30,rare:100,epic:300,legendary:0,mythic:0};
-  var gemCosts={common:0,rare:0,epic:0,legendary:3,mythic:8};
-  var minQIdx = minQuality ? QUALITIES.indexOf(minQuality) : 0;
+// 计算基于资源的最大可招募数量和预估成本
+function calcRecruitCapacity(minQuality){
+  const tavernLevel = G.buildings.tavern || 1;
+  const maxQuality = TAVERN_REFRESH.maxQualityByLevel[tavernLevel] || 'common';
+  const maxQIdx = QUALITIES.indexOf(maxQuality);
+  const minQIdx = minQuality ? QUALITIES.indexOf(minQuality) : 0;
   
-  options.forEach(function(tpl){
-    if(G_tavernRecruited.has(tpl.id)) return;
-    // 品质筛选
-    if(minQuality && QUALITIES.indexOf(tpl.quality) < minQIdx) return;
-    
-    var goldCost = goldCosts[tpl.quality] || 50;
-    var gemCost = gemCosts[tpl.quality] || 0;
-    cost.gold += goldCost;
-    cost.gems += gemCost;
-    cost.count++;
+  // 获取符合条件的英雄池
+  const pool = HERO_TEMPLATES.filter(t => {
+    const qIdx = QUALITIES.indexOf(t.quality);
+    return qIdx >= minQIdx && qIdx <= maxQIdx;
   });
-  return cost;
+  
+  if(pool.length === 0) return {count: 0, gold: 0, gems: 0, avgGold: 0, avgGems: 0};
+  
+  // 计算平均成本（基于品质权重）
+  const goldCosts = {common:30, rare:100, epic:300, legendary:0, mythic:0};
+  const gemCosts = {common:0, rare:0, epic:0, legendary:3, mythic:8};
+  const weights = {common:50, rare:30, epic:15, legendary:10, mythic:1};
+  
+  var totalWeight = 0;
+  var weightedGold = 0;
+  var weightedGems = 0;
+  
+  pool.forEach(function(tpl){
+    const w = weights[tpl.quality] || 10;
+    totalWeight += w;
+    weightedGold += (goldCosts[tpl.quality] || 50) * w;
+    weightedGems += (gemCosts[tpl.quality] || 0) * w;
+  });
+  
+  const avgGold = totalWeight > 0 ? weightedGold / totalWeight : 50;
+  const avgGems = totalWeight > 0 ? weightedGems / totalWeight : 0;
+  
+  // 基于当前资源计算最大可招募数量
+  var maxByGold = avgGold > 0 ? Math.floor(G.resources.gold / avgGold) : 999999;
+  var maxByGems = avgGems > 0 ? Math.floor(G.resources.gems / avgGems) : 999999;
+  var maxCount = Math.min(maxByGold, maxByGems);
+  
+  // 限制最大显示数量（避免数字过大）
+  maxCount = Math.min(maxCount, 999);
+  
+  return {
+    count: Math.floor(maxCount),
+    gold: Math.floor(maxCount * avgGold),
+    gems: Math.floor(maxCount * avgGems),
+    avgGold: avgGold,
+    avgGems: avgGems,
+    maxQuality: maxQuality
+  };
 }
 
-// 一键招募所有可招募英雄（支持品质筛选）
+// 根据酒馆等级和品质筛选生成一个随机英雄模板
+function generateRandomHeroForRecruit(minQuality){
+  const tavernLevel = G.buildings.tavern || 1;
+  const maxQuality = TAVERN_REFRESH.maxQualityByLevel[tavernLevel] || 'common';
+  const maxQIdx = QUALITIES.indexOf(maxQuality);
+  const minQIdx = minQuality ? QUALITIES.indexOf(minQuality) : 0;
+  
+  // 获取符合条件的英雄池（在品质范围内）
+  const pool = HERO_TEMPLATES.filter(t => {
+    const qIdx = QUALITIES.indexOf(t.quality);
+    return qIdx >= minQIdx && qIdx <= maxQIdx;
+  });
+  
+  if(pool.length === 0) return null;
+  
+  // 加权随机选择
+  const weights = {common:50, rare:30, epic:15, legendary:10, mythic:1};
+  const boost = TAVERN_REFRESH.qualityWeightBoost[tavernLevel] || 0;
+  if(boost > 0){
+    weights[maxQuality] = Math.round((weights[maxQuality] || 10) * (1 + boost));
+  }
+  
+  let attempts = 0;
+  while(attempts < 50){
+    const tpl = pick(pool);
+    const w = weights[tpl.quality] || 10;
+    if(Math.random() * 100 < w || attempts > 40){
+      return tpl;
+    }
+    attempts++;
+  }
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// 一键招募所有可招募英雄（支持品质筛选，根据资源持续招募）
 function recruitAllHeroes(minQuality){
-  var options = G_tavernOptions || getRecruitOptions();
   var recruited = 0;
   var totalCost = {gold: 0, gems: 0};
-  var minQIdx = minQuality ? QUALITIES.indexOf(minQuality) : 0;
+  var goldCosts = {common:30, rare:100, epic:300, legendary:0, mythic:0};
+  var gemCosts = {common:0, rare:0, epic:0, legendary:3, mythic:8};
   
-  var goldCosts={common:30,rare:100,epic:300,legendary:0,mythic:0};
-  var gemCosts={common:0,rare:0,epic:0,legendary:3,mythic:8};
+  // 获取酒馆等级和最高可招募品质
+  const tavernLevel = G.buildings.tavern || 1;
+  const maxQuality = TAVERN_REFRESH.maxQualityByLevel[tavernLevel] || 'common';
   
-  options.forEach(function(tpl){
-    if(G_tavernRecruited.has(tpl.id)) return;
-    // 品质筛选：只招募指定品质及以上的英雄
-    if(minQuality && QUALITIES.indexOf(tpl.quality) < minQIdx) return;
+  // 持续招募，直到资源不足
+  while(true){
+    // 生成一个符合条件的随机英雄
+    var tpl = generateRandomHeroForRecruit(minQuality);
+    if(!tpl) break;
     
     var goldCost = goldCosts[tpl.quality] || 50;
     var gemCost = gemCosts[tpl.quality] || 0;
     
     // 检查资源是否足够
-    if(goldCost > 0 && G.resources.gold < goldCost) return;
-    if(gemCost > 0 && G.resources.gems < gemCost) return;
+    if(goldCost > 0 && G.resources.gold < goldCost) break;
+    if(gemCost > 0 && G.resources.gems < gemCost) break;
     
     // 扣除资源
     if(goldCost > 0) G.resources.gold -= goldCost;
@@ -10566,16 +10632,15 @@ function recruitAllHeroes(minQuality){
     // 创建英雄
     var hero = createHero(tpl.id);
     G.heroes.push(hero);
-    G_tavernRecruited.add(tpl.id);
     recruited++;
     
     // 更新统计
     updateStat('heroRecruited', 1);
     recordCodex('heroes', tpl.id);
-  });
+  }
   
   if(recruited === 0){
-    showToast('没有可招募的英雄（资源不足、全部已招募或不符合品质筛选）');
+    showToast('资源不足以招募任何英雄（当前酒馆最高品质：' + QUALITY_NAMES[maxQuality] + '）');
     return;
   }
   
@@ -10587,7 +10652,7 @@ function recruitAllHeroes(minQuality){
   if(totalCost.gems > 0) costStr.push('💎' + totalCost.gems);
   
   var qualityStr = minQuality ? QUALITY_NAMES[minQuality] + '及以上' : '全部';
-  showToast('🎉 一键招募成功！招募了 ' + recruited + ' 个' + qualityStr + '英雄，消耗 ' + costStr.join(' + '));
+  showToast('🎉 一键招募成功！招募了 ' + recruited + ' 个' + qualityStr + '英雄（最高' + QUALITY_NAMES[maxQuality] + '），消耗 ' + costStr.join(' + '));
   
   // 检查成就
   checkAchievement('hero_4');
@@ -10601,82 +10666,60 @@ function recruitAllHeroes(minQuality){
 
 // 显示一键招募品质筛选菜单
 function showRecruitAllMenu(){
-  var options = G_tavernOptions || getRecruitOptions();
-  var goldCosts={common:30,rare:100,epic:300,legendary:0,mythic:0};
-  var gemCosts={common:0,rare:0,epic:0,legendary:3,mythic:8};
+  // 获取酒馆等级和最高品质
+  const tavernLevel = G.buildings.tavern || 1;
+  const maxQuality = TAVERN_REFRESH.maxQualityByLevel[tavernLevel] || 'common';
   
-  // 计算各品质可招募数量和成本
-  var qualityStats = {};
-  QUALITIES.forEach(function(q){
-    qualityStats[q] = {count: 0, gold: 0, gems: 0};
-  });
-  
-  options.forEach(function(tpl){
-    if(G_tavernRecruited.has(tpl.id)) return;
-    var goldCost = goldCosts[tpl.quality] || 50;
-    var gemCost = gemCosts[tpl.quality] || 0;
-    qualityStats[tpl.quality].count++;
-    qualityStats[tpl.quality].gold += goldCost;
-    qualityStats[tpl.quality].gems += gemCost;
-  });
-  
-  // 计算累计成本（从该品质到最高品质）
-  var cumulativeStats = {};
-  var runningCount = 0, runningGold = 0, runningGems = 0;
-  for(var i = QUALITIES.length - 1; i >= 0; i--){
-    var q = QUALITIES[i];
-    runningCount += qualityStats[q].count;
-    runningGold += qualityStats[q].gold;
-    runningGems += qualityStats[q].gems;
-    cumulativeStats[q] = {count: runningCount, gold: runningGold, gems: runningGems};
-  }
+  // 计算各品质筛选下的可招募容量
+  var capacityAll = calcRecruitCapacity();
+  var capacityRare = calcRecruitCapacity('rare');
+  var capacityEpic = calcRecruitCapacity('epic');
+  var capacityLegendary = calcRecruitCapacity('legendary');
+  var capacityMythic = calcRecruitCapacity('mythic');
   
   var html = '<div style="padding:16px">';
   html += '<div style="font-size:14px;font-weight:bold;margin-bottom:12px;text-align:center">⚡ 一键招募 - 选择品质筛选</div>';
-  html += '<div style="font-size:12px;color:var(--text2);margin-bottom:16px;text-align:center">根据当前资源直接招募英雄，无需刷新</div>';
+  html += '<div style="font-size:12px;color:var(--text2);margin-bottom:16px;text-align:center">根据当前资源持续招募，直到资源不足<br>当前酒馆等级：' + tavernLevel + ' | 最高品质：' + QUALITY_NAMES[maxQuality] + '</div>';
   
   // 全部招募选项
-  var allCost = calcRecruitAllCost();
-  var canAffordAll = G.resources.gold >= allCost.gold && G.resources.gems >= allCost.gems;
+  var canAffordAll = capacityAll.count > 0;
   html += '<div style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:12px;border-radius:8px;background:rgba(46,213,115,.1);border:1px solid rgba(46,213,115,.3)">';
   html += '<div style="flex:1"><div style="font-weight:bold;color:var(--green)">🌟 招募全部</div>';
-  html += '<div style="font-size:11px;color:var(--text2)">招募当前所有可招募英雄</div></div>';
+  html += '<div style="font-size:11px;color:var(--text2)">招募' + maxQuality + '及以下所有品质英雄</div></div>';
   html += '<div style="text-align:right">';
-  html += '<div style="font-size:12px">' + (allCost.count > 0 ? allCost.count + '个英雄' : '无') + '</div>';
-  if(allCost.gold > 0) html += '<div style="font-size:11px;color:var(--gold)">💰' + allCost.gold + '</div>';
-  if(allCost.gems > 0) html += '<div style="font-size:11px;color:var(--purple)">💎' + allCost.gems + '</div>';
+  html += '<div style="font-size:12px">约' + capacityAll.count + '个英雄</div>';
+  if(capacityAll.gold > 0) html += '<div style="font-size:11px;color:var(--gold)">💰~' + capacityAll.gold + '</div>';
+  if(capacityAll.gems > 0) html += '<div style="font-size:11px;color:var(--purple)">💎~' + capacityAll.gems + '</div>';
   html += '</div>';
-  if(allCost.count > 0){
-    html += '<button class="btn btn-sm btn-primary" onclick="closeModal();recruitAllHeroes()" ' + (canAffordAll ? '' : 'disabled') + '>招募</button>';
-  } else {
-    html += '<button class="btn btn-sm" disabled>无</button>';
-  }
+  html += '<button class="btn btn-sm btn-primary" onclick="closeModal();recruitAllHeroes()" ' + (canAffordAll ? '' : 'disabled') + '>招募</button>';
   html += '</div>';
   
   // 各品质筛选选项
-  var qualityColors = {common: '#9e9e9e', rare: '#4a90d9', epic: '#9b59b6', legendary: '#f1c40f', mythic: '#e74c3c'};
+  var qualityColors = {rare: '#4a90d9', epic: '#9b59b6', legendary: '#f1c40f', mythic: '#e74c3c'};
+  var capacities = {
+    'rare': capacityRare,
+    'epic': capacityEpic,
+    'legendary': capacityLegendary,
+    'mythic': capacityMythic
+  };
+  
   ['rare', 'epic', 'legendary', 'mythic'].forEach(function(q){
-    var stats = cumulativeStats[q];
-    var canAfford = G.resources.gold >= stats.gold && G.resources.gems >= stats.gems;
-    var hasHeroes = stats.count > 0;
+    var cap = capacities[q];
+    var canAfford = cap.count > 0;
     
     html += '<div style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:8px;background:rgba(0,0,0,.2);border:1px solid ' + qualityColors[q] + '40">';
     html += '<div style="flex:1"><div style="font-weight:bold;color:' + qualityColors[q] + '">' + QUALITY_NAMES[q] + '及以上</div>';
     html += '<div style="font-size:11px;color:var(--text2)">只招募' + QUALITY_NAMES[q] + '及以上品质</div></div>';
     html += '<div style="text-align:right">';
-    html += '<div style="font-size:12px">' + (hasHeroes ? stats.count + '个英雄' : '无') + '</div>';
-    if(stats.gold > 0) html += '<div style="font-size:11px;color:var(--gold)">💰' + stats.gold + '</div>';
-    if(stats.gems > 0) html += '<div style="font-size:11px;color:var(--purple)">💎' + stats.gems + '</div>';
+    html += '<div style="font-size:12px">约' + cap.count + '个英雄</div>';
+    if(cap.gold > 0) html += '<div style="font-size:11px;color:var(--gold)">💰~' + cap.gold + '</div>';
+    if(cap.gems > 0) html += '<div style="font-size:11px;color:var(--purple)">💎~' + cap.gems + '</div>';
     html += '</div>';
-    if(hasHeroes){
-      html += '<button class="btn btn-sm btn-primary" onclick="closeModal();recruitAllHeroes(\'' + q + '\')" ' + (canAfford ? '' : 'disabled') + '>招募</button>';
-    } else {
-      html += '<button class="btn btn-sm" disabled>无</button>';
-    }
+    html += '<button class="btn btn-sm btn-primary" onclick="closeModal();recruitAllHeroes(\'' + q + '\')" ' + (canAfford ? '' : 'disabled') + '>招募</button>';
     html += '</div>';
   });
   
-  html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center">💡 根据当前资源自动计算可招募英雄，直接招募即可</div>';
+  html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center">💡 根据当前资源自动计算可招募数量，持续招募直到资源不足<br>实际招募数量和成本可能因随机品质而略有差异</div>';
   html += '</div>';
   
   showModal('⚡ 一键招募', html);
