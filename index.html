@@ -5772,13 +5772,13 @@ var G_productionTimer=null;
 
 // 资源上限配置
 const RESOURCE_LIMITS = {
-  gold: 500000,     // 金币上限 50万
-  gems: 9999,       // 宝石上限 9999
-  food: 50000,      // 食物上限 5万
-  stone: 30000,     // 石材上限 3万
-  iron: 15000,      // 铁矿上限 1.5万
-  fame: 9999,       // 声望上限 9999
-  expPotion: 999999 // 经验药水上限 99万
+  gold: 50000000,     // 金币上限 5000万
+  gems: 999999,       // 宝石上限 99万
+  food: 5000000,      // 食物上限 500万
+  stone: 3000000,     // 石材上限 300万
+  iron: 1500000,      // 铁矿上限 150万
+  fame: 999999,       // 声望上限 99万
+  expPotion: 99999999 // 经验药水上限 9999万
 };
 
 function produceResources(){
@@ -9076,10 +9076,10 @@ function getRiskCost() {
     G_riskUsageCount = 0;
     G_riskUsageResetTime = now;
   }
-  // 基础花费10000，每次使用增加20%，最高50000
+  // 基础花费10000，每次使用增加20%，最高为金币上限
   var baseCost = 10000;
   var multiplier = 1 + G_riskUsageCount * 0.2;
-  return Math.min(Math.floor(baseCost * multiplier), 50000);
+  return Math.min(Math.floor(baseCost * multiplier), RESOURCE_LIMITS.gold);
 }
 
 // 增加冒险模式使用次数
