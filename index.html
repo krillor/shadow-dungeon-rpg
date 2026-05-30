@@ -9191,8 +9191,8 @@ function hashStr(str){
 
 // ==================== 合成结果展示 ====================
 function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
-  var qualityColors={common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444',hidden:'#00ffcc'};
-  var qualityBg={common:'rgba(136,136,136,.15)',rare:'rgba(74,158,255,.15)',epic:'rgba(168,85,247,.15)',legendary:'rgba(245,158,11,.15)',mythic:'rgba(239,68,68,.15)',hidden:'rgba(0,255,204,.12)'};
+  var qualityColors={common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444',hidden:'#00ffcc',unknown:'#ff00ff'};
+  var qualityBg={common:'rgba(136,136,136,.15)',rare:'rgba(74,158,255,.15)',epic:'rgba(168,85,247,.15)',legendary:'rgba(245,158,11,.15)',mythic:'rgba(239,68,68,.15)',hidden:'rgba(0,255,204,.12)',unknown:'rgba(255,0,255,.15)'};
   
   // 创建特效层
   var effects='';
@@ -9877,7 +9877,7 @@ function detectMergeBond(heroes){
 function getUndoMergeCost(){
   if(!G.lastMerge)return 0;
   var quality=G.lastMerge.result.quality;
-  var costs={common:100,rare:200,epic:500,legendary:1000,mythic:2000,hidden:5000};
+  var costs={common:100,rare:200,epic:500,legendary:1000,mythic:2000,hidden:5000,unknown:8000};
   return costs[quality]||100;
 }
 
@@ -12951,17 +12951,25 @@ function renderMerge(el){
       heroesHTML+='<div style="position:absolute;top:4px;right:4px;background:var(--text3);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px">🔒</div>';
     }
     
+    var isUnknownHero = h.isUnknown && !h.isUnlocked;
+    var displayIcon = isUnknownHero ? (h.displayIcon || '❓') : h.icon;
     heroesHTML+='<div class="hero-avatar" style="background:rgba('+
-      (h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':h.quality==='mythic'?'220,50,50':'180,100,255')
-      +',.2)">'+h.icon+'</div>';
-    
+      (h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':h.quality==='mythic'?'220,50,50':h.quality==='unknown'?'255,0,255':'180,100,255')
+      +',.2)">'+displayIcon+'</div>';
+
     heroesHTML+='<div class="hero-info">';
-    heroesHTML+='<div class="hero-name"><span class="q-'+h.quality+'">'+h.name+'</span></div>';
+    heroesHTML+='<div class="hero-name"><span class="q-'+h.quality+'">'+(isUnknownHero?(h.displayName||'???'):h.name)+'</span></div>';
     heroesHTML+='<div class="hero-meta">'+role.icon+' '+role.name+' · Lv.'+h.level+'</div>';
     heroesHTML+='<div class="hero-stats">';
-    heroesHTML+='<span class="stat-tag">❤️<b>'+h.maxHP+'</b></span>';
-    heroesHTML+='<span class="stat-tag">⚔️<b>'+h.atk+'</b></span>';
-    heroesHTML+='<span class="stat-tag">🛡️<b>'+h.def+'</b></span>';
+    if(isUnknownHero){
+      heroesHTML+='<span class="stat-tag">❤️<b>???</b></span>';
+      heroesHTML+='<span class="stat-tag">⚔️<b>???</b></span>';
+      heroesHTML+='<span class="stat-tag">🛡️<b>???</b></span>';
+    }else{
+      heroesHTML+='<span class="stat-tag">❤️<b>'+h.maxHP+'</b></span>';
+      heroesHTML+='<span class="stat-tag">⚔️<b>'+h.atk+'</b></span>';
+      heroesHTML+='<span class="stat-tag">🛡️<b>'+h.def+'</b></span>';
+    }
     heroesHTML+='</div>';
     heroesHTML+='<div class="hero-power">⚡战力: <b>'+power+'</b></div>';
     heroesHTML+='</div></div>';
