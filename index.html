@@ -9108,9 +9108,9 @@ function applyGambleResult(hero) {
     incrementRiskUsage();
     
     // 根据品质计算成功概率：品质越高，成功概率越小
-    // 普通(common): 60%, 稀有(rare): 50%, 史诗(epic): 40%, 传说(legendary): 30%, 神话(mythic): 20%
+    // 普通(common): 60%, 稀有(rare): 50%, 史诗(epic): 40%, 传说(legendary): 30%, 神话(mythic): 10%
     var qi = QUALITIES.indexOf(hero.quality);
-    var successRate = Math.max(0.2, 0.6 - qi * 0.1);
+    var successRate = Math.max(0.1, 0.6 - qi * 0.125);
     
     if (Math.random() < successRate) {
       // 品质+1
