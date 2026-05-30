@@ -4538,9 +4538,13 @@ let G = {
   // PVE连胜系统
   pveWinStreak: 0,
   pveMaxStreak: 0,
-  // 每日登录（已屏蔽）
+  // 每日登录（连续登录追踪）
   lastLoginDate: '',
   dailyBonusClaimed: true, // 屏蔽每日登录奖励
+  // 连续登录系统
+  loginStreak: 0,           // 当前连续登录天数
+  lastLoginDateStreak: '',  // 上次登录日期（用于计算连续登录）
+  unknownHeroUnlocked: false, // 未知英雄机制是否已解锁（连续登录2天后解锁）
   // 图鉴系统：记录已遇见/拥有的ID
   codex: {
     heroes: {},    // heroTemplateId -> true
@@ -4780,6 +4784,35 @@ function loadGame(){
     if(G.lastLoginDate!==today){
       G.dailyBonusClaimed=true;
       G.lastLoginDate=today;
+    }
+    
+    // 连续登录追踪
+    if(!G.loginStreak) G.loginStreak = 0;
+    if(!G.lastLoginDateStreak) G.lastLoginDateStreak = '';
+    if(G.unknownHeroUnlocked === undefined) G.unknownHeroUnlocked = false;
+    
+    var yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    var yesterdayStr = yesterday.toDateString();
+    
+    if(G.lastLoginDateStreak === today){
+      // 今天已经登录过，不重复计算
+    } else if(G.lastLoginDateStreak === yesterdayStr){
+      // 昨天登录过，连续登录+1
+      G.loginStreak = (G.loginStreak || 0) + 1;
+      G.lastLoginDateStreak = today;
+      
+      // 检查是否解锁未知英雄机制（连续登录2天）
+      if(G.loginStreak >= 2 && !G.unknownHeroUnlocked){
+        G.unknownHeroUnlocked = true;
+        setTimeout(function(){
+          showToast('🌌 未知英雄机制已解锁！融合英雄时有1%概率获得神秘未知英雄！');
+        }, 1000);
+      }
+    } else if(G.lastLoginDateStreak !== today){
+      // 连续登录中断，重新开始
+      G.loginStreak = 1;
+      G.lastLoginDateStreak = today;
     }
     if(G.pveWinStreak===undefined) G.pveWinStreak=0;
     if(G.pveMaxStreak===undefined) G.pveMaxStreak=0;
@@ -8790,9 +8823,13 @@ function generateFusedHero(heroes){
     }
   }
   
-  // === 未知英雄判定：1%概率生成未知品质英雄（金手指强制最高优先级） ===
+  // === 未知英雄判定：1%概率生成未知品质英雄（需要连续登录2天解锁机制） ===
   var isUnknownHero = false;
   var unknownTemplate = null;
+  
+  // 检查未知英雄机制是否已解锁
+  var unknownMechanismUnlocked = G.unknownHeroUnlocked || (G_cheats.enabled && G_cheats.forceUnknown);
+  
   if(G_cheats.enabled && G_cheats.forceUnknown){
     isUnknownHero = true;
     newQuality = 'unknown';
@@ -8804,7 +8841,7 @@ function generateFusedHero(heroes){
       unknownTemplate = UNKNOWN_HERO_TEMPLATES[Math.floor(Math.random() * UNKNOWN_HERO_TEMPLATES.length)];
     }
     isMutation = true;
-  }else if(Math.random() < UNKNOWN_HERO_CONFIG.mergeChance){
+  }else if(unknownMechanismUnlocked && Math.random() < UNKNOWN_HERO_CONFIG.mergeChance){
     isUnknownHero = true;
     newQuality = 'unknown';
     newQIdx = QUALITIES.indexOf('unknown');
@@ -10485,6 +10522,66 @@ function getRecruitOptions(){
   return options;
 }
 
+// 一键招募所有可招募英雄
+function recruitAllHeroes(){
+  var options = G_tavernOptions || getRecruitOptions();
+  var recruited = 0;
+  var totalCost = {gold: 0, gems: 0};
+  
+  var goldCosts={common:30,rare:100,epic:300,legendary:0,mythic:0};
+  var gemCosts={common:0,rare:0,epic:0,legendary:3,mythic:8};
+  
+  options.forEach(function(tpl){
+    if(G_tavernRecruited.has(tpl.id)) return;
+    
+    var goldCost = goldCosts[tpl.quality] || 50;
+    var gemCost = gemCosts[tpl.quality] || 0;
+    
+    // 检查资源是否足够
+    if(goldCost > 0 && G.resources.gold < goldCost) return;
+    if(gemCost > 0 && G.resources.gems < gemCost) return;
+    
+    // 扣除资源
+    if(goldCost > 0) G.resources.gold -= goldCost;
+    if(gemCost > 0) G.resources.gems -= gemCost;
+    totalCost.gold += goldCost;
+    totalCost.gems += gemCost;
+    
+    // 创建英雄
+    var hero = createHero(tpl.id);
+    G.heroes.push(hero);
+    G_tavernRecruited.add(tpl.id);
+    recruited++;
+    
+    // 更新统计
+    updateStat('heroRecruited', 1);
+    recordCodex('heroes', tpl.id);
+  });
+  
+  if(recruited === 0){
+    showToast('没有可招募的英雄（资源不足或全部已招募）');
+    return;
+  }
+  
+  updateResUI();
+  saveGame();
+  
+  var costStr = [];
+  if(totalCost.gold > 0) costStr.push('💰' + totalCost.gold);
+  if(totalCost.gems > 0) costStr.push('💎' + totalCost.gems);
+  
+  showToast('🎉 一键招募成功！招募了 ' + recruited + ' 个英雄，消耗 ' + costStr.join(' + '));
+  
+  // 检查成就
+  checkAchievement('hero_4');
+  checkAchievement('hero_5');
+  checkAchievement('hero_6');
+  checkAchievement('hero_7');
+  checkAchievement('hero_10');
+  
+  renderTavernRecruit();
+}
+
 function recruitHero(templateId){
   const tpl=HERO_TEMPLATES.find(t=>t.id===templateId);
   if(!tpl)return;
@@ -10762,6 +10859,7 @@ function renderTavernRecruit(){
       </div>
       <div class="btn-group mt-12">
         <button class="btn" id="tavern-back-btn" onclick="hideGuideTip();switchTab('town')">返回城镇</button>
+        <button class="btn btn-primary" onclick="recruitAllHeroes()" style="background:linear-gradient(135deg,#f39c12,#e67e22);border-color:#f39c12">⚡ 一键招募</button>
         ${(()=>{
           const cost=getTavernRefreshCost();
           const costStr=Object.entries(cost).map(([k,v])=>`${RESOURCE_DEFS[k]?.icon||''}${v}`).join(' ');
