@@ -6706,9 +6706,8 @@ function exitArenaBattle(){
 }
 
 function getHeroLevelCap(){
-  var templeLevel=G.buildings.temple||0;
-  var templeDef=BUILDING_DEFS.temple;
-  return templeDef.heroLevelCapByLevel[templeLevel]||20;
+  // 直接返回最大等级120，不再依赖神殿等级
+  return 120;
 }
 
 function getExpToLevel(level){return Math.floor(50*Math.pow(1.25,level-1))}
