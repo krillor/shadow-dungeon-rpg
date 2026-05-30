@@ -705,122 +705,184 @@ body{
 
 
 /* ===== 城镇界面 - 现代风格 ===== */
-/* 城镇主面板 - 整合标题和资源 */
+/* 城镇主面板 - 使用标准面板变量保持一致 */
 .town-main-panel{
-  padding:16px;
+  padding:20px;
+  background:linear-gradient(145deg,var(--panel),rgba(30,30,58,0.9));
+  border-radius:var(--radius-lg);
+  border:1px solid var(--border);
+  box-shadow:var(--shadow-md),var(--shadow-inset);
+  position:relative;
+  overflow:hidden;
 }
 /* 城镇头部 - 标题和资源在一行 */
 .town-header{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:12px;
-  padding-bottom:12px;
-  border-bottom:1px solid rgba(255,255,255,0.06);
+  gap:16px;
+  padding-bottom:16px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:16px;
 }
 /* 标题行 */
 .town-title-row{
   display:flex;
   align-items:center;
-  gap:8px;
+  gap:10px;
+}
+.town-title-row .icon{
+  font-size:28px;
+  filter:drop-shadow(0 2px 8px rgba(212,175,55,0.4));
 }
 .town-title{
-  font-size:16px;
-  font-weight:700;
-  background:linear-gradient(180deg,var(--gold2),var(--gold));
+  font-size:20px;
+  font-weight:800;
+  background:linear-gradient(135deg,var(--gold2),var(--gold),var(--gold3));
+  background-size:200% auto;
   -webkit-background-clip:text;
   -webkit-text-fill-color:transparent;
   background-clip:text;
+  text-shadow:0 0 20px rgba(212,175,55,0.3);
+  animation:title-glow 3s ease-in-out infinite;
+  letter-spacing:1px;
 }
-/* 资源栏 - 精简一行显示 */
+@keyframes title-glow{
+  0%,100%{text-shadow:0 0 20px rgba(212,175,55,0.3)}
+  50%{text-shadow:0 0 30px rgba(212,175,55,0.55)}
+}
+/* 资源栏 - 精美卡片式显示 */
 .town-resources-bar{
   display:flex;
   align-items:center;
-  gap:6px;
+  gap:8px;
   flex-wrap:nowrap;
   overflow-x:auto;
   scrollbar-width:none;
   -ms-overflow-style:none;
+  padding:4px;
 }
 .town-resources-bar::-webkit-scrollbar{display:none}
 .town-res-item{
   display:flex;
   align-items:center;
-  gap:3px;
-  padding:3px 8px;
-  background:rgba(0,0,0,0.25);
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,0.06);
+  gap:6px;
+  font-size:12px;
   white-space:nowrap;
   flex-shrink:0;
+  padding:6px 14px;
+  background:linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02));
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,0.08);
+  transition:var(--transition);
+  cursor:pointer;
+  box-shadow:var(--shadow-inset);
+}
+.town-res-item:hover{
+  transform:translateY(-2px);
+  border-color:var(--gold);
+  box-shadow:0 4px 12px rgba(0,0,0,0.2),var(--shadow-inset);
 }
 .town-res-icon{
-  font-size:13px;
+  font-size:14px;
   line-height:1;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }
 .town-res-val{
-  font-size:12px;
+  font-size:13px;
   font-weight:700;
-  letter-spacing:0.2px;
+  letter-spacing:0.3px;
 }
-.town-res-val.gold{color:#ffd700}
-.town-res-val.gems{color:#a855f7}
-.town-res-val.food{color:#f97316}
-.town-res-val.potion{color:#22c55e}
-.town-res-sep{
-  color:rgba(255,255,255,0.15);
-  font-size:10px;
-  flex-shrink:0;
-}
-/* 响应式：小屏幕时资源换行 */
-@media (max-width:400px){
-  .town-header{
-    flex-direction:column;
-    align-items:flex-start;
-    gap:10px;
-  }
-}
-.town-hero-summary{
-  display:flex;
-  gap:10px;
-  margin-top:12px;
-  padding:14px;
-  background:linear-gradient(135deg,rgba(0,0,0,0.3),rgba(0,0,0,0.15));
-  border-radius:var(--radius-lg);
-  font-size:12px;
-  border:1px solid rgba(255,255,255,0.06);
-  box-shadow:var(--shadow-sm),var(--shadow-inset);
-}
-.town-hero-summary-item{
-  flex:1;
-  text-align:center;
-  padding:8px;
-  border-radius:var(--radius-md);
-  transition:var(--transition);
-}
-.town-hero-summary-item:hover{
-  background:rgba(255,255,255,0.03);
-}
-.town-hero-summary-val{
-  font-size:18px;
-  font-weight:800;
+.town-res-val.gold{
   background:linear-gradient(180deg,var(--gold2),var(--gold));
   -webkit-background-clip:text;
   -webkit-text-fill-color:transparent;
   background-clip:text;
-  text-shadow:0 0 20px rgba(212,175,55,0.2);
+  font-weight:700;
+  font-size:13px;
+}
+.town-res-val.gems{
+  color:#a855f7;
+  font-weight:700;
+  font-size:13px;
+}
+.town-res-val.food{
+  color:#f97316;
+  font-weight:700;
+  font-size:13px;
+}
+.town-res-val.potion{
+  color:#22c55e;
+  font-weight:700;
+  font-size:13px;
+}
+.town-res-sep{
+  color:rgba(255,255,255,0.2);
+  font-size:12px;
+  flex-shrink:0;
+}
+/* 响应式：小屏幕时资源换行 */
+@media (max-width:500px){
+  .town-header{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:12px;
+  }
+  .town-resources-bar{
+    width:100%;
+    flex-wrap:wrap;
+  }
+  .town-hero-summary{
+    grid-template-columns:repeat(2,1fr);
+  }
+  .town-modules-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+.town-hero-summary{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+  margin-top:16px;
+  padding:16px;
+  background:linear-gradient(145deg,rgba(0,0,0,0.2),rgba(0,0,0,0.1));
+  border-radius:var(--radius-lg);
+  font-size:12px;
+  border:1px solid var(--border);
+  box-shadow:var(--shadow-sm),var(--shadow-inset);
+}
+.town-hero-summary-item{
+  text-align:center;
+  padding:12px 8px;
+  border-radius:var(--radius-md);
+  transition:var(--transition-bounce);
+  background:linear-gradient(145deg,rgba(255,255,255,0.02),transparent);
+  border:1px solid transparent;
+}
+.town-hero-summary-item:hover{
+  background:linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02));
+  border-color:var(--border);
+  transform:translateY(-2px);
+  box-shadow:var(--shadow-sm);
+}
+.town-hero-summary-val{
+  font-size:22px;
+  font-weight:900;
+  color:var(--gold);
+  filter:drop-shadow(0 2px 4px rgba(212,175,55,0.3));
 }
 .town-hero-summary-lbl{
   color:var(--text2);
-  margin-top:4px;
+  margin-top:6px;
   font-size:11px;
-  letter-spacing:0.3px;
+  letter-spacing:0.5px;
+  font-weight:500;
 }
 .town-module-btn{
   background:linear-gradient(145deg,var(--panel2),var(--panel));
   border:1px solid var(--border);
   border-radius:var(--radius-lg);
-  padding:18px 12px;
+  padding:20px 14px;
   cursor:pointer;
   transition:var(--transition-bounce);
   text-align:center;
@@ -837,13 +899,6 @@ body{
   opacity:0;
   transition:opacity 0.3s;
 }
-.town-module-btn::after{
-  content:'';
-  position:absolute;
-  inset:0;
-  background:linear-gradient(135deg,rgba(255,255,255,0.03),transparent);
-  pointer-events:none;
-}
 .town-module-btn:hover{
   transform:translateY(-4px);
   border-color:var(--gold);
@@ -853,38 +908,112 @@ body{
   opacity:1;
 }
 .town-module-btn:active{
-  transform:translateY(-1px);
+  transform:translateY(-2px);
   box-shadow:var(--shadow-sm);
 }
 .town-module-btn-icon{
-  font-size:32px;
-  margin-bottom:8px;
+  font-size:36px;
+  margin-bottom:10px;
   display:block;
-  filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  filter:drop-shadow(0 3px 6px rgba(0,0,0,0.4));
   transition:var(--transition-bounce);
 }
 .town-module-btn:hover .town-module-btn-icon{
   transform:scale(1.15);
-  filter:drop-shadow(0 4px 8px rgba(212,175,55,0.3));
+  filter:drop-shadow(0 6px 12px rgba(212,175,55,0.4));
 }
 .town-module-btn-name{
-  font-size:13px;
+  font-size:14px;
   font-weight:700;
-  background:linear-gradient(180deg,var(--gold2),var(--gold));
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
-  background-clip:text;
+  color:var(--gold);
+  letter-spacing:0.5px;
 }
 .town-module-btn-info{
   font-size:11px;
   color:var(--text2);
   margin-top:4px;
   letter-spacing:0.3px;
+  font-weight:500;
 }
 .town-quick-btns{
   display:flex;
-  gap:10px;
+  gap:12px;
   flex-wrap:wrap;
+}
+
+/* 城镇故事区域 */
+.town-story-section{
+  padding:16px;
+  background:linear-gradient(145deg,rgba(0,0,0,0.2),rgba(0,0,0,0.1));
+  border-radius:var(--radius-md);
+  margin:16px 0;
+  border:1px solid var(--border);
+  box-shadow:var(--shadow-inset);
+}
+.town-story-text{
+  color:var(--text2);
+  font-size:12px;
+  line-height:1.8;
+  margin-bottom:4px;
+}
+.town-progress-info{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid var(--border);
+}
+.town-progress-item{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  margin-bottom:6px;
+  background:rgba(0,0,0,0.2);
+  border-radius:var(--radius-sm);
+  font-size:12px;
+  color:var(--text2);
+  transition:all 0.3s;
+}
+.town-progress-item:hover{
+  background:rgba(0,0,0,0.25);
+  border-color:var(--border);
+}
+.town-progress-icon{
+  font-size:16px;
+}
+.town-progress-item.streak{
+  background:linear-gradient(135deg,rgba(255,107,0,0.15),rgba(255,107,0,0.05));
+  border:1px solid var(--orange);
+  color:var(--orange);
+}
+.town-progress-item.best{
+  background:linear-gradient(135deg,var(--gold-dim),rgba(212,175,55,0.05));
+  border:1px solid rgba(212,175,55,0.2);
+  color:var(--gold);
+}
+
+/* 城镇快速入口面板 - 使用标准panel变量 */
+.town-quick-panel{
+  background:linear-gradient(145deg,var(--panel),rgba(30,30,58,0.9));
+  border:1px solid var(--border);
+}
+
+/* 城镇模块网格 */
+.town-modules-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+}
+
+/* 资源值额外样式 */
+.town-res-val.stone{
+  color:#94a3b8;
+  font-weight:700;
+  font-size:13px;
+}
+.town-res-val.iron{
+  color:#a8a29e;
+  font-weight:700;
+  font-size:13px;
 }
 
 /* ===== 英雄卡片 - 精美卡片风格 ===== */
@@ -5807,10 +5936,14 @@ function updateResUI(){
   var gemsEl=document.getElementById('res-gems');
   var foodEl=document.getElementById('res-food');
   var expPotionEl=document.getElementById('res-expPotion');
+  var stoneEl=document.getElementById('res-stone');
+  var ironEl=document.getElementById('res-iron');
   if(goldEl)goldEl.textContent=formatResource(G.resources.gold);
   if(gemsEl)gemsEl.textContent=formatResource(G.resources.gems);
   if(foodEl)foodEl.textContent=formatResource(G.resources.food);
   if(expPotionEl)expPotionEl.textContent=formatResource(G.resources.expPotion||0);
+  if(stoneEl)stoneEl.textContent=formatResource(G.resources.stone||0);
+  if(ironEl)ironEl.textContent=formatResource(G.resources.iron||0);
 }
 
 // 资源栏更新别名（兼容不同调用）
@@ -11064,6 +11197,8 @@ function renderTown(el){
   var gems=G.resources&&G.resources.gems!==undefined?formatResource(G.resources.gems):'0';
   var food=G.resources&&G.resources.food!==undefined?formatResource(G.resources.food):'0';
   var expPotion=G.resources&&G.resources.expPotion!==undefined?formatResource(G.resources.expPotion):'0';
+  var stone=G.resources&&G.resources.stone!==undefined?formatResource(G.resources.stone):'0';
+  var iron=G.resources&&G.resources.iron!==undefined?formatResource(G.resources.iron):'0';
   
   // 构建HTML
   try{
@@ -11074,22 +11209,20 @@ function renderTown(el){
           +'<span class="town-title">暗影地牢</span>'
         +'</div>'
         +'<div class="town-resources-bar">'
-          +'<div class="town-res-item"><span class="town-res-icon">💰</span><span class="town-res-val gold" id="res-gold">'+gold+'</span></div>'
-          +'<span class="town-res-sep">·</span>'
-          +'<div class="town-res-item"><span class="town-res-icon">💎</span><span class="town-res-val gems" id="res-gems">'+gems+'</span></div>'
-          +'<span class="town-res-sep">·</span>'
-          +'<div class="town-res-item"><span class="town-res-icon">🍞</span><span class="town-res-val food" id="res-food">'+food+'</span></div>'
-          +'<span class="town-res-sep">·</span>'
-          +'<div class="town-res-item"><span class="town-res-icon">🧪</span><span class="town-res-val potion" id="res-expPotion">'+expPotion+'</span></div>'
+          +'<div class="town-res-item" title="金币"><span class="town-res-icon">💰</span><span class="town-res-val gold" id="res-gold">'+gold+'</span></div>'
+          +'<div class="town-res-item" title="宝石"><span class="town-res-icon">💎</span><span class="town-res-val gems" id="res-gems">'+gems+'</span></div>'
+          +'<div class="town-res-item" title="经验药水"><span class="town-res-icon">🧪</span><span class="town-res-val potion" id="res-expPotion">'+expPotion+'</span></div>'
         +'</div>'
       +'</div>'
-      +'<div style="color:var(--text2);font-size:12px;line-height:1.8;margin-top:12px;">'
-        +'<p>黑暗笼罩了这片大陆。曾经繁荣的帝国已经覆灭，亡灵和恶魔在废墟中游荡。</p>'
-        +'<p>你是最后的希望——一位流浪的指挥官，必须召集英雄，探索地牢，击败黑暗势力。</p>'
-        +'<p style="margin-top:8px;color:var(--gold)">当前进度：第 '+(G.stageProgress-1)+' 章已通关（无限模式）</p>'
-        +'<p style="color:var(--text2)">下一关：'+(nextStage?nextStage.icon+' '+nextStage.name:'已全部通关')+'</p>'
-        +(G.pveWinStreak>=3?'<p style="color:#ff6b00">🔥 当前PVE连胜: '+G.pveWinStreak+' 连 | 最高: '+G.pveMaxStreak+' 连</p>':'')
-        +(G.pveMaxStreak>=5?'<p style="color:var(--gold)">🏆 历史最佳: '+G.pveMaxStreak+' 连胜！</p>':'')
+      +'<div class="town-story-section">'
+        +'<div class="town-story-text">黑暗笼罩了这片大陆。曾经繁荣的帝国已经覆灭，亡灵和恶魔在废墟中游荡。</div>'
+        +'<div class="town-story-text">你是最后的希望——一位流浪的指挥官，必须召集英雄，探索地牢，击败黑暗势力。</div>'
+        +'<div class="town-progress-info">'
+          +'<div class="town-progress-item"><span class="town-progress-icon">⚔️</span><span>当前进度：第 '+(G.stageProgress-1)+' 章已通关</span></div>'
+          +'<div class="town-progress-item"><span class="town-progress-icon">'+(nextStage?nextStage.icon:'✓')+'</span><span>下一关：'+(nextStage?nextStage.name:'已全部通关')+'</span></div>'
+          +(G.pveWinStreak>=3?'<div class="town-progress-item streak"><span class="town-progress-icon">🔥</span><span>PVE连胜: '+G.pveWinStreak+' 连 | 最高: '+G.pveMaxStreak+' 连</span></div>':'')
+          +(G.pveMaxStreak>=5?'<div class="town-progress-item best"><span class="town-progress-icon">🏆</span><span>历史最佳: '+G.pveMaxStreak+' 连胜！</span></div>':'')
+        +'</div>'
       +'</div>'
       +'<div class="town-hero-summary">'
         +'<div class="town-hero-summary-item"><div class="town-hero-summary-val">'+heroCount+'</div><div class="town-hero-summary-lbl">英雄</div></div>'
@@ -11098,14 +11231,14 @@ function renderTown(el){
         +'<div class="town-hero-summary-item"><div class="town-hero-summary-val">'+(G.stageProgress-1)+'</div><div class="town-hero-summary-lbl">关卡</div></div>'
       +'</div>'
     +'</div>'
-    +'<div class="panel">'
+    +'<div class="panel town-quick-panel">'
       +'<div class="panel-title"><span class="icon">⚔️</span> 快速入口</div>'
       +'<div class="town-quick-btns">'
         +'<button class="btn btn-primary auto-battle-btn" id="auto-battle-btn" style="flex:1" onclick="startAutoBattle(G.stageProgress)">▶️ 自动推图</button>'
         +'<button class="btn" id="town-recruit" style="flex:1" onclick="renderTavernRecruit()">🍺 招募</button>'
       +'</div>'
     +'</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
+    +'<div class="town-modules-grid">'
       +'<div class="town-module-btn" onclick="switchTab(\'heroes\')">'
         +'<div class="town-module-btn-icon">👥</div>'
         +'<div class="town-module-btn-name">英雄</div>'
@@ -13938,10 +14071,12 @@ function renderEquip(el){
     +'<div class="panel-title"><span class="icon">🎒</span> 背包 ('+unequipped.length+'件)</div>'
     +(unequipped.length===0?'<div class="text-dim">背包为空</div>':'<div class="equip-grid">'+unequippedHTML+'</div>')
     +'</div>'
+    /* 已装备模块已屏蔽
     +'<div class="panel">'
     +'<div class="panel-title"><span class="icon">👤</span> 已装备 ('+equipped.length+'件)</div>'
     +(equipped.length===0?'<div class="text-dim">没有已装备的物品</div>':'<div class="equip-grid">'+equippedHTML+'</div>')
     +'</div>'
+    */
     /* 铁匠铺UI已屏蔽
     +'<div class="panel">'
     +'<div class="panel-title"><span class="icon">🔨</span> 铁匠铺 <span class="text-blue">Lv.'+(G.buildings.blacksmith||0)+'</span></div>'
