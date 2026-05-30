@@ -12901,11 +12901,16 @@ function quickClear(stageId){
 function renderMerge(el){
   var heroCount=G.heroes.length;
   // 清理无效的融合槽位引用（英雄已被移除的情况）
+  // 注意：使用 Array.some 进行宽松类型比较，避免字符串/数字 uid 不匹配
   if(window._mergeSlots){
-    var heroUidSet=new Set(G.heroes.map(function(h){return h.uid}));
+    var heroUids=G.heroes.map(function(h){return h.uid});
     for(var i=0;i<window._mergeSlots.length;i++){
-      if(window._mergeSlots[i]!==null && !heroUidSet.has(window._mergeSlots[i])){
-        window._mergeSlots[i]=null;
+      if(window._mergeSlots[i]!==null){
+        var slotUid=window._mergeSlots[i];
+        var exists=heroUids.some(function(uid){return uid==slotUid});
+        if(!exists){
+          window._mergeSlots[i]=null;
+        }
       }
     }
   }
@@ -13018,8 +13023,8 @@ function renderMerge(el){
     heroesHTML='<div class="text-dim text-center" style="padding:40px">没有符合条件的英雄</div>';
   }
   
-  // 计算融合预览
-  var selectedHeroes=usedUids.filter(Boolean).map(uid=>G.heroes.find(h=>h.uid===uid)).filter(Boolean);
+  // 计算融合预览（使用 == 进行宽松类型比较，避免字符串/数字 uid 不匹配）
+  var selectedHeroes=usedUids.filter(Boolean).map(uid=>G.heroes.find(h=>h.uid==uid)).filter(Boolean);
   var previewHTML='';
   if(selectedHeroes.length>=2){
     // 品质预览
@@ -13691,7 +13696,7 @@ function updateMergePreview(){
   if(!previewEl)return;
 
   var usedUids=window._mergeSlots||[null,null,null];
-  var selectedHeroes=usedUids.filter(Boolean).map(function(uid){return G.heroes.find(function(h){return h.uid===uid});}).filter(Boolean);
+  var selectedHeroes=usedUids.filter(Boolean).map(function(uid){return G.heroes.find(function(h){return h.uid==uid});}).filter(Boolean);
 
   if(selectedHeroes.length<2){
     previewEl.innerHTML='<div class="text-dim text-sm text-center">👇 点击下方英雄卡片添加到融合槽</div>';
@@ -13721,18 +13726,23 @@ function updateMergeButtonState(){
   if(!btn)return;
 
   // 清理无效的融合槽位引用（英雄已被移除的情况）
+  // 注意：使用 Array.some 进行宽松类型比较，避免字符串/数字 uid 不匹配
   if(window._mergeSlots){
-    var heroUidSet=new Set(G.heroes.map(function(h){return h.uid}));
+    var heroUids=G.heroes.map(function(h){return h.uid});
     for(var i=0;i<window._mergeSlots.length;i++){
-      if(window._mergeSlots[i]!==null && !heroUidSet.has(window._mergeSlots[i])){
-        window._mergeSlots[i]=null;
+      if(window._mergeSlots[i]!==null){
+        var slotUid=window._mergeSlots[i];
+        var exists=heroUids.some(function(uid){return uid==slotUid});
+        if(!exists){
+          window._mergeSlots[i]=null;
+        }
       }
     }
   }
 
   var usedUids=window._mergeSlots||[null,null,null];
-  // 只统计有效英雄（在G.heroes中存在的）
-  var validHeroes=usedUids.filter(Boolean).map(function(uid){return G.heroes.find(function(x){return x.uid===uid})}).filter(Boolean);
+  // 只统计有效英雄（在G.heroes中存在的，使用 == 进行宽松类型比较）
+  var validHeroes=usedUids.filter(Boolean).map(function(uid){return G.heroes.find(function(x){return x.uid==uid})}).filter(Boolean);
   var selectedCount=validHeroes.length;
 
   var qualities=validHeroes.map(function(h){return QUALITIES.indexOf(h.quality)});
