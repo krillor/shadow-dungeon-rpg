@@ -11155,6 +11155,72 @@ function unequipItem(heroUid,slot){
   hero.equipment[slot]=null;
 }
 
+// 为英雄详情页弹出装备选择器
+function showEquipPickerForHero(heroUid,slot){
+  var hero=G.heroes.find(function(h){return h.uid===heroUid});
+  if(!hero)return;
+  var slotNames={weapon:'武器',armor:'护甲',accessory:'饰品'};
+  var slotIcons={weapon:'⚔️',armor:'🛡️',accessory:'💍'};
+  // 获取该槽位类型的未装备装备
+  var available=G.equipment.filter(function(e){
+    if(e.heroUid!==null)return false;
+    var tpl=EQUIP_TEMPLATES.find(function(t){return t.id===e.id});
+    if(!tpl)return false;
+    var eqSlot=tpl.type==='weapon'?'weapon':tpl.type==='armor'?'armor':'accessory';
+    return eqSlot===slot;
+  });
+  // 按品质排序
+  var qualityOrder={mythic:5,legendary:4,epic:3,rare:2,common:1,hidden:6};
+  available.sort(function(a,b){
+    var qa=qualityOrder[(EQUIP_TEMPLATES.find(function(t){return t.id===a.id})||{}).quality]||0;
+    var qb=qualityOrder[(EQUIP_TEMPLATES.find(function(t){return t.id===b.id})||{}).quality]||0;
+    return qb-qa;
+  });
+  var itemsHtml='';
+  if(available.length===0){
+    itemsHtml='<div style="text-align:center;padding:20px;color:var(--text3)">没有可用的'+slotNames[slot]+'</div>';
+  }else{
+    itemsHtml='<div style="display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow-y:auto">';
+    for(var i=0;i<available.length;i++){
+      var eq=available[i];
+      var tpl=EQUIP_TEMPLATES.find(function(t){return t.id===eq.id});
+      if(!tpl)continue;
+      var enhanceLevel=eq.enhance||0;
+      var enhanceBonus=enhanceLevel>0?' <span style="color:var(--blue);font-size:10px">+'+enhanceLevel+'</span>':'';
+      var statsStr=Object.entries(tpl.stats).map(function(entry){
+        var k=entry[0],v=entry[1];
+        var finalVal=Math.floor(v*(1+enhanceLevel*0.1));
+        var statNames={atk:'攻击',def:'防御',hp:'生命',mp:'魔法',spd:'速度'};
+        return (statNames[k]||k)+'+'+finalVal;
+      }).join(' ');
+      var affixHtml='';
+      if(eq.affixes&&eq.affixes.length>0){
+        affixHtml=' <span style="font-size:9px;color:var(--purple)">🔮'+eq.affixes.length+'</span>';
+      }
+      itemsHtml+='<div class="equip-item quality-'+tpl.quality+'" style="cursor:pointer" onclick="equipItemAndRefresh('+heroUid+','+eq.uid+')">'
+        +'<span class="equip-icon">'+tpl.icon+'</span>'
+        +'<span class="equip-name q-'+tpl.quality+'">'+tpl.name+enhanceBonus+'</span>'
+        +affixHtml
+        +'<span class="equip-stats" style="margin-left:auto;white-space:nowrap">'+statsStr+'</span>'
+        +'</div>';
+    }
+    itemsHtml+='</div>';
+  }
+  openModal('<div class="panel" style="max-width:380px">'
+    +'<div class="panel-title">'+slotIcons[slot]+' 选择'+slotNames[slot]+'</div>'
+    +'<div class="text-xs text-dim mb-8">为 <b style="color:var(--gold)">'+hero.name+'</b> 选择一件'+slotNames[slot]+'</div>'
+    +itemsHtml
+    +'<div class="btn-group mt-8"><button class="btn" onclick="closeModal()">取消</button></div>'
+    +'</div>');
+}
+
+// 装备后刷新英雄详情页
+function equipItemAndRefresh(heroUid,equipUid){
+  equipItem(heroUid,equipUid);
+  closeModal();
+  showHeroDetail(heroUid);
+}
+
 // ==================== 建筑系统 ====================
 function getBuildingCost(buildingId,level){
   const def=BUILDING_DEFS[buildingId];
@@ -12263,7 +12329,7 @@ function showHeroDetail(uid){
         <div class="hd-equip-icon" style="opacity:.3">${slotIcons[slot]}</div>
         <div class="hd-equip-slot-empty">未装备${slotNames[slot]}</div>
         <div class="hd-equip-actions">
-          <button class="hd-equip-btn btn-equip" onclick="event.stopPropagation();closeModal();switchTab('equip')">装备</button>
+          <button class="hd-equip-btn btn-equip" onclick="event.stopPropagation();showEquipPickerForHero(${h.uid},'${slot}')">装备</button>
         </div>
       </div>`;
     }
@@ -13067,29 +13133,20 @@ function showTalentTree(heroUid){
 .btn-breakthrough:hover{background:linear-gradient(135deg,#1a0a2a,#2a1a3a);box-shadow:0 0 15px rgba(168,85,247,.4)}
 
 </style>
-    <div class="tt-panel">
-      <div class="tt-header">
-        <div class="tt-hero">
-          <span class="tt-hero-icon">${hero.icon}</span>
-          <span class="tt-hero-name">${hero.name}</span>
-          <span style="font-size:11px;color:var(--text3)">Lv.${hero.level}</span>
-        </div>
-        <div class="tt-points-bar">
-          <div class="tt-points-item"><div class="tt-points-val available">${availablePoints}</div><div class="tt-points-lbl">可用</div></div>
-          <div class="tt-points-item"><div class="tt-points-val used">${usedPoints}</div><div class="tt-points-lbl">已用</div></div>
-          <div class="tt-points-item"><div class="tt-points-val total">${hero.talentPoints}</div><div class="tt-points-lbl">总计</div></div>
-        </div>
-      </div>
-      <div class="tt-tabs">${branchTabs}</div>
-      ${branchKeys.map((key,i)=>`<div class="tt-branch ${i===0?'active':''}" id="tt-branch-${key}">${renderBranch(key)}</div>`).join('')}
-      <div class="tt-actions">
-        <button class="btn" onclick="closeModal();showHeroDetail(${heroUid})">← 返回</button>
-        <button class="btn" style="background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.3);color:#ff6b6b" onclick="resetTalents(${heroUid})">🔄 重置</button>
-      </div>
-    </div>
-  `;
-  
-  showModal('天赋树',html);
+  openModal('<div class="panel" style="max-width:480px">'
+    +'<div class="panel-title"><span class="icon">🌟</span> 天赋树 <span class="text-xs text-dim">'+hero.icon+' '+hero.name+' Lv.'+hero.level+'</span></div>'
+    +'<div class="tt-points-bar" style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:12px;padding:8px;background:rgba(0,0,0,.2);border-radius:var(--radius-sm)">'
+      +'<div class="tt-points-item" style="text-align:center"><div class="tt-points-val available" style="font-size:18px;font-weight:bold;color:var(--gold)">'+availablePoints+'</div><div class="tt-points-lbl" style="font-size:10px;color:var(--text3)">可用</div></div>'
+      +'<div class="tt-points-item" style="text-align:center"><div class="tt-points-val used" style="font-size:18px;font-weight:bold;color:var(--purple)">'+usedPoints+'</div><div class="tt-points-lbl" style="font-size:10px;color:var(--text3)">已用</div></div>'
+      +'<div class="tt-points-item" style="text-align:center"><div class="tt-points-val total" style="font-size:18px;font-weight:bold;color:var(--text2)">'+hero.talentPoints+'</div><div class="tt-points-lbl" style="font-size:10px;color:var(--text3)">总计</div></div>'
+    +'</div>'
+    +'<div class="tt-tabs">'+branchTabs+'</div>'
+    +branchKeys.map(function(key,i){return '<div class="tt-branch '+(i===0?'active':'')+'" id="tt-branch-'+key+'">'+renderBranch(key)+'</div>'}).join('')
+    +'<div class="tt-actions" style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">'
+      +'<button class="btn" style="flex:1" onclick="closeModal();showHeroDetail('+heroUid+')">← 返回详情</button>'
+      +'<button class="btn" style="flex:1;background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.3);color:#ff6b6b" onclick="resetTalents('+heroUid+')">🔄 重置天赋</button>'
+    +'</div>'
+    +'</div>');
 }
 
 // 切换天赋分支Tab
