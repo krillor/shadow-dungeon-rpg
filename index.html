@@ -11047,10 +11047,10 @@ function renderTown(el){
   // }catch(e){console.error('[Town Error] offline:',e);}
   
   // 获取资源数据
-  var gold=G.resources&&G.resources.gold!==undefined?G.resources.gold:0;
-  var gems=G.resources&&G.resources.gems!==undefined?G.resources.gems:0;
-  var food=G.resources&&G.resources.food!==undefined?G.resources.food:0;
-  var expPotion=G.resources&&G.resources.expPotion!==undefined?G.resources.expPotion:0;
+  var gold=G.resources&&G.resources.gold!==undefined?formatResource(G.resources.gold):'0';
+  var gems=G.resources&&G.resources.gems!==undefined?formatResource(G.resources.gems):'0';
+  var food=G.resources&&G.resources.food!==undefined?formatResource(G.resources.food):'0';
+  var expPotion=G.resources&&G.resources.expPotion!==undefined?formatResource(G.resources.expPotion):'0';
   
   // 构建HTML
   try{
