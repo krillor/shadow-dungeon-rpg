@@ -7085,11 +7085,22 @@ function addHeroExp(hero,amount){
     var hpRatio=hero.hp/hero.maxHP;
     var mpRatio=hero.mp/hero.maxMP;
     // 重新计算基础属性（与当前属性取最大值，确保异变/隐藏品质加成不被覆盖）
-    hero.maxHP=Math.max(hero.maxHP, calcStat(role.baseHP, qm, hero.level));
-    hero.atk=Math.max(hero.atk, calcStat(role.baseATK, qm, hero.level));
-    hero.def=Math.max(hero.def, calcStat(role.baseDEF, qm, hero.level));
-    hero.spd=Math.max(hero.spd, calcStat(role.baseSPD, qm, hero.level));
-    hero.maxMP=Math.max(hero.maxMP, calcStat(role.baseMP, qm, hero.level));
+    if(hero.isUnknown && hero.unknownTemplate && hero.unknownTemplate.hiddenStats){
+      // 未知英雄：基于模板属性按等级缩放（模板属性视为Lv.1基准值）
+      var hs=hero.unknownTemplate.hiddenStats;
+      var lvlScale = 1 + 0.35 * Math.log(1 + hero.level); // 与calcStat相同的增长曲线
+      hero.maxHP=Math.max(hero.maxHP, Math.floor(hs.maxHP * lvlScale));
+      hero.atk=Math.max(hero.atk, Math.floor(hs.atk * lvlScale));
+      hero.def=Math.max(hero.def, Math.floor(hs.def * lvlScale));
+      hero.spd=Math.max(hero.spd, Math.floor(hs.spd * lvlScale));
+      hero.maxMP=Math.max(hero.maxMP, Math.floor(hs.maxMP * lvlScale));
+    }else{
+      hero.maxHP=Math.max(hero.maxHP, calcStat(role.baseHP, qm, hero.level));
+      hero.atk=Math.max(hero.atk, calcStat(role.baseATK, qm, hero.level));
+      hero.def=Math.max(hero.def, calcStat(role.baseDEF, qm, hero.level));
+      hero.spd=Math.max(hero.spd, calcStat(role.baseSPD, qm, hero.level));
+      hero.maxMP=Math.max(hero.maxMP, calcStat(role.baseMP, qm, hero.level));
+    }
     // 保持HP/MP比例（满血升级保持满血，残血升级按比例恢复）
     hero.hp=Math.max(1,Math.floor(hero.maxHP*hpRatio));
     hero.mp=Math.floor(hero.maxMP*mpRatio);
@@ -11361,15 +11372,16 @@ function showHeroDetail(uid){
   const questProgress = isLockedUnknown ? getUnknownHeroQuestProgress(h) : null;
 
   // 品质颜色映射
-  const qualityColors={common:'#aaa',rare:'#5b9bd5',epic:'#b06ce6',legendary:'#e8c840',mythic:'#ff6b6b'};
-  const qualityStars={common:'★',rare:'★★',epic:'★★★',legendary:'★★★★',mythic:'★★★★★',hidden:'✦✦✦✦✦✦'};
+  const qualityColors={common:'#aaa',rare:'#5b9bd5',epic:'#b06ce6',legendary:'#e8c840',mythic:'#ff6b6b',hidden:'#00ffcc',unknown:'#ff00ff'};
+  const qualityStars={common:'★',rare:'★★',epic:'★★★',legendary:'★★★★',mythic:'★★★★★',hidden:'✦✦✦✦✦✦',unknown:'✦✦✦✦✦✦✦✦✦'};
   const qualityDescs={
     common:'基础品质，属性成长一般',
     rare:'稀有品质，属性加成+25%',
     epic:'史诗品质，属性加成+55%',
     legendary:'传说品质，属性加成+90%',
     mythic:'神话品质，属性加成+140%',
-    hidden:'✦隐藏品质，属性加成+220%，集所有素材技能于一身'
+    hidden:'✦隐藏品质，属性加成+220%，集所有素材技能于一身',
+    unknown:'🌌未知品质，属性加成+300%，蕴含超越常理的神秘力量'
   };
 
   // 属性上限参考（用于进度条百分比）
@@ -11543,19 +11555,22 @@ function showHeroDetail(uid){
     return rows.map(([label,val])=>`<div class="hd-mechanism-row"><span class="hd-mechanism-label">${label}</span><span class="hd-mechanism-val">${val}</span></div>`).join('');
   }
 
+  const displayIcon = isLockedUnknown ? (h.displayIcon || '❓') : h.icon;
+  const displayHeroName = isLockedUnknown ? (h.displayName || '???') : h.name;
+
   const html=`
   <div class="hero-detail-overlay" onclick="if(event.target===this)closeModal()">
     <div class="hero-detail-panel">
       <!-- 头部：英雄基本信息 -->
-      <div class="hd-header" style="background:linear-gradient(135deg,rgba(${h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':'220,50,50'},.12),transparent)">
+      <div class="hd-header" style="background:linear-gradient(135deg,rgba(${h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':h.quality==='mythic'?'220,50,50':h.quality==='hidden'?'0,255,204':'255,0,255'},.12),transparent)">
         <button class="hd-close" onclick="closeModal()">✕</button>
-        <div class="hd-avatar" style="background:rgba(${h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':'220,50,50'},.2);border-color:${qualityColors[h.quality]}">
-          ${h.icon}
+        <div class="hd-avatar" style="background:rgba(${h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':h.quality==='mythic'?'220,50,50':h.quality==='hidden'?'0,255,204':'255,0,255'},.2);border-color:${qualityColors[h.quality]||'#ff00ff'}">
+          ${displayIcon}
         </div>
         <div style="flex:1;min-width:0">
-          <div class="hd-name" style="color:${qualityColors[h.quality]}">${h.name}</div>
+          <div class="hd-name" style="color:${qualityColors[h.quality]||'#ff00ff'}">${displayHeroName}</div>
           <div class="hd-meta">
-            ${role.icon} ${role.name} · <span class="hd-quality-badge hd-quality-${h.quality}">${QUALITY_NAMES[h.quality]} ${qualityStars[h.quality]}</span>
+            ${role.icon} ${role.name} · <span class="hd-quality-badge hd-quality-${h.quality}">${QUALITY_NAMES[h.quality]} ${qualityStars[h.quality]||''}</span>
             ${inTeam?'<span style="color:#2ed573;font-size:10px"> · 🛡️队伍中</span>':''}
           </div>
           <div class="hd-meta">Lv.${h.level} / ${levelCap} · EXP ${h.exp}/${getExpToLevel(h.level)}</div>
