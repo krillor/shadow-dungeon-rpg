@@ -841,8 +841,11 @@ body{
   .stage-grid{gap:6px}
   .stage-node{min-width:68px;padding:10px 8px}
   .battle-stats-board{flex-direction:column}
-  .battle-control-row{gap:4px}
-  .battle-ctrl-btn{padding:3px 7px;font-size:9px}
+  .battle-toolbar{padding:8px 10px;gap:6px}
+  .battle-toolbar-group{gap:4px}
+  .battle-ctrl-btn{padding:5px 8px;font-size:10px}
+  .battle-ctrl-btn.btn-speed{min-width:30px;padding:5px 6px;font-size:10px}
+  .battle-toolbar-sep{display:none}
 }
 .town-hero-summary{
   display:grid;
@@ -946,37 +949,113 @@ body{
   flex-wrap:wrap;
 }
 
-/* 城镇故事区域 */
+/* 城镇故事区域 - 地下城堡氛围 */
 .town-story-section{
-  padding:16px;
-  background:linear-gradient(145deg,rgba(0,0,0,0.2),rgba(0,0,0,0.1));
-  border-radius:var(--radius-md);
+  padding:20px;
+  background:
+    linear-gradient(180deg,rgba(8,8,16,0.95) 0%,rgba(18,14,28,0.9) 40%,rgba(12,10,20,0.95) 100%);
+  border-radius:var(--radius-lg);
   margin:16px 0;
-  border:1px solid var(--border);
-  box-shadow:var(--shadow-inset);
+  border:1px solid rgba(100,80,160,0.2);
+  box-shadow:
+    var(--shadow-inset),
+    inset 0 0 60px rgba(0,0,0,0.4),
+    0 0 30px rgba(80,50,140,0.08);
   position:relative;
   overflow:hidden;
 }
+/* 顶部石拱装饰线 */
 .town-story-section::before{
   content:'';
   position:absolute;
   top:0;left:0;right:0;
-  height:1px;
-  background:linear-gradient(90deg,transparent,rgba(212,175,55,0.2),transparent);
+  height:2px;
+  background:linear-gradient(90deg,transparent 5%,rgba(140,120,180,0.4) 20%,rgba(212,175,55,0.3) 50%,rgba(140,120,180,0.4) 80%,transparent 95%);
 }
+/* 右下角火把光晕 */
 .town-story-section::after{
   content:'';
   position:absolute;
-  bottom:0;right:0;
-  width:60px;height:60px;
-  background:radial-gradient(circle,rgba(212,175,55,0.06),transparent 70%);
+  bottom:-10px;right:-10px;
+  width:80px;height:80px;
+  background:radial-gradient(circle,rgba(255,140,50,0.12) 0%,rgba(255,100,30,0.06) 40%,transparent 70%);
   pointer-events:none;
+  animation:torch-flicker 3s ease-in-out infinite;
 }
+@keyframes torch-flicker{
+  0%,100%{opacity:.7;transform:scale(1)}
+  25%{opacity:1;transform:scale(1.05)}
+  50%{opacity:.6;transform:scale(.98)}
+  75%{opacity:.9;transform:scale(1.02)}
+}
+/* 故事文字 - 带城堡氛围 */
 .town-story-text{
-  color:var(--text2);
-  font-size:12px;
-  line-height:1.8;
-  margin-bottom:4px;
+  color:rgba(200,190,210,0.85);
+  font-size:13px;
+  line-height:2;
+  margin-bottom:6px;
+  text-shadow:0 1px 3px rgba(0,0,0,0.5);
+  position:relative;
+  z-index:1;
+  letter-spacing:0.3px;
+}
+/* 故事区域装饰：左上角锁链图标 */
+.town-story-deco{
+  position:absolute;
+  top:8px;left:12px;
+  font-size:10px;
+  opacity:0.15;
+  pointer-events:none;
+  z-index:0;
+}
+/* 故事区域装饰：右下角火把 */
+.town-story-torch{
+  position:absolute;
+  bottom:6px;right:10px;
+  font-size:14px;
+  opacity:0.25;
+  pointer-events:none;
+  z-index:0;
+  animation:torch-flicker 2.5s ease-in-out infinite;
+  filter:drop-shadow(0 0 6px rgba(255,120,30,0.4));
+}
+/* 飘浮灰尘粒子效果 */
+.town-story-dust{
+  position:absolute;
+  top:0;left:0;right:0;bottom:0;
+  pointer-events:none;
+  z-index:0;
+  overflow:hidden;
+}
+.town-story-dust::before{
+  content:'';
+  position:absolute;
+  width:3px;height:3px;
+  background:rgba(200,180,160,0.15);
+  border-radius:50%;
+  top:30%;left:20%;
+  animation:dust-float-1 8s ease-in-out infinite;
+}
+.town-story-dust::after{
+  content:'';
+  position:absolute;
+  width:2px;height:2px;
+  background:rgba(200,180,160,0.1);
+  border-radius:50%;
+  top:60%;left:70%;
+  animation:dust-float-2 10s ease-in-out infinite;
+}
+@keyframes dust-float-1{
+  0%,100%{transform:translate(0,0);opacity:0}
+  20%{opacity:0.3}
+  50%{transform:translate(40px,-20px);opacity:0.15}
+  80%{opacity:0.25}
+}
+@keyframes dust-float-2{
+  0%,100%{transform:translate(0,0);opacity:0}
+  30%{opacity:0.2}
+  60%{transform:translate(-30px,-25px);opacity:0.1}
+  90%{opacity:0.2}
 }
 .town-progress-info{
   margin-top:12px;
@@ -2004,37 +2083,121 @@ body{
   text-shadow:0 0 10px rgba(212,175,55,0.3);
 }
 
-/* 战斗面板控制区 */
-.battle-control-row{
+/* ===== 战斗控制工具栏 ===== */
+.battle-toolbar{
   display:flex;
   align-items:center;
+  justify-content:space-between;
   gap:8px;
+  padding:10px 14px;
+  margin-bottom:12px;
+  background:linear-gradient(145deg,rgba(0,0,0,0.3),rgba(0,0,0,0.15));
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  box-shadow:var(--shadow-inset);
   flex-wrap:wrap;
 }
-.battle-control-row .battle-ctrl-btn{
-  padding:4px 10px;
+.battle-toolbar-group{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.battle-toolbar-label{
   font-size:10px;
+  color:var(--text3);
+  font-weight:600;
+  letter-spacing:0.5px;
+  text-transform:uppercase;
+  margin-right:2px;
+}
+.battle-ctrl-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  padding:6px 12px;
+  font-size:11px;
+  font-weight:600;
   border-radius:var(--radius-sm);
   background:linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02));
   border:1px solid var(--border);
   color:var(--text2);
   cursor:pointer;
   transition:var(--transition);
+  white-space:nowrap;
+  letter-spacing:0.3px;
+  position:relative;
+  overflow:hidden;
 }
-.battle-control-row .battle-ctrl-btn:hover{
+.battle-ctrl-btn::after{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent);
+  opacity:0;
+  transition:opacity 0.2s;
+}
+.battle-ctrl-btn:hover{
+  border-color:var(--border-light);
+  color:var(--text);
+  transform:translateY(-1px);
+  box-shadow:var(--shadow-sm);
+}
+.battle-ctrl-btn:hover::after{opacity:1}
+.battle-ctrl-btn:active{
+  transform:translateY(0);
+  box-shadow:none;
+}
+/* 暂停按钮 - 蓝色系 */
+.battle-ctrl-btn.btn-pause{
+  border-color:rgba(93,173,226,0.3);
+  color:#5dade2;
+}
+.battle-ctrl-btn.btn-pause:hover{
+  border-color:#5dade2;
+  background:rgba(93,173,226,0.1);
+  box-shadow:0 0 10px rgba(93,173,226,0.2);
+}
+.battle-ctrl-btn.btn-pause.paused{
   border-color:var(--gold);
   color:var(--gold);
+  background:var(--gold-dim);
+  box-shadow:0 0 10px var(--gold-glow);
 }
-.battle-control-row .battle-ctrl-btn.active{
+/* 结束战斗按钮 - 红色系 */
+.battle-ctrl-btn.btn-end{
+  border-color:rgba(255,71,87,0.25);
+  color:#ff6b7a;
+}
+.battle-ctrl-btn.btn-end:hover{
+  border-color:#ff4757;
+  background:rgba(255,71,87,0.1);
+  box-shadow:0 0 10px rgba(255,71,87,0.2);
+}
+/* 倍速按钮 */
+.battle-ctrl-btn.btn-speed{
+  min-width:36px;
+  padding:6px 8px;
+  font-size:11px;
+  font-weight:700;
+}
+.battle-ctrl-btn.btn-speed.active{
   border-color:var(--gold);
   color:var(--gold);
   background:var(--gold-dim);
   box-shadow:0 0 8px var(--gold-glow);
 }
-.battle-ctrl-sep{
-  color:var(--text3);
-  font-size:10px;
-  margin:0 2px;
+.battle-ctrl-btn.btn-speed:hover{
+  border-color:var(--gold);
+  color:var(--gold);
+}
+/* 工具栏分隔线 */
+.battle-toolbar-sep{
+  width:1px;
+  height:24px;
+  background:linear-gradient(180deg,transparent,var(--border),transparent);
+  flex-shrink:0;
 }
 
 /* 战斗统计面板 */
@@ -2417,15 +2580,20 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
       <div class="panel">
         <div class="panel-title">
           <span class="icon">⚔️</span> 战斗
-          <span class="battle-ctrl-sep">|</span>
-          <button class="battle-ctrl-btn" id="battle-pause-btn" onclick="toggleBattlePause()">⏸️ 暂停</button>
-          <button class="battle-ctrl-btn" onclick="forceEndBattle()" style="color:#ff4757;border-color:rgba(255,71,87,0.2)">⏹ 结束战斗</button>
-          <span class="battle-ctrl-sep">|</span>
-          <span class="text-xs text-dim">倍速</span>
-          <button class="battle-ctrl-btn active" id="speed-1" onclick="setBattleSpeed(1)">x1</button>
-          <button class="battle-ctrl-btn" id="speed-2" onclick="setBattleSpeed(2)">x2</button>
-          <button class="battle-ctrl-btn" id="speed-4" onclick="setBattleSpeed(4)">x4</button>
-          <button class="battle-ctrl-btn" id="speed-8" onclick="setBattleSpeed(8)">x8</button>
+        </div>
+        <div class="battle-toolbar">
+          <div class="battle-toolbar-group">
+            <button class="battle-ctrl-btn btn-pause" id="battle-pause-btn" onclick="toggleBattlePause()">⏸ 暂停</button>
+            <button class="battle-ctrl-btn btn-end" onclick="forceEndBattle()">⏹ 结束</button>
+          </div>
+          <div class="battle-toolbar-sep"></div>
+          <div class="battle-toolbar-group">
+            <span class="battle-toolbar-label">倍速</span>
+            <button class="battle-ctrl-btn btn-speed active" id="speed-1" onclick="setBattleSpeed(1)">x1</button>
+            <button class="battle-ctrl-btn btn-speed" id="speed-2" onclick="setBattleSpeed(2)">x2</button>
+            <button class="battle-ctrl-btn btn-speed" id="speed-4" onclick="setBattleSpeed(4)">x4</button>
+            <button class="battle-ctrl-btn btn-speed" id="speed-8" onclick="setBattleSpeed(8)">x8</button>
+          </div>
         </div>
         <div id="battle-info"></div>
         <div class="battle-scene" id="battle-scene">
@@ -8208,11 +8376,11 @@ function toggleBattlePause(){
 function updatePauseButton(){
   var btn=document.getElementById('battle-pause-btn');
   if(btn){
-    btn.textContent=G_battlePaused?'▶️ 继续':'⏸️ 暂停';
+    btn.textContent=G_battlePaused?'▶ 继续':'⏸ 暂停';
     if(G_battlePaused){
-      btn.classList.add('active');
+      btn.classList.add('paused');
     }else{
-      btn.classList.remove('active');
+      btn.classList.remove('paused');
     }
   }
 }
@@ -11466,14 +11634,11 @@ function renderTown(el){
         +'</div>'
       +'</div>'
       +'<div class="town-story-section">'
+        +'<span class="town-story-deco">⛓️</span>'
+        +'<span class="town-story-torch">🔥</span>'
+        +'<div class="town-story-dust"></div>'
         +'<div class="town-story-text">黑暗笼罩了这片大陆。曾经繁荣的帝国已经覆灭，亡灵和恶魔在废墟中游荡。</div>'
         +'<div class="town-story-text">你是最后的希望——一位流浪的指挥官，必须召集英雄，探索地牢，击败黑暗势力。</div>'
-        +'<div class="town-progress-info">'
-          +'<div class="town-progress-item"><span class="town-progress-icon">⚔️</span><span>当前进度：第 '+(G.stageProgress-1)+' 章已通关</span></div>'
-          +'<div class="town-progress-item"><span class="town-progress-icon">'+(nextStage?nextStage.icon:'✓')+'</span><span>下一关：'+(nextStage?nextStage.name:'已全部通关')+'</span></div>'
-          +(G.pveWinStreak>=3?'<div class="town-progress-item streak"><span class="town-progress-icon">🔥</span><span>PVE连胜: '+G.pveWinStreak+' 连 | 最高: '+G.pveMaxStreak+' 连</span></div>':'')
-          +(G.pveMaxStreak>=5?'<div class="town-progress-item best"><span class="town-progress-icon">🏆</span><span>历史最佳: '+G.pveMaxStreak+' 连胜！</span></div>':'')
-        +'</div>'
       +'</div>'
       +'<div class="town-hero-summary">'
         +'<div class="town-hero-summary-item"><div class="town-hero-summary-val">'+heroCount+'</div><div class="town-hero-summary-lbl">英雄</div></div>'
