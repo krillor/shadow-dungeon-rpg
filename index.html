@@ -10071,7 +10071,7 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
       (hero.isBard&&hero.bardPoem?'<div class="merge-result-mutation" style="color:#c084fc">🎵 '+hero.bardPoem.name+' · 全队士气+5%</div>':'')+
       (hero.isBlackHole?'<div class="merge-result-mutation" style="color:#7c3aed">🌀 黑洞吞噬 · 吞噬了'+hero.blackHoleVictim+'</div>':'')+
       (hero.isBalanced?'<div class="merge-result-mutation" style="color:#fbbf24">⚖️ 天平审判 · 属性重新分配</div>':'')+
-      (hero.isReincarnated?'<div class="merge-result-mutation" style="color:#a78bfa">🔄 轮回转生 · 从'+ROLES[hero.reincarnatedFrom]?ROLES[hero.reincarnatedFrom].name:'?')+'转生</div>':'')+
+      (hero.isReincarnated?'<div class="merge-result-mutation" style="color:#a78bfa">🔄 轮回转生 · 从'+(ROLES[hero.reincarnatedFrom]?ROLES[hero.reincarnatedFrom].name:'?')+'转生</div>':'')+
       (hero.isSoulSwap?'<div class="merge-result-mutation" style="color:#e879f9">🎭 灵魂交换 · 外观与属性不匹配</div>':'')+
       '<div class="merge-result-quality" style="color:'+qualityColors[hero.quality]+'">'+QUALITY_NAMES[hero.quality]+'</div>'+
       '<div class="merge-result-name">'+displayName+'</div>'+
