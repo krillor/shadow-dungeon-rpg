@@ -452,6 +452,65 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
   .hero-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
   .town-module-btn:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg),var(--shadow-gold)}
 }
+
+
+
+/* ===== 天赋树样式 ===== */
+.tt-panel{max-width:480px;margin:0 auto;padding:4px}
+.tt-header{text-align:center;margin-bottom:16px;padding:12px;background:linear-gradient(135deg,rgba(168,85,247,.08),rgba(201,162,39,.08));border-radius:var(--radius-md);border:1px solid rgba(168,85,247,.15)}
+.tt-hero{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px}
+.tt-hero-icon{font-size:32px}
+.tt-hero-name{font-size:16px;font-weight:bold;color:var(--gold)}
+.tt-points-bar{display:flex;align-items:center;justify-content:center;gap:16px}
+.tt-points-item{text-align:center}
+.tt-points-val{font-size:18px;font-weight:bold}
+.tt-points-val.available{color:var(--gold)}
+.tt-points-val.used{color:var(--purple)}
+.tt-points-val.total{color:var(--text2)}
+.tt-points-lbl{font-size:10px;color:var(--text3)}
+.tt-tabs{display:flex;gap:4px;margin-bottom:16px}
+.tt-tab{flex:1;padding:8px 4px;border:1px solid var(--border);background:var(--panel2);color:var(--text2);cursor:pointer;border-radius:var(--radius-sm);font-size:12px;font-family:inherit;text-align:center;transition:var(--transition)}
+.tt-tab.active{background:rgba(168,85,247,.15);border-color:var(--purple);color:var(--purple);font-weight:bold}
+.tt-tab:hover{border-color:var(--border-light)}
+.tt-branch{display:none}
+.tt-branch.active{display:block}
+.tt-node{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);position:relative}
+.tt-node:hover{border-color:var(--border-light);background:var(--panel3)}
+.tt-node.tt-can-add{border-color:rgba(201,162,39,.3)}
+.tt-node.tt-can-add:hover{border-color:var(--gold);box-shadow:0 0 12px rgba(201,162,39,.15);transform:translateX(3px)}
+.tt-node.tt-maxed{border-color:rgba(168,85,247,.3);background:rgba(168,85,247,.06)}
+.tt-node.tt-locked{opacity:.45;cursor:not-allowed}
+.tt-node.tt-locked:hover{transform:none;border-color:var(--border);box-shadow:none}
+.tt-node.tt-empty{opacity:.5;cursor:not-allowed}
+.tt-node.tt-empty:hover{transform:none;border-color:var(--border);box-shadow:none}
+.tt-node.tt-ultimate{border-color:rgba(201,162,39,.25);background:linear-gradient(135deg,rgba(201,162,39,.06),rgba(168,85,247,.06))}
+.tt-node.tt-ultimate.tt-maxed{border-color:rgba(201,162,39,.5);box-shadow:0 0 16px rgba(201,162,39,.2)}
+.tt-node-left{flex-shrink:0}
+.tt-node-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid var(--border);background:rgba(0,0,0,.2);transition:var(--transition)}
+.tt-can-add .tt-node-icon{border-color:var(--gold);box-shadow:0 0 8px rgba(201,162,39,.25)}
+.tt-maxed .tt-node-icon{border-color:var(--purple);background:rgba(168,85,247,.15);box-shadow:0 0 10px rgba(168,85,247,.3)}
+.tt-node-center{flex:1;min-width:0}
+.tt-node-name{font-size:13px;font-weight:bold;color:var(--text);margin-bottom:2px}
+.tt-maxed .tt-node-name{color:var(--purple)}
+.tt-can-add .tt-node-name{color:var(--gold)}
+.tt-node-desc{font-size:10px;color:var(--text2);line-height:1.3;margin-bottom:4px}
+.tt-node-dots{display:flex;gap:3px}
+.tt-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid var(--border)}
+.tt-dot-filled{background:var(--purple);border-color:var(--purple);box-shadow:0 0 4px rgba(168,85,247,.4)}
+.tt-can-add .tt-dot-filled{background:var(--gold);border-color:var(--gold);box-shadow:0 0 4px rgba(201,162,39,.4)}
+.tt-node-right{flex-shrink:0;text-align:right}
+.tt-node-level{font-size:12px;font-weight:bold;color:var(--text2)}
+.tt-maxed .tt-node-level{color:var(--purple)}
+.tt-can-add .tt-node-level{color:var(--gold)}
+.tt-node-tag{font-size:9px;color:var(--gold);background:rgba(201,162,39,.15);padding:1px 6px;border-radius:3px;margin-top:2px;display:inline-block}
+.tt-line{text-align:center;padding:2px 0}
+.tt-line-inner{width:2px;height:16px;margin:0 auto;background:var(--border);border-radius:1px;transition:var(--transition)}
+.tt-line-active .tt-line-inner{background:var(--purple);box-shadow:0 0 4px rgba(168,85,247,.3)}
+.tt-line-ready .tt-line-inner{background:var(--gold);opacity:.5}
+.tt-line-locked .tt-line-inner{background:var(--border);opacity:.3}
+.tt-actions{display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
+.tt-actions .btn{flex:1}
+
 </style>
 </head>
 <body>
@@ -909,6 +968,7 @@ const TALENT_TREES = {
 const TALENT_CONFIG = {
   pointsPerLevel: 1,        // 每升1级获得1点天赋点
   maxPoints: 15,            // 最多15点天赋点（对应15级后不再获得）
+  unlockLevel: 10,          // 10级后开放天赋系统
   resetCostGold: 500,       // 重置天赋消耗金币
   resetCostGems: 5          // 重置天赋消耗宝石
 };
@@ -7046,6 +7106,19 @@ function showTalentTree(heroUid){
   
   const tree=TALENT_TREES[hero.role];
   if(!tree)return;
+
+  // 等级检查：10级后开放天赋系统
+  if(hero.level<TALENT_CONFIG.unlockLevel){
+    showModal('☆ 天赋系统', `
+      <div style="text-align:center;padding:20px">
+        <div style="font-size:48px;margin-bottom:12px">🔒</div>
+        <div style="font-size:16px;font-weight:bold;color:var(--gold);margin-bottom:8px">天赋系统尚未解锁</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:16px">英雄等级不足，需要达到 <b style="color:var(--gold)">Lv.${TALENT_CONFIG.unlockLevel}</b> 才能解锁天赋系统</div>
+        <button class="btn btn-primary" style="margin-top:8px" onclick="closeModal()">知道了</button>
+      </div>
+    `);
+    return;
+  }
   
   // 初始化英雄天赋数据
   if(!hero.talents)hero.talents={};
@@ -7059,7 +7132,7 @@ function showTalentTree(heroUid){
   const branchKeys=Object.keys(tree.branches);
   const branchTabs=branchKeys.map((key,i)=>{
     const b=tree.branches[key];
-    const branchUsed=Object.values(hero.talents).reduce((s,p)=>s+p,0);
+
     return `<button class="tt-tab ${i===0?'active':''}" onclick="switchTalentBranch(${heroUid},'${key}',this)">${b.icon} ${b.name}</button>`;
   }).join('');
   
@@ -7081,7 +7154,7 @@ function showTalentTree(heroUid){
       
       const isLocked=!!lockedReason;
       const statusClass=isMaxed?'tt-maxed':canAdd?'tt-can-add':isLocked?'tt-locked':'tt-empty';
-      const isUltimate=talent.maxPoints===1&&i>=3;
+      const isUltimate=talent.maxPoints===1&&i===4;
       
       // 进度点
       let dotsHtml='';
@@ -7121,62 +7194,7 @@ function showTalentTree(heroUid){
   }
   
   const html=`
-    <style>
-      .tt-panel{max-width:480px;margin:0 auto;padding:4px}
-      .tt-header{text-align:center;margin-bottom:16px;padding:12px;background:linear-gradient(135deg,rgba(168,85,247,.08),rgba(201,162,39,.08));border-radius:var(--radius-md);border:1px solid rgba(168,85,247,.15)}
-      .tt-hero{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px}
-      .tt-hero-icon{font-size:32px}
-      .tt-hero-name{font-size:16px;font-weight:bold;color:var(--gold)}
-      .tt-points-bar{display:flex;align-items:center;justify-content:center;gap:16px}
-      .tt-points-item{text-align:center}
-      .tt-points-val{font-size:18px;font-weight:bold}
-      .tt-points-val.available{color:var(--gold)}
-      .tt-points-val.used{color:var(--purple)}
-      .tt-points-val.total{color:var(--text2)}
-      .tt-points-lbl{font-size:10px;color:var(--text3)}
-      .tt-tabs{display:flex;gap:4px;margin-bottom:16px}
-      .tt-tab{flex:1;padding:8px 4px;border:1px solid var(--border);background:var(--panel2);color:var(--text2);cursor:pointer;border-radius:var(--radius-sm);font-size:12px;font-family:inherit;text-align:center;transition:var(--transition)}
-      .tt-tab.active{background:rgba(168,85,247,.15);border-color:var(--purple);color:var(--purple);font-weight:bold}
-      .tt-tab:hover{border-color:var(--border-light)}
-      .tt-branch{display:none}
-      .tt-branch.active{display:block}
-      .tt-node{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);position:relative}
-      .tt-node:hover{border-color:var(--border-light);background:var(--panel3)}
-      .tt-node.tt-can-add{border-color:rgba(201,162,39,.3)}
-      .tt-node.tt-can-add:hover{border-color:var(--gold);box-shadow:0 0 12px rgba(201,162,39,.15);transform:translateX(3px)}
-      .tt-node.tt-maxed{border-color:rgba(168,85,247,.3);background:rgba(168,85,247,.06)}
-      .tt-node.tt-locked{opacity:.45;cursor:not-allowed}
-      .tt-node.tt-locked:hover{transform:none;border-color:var(--border);box-shadow:none}
-      .tt-node.tt-empty{opacity:.5;cursor:not-allowed}
-      .tt-node.tt-empty:hover{transform:none;border-color:var(--border);box-shadow:none}
-      .tt-node.tt-ultimate{border-color:rgba(201,162,39,.25);background:linear-gradient(135deg,rgba(201,162,39,.06),rgba(168,85,247,.06))}
-      .tt-node.tt-ultimate.tt-maxed{border-color:rgba(201,162,39,.5);box-shadow:0 0 16px rgba(201,162,39,.2)}
-      .tt-node-left{flex-shrink:0}
-      .tt-node-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid var(--border);background:rgba(0,0,0,.2);transition:var(--transition)}
-      .tt-can-add .tt-node-icon{border-color:var(--gold);box-shadow:0 0 8px rgba(201,162,39,.25)}
-      .tt-maxed .tt-node-icon{border-color:var(--purple);background:rgba(168,85,247,.15);box-shadow:0 0 10px rgba(168,85,247,.3)}
-      .tt-node-center{flex:1;min-width:0}
-      .tt-node-name{font-size:13px;font-weight:bold;color:var(--text);margin-bottom:2px}
-      .tt-maxed .tt-node-name{color:var(--purple)}
-      .tt-can-add .tt-node-name{color:var(--gold)}
-      .tt-node-desc{font-size:10px;color:var(--text2);line-height:1.3;margin-bottom:4px}
-      .tt-node-dots{display:flex;gap:3px}
-      .tt-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid var(--border)}
-      .tt-dot-filled{background:var(--purple);border-color:var(--purple);box-shadow:0 0 4px rgba(168,85,247,.4)}
-      .tt-can-add .tt-dot-filled{background:var(--gold);border-color:var(--gold);box-shadow:0 0 4px rgba(201,162,39,.4)}
-      .tt-node-right{flex-shrink:0;text-align:right}
-      .tt-node-level{font-size:12px;font-weight:bold;color:var(--text2)}
-      .tt-maxed .tt-node-level{color:var(--purple)}
-      .tt-can-add .tt-node-level{color:var(--gold)}
-      .tt-node-tag{font-size:9px;color:var(--gold);background:rgba(201,162,39,.15);padding:1px 6px;border-radius:3px;margin-top:2px;display:inline-block}
-      .tt-line{text-align:center;padding:2px 0}
-      .tt-line-inner{width:2px;height:16px;margin:0 auto;background:var(--border);border-radius:1px;transition:var(--transition)}
-      .tt-line-active .tt-line-inner{background:var(--purple);box-shadow:0 0 4px rgba(168,85,247,.3)}
-      .tt-line-ready .tt-line-inner{background:var(--gold);opacity:.5}
-      .tt-line-locked .tt-line-inner{background:var(--border);opacity:.3}
-      .tt-actions{display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
-      .tt-actions .btn{flex:1}
-    </style>
+
     <div class="tt-panel">
       <div class="tt-header">
         <div class="tt-hero">
@@ -7902,7 +7920,11 @@ function renderEquip(el){
     +'.equip-item .equip-enhance{color:var(--blue);font-size:10px;margin-left:2px}'
     +'.equip-item .equip-set-badge{position:absolute;top:-4px;right:-4px;font-size:10px;background:var(--panel);border:1px solid var(--gold);border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)}'
     +'.equip-item .equip-hero{font-size:10px;color:var(--text2);margin-left:auto}'
-    +'</style>'
+    +'
+
+
+
+</style>'
     +'<div class="panel">'
     +'<div class="panel-title"><span class="icon">⚡</span> 快捷操作</div>'
     +'<div class="btn-group">'
