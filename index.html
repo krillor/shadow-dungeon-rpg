@@ -2619,7 +2619,10 @@ const ROLES = {
   warlock: {name:'术士',icon:'👁️',desc:'持续伤害和削弱敌人，高攻击高蓝量',baseHP:70,baseATK:22,baseDEF:5,baseSPD:10,baseMP:80,
     passive:{name:'灵魂虹吸',desc:'造成伤害的15%转化为生命恢复，DOT伤害+50%'},lifeSteal:0.15,dotBoost:0.5},
   paladin: {name:'圣骑士',icon:'✨',desc:'攻守兼备，能治疗能输出',baseHP:130,baseATK:14,baseDEF:15,baseSPD:7,baseMP:60,
-    passive:{name:'圣光庇护',desc:'受到致命伤害时保留1点生命（每场战斗1次），对亡灵伤害+50%'},undeadBonus:0.5,deathDefy:true}
+    passive:{name:'圣光庇护',desc:'受到致命伤害时保留1点生命（每场战斗1次），对亡灵伤害+50%'},undeadBonus:0.5,deathDefy:true},
+  // 未知英雄职业（解锁前显示）
+  unknown: {name:'未知',icon:'❓',desc:'身份不明的神秘存在',baseHP:100,baseATK:15,baseDEF:10,baseSPD:12,baseMP:60,
+    passive:{name:'???',desc:'???'}}
 };
 
 // 天赋树配置 - 每个职业3个分支，每个分支5个天赋（3基础+1进阶+1终极）
@@ -11822,7 +11825,13 @@ function getTalentEffects(hero){
 }
 
 function renderTeam(el){
-  var available=G.heroes.filter(function(h){return !G.team.some(function(t){return t&&t.uid===h.uid;});});
+  // 过滤可用英雄：未解锁的未知英雄不能上阵
+  var available=G.heroes.filter(function(h){
+    if(G.team.some(function(t){return t&&t.uid===h.uid;})) return false;
+    // 未解锁的未知英雄不可用
+    if(h.isUnknown && !h.isUnlocked) return false;
+    return true;
+  });
   var teamCount=G.team.filter(function(t){return t!==null;}).length;
 
   // 计算队伍总战力
@@ -11844,15 +11853,18 @@ function renderTeam(el){
   for(var i=0;i<6;i++){
     var h=G.team[i];
     if(h){
-      var role=ROLES[h.role];
+      var isLockedUnknown = h.isUnknown && !h.isUnlocked;
+      var role=ROLES[h.role]||ROLES.unknown;
       var qc=QUALITY_COLORS[h.quality]||'#888';
+      var displayName = isLockedUnknown ? (h.displayName||'???') : h.name;
+      var displayIcon = isLockedUnknown ? (h.displayIcon||'❓') : h.icon;
       html+='<div class="team-slot quality-'+h.quality+'" onclick="removeFromTeam('+i+')" style="border-color:'+qc+'33">'
         +'<div style="position:absolute;top:0;left:0;right:0;height:2px;background:'+qc+'"></div>'
-        +'<div class="slot-icon">'+h.icon+'</div>'
-        +'<div class="slot-name q-'+h.quality+'">'+h.name+'</div>'
+        +'<div class="slot-icon">'+displayIcon+'</div>'
+        +'<div class="slot-name q-'+h.quality+'">'+displayName+'</div>'
         +'<div class="slot-role">'+role.icon+' '+role.name+'</div>'
         +'<div class="slot-level">Lv.'+h.level+'</div>'
-        +'<div class="slot-stats"><span>❤️<b>'+h.maxHP+'</b></span><span>⚔️<b>'+h.atk+'</b></span></div>'
+        +'<div class="slot-stats"><span>❤️<b>'+(isLockedUnknown?'???':h.maxHP)+'</b></span><span>⚔️<b>'+(isLockedUnknown?'???':h.atk)+'</b></span></div>'
         +'<div class="slot-remove">点击移除</div>'
         +'</div>';
     } else {
@@ -11863,6 +11875,25 @@ function renderTeam(el){
     }
   }
   html+='</div></div>';
+
+  // 未解锁未知英雄提示
+  var lockedUnknowns=G.heroes.filter(function(h){return h.isUnknown && !h.isUnlocked});
+  if(lockedUnknowns.length>0){
+    html+='<div class="panel" style="background:rgba(255,0,255,.08);border-color:rgba(255,0,255,.2);margin-bottom:8px">'
+      +'<div class="panel-title" style="color:rgba(255,0,255,.9)">🔒 未解锁的未知英雄 ('+lockedUnknowns.length+')</div>'
+      +'<div style="font-size:11px;color:var(--text3)">未解锁的未知英雄无法上阵，需要完成任务解锁后才能使用</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">';
+    lockedUnknowns.forEach(function(h){
+      html+='<div class="hero-card quality-unknown" style="opacity:0.5;cursor:not-allowed;min-width:120px">'
+        +'<div class="hero-avatar" style="background:rgba(255,0,255,.1)">'+(h.displayIcon||'❓')+'</div>'
+        +'<div class="hero-info">'
+        +'<div class="hero-name"><span class="q-unknown">'+(h.displayName||'???')+'</span></div>'
+        +'<div class="hero-meta">❓ 未知 · '+QUALITY_NAMES[h.quality]+'</div>'
+        +'<div class="text-xs" style="color:rgba(255,0,255,.6)">🔒 未解锁</div>'
+        +'</div></div>';
+    });
+    html+='</div></div>';
+  }
 
   // 可用英雄列表
   html+='<div class="panel"><div class="panel-title"><span class="icon">📋</span> 可用英雄 ('+available.length+')</div>';
@@ -11877,19 +11908,22 @@ function renderTeam(el){
     });
     for(var j=0;j<available.length;j++){
       var ah=available[j];
-      var arole=ROLES[ah.role];
-      var astats=getHeroStats(ah);
-      var apower=astats.atk+astats.def+astats.maxHP+astats.spd;
+      var isLockedU = ah.isUnknown && !ah.isUnlocked;
+      var arole=ROLES[ah.role]||ROLES.unknown;
+      var astats=isLockedU?{atk:0,def:0,maxHP:0,spd:0}:getHeroStats(ah);
+      var apower=isLockedU?'???':(astats.atk+astats.def+astats.maxHP+astats.spd);
+      var ahName=isLockedU?(ah.displayName||'???'):ah.name;
+      var ahIcon=isLockedU?(ah.displayIcon||'❓'):ah.icon;
       var heroCardId=(j===0 && G.tutorialPhase==='guide' && G.tutorialStep===3)?' id="guide-hero-card"':'';
       html+='<div class="hero-card quality-'+ah.quality+'"'+heroCardId+' onclick="quickAddToTeam('+ah.uid+')" style="cursor:pointer">'
-        +'<div class="hero-avatar" style="background:rgba(100,100,100,.1)">'+ah.icon+'</div>'
+        +'<div class="hero-avatar" style="background:rgba(100,100,100,.1)">'+ahIcon+'</div>'
         +'<div class="hero-info">'
-        +'<div class="hero-name"><span class="q-'+ah.quality+'">'+ah.name+'</span></div>'
+        +'<div class="hero-name"><span class="q-'+ah.quality+'">'+ahName+'</span></div>'
         +'<div class="hero-meta">'+arole.icon+' '+arole.name+' · Lv.'+ah.level+'</div>'
         +'<div class="hero-stats">'
-        +'<span class="stat-tag">❤️<b>'+ah.maxHP+'</b></span>'
-        +'<span class="stat-tag">⚔️<b>'+ah.atk+'</b></span>'
-        +'<span class="stat-tag">🛡️<b>'+ah.def+'</b></span>'
+        +'<span class="stat-tag">❤️<b>'+(isLockedU?'???':ah.maxHP)+'</b></span>'
+        +'<span class="stat-tag">⚔️<b>'+(isLockedU?'???':ah.atk)+'</b></span>'
+        +'<span class="stat-tag">🛡️<b>'+(isLockedU?'???':ah.def)+'</b></span>'
         +'<span class="stat-tag" style="color:var(--gold)">⚡<b>'+apower+'</b></span>'
         +'</div>'
         +'<div class="text-xs text-dim mt-4">点击编入队伍</div>'
@@ -12003,23 +12037,34 @@ function renderBondPreview(team){
 }
 
 function showTeamPicker(slotIdx){
-  const available=G.heroes.filter(h=>!G.team.some(t=>t&&t.uid===h.uid));
+  // 过滤可用英雄：未解锁的未知英雄不能上阵
+  const available=G.heroes.filter(h=>{
+    if(G.team.some(t=>t&&t.uid===h.uid)) return false;
+    if(h.isUnknown && !h.isUnlocked) return false;
+    return true;
+  });
   if(available.length===0){showToast('没有可用英雄');return}
-  const html=available.map(h=>`
-    <div class="hero-card quality-${h.quality}" onclick="addToTeam(${slotIdx},${h.uid});closeModal()" style="cursor:pointer">
+  const html=available.map(h=>{
+    var role=ROLES[h.role]||ROLES.unknown;
+    return `<div class="hero-card quality-${h.quality}" onclick="addToTeam(${slotIdx},${h.uid});closeModal()" style="cursor:pointer">
       <div class="hero-avatar">${h.icon}</div>
       <div class="hero-info">
         <div class="hero-name"><span class="q-${h.quality}">${h.name}</span></div>
-        <div class="hero-meta">${ROLES[h.role].icon} ${ROLES[h.role].name} · Lv.${h.level}</div>
+        <div class="hero-meta">${role.icon} ${role.name} · Lv.${h.level}</div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
   showModal('选择英雄',html);
 }
 
 function addToTeam(slotIdx,heroUid){
   const hero=G.heroes.find(h=>h.uid===heroUid);
   if(!hero)return;
+  // 未解锁的未知英雄不能上阵
+  if(hero.isUnknown && !hero.isUnlocked){
+    showToast('🔒 该未知英雄未解锁，无法上阵！');
+    return;
+  }
   G.team[slotIdx]=hero;
   if(onGuideQuickAdd()){
     return;
