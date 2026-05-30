@@ -14424,7 +14424,7 @@ function quickAddMergeHeroes(mode){
   var usedUids=window._mergeSlots||[null,null,null];
   var usedSet=new Set(usedUids.filter(Boolean));
   var teamUids=G.team.filter(h=>h!==null).map(h=>h.uid);
-  var available=G.heroes.filter(function(h){return !usedSet.has(h.uid)&&!teamUids.includes(h.uid)&&!h.locked;});
+  var available=G.heroes.filter(function(h){return !usedSet.has(h.uid)&&!teamUids.some(function(u){return u==h.uid})&&!h.locked;});
 
   if(available.length===0){
     showToast('没有可用英雄');
@@ -14499,9 +14499,9 @@ function quickAddMergeHeroes(mode){
 }
 
 function addMergeHero(heroUid){
-  // 检查英雄是否已经在槽位中
+  // 检查英雄是否已经在槽位中（使用 == 宽松比较）
   for(var i=0;i<3;i++){
-    if(window._mergeSlots[i]===heroUid){
+    if(window._mergeSlots[i]!=null && window._mergeSlots[i]==heroUid){
       return; // 已在槽位中，不重复添加
     }
   }
@@ -14521,7 +14521,7 @@ function addMergeHero(heroUid){
 
 function removeMergeHero(heroUid){
   for(var i=0;i<3;i++){
-    if(window._mergeSlots[i]===heroUid){
+    if(window._mergeSlots[i]!=null && window._mergeSlots[i]==heroUid){
       window._mergeSlots[i]=null;
       updateMergeSlotUI(i, null);
       updateMergeHeroCardStyle(heroUid, false);
@@ -14536,12 +14536,12 @@ function showMergePicker(slotIdx){
   const usedUids=window._mergeSlots.filter(Boolean);
   // 获取已上阵英雄UID列表
   const teamUids=G.team.filter(h=>h!==null).map(h=>h.uid);
-  // 过滤：已使用的 + 已上阵的 + 已锁定的
-  const available=G.heroes.filter(h=>!usedUids.includes(h.uid)&&!teamUids.includes(h.uid)&&!h.locked);
+  // 过滤：已使用的 + 已上阵的 + 已锁定的（使用 == 宽松比较）
+  const available=G.heroes.filter(h=>!usedUids.some(function(u){return u==h.uid})&&!teamUids.some(function(u){return u==h.uid})&&!h.locked);
   if(available.length===0){
     // 检查是否因为全部上阵或锁定了
-    const allInTeam=G.heroes.length>0&&G.heroes.every(h=>teamUids.includes(h.uid));
-    const allLocked=G.heroes.length>0&&G.heroes.every(h=>h.locked||teamUids.includes(h.uid));
+    const allInTeam=G.heroes.length>0&&G.heroes.every(h=>teamUids.some(function(u){return u==h.uid}));
+    const allLocked=G.heroes.length>0&&G.heroes.every(h=>h.locked||teamUids.some(function(u){return u==h.uid}));
     if(allInTeam){
       showToast('所有英雄都已上阵，无法合成');
     }else if(allLocked){
@@ -14579,7 +14579,7 @@ function updateMergeUI(){
   const slots=window._mergeSlots;
   for(let i=0;i<3;i++){
     const el=document.getElementById('merge-slot-'+i);
-    const hero=slots[i]?G.heroes.find(h=>h.uid===slots[i]):null;
+    const hero=slots[i]?G.heroes.find(h=>h.uid==slots[i]):null;
     if(hero){
       el.innerHTML='<span class="slot-icon">'+hero.icon+'</span><span class="slot-name q-'+hero.quality+'">'+hero.name+'</span><span class="slot-remove" onclick="event.stopPropagation();removeMergeSlot('+i+')">×</span>';
       el.className='merge-slot filled quality-'+hero.quality;
