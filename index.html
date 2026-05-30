@@ -732,31 +732,60 @@ body{
   -webkit-text-fill-color:transparent;
   background-clip:text;
 }
-/* 资源栏 - 横向排列 */
+/* 资源栏 - 进度条样式 */
 .town-resources-bar{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  width:100%;
+}
+.town-res-row{
   display:flex;
   align-items:center;
   gap:8px;
-  flex-wrap:wrap;
-}
-.town-res-item{
-  display:flex;
-  align-items:center;
-  gap:4px;
-  padding:4px 10px;
-  background:linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02));
-  border-radius:20px;
-  border:1px solid rgba(255,255,255,0.08);
-  font-size:11px;
-  white-space:nowrap;
 }
 .town-res-icon{
-  font-size:12px;
+  font-size:14px;
+  flex-shrink:0;
+  width:20px;
+  text-align:center;
+}
+.town-res-bar-wrap{
+  flex:1;
+  height:16px;
+  background:rgba(0,0,0,0.4);
+  border-radius:8px;
+  overflow:hidden;
+  position:relative;
+  border:1px solid rgba(255,255,255,0.06);
+}
+.town-res-bar-fill{
+  height:100%;
+  border-radius:8px;
+  transition:width 0.6s ease;
+  position:relative;
+  min-width:2px;
+}
+.town-res-bar-fill.gold{background:linear-gradient(90deg,#b8860b,#ffd700,#daa520)}
+.town-res-bar-fill.gems{background:linear-gradient(90deg,#6a0dad,#9b59b6,#8e44ad)}
+.town-res-bar-fill.food{background:linear-gradient(90deg,#c0392b,#e74c3c,#d35400)}
+.town-res-bar-fill.potion{background:linear-gradient(90deg,#1abc9c,#2ecc71,#27ae60)}
+.town-res-bar-fill::after{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;
+  height:50%;
+  background:linear-gradient(180deg,rgba(255,255,255,0.2),transparent);
+  border-radius:8px 8px 0 0;
 }
 .town-res-val{
   color:var(--gold);
-  font-weight:600;
-  font-size:12px;
+  font-weight:700;
+  font-size:11px;
+  flex-shrink:0;
+  min-width:48px;
+  text-align:right;
+  letter-spacing:0.3px;
 }
 /* 响应式：小屏幕时资源换行 */
 @media (max-width:400px){
@@ -764,10 +793,6 @@ body{
     flex-direction:column;
     align-items:flex-start;
     gap:10px;
-  }
-  .town-resources-bar{
-    width:100%;
-    justify-content:flex-start;
   }
 }
 .town-hero-summary{
@@ -11046,11 +11071,28 @@ function renderTown(el){
   //   if(offline) G.offlineEarnings=offline;
   // }catch(e){console.error('[Town Error] offline:',e);}
   
-  // 获取资源数据
-  var gold=G.resources&&G.resources.gold!==undefined?formatResource(G.resources.gold):'0';
-  var gems=G.resources&&G.resources.gems!==undefined?formatResource(G.resources.gems):'0';
-  var food=G.resources&&G.resources.food!==undefined?formatResource(G.resources.food):'0';
-  var expPotion=G.resources&&G.resources.expPotion!==undefined?formatResource(G.resources.expPotion):'0';
+  // 获取资源原始数值（用于进度条比例）
+  var goldRaw=G.resources&&G.resources.gold!==undefined?G.resources.gold:0;
+  var gemsRaw=G.resources&&G.resources.gems!==undefined?G.resources.gems:0;
+  var foodRaw=G.resources&&G.resources.food!==undefined?G.resources.food:0;
+  var expPotionRaw=G.resources&&G.resources.expPotion!==undefined?G.resources.expPotion:0;
+  
+  // 格式化显示数值
+  var gold=formatResource(goldRaw);
+  var gems=formatResource(gemsRaw);
+  var food=formatResource(foodRaw);
+  var expPotion=formatResource(expPotionRaw);
+  
+  // 计算进度条比例（动态上限：取各资源的合理上限）
+  function resPercent(val,max){
+    if(max<=0)return 0;
+    var p=Math.min((val/max)*100,100);
+    return Math.max(p,2);// 最低2%可见
+  }
+  var goldMax=Math.max(goldRaw*1.2,10000);
+  var gemsMax=Math.max(gemsRaw*1.2,100);
+  var foodMax=Math.max(foodRaw*1.2,5000);
+  var potionMax=Math.max(expPotionRaw*1.2,100);
   
   // 构建HTML
   try{
@@ -11061,10 +11103,26 @@ function renderTown(el){
           +'<span class="town-title">暗影地牢</span>'
         +'</div>'
         +'<div class="town-resources-bar">'
-          +'<div class="town-res-item" title="金币"><span class="town-res-icon">💰</span><span class="town-res-val" id="res-gold">'+gold+'</span></div>'
-          +'<div class="town-res-item" title="宝石"><span class="town-res-icon">💎</span><span class="town-res-val" id="res-gems">'+gems+'</span></div>'
-          +'<div class="town-res-item" title="食物"><span class="town-res-icon">🍞</span><span class="town-res-val" id="res-food">'+food+'</span></div>'
-          +'<div class="town-res-item" title="经验药水"><span class="town-res-icon">🧪</span><span class="town-res-val" id="res-expPotion">'+expPotion+'</span></div>'
+          +'<div class="town-res-row">'
+            +'<span class="town-res-icon">💰</span>'
+            +'<div class="town-res-bar-wrap"><div class="town-res-bar-fill gold" style="width:'+resPercent(goldRaw,goldMax)+'%"></div></div>'
+            +'<span class="town-res-val" id="res-gold">'+gold+'</span>'
+          +'</div>'
+          +'<div class="town-res-row">'
+            +'<span class="town-res-icon">💎</span>'
+            +'<div class="town-res-bar-wrap"><div class="town-res-bar-fill gems" style="width:'+resPercent(gemsRaw,gemsMax)+'%"></div></div>'
+            +'<span class="town-res-val" id="res-gems">'+gems+'</span>'
+          +'</div>'
+          +'<div class="town-res-row">'
+            +'<span class="town-res-icon">🍞</span>'
+            +'<div class="town-res-bar-wrap"><div class="town-res-bar-fill food" style="width:'+resPercent(foodRaw,foodMax)+'%"></div></div>'
+            +'<span class="town-res-val" id="res-food">'+food+'</span>'
+          +'</div>'
+          +'<div class="town-res-row">'
+            +'<span class="town-res-icon">🧪</span>'
+            +'<div class="town-res-bar-wrap"><div class="town-res-bar-fill potion" style="width:'+resPercent(expPotionRaw,potionMax)+'%"></div></div>'
+            +'<span class="town-res-val" id="res-expPotion">'+expPotion+'</span>'
+          +'</div>'
         +'</div>'
       +'</div>'
       +'<div style="color:var(--text2);font-size:12px;line-height:1.8;margin-top:12px;">'
