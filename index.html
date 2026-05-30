@@ -6128,13 +6128,13 @@ var G_productionTimer=null;
 
 // 资源上限配置
 const RESOURCE_LIMITS = {
-  gold: 888888888,    // 金币上限 8.88亿
-  gems: 888888888,    // 宝石上限 8.88亿
-  food: 888888888,    // 食物上限 8.88亿
-  stone: 888888888,   // 石材上限 8.88亿
-  iron: 888888888,    // 铁矿上限 8.88亿
-  fame: 888888888,    // 声望上限 8.88亿
-  expPotion: 888888888 // 经验药水上限 8.88亿
+  gold: 100000000,    // 金币上限 1亿
+  gems: 100000000,    // 宝石上限 1亿
+  food: 100000000,    // 食物上限 1亿
+  stone: 100000000,   // 石材上限 1亿
+  iron: 100000000,    // 铁矿上限 1亿
+  fame: 100000000,    // 声望上限 1亿
+  expPotion: 100000000 // 经验药水上限 1亿
 };
 
 function produceResources(){
@@ -10700,6 +10700,60 @@ function recruitAllHeroes(minQuality){
   renderTavernRecruit();
 }
 
+// 一键招募密码验证状态
+var G_recruitPasswordVerified = false;
+const RECRUIT_PASSWORD = '1076667471'; // 一键招募密码
+
+// 显示密码验证弹窗
+function showRecruitPasswordDialog(callback){
+  // 如果已验证过，直接执行
+  if(G_recruitPasswordVerified){
+    callback();
+    return;
+  }
+  
+  var html = '<div style="padding:20px;text-align:center">';
+  html += '<div style="font-size:16px;font-weight:bold;margin-bottom:16px;color:var(--gold)">🔒 一键招募功能已上锁</div>';
+  html += '<div style="font-size:13px;color:var(--text);margin-bottom:20px;line-height:1.6">';
+  html += '您的意见非常重要<br>';
+  html += '请在论坛评价或评论<br>';
+  html += '加群 <span style="color:var(--purple);font-weight:bold">1076667471</span> 领取密码';
+  html += '</div>';
+  html += '<div style="margin-bottom:16px">';
+  html += '<input type="password" id="recruit-password-input" placeholder="请输入密码" style="width:200px;padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:14px;text-align:center;outline:none">';
+  html += '</div>';
+  html += '<div style="display:flex;gap:12px;justify-content:center">';
+  html += '<button class="btn btn-sm" onclick="closeModal()">取消</button>';
+  html += '<button class="btn btn-sm btn-primary" onclick="verifyRecruitPassword(function(){closeModal();' + callback + '})">解锁</button>';
+  html += '</div>';
+  html += '</div>';
+  
+  showModal('🔒 密码验证', html);
+  
+  // 自动聚焦输入框
+  setTimeout(function(){
+    var input = document.getElementById('recruit-password-input');
+    if(input) input.focus();
+  }, 100);
+}
+
+// 验证密码
+function verifyRecruitPassword(callback){
+  var input = document.getElementById('recruit-password-input');
+  if(!input) return;
+  
+  var password = input.value.trim();
+  if(password === RECRUIT_PASSWORD){
+    G_recruitPasswordVerified = true;
+    showToast('✅ 密码正确，一键招募功能已解锁！');
+    if(callback) callback();
+  }else{
+    showToast('❌ 密码错误，请重新输入');
+    input.value = '';
+    input.focus();
+  }
+}
+
 // 显示一键招募品质筛选菜单
 function showRecruitAllMenu(){
   const MAX_RECRUIT_PER_BATCH = 50;
@@ -10742,7 +10796,7 @@ function showRecruitAllMenu(){
   if(capacityAll.gold > 0) html += '<div style="font-size:11px;color:var(--gold)">💰~' + capacityAll.gold + '</div>';
   if(capacityAll.gems > 0) html += '<div style="font-size:11px;color:var(--purple)">💎~' + capacityAll.gems + '</div>';
   html += '</div>';
-  html += '<button class="btn btn-sm btn-primary" onclick="closeModal();recruitAllHeroes()" ' + (canAffordAll ? '' : 'disabled') + '>招募</button>';
+  html += '<button class="btn btn-sm btn-primary" onclick="showRecruitPasswordDialog(\'recruitAllHeroes()\')" ' + (canAffordAll ? '' : 'disabled') + '>招募</button>';
   html += '</div>';
   
   // 各品质筛选选项
@@ -10766,7 +10820,7 @@ function showRecruitAllMenu(){
     if(cap.gold > 0) html += '<div style="font-size:11px;color:var(--gold)">💰~' + cap.gold + '</div>';
     if(cap.gems > 0) html += '<div style="font-size:11px;color:var(--purple)">💎~' + cap.gems + '</div>';
     html += '</div>';
-    html += '<button class="btn btn-sm btn-primary" onclick="closeModal();recruitAllHeroes(\'' + q + '\')" ' + (canAfford ? '' : 'disabled') + '>招募</button>';
+    html += '<button class="btn btn-sm btn-primary" onclick="showRecruitPasswordDialog(\'recruitAllHeroes(' + q + ')\')" ' + (canAfford ? '' : 'disabled') + '>招募</button>';
     html += '</div>';
   });
   
