@@ -12020,15 +12020,18 @@ function renderMerge(el){
   if(!window._mergeQualityFilter) window._mergeQualityFilter='all';
   var qualityFilter=window._mergeQualityFilter;
   
-  // 筛选后的英雄列表
+  // 筛选后的英雄列表（已选中的英雄始终显示，不受筛选影响）
   var filteredHeroes=G.heroes.filter(function(h){
+    // 已选中的英雄始终显示
+    if(usedSet.has(h.uid)) return true;
+    // 未选中的英雄按筛选条件过滤
     if(qualityFilter==='all') return true;
     return h.quality===qualityFilter;
   });
   
-  // 按品质分组
+  // 按品质分组（用于筛选按钮计数）
   var heroesByQuality={};
-  filteredHeroes.forEach(function(h){
+  G.heroes.forEach(function(h){
     if(!heroesByQuality[h.quality]) heroesByQuality[h.quality]=[];
     heroesByQuality[h.quality].push(h);
   });
@@ -12037,10 +12040,19 @@ function renderMerge(el){
   var heroesHTML='';
   
   // 按品质排序：hidden > mythic > legendary > epic > rare > common
+  // 已选英雄置顶显示
   var qualityOrder=['hidden','mythic','legendary','epic','rare','common'];
   var sortedHeroes=[];
+  
+  // 先添加已选英雄（按品质排序）
   qualityOrder.forEach(function(q){
-    var group=filteredHeroes.filter(function(h){return h.quality===q});
+    var group=filteredHeroes.filter(function(h){return h.quality===q && usedSet.has(h.uid)});
+    sortedHeroes=sortedHeroes.concat(group);
+  });
+  
+  // 再添加未选英雄（按品质排序）
+  qualityOrder.forEach(function(q){
+    var group=filteredHeroes.filter(function(h){return h.quality===q && !usedSet.has(h.uid)});
     sortedHeroes=sortedHeroes.concat(group);
   });
   
@@ -12343,6 +12355,12 @@ function renderMerge(el){
       
       <!-- 融合预览已关闭 -->
       <div id="merge-preview-details" style="display:none;"></div>
+      
+      <!-- 已选英雄提示 -->
+      ${usedSet.size>0?`<div style="background:linear-gradient(135deg,rgba(255,215,0,.1),rgba(255,215,0,.05));border:1px solid rgba(255,215,0,.2);border-radius:8px;padding:8px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:var(--gold)">✓ 已选 ${usedSet.size}/3 个英雄</span>
+        <span style="font-size:11px;color:var(--text3)">(已选英雄不受筛选影响)</span>
+      </div>`:''}
       
       <!-- 品质筛选 -->
       <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid rgba(255,255,255,.05);padding-bottom:10px">
