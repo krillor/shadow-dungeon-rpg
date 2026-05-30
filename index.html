@@ -10601,6 +10601,9 @@ function generateRandomHeroForRecruit(minQuality){
 
 // 一键招募所有可招募英雄（支持品质筛选，根据资源持续招募）
 function recruitAllHeroes(minQuality){
+  const MAX_RECRUIT_PER_BATCH = 50; // 每次一键招募最多50个
+  const MAX_TOTAL_HEROES = 120;     // 英雄总数上限120个
+  
   var recruited = 0;
   var totalCost = {gold: 0, gems: 0};
   var goldCosts = {common:30, rare:100, epic:300, legendary:0, mythic:0};
@@ -10610,8 +10613,18 @@ function recruitAllHeroes(minQuality){
   const tavernLevel = G.buildings.tavern || 1;
   const maxQuality = TAVERN_REFRESH.maxQualityByLevel[tavernLevel] || 'common';
   
-  // 持续招募，直到资源不足
-  while(true){
+  // 检查当前英雄数量
+  var currentHeroCount = G.heroes ? G.heroes.length : 0;
+  if(currentHeroCount >= MAX_TOTAL_HEROES){
+    showToast('英雄数量已达上限（' + MAX_TOTAL_HEROES + '个），无法继续招募');
+    return;
+  }
+  
+  // 计算本次最多可招募数量
+  var maxCanRecruit = Math.min(MAX_RECRUIT_PER_BATCH, MAX_TOTAL_HEROES - currentHeroCount);
+  
+  // 持续招募，直到资源不足或达到上限
+  while(recruited < maxCanRecruit){
     // 生成一个符合条件的随机英雄
     var tpl = generateRandomHeroForRecruit(minQuality);
     if(!tpl) break;
@@ -10644,6 +10657,14 @@ function recruitAllHeroes(minQuality){
     return;
   }
   
+  // 检查是否达到上限
+  var reachLimitMsg = '';
+  if(currentHeroCount + recruited >= MAX_TOTAL_HEROES){
+    reachLimitMsg = '（已达英雄上限' + MAX_TOTAL_HEROES + '个）';
+  } else if(recruited >= MAX_RECRUIT_PER_BATCH){
+    reachLimitMsg = '（单次招募上限50个）';
+  }
+  
   updateResUI();
   saveGame();
   
@@ -10652,7 +10673,7 @@ function recruitAllHeroes(minQuality){
   if(totalCost.gems > 0) costStr.push('💎' + totalCost.gems);
   
   var qualityStr = minQuality ? QUALITY_NAMES[minQuality] + '及以上' : '全部';
-  showToast('🎉 一键招募成功！招募了 ' + recruited + ' 个' + qualityStr + '英雄（最高' + QUALITY_NAMES[maxQuality] + '），消耗 ' + costStr.join(' + '));
+  showToast('🎉 招募了 ' + recruited + ' 个' + qualityStr + '英雄' + reachLimitMsg + '，消耗 ' + costStr.join(' + '));
   
   // 检查成就
   checkAchievement('hero_4');
@@ -10666,9 +10687,17 @@ function recruitAllHeroes(minQuality){
 
 // 显示一键招募品质筛选菜单
 function showRecruitAllMenu(){
+  const MAX_RECRUIT_PER_BATCH = 50;
+  const MAX_TOTAL_HEROES = 120;
+  
   // 获取酒馆等级和最高品质
   const tavernLevel = G.buildings.tavern || 1;
   const maxQuality = TAVERN_REFRESH.maxQualityByLevel[tavernLevel] || 'common';
+  
+  // 当前英雄数量
+  var currentHeroCount = G.heroes ? G.heroes.length : 0;
+  var remainingSlots = MAX_TOTAL_HEROES - currentHeroCount;
+  var maxBatchSize = Math.min(MAX_RECRUIT_PER_BATCH, remainingSlots);
   
   // 计算各品质筛选下的可招募容量
   var capacityAll = calcRecruitCapacity();
@@ -10677,17 +10706,24 @@ function showRecruitAllMenu(){
   var capacityLegendary = calcRecruitCapacity('legendary');
   var capacityMythic = calcRecruitCapacity('mythic');
   
+  // 限制显示数量不超过上限
+  capacityAll.count = Math.min(capacityAll.count, maxBatchSize);
+  capacityRare.count = Math.min(capacityRare.count, maxBatchSize);
+  capacityEpic.count = Math.min(capacityEpic.count, maxBatchSize);
+  capacityLegendary.count = Math.min(capacityLegendary.count, maxBatchSize);
+  capacityMythic.count = Math.min(capacityMythic.count, maxBatchSize);
+  
   var html = '<div style="padding:16px">';
   html += '<div style="font-size:14px;font-weight:bold;margin-bottom:12px;text-align:center">⚡ 一键招募 - 选择品质筛选</div>';
-  html += '<div style="font-size:12px;color:var(--text2);margin-bottom:16px;text-align:center">根据当前资源持续招募，直到资源不足<br>当前酒馆等级：' + tavernLevel + ' | 最高品质：' + QUALITY_NAMES[maxQuality] + '</div>';
+  html += '<div style="font-size:12px;color:var(--text2);margin-bottom:16px;text-align:center">当前英雄：' + currentHeroCount + '/' + MAX_TOTAL_HEROES + ' | 本次最多招募：' + maxBatchSize + '个<br>酒馆等级：' + tavernLevel + ' | 最高品质：' + QUALITY_NAMES[maxQuality] + '</div>';
   
   // 全部招募选项
-  var canAffordAll = capacityAll.count > 0;
+  var canAffordAll = capacityAll.count > 0 && remainingSlots > 0;
   html += '<div style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:12px;border-radius:8px;background:rgba(46,213,115,.1);border:1px solid rgba(46,213,115,.3)">';
   html += '<div style="flex:1"><div style="font-weight:bold;color:var(--green)">🌟 招募全部</div>';
   html += '<div style="font-size:11px;color:var(--text2)">招募' + maxQuality + '及以下所有品质英雄</div></div>';
   html += '<div style="text-align:right">';
-  html += '<div style="font-size:12px">约' + capacityAll.count + '个英雄</div>';
+  html += '<div style="font-size:12px">最多' + capacityAll.count + '个英雄</div>';
   if(capacityAll.gold > 0) html += '<div style="font-size:11px;color:var(--gold)">💰~' + capacityAll.gold + '</div>';
   if(capacityAll.gems > 0) html += '<div style="font-size:11px;color:var(--purple)">💎~' + capacityAll.gems + '</div>';
   html += '</div>';
@@ -10705,13 +10741,13 @@ function showRecruitAllMenu(){
   
   ['rare', 'epic', 'legendary', 'mythic'].forEach(function(q){
     var cap = capacities[q];
-    var canAfford = cap.count > 0;
+    var canAfford = cap.count > 0 && remainingSlots > 0;
     
     html += '<div style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border-radius:8px;background:rgba(0,0,0,.2);border:1px solid ' + qualityColors[q] + '40">';
     html += '<div style="flex:1"><div style="font-weight:bold;color:' + qualityColors[q] + '">' + QUALITY_NAMES[q] + '及以上</div>';
     html += '<div style="font-size:11px;color:var(--text2)">只招募' + QUALITY_NAMES[q] + '及以上品质</div></div>';
     html += '<div style="text-align:right">';
-    html += '<div style="font-size:12px">约' + cap.count + '个英雄</div>';
+    html += '<div style="font-size:12px">最多' + cap.count + '个英雄</div>';
     if(cap.gold > 0) html += '<div style="font-size:11px;color:var(--gold)">💰~' + cap.gold + '</div>';
     if(cap.gems > 0) html += '<div style="font-size:11px;color:var(--purple)">💎~' + cap.gems + '</div>';
     html += '</div>';
@@ -10719,7 +10755,7 @@ function showRecruitAllMenu(){
     html += '</div>';
   });
   
-  html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center">💡 根据当前资源自动计算可招募数量，持续招募直到资源不足<br>实际招募数量和成本可能因随机品质而略有差异</div>';
+  html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center">💡 单次最多招募50个，英雄总数上限120个<br>实际招募数量受资源、上限和随机品质影响</div>';
   html += '</div>';
   
   showModal('⚡ 一键招募', html);
