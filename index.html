@@ -9981,13 +9981,27 @@ function closeMergeResult(){
 
 // ==================== 合成事件系统 ====================
 const MERGE_ACCIDENTS = {
-  explosion: { name:'爆炸', icon:'💥', color:'#ff4444', desc:'材料炸裂！获得碎片', weight:25 },
-  timewarp: { name:'时空扭曲', icon:'🌀', color:'#9b59b6', desc:'属性互换！战士变法师面板', weight:20 },
-  ghost: { name:'幽灵英雄', icon:'👻', color:'#00ffcc', desc:'半透明英雄，战斗后10%概率附身', weight:15 },
-  clown: { name:'小丑英雄', icon:'🤡', color:'#f39c12', desc:'随机荒谬组合，可能是废物也可能是OP', weight:25 },
-  mirror: { name:'镜像英雄', icon:'🪞', color:'#3498db', desc:'最强英雄的1.2倍镜像体（7天后消失）', weight:15 }
+  // === 原有事件（调整权重） ===
+  explosion: { name:'爆炸', icon:'💥', color:'#ff4444', desc:'材料炸裂！获得碎片', weight:20 },
+  timewarp: { name:'时空扭曲', icon:'🌀', color:'#9b59b6', desc:'属性互换！战士变法师面板', weight:15 },
+  ghost: { name:'幽灵英雄', icon:'👻', color:'#00ffcc', desc:'半透明英雄，战斗后10%概率附身', weight:8 },
+  clown: { name:'小丑英雄', icon:'🤡', color:'#f39c12', desc:'随机荒谬组合，可能是废物也可能是OP', weight:18 },
+  mirror: { name:'镜像英雄', icon:'🪞', color:'#3498db', desc:'最强英雄的1.2倍镜像体（7天后消失）', weight:6 },
+  // === 新增事件 ===
+  soulswap: { name:'灵魂交换', icon:'🎭', color:'#e879f9', desc:'继承材料中随机一个英雄的外观和名字', weight:10 },
+  genemutation: { name:'基因突变', icon:'🧬', color:'#22d3ee', desc:'获得其他职业的随机被动技能', weight:12 },
+  balance: { name:'天平审判', icon:'⚖️', color:'#fbbf24', desc:'总属性不变，属性分配完全随机', weight:15 },
+  reincarnation: { name:'轮回转生', icon:'🔄', color:'#a78bfa', desc:'职业随机变化，保留品质和技能', weight:6 },
+  inscription: { name:'远古铭文', icon:'📜', color:'#fb923c', desc:'获得随机专属称号+永久属性加成', weight:10 },
+  circus: { name:'马戏团', icon:'🎪', color:'#f472b6', desc:'一变二！产出2个品质-1的英雄', weight:8 },
+  shadowcurse: { name:'暗影侵蚀', icon:'🌑', color:'#6366f1', desc:'20%概率失控攻击队友，但全属性+25%', weight:8 },
+  awakening: { name:'英雄觉醒', icon:'🏆', color:'#facc15', desc:'直接升满级+额外天赋点', weight:3 },
+  frogcurse: { name:'青蛙诅咒', icon:'🐸', color:'#4ade80', desc:'属性降低70%，3天后解除并+20%', weight:10 },
+  bard: { name:'吟游诗人', icon:'🎵', color:'#c084fc', desc:'获得诗歌特质，全队士气+5%', weight:5 },
+  dice: { name:'命运骰子', icon:'🎲', color:'#38bdf8', desc:'选择保守或冒险，命运由你决定', weight:10 },
+  blackhole: { name:'黑洞吞噬', icon:'🌀', color:'#7c3aed', desc:'吞噬战力最低队友，获得其50%属性', weight:3 }
 };
-const MERGE_ACCIDENT_RATE = 0.15; // 15%事件率
+const MERGE_ACCIDENT_RATE = 0.20; // 20%事件率（事件增多后提升）
 
 function rollMergeAccident(hero, materials) {
   // 金手指强制事件：单次或持续模式
@@ -10071,6 +10085,196 @@ function rollMergeAccident(hero, materials) {
       result.hero = hero;
       result.message = '🪞 镜像英雄！复制了最强英雄的1.2倍属性（7天后消失）';
       break;
+    // ===== 新增合成事件 =====
+    case 'soulswap':
+      // 继承材料中随机一个英雄的外观和名字，保留合成后属性和技能
+      var soulDonor = materials[Math.floor(Math.random() * materials.length)];
+      hero.icon = soulDonor.icon;
+      hero.name = soulDonor.name;
+      hero.isSoulSwap = true;
+      hero.soulSwapOriginal = { icon: hero.icon, name: hero.name };
+      result.hero = hero;
+      result.message = '🎭 灵魂交换！英雄继承了「' + soulDonor.name + '」的灵魂，但拥有合成后的强大属性！';
+      break;
+    case 'genemutation':
+      // 随机获得一个其他职业的被动技能，替换原有被动
+      var allRoles = Object.keys(ROLES).filter(function(r){ return r !== hero.role && r !== 'unknown'; });
+      var donorRole = allRoles[Math.floor(Math.random() * allRoles.length)];
+      var donorPassive = ROLES[donorRole].passive;
+      hero.geneMutatedPassive = donorPassive;
+      hero.geneMutatedFrom = donorRole;
+      hero.isGeneMutation = true;
+      result.hero = hero;
+      result.message = '🧬 基因突变！英雄获得了' + ROLES[donorRole].name + '的被动「' + donorPassive.name + '」！';
+      break;
+    case 'balance':
+      // 总属性点不变，随机重新分配
+      var totalStats = hero.maxHP + hero.atk + hero.def + hero.spd * 10 + hero.maxMP;
+      // 随机权重分配
+      var w1 = Math.random(), w2 = Math.random(), w3 = Math.random(), w4 = Math.random(), w5 = Math.random();
+      var wSum = w1 + w2 + w3 + w4 + w5;
+      hero.maxHP = Math.max(10, Math.floor(totalStats * w1 / wSum));
+      hero.atk = Math.max(1, Math.floor(totalStats * 0.05 * w2 / wSum));
+      hero.def = Math.max(1, Math.floor(totalStats * 0.05 * w3 / wSum));
+      hero.spd = Math.max(1, Math.floor(totalStats * 0.1 * w4 / wSum));
+      hero.maxMP = Math.max(5, Math.floor(totalStats * w5 / wSum));
+      hero.hp = hero.maxHP;
+      hero.mp = hero.maxMP;
+      hero.isBalanced = true;
+      result.hero = hero;
+      result.message = '⚖️ 天平审判！属性被完全重新分配，可能变成玻璃大炮或纯肉盾！';
+      break;
+    case 'reincarnation':
+      // 职业随机变化，保留品质和技能
+      var allRolesList = Object.keys(ROLES).filter(function(r){ return r !== hero.role && r !== 'unknown'; });
+      var newRole = allRolesList[Math.floor(Math.random() * allRolesList.length)];
+      var oldRole = hero.role;
+      hero.role = newRole;
+      hero.icon = ROLES[newRole].icon;
+      hero.isReincarnated = true;
+      hero.reincarnatedFrom = oldRole;
+      result.hero = hero;
+      result.message = '🔄 轮回转生！英雄从' + ROLES[oldRole].name + '转生为' + ROLES[newRole].name + '，技能保留！';
+      break;
+    case 'inscription':
+      // 获得随机专属称号+永久属性加成
+      var inscriptions = [
+        { name:'烈焰之心', stat:'atk', mult:0.10, desc:'ATK+10%' },
+        { name:'寒冰之躯', stat:'def', mult:0.15, desc:'DEF+15%' },
+        { name:'疾风之影', stat:'spd', mult:0.20, desc:'SPD+20%' },
+        { name:'生命之泉', stat:'maxHP', mult:0.12, desc:'HP+12%' },
+        { name:'奥术之魂', stat:'maxMP', mult:0.15, desc:'MP+15%' },
+        { name:'战神之怒', stat:'atk', mult:0.18, desc:'ATK+18%' },
+        { name:'不朽守护', stat:'maxHP', mult:0.20, desc:'HP+20%' },
+        { name:'暗影步', stat:'spd', mult:0.15, desc:'SPD+15%' },
+        { name:'深渊凝视', stat:'def', mult:0.20, desc:'DEF+20%' },
+        { name:'星辰之力', stat:'atk', mult:0.12, desc:'ATK+12%', extraStat:'spd', extraMult:0.08, extraDesc:'SPD+8%' }
+      ];
+      var chosenInscription = inscriptions[Math.floor(Math.random() * inscriptions.length)];
+      hero.inscription = chosenInscription;
+      hero[chosenInscription.stat] = Math.floor(hero[chosenInscription.stat] * (1 + chosenInscription.mult));
+      if (chosenInscription.extraStat) {
+        hero[chosenInscription.extraStat] = Math.floor(hero[chosenInscription.extraStat] * (1 + chosenInscription.extraMult));
+      }
+      hero.hp = hero.maxHP;
+      hero.mp = hero.maxMP;
+      result.hero = hero;
+      var inscDesc = chosenInscription.name + '（' + chosenInscription.desc + (chosenInscription.extraDesc ? ' ' + chosenInscription.extraDesc : '') + '）';
+      result.message = '📜 远古铭文觉醒！英雄获得称号「' + inscDesc + '」！';
+      break;
+    case 'circus':
+      // 产出2个英雄，品质各为原品质-1
+      var qIdx = QUALITIES.indexOf(hero.quality);
+      var lowerQ = qIdx > 0 ? QUALITIES[qIdx - 1] : 'common';
+      // 创建第二个英雄（深拷贝）
+      var hero2 = JSON.parse(JSON.stringify(hero));
+      hero2.uid = genUid();
+      hero2.quality = lowerQ;
+      hero2.name = hero2.name + '·影';
+      hero2.isCircusClone = true;
+      hero.quality = lowerQ;
+      hero.isCircusOriginal = true;
+      result.hero = hero;
+      result.hero2 = hero2; // 第二个英雄
+      result.message = '🎪 马戏团！一变二！获得2个' + QUALITY_NAMES[lowerQ] + '品质英雄！';
+      break;
+    case 'shadowcurse':
+      // 20%概率失控攻击队友，但全属性+25%
+      hero.isShadowCursed = true;
+      hero.shadowCurseChance = 0.20;
+      hero.maxHP = Math.floor(hero.maxHP * 1.25);
+      hero.atk = Math.floor(hero.atk * 1.25);
+      hero.def = Math.floor(hero.def * 1.25);
+      hero.spd = Math.floor(hero.spd * 1.25);
+      hero.maxMP = Math.floor(hero.maxMP * 1.25);
+      hero.hp = hero.maxHP;
+      hero.mp = hero.maxMP;
+      result.hero = hero;
+      result.message = '🌑 暗影侵蚀！全属性+25%，但每回合20%概率失控攻击队友！';
+      break;
+    case 'awakening':
+      // 直接升满级+额外天赋点
+      var levelCap = getHeroLevelCap ? getHeroLevelCap() : 100;
+      hero.level = levelCap;
+      // 属性按满级重新计算（使用成长公式）
+      var roleData = ROLES[hero.role] || ROLES.warrior;
+      var qMult = [1.0, 1.3, 1.7, 2.2, 3.0, 4.0, 5.0][QUALITIES.indexOf(hero.quality)] || 1.0;
+      hero.maxHP = calcStat(roleData.baseHP, qMult, levelCap);
+      hero.atk = calcStat(roleData.baseATK, qMult, levelCap);
+      hero.def = calcStat(roleData.baseDEF, qMult, levelCap);
+      hero.spd = calcStat(roleData.baseSPD, qMult, levelCap);
+      hero.maxMP = calcStat(roleData.baseMP, qMult, levelCap);
+      hero.hp = hero.maxHP;
+      hero.mp = hero.maxMP;
+      hero.isAwakened = true;
+      hero.awakeningBonusTalent = 1;
+      result.hero = hero;
+      result.message = '🏆 英雄觉醒！直接升到满级Lv.' + levelCap + '，并获得1个额外天赋点！';
+      break;
+    case 'frogcurse':
+      // 属性降低70%，3天后解除并+20%
+      hero.isFrogCursed = true;
+      hero.frogCurseExpire = Date.now() + 3 * 24 * 3600 * 1000;
+      hero.frogOriginalStats = { maxHP: hero.maxHP, atk: hero.atk, def: hero.def, spd: hero.spd, maxMP: hero.maxMP };
+      hero.maxHP = Math.floor(hero.maxHP * 0.3);
+      hero.atk = Math.floor(hero.atk * 0.3);
+      hero.def = Math.floor(hero.def * 0.3);
+      hero.spd = Math.floor(hero.spd * 0.3);
+      hero.maxMP = Math.floor(hero.maxMP * 0.3);
+      hero.hp = hero.maxHP;
+      hero.mp = hero.maxMP;
+      result.hero = hero;
+      result.message = '🐸 青蛙诅咒！呱呱呱！属性降低70%，但3天后解除诅咒时所有属性比原来+20%！';
+      break;
+    case 'bard':
+      // 获得诗歌特质，全队士气+5%
+      var poems = [
+        { text:'战火纷飞中，唯有勇气不灭。', name:'勇气之歌' },
+        { text:'星辰指引方向，月光照亮前路。', name:'星辰颂' },
+        { text:'黑暗终将过去，黎明必将来临。', name:'黎明赞歌' },
+        { text:'剑之所向，心之所往。', name:'剑心之歌' },
+        { text:'风起云涌，英雄辈出。', name:'风云赋' },
+        { text:'以吾之名，守护此方天地。', name:'守护誓约' }
+      ];
+      var chosenPoem = poems[Math.floor(Math.random() * poems.length)];
+      hero.isBard = true;
+      hero.bardPoem = chosenPoem;
+      hero.bardMorale = 0.05; // 全队士气+5%
+      result.hero = hero;
+      result.message = '🎵 吟游诗人附体！英雄获得诗歌「' + chosenPoem.name + '」，全队士气+5%！';
+      break;
+    case 'dice':
+      // 命运骰子：标记为骰子事件，由弹窗交互决定最终效果
+      result.hero = hero;
+      result.isDice = true; // 标记需要交互
+      result.message = '🎲 命运骰子！选择你的命运——保守还是冒险？';
+      break;
+    case 'blackhole':
+      // 吞噬战力最低的一个队友，获得其50%属性
+      var weakest = null, minPow = Infinity;
+      G.heroes.forEach(function(h) {
+        if (h.uid === hero.uid) return;
+        var p = calcHeroPower(h);
+        if (p < minPow) { minPow = p; weakest = h; }
+      });
+      if (weakest) {
+        hero.maxHP = Math.floor(hero.maxHP + weakest.maxHP * 0.5);
+        hero.atk = Math.floor(hero.atk + weakest.atk * 0.5);
+        hero.def = Math.floor(hero.def + weakest.def * 0.5);
+        hero.spd = Math.floor(hero.spd + weakest.spd * 0.5);
+        hero.maxMP = Math.floor(hero.maxMP + weakest.maxMP * 0.5);
+        hero.hp = hero.maxHP;
+        hero.mp = hero.maxMP;
+        hero.isBlackHole = true;
+        hero.blackHoleVictim = weakest.name;
+        result.blackHoleVictimUid = weakest.uid;
+        result.hero = hero;
+        result.message = '🌀 黑洞吞噬！吞噬了「' + weakest.name + '」，获得其50%属性加成！';
+      } else {
+        // 没有可吞噬的目标，退化为普通英雄
+        result.message = '🌀 黑洞吞噬失败…没有可吞噬的目标。';
+      }
+      break;
   }
   return result;
 }
@@ -10101,6 +10305,54 @@ function showAccidentResult(accident, newHero, isQualityUp, oldQuality, material
     mirror: {
       detail: '🪞 复制当前最强英雄的1.2倍属性（含技能、品质、职业），成为超强临时英雄！',
       extra: '⏰ 镜像英雄7天后消失，请抓紧使用'
+    },
+    soulswap: {
+      detail: '🎭 合成结果英雄继承了材料中随机一个英雄的外观和名字，但保留合成后的全部属性和技能。名字和面板完全不匹配，增加收集乐趣！',
+      extra: '💡 纯趣味效果，不影响实际战斗力'
+    },
+    genemutation: {
+      detail: '🧬 英雄获得一个来自其他职业的随机被动技能，替换原有被动。例如战士获得刺客的闪避被动，法师获得治愈者的治疗加成！',
+      extra: '⚠️ 可能产生极其强力的组合，也可能产生废物组合'
+    },
+    balance: {
+      detail: '⚖️ 英雄的总属性点不变，但所有属性（HP/ATK/DEF/SPD/MP）被完全随机重新分配。可能变成极端玻璃大炮或纯肉盾！',
+      extra: '🎲 高风险高回报，属性分配完全看运气'
+    },
+    reincarnation: {
+      detail: '🔄 英雄的职业随机变化（外观也随之改变），但保留原有的品质、等级和技能。一个带治疗技能的刺客？一个带群攻的坦克？',
+      extra: '⚠️ 职业改变可能导致技能与被动不匹配，但也可能产生意想不到的强力组合'
+    },
+    inscription: {
+      detail: '📜 英雄获得一个随机专属称号，附带永久属性加成（如"烈焰之心"ATK+10%、"寒冰之躯"DEF+15%等）。称号和加成永久有效！',
+      extra: '💡 共有10种不同称号，每个都有独特的属性加成'
+    },
+    circus: {
+      detail: '🎪 一次合成产出2个英雄！两个英雄品质各为原品质-1级，第二个英雄名字后缀"·影"。',
+      extra: '💡 适合需要大量英雄填充阵容的时期，品质降低但数量翻倍'
+    },
+    shadowcurse: {
+      detail: '🌑 英雄被暗影侵蚀，所有属性+25%，但每回合有20%概率失控攻击队友！',
+      extra: '⚠️ 高风险高回报的"诅咒"英雄，在低风险关卡使用更安全'
+    },
+    awakening: {
+      detail: '🏆 极稀有事件！英雄直接升到满级，属性按满级重新计算，并获得1个额外天赋点！',
+      extra: '✨ 相当于省去大量升级资源，直接获得完全体英雄'
+    },
+    frogcurse: {
+      detail: '🐸 英雄变成🐸青蛙形态，所有属性降低70%！但3天后诅咒自动解除，届时所有属性将比原来+20%！',
+      extra: '⏰ 短期痛苦换取长期收益，建议在不需要该英雄的时期触发'
+    },
+    bard: {
+      detail: '🎵 英雄获得一个随机诗歌特质（如"勇气之歌"、"星辰颂"等），战斗中会随机念诗（纯文字效果），同时全队士气+5%（全属性微增）。',
+      extra: '💡 纯娱乐效果，让战斗更有趣，附带微小团队增益'
+    },
+    dice: {
+      detail: '🎲 命运掌握在你手中！选择「保守」：品质+1但无技能变异；选择「冒险」：50%品质+2，50%品质-1。',
+      extra: '💡 根据当前游戏进度和资源情况做出明智选择！'
+    },
+    blackhole: {
+      detail: '🌀 合成结果英雄吞噬队伍中战力最低的一个英雄（非材料），获得其50%的属性加成！被吞噬的英雄永久消失。',
+      extra: '⚠️ 可以用来"回收"不需要的英雄，但请谨慎选择时机'
     }
   };
   var info = detailMap[type] || {};
@@ -10120,8 +10372,21 @@ function showAccidentResult(accident, newHero, isQualityUp, oldQuality, material
     + '</div>';
   
   var buttons = [];
-  // 如果有合成结果英雄（非爆炸），关闭事件弹窗后显示合成结果
-  if (newHero) {
+  // 命运骰子：提供保守/冒险两个选择按钮
+  if (accident.isDice && newHero) {
+    buttons.push({
+      text: '🛡️ 保守（品质+1）',
+      cls: 'btn-primary',
+      action: "applyDiceChoice('safe')"
+    });
+    buttons.push({
+      text: '⚔️ 冒险（50%品质+2 / 50%品质-1）',
+      cls: 'btn',
+      action: "applyDiceChoice('risk')"
+    });
+  }
+  // 如果有合成结果英雄（非爆炸、非骰子），关闭事件弹窗后显示合成结果
+  else if (newHero) {
     buttons.push({
       text: '查看合成结果',
       cls: 'btn-primary',
@@ -10135,6 +10400,7 @@ function showAccidentResult(accident, newHero, isQualityUp, oldQuality, material
     window._accidentMats = materials;
     window._accidentIsQualityUp = isQualityUp;
     window._accidentOldQuality = oldQuality;
+    window._accidentIsDice = !!accident.isDice;
     // 赌局结果延迟显示
     if (newHero._gambleResult) {
       setTimeout(function(){ showToast(getGambleResultText(newHero._gambleResult)); }, 500);
@@ -10144,6 +10410,59 @@ function showAccidentResult(accident, newHero, isQualityUp, oldQuality, material
   }
 
   showModal(acc.icon + ' 合成事件', html, buttons);
+}
+
+// ==================== 命运骰子选择函数 ====================
+function applyDiceChoice(choice) {
+  closeModal();
+  var hero = window._accidentHero;
+  if (!hero) return;
+  
+  var qi = QUALITIES.indexOf(hero.quality);
+  if (choice === 'safe') {
+    // 保守：品质+1，无技能变异
+    if (qi < QUALITIES.length - 1) {
+      hero.quality = QUALITIES[qi + 1];
+      hero.isMutation = true;
+      hero._diceResult = 'safe';
+    }
+    showToast('🛡️ 保守选择！品质提升！');
+  } else if (choice === 'risk') {
+    // 冒险：50%品质+2，50%品质-1
+    if (Math.random() < 0.5) {
+      // 品质+2
+      if (qi < QUALITIES.length - 2) {
+        hero.quality = QUALITIES[qi + 2];
+      } else if (qi < QUALITIES.length - 1) {
+        hero.quality = QUALITIES[qi + 1];
+      }
+      hero.isMutation = true;
+      hero._diceResult = 'riskUp';
+      showToast('⚔️ 冒险成功！品质大幅提升！');
+    } else {
+      // 品质-1
+      if (qi > 0) {
+        hero.quality = QUALITIES[qi - 1];
+      }
+      hero._diceResult = 'riskDown';
+      showToast('⚔️ 冒险失败…品质下降了');
+    }
+  }
+  
+  // 更新英雄列表
+  var idx = G.heroes.findIndex(function(h){ return h.uid === hero.uid; });
+  if (idx >= 0) G.heroes[idx] = hero;
+  
+  // 更新品质提升标记
+  var oldQ = window._accidentOldQuality;
+  window._accidentIsQualityUp = QUALITIES.indexOf(hero.quality) > QUALITIES.indexOf(oldQ);
+  
+  saveGame();
+  
+  // 显示合成结果
+  setTimeout(function(){
+    showMergeResult(hero, window._accidentIsQualityUp, oldQ, window._accidentMats, { type:'dice', accident: MERGE_ACCIDENTS.dice });
+  }, 300);
 }
 
 // ==================== 合成赌局系统 ====================
@@ -10717,10 +11036,28 @@ function executeMerge(heroUids){
       if (aidx >= 0) G.heroes[aidx] = accident.hero;
       newHero = accident.hero;
     }
+    // 马戏团事件：添加第二个英雄
+    if (accident.hero2) {
+      G.heroes.push(accident.hero2);
+      showToast('🎪 马戏团！额外获得 ' + accident.hero2.icon + ' ' + accident.hero2.name + '！');
+    }
+    // 黑洞事件：吞噬战力最低的队友
+    if (accident.blackHoleVictimUid) {
+      var bhIdx = G.heroes.findIndex(function(h){ return h.uid === accident.blackHoleVictimUid; });
+      if (bhIdx >= 0) {
+        var victim = G.heroes[bhIdx];
+        // 从队伍中移除
+        for (var ti = 0; ti < G.team.length; ti++) {
+          if (G.team[ti] && G.team[ti].uid === victim.uid) G.team[ti] = null;
+        }
+        G.heroes.splice(bhIdx, 1);
+        showToast('🌀 「' + victim.name + '」被黑洞吞噬了…');
+      }
+    }
   }
   
-  // === 合成赌局效果应用（费用已前置扣除，爆炸事件时不执行） ===
-  if (G_mergeGamble !== 'normal' && !isExplosion) {
+  // === 合成赌局效果应用（费用已前置扣除，爆炸事件和骰子事件时不执行） ===
+  if (G_mergeGamble !== 'normal' && !isExplosion && !(accident && accident.isDice)) {
     newHero = applyGambleResult(newHero);
     // 更新英雄列表中的引用
     var gidx = G.heroes.findIndex(function(h){return h.uid===newHero.uid});
