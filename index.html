@@ -5231,6 +5231,45 @@ function getCurrentSlotData(){
 }
 
 // 保存游戏（到当前槽位+自动备份）
+// ==================== 合成事件到期检查 ====================
+function checkMergeEventExpirations(){
+  if(!G.heroes) return;
+  var now = Date.now();
+  var changed = false;
+  G.heroes.forEach(function(h){
+    // 青蛙诅咒到期解除
+    if(h.isFrogCursed && h.frogCurseExpire && now >= h.frogCurseExpire){
+      h.isFrogCursed = false;
+      // 属性恢复到原来的120%（比原来+20%）
+      if(h.frogOriginalStats){
+        h.maxHP = Math.floor(h.frogOriginalStats.maxHP * 1.2);
+        h.atk = Math.floor(h.frogOriginalStats.atk * 1.2);
+        h.def = Math.floor(h.frogOriginalStats.def * 1.2);
+        h.spd = Math.floor(h.frogOriginalStats.spd * 1.2);
+        h.maxMP = Math.floor(h.frogOriginalStats.maxMP * 1.2);
+        h.hp = h.maxHP;
+        h.mp = h.maxMP;
+        delete h.frogOriginalStats;
+      }
+      changed = true;
+    }
+    // 幽灵英雄到期消失
+    if(h.isGhost && h.ghostExpire && now >= h.ghostExpire){
+      h.isGhost = false;
+      delete h.ghostExpire;
+      delete h.ghostBonus;
+      changed = true;
+    }
+    // 镜像英雄到期消失
+    if(h.isMirror && h.mirrorExpire && now >= h.mirrorExpire){
+      var mIdx = G.heroes.indexOf(h);
+      if(mIdx >= 0) G.heroes.splice(mIdx, 1);
+      changed = true;
+    }
+  });
+  if(changed) saveGame();
+}
+
 function saveGame(){
   try{
     var meta=getSaveMeta();
@@ -5414,6 +5453,8 @@ function loadGame(){
     }
     if(G.pveWinStreak===undefined) G.pveWinStreak=0;
     if(G.pveMaxStreak===undefined) G.pveMaxStreak=0;
+    // ===== 合成事件到期检查 =====
+    checkMergeEventExpirations();
     if(!G.achievements) G.achievements={unlocked:{},progress:{},totalClaimed:0};
     if(!G.stats) G.stats={totalKills:0,totalHeroesRecruited:0,totalEquipmentForged:0,totalEquipmentMerged:0,totalGoldEarned:0,totalGemsEarned:0,maxStageReached:1,maxHeroLevel:0};
     // 未知英雄解锁任务进度追踪
@@ -7310,6 +7351,32 @@ async function runArenaBattle(teamHeroes,opponents,difficulty){
       }
       // 装备特殊技能触发 - 回合开始 turnStart
       checkEquipSpecialSkill(u,'turnStart',null,allUnits);
+      // ===== 合成事件战斗效果 =====
+      // 暗影侵蚀：每回合20%概率失控攻击队友
+      if(!u.isEnemy && u.hero && u.hero.isShadowCursed && Math.random() < (u.hero.shadowCurseChance || 0.2)){
+        var allies = allUnits.filter(function(a){ return !a.isEnemy && a.alive && a.uid !== u.uid; });
+        if(allies.length > 0){
+          var victim = allies[Math.floor(Math.random() * allies.length)];
+          var betrayDmg = Math.floor(u.atk * 0.8);
+          victim.hp = Math.max(0, victim.hp - betrayDmg);
+          log('🌑 '+u.icon+u.name+' 暗影侵蚀发作！失控攻击了队友 '+victim.icon+victim.name+'，造成 '+betrayDmg+' 伤害！','debuff');
+          showFloat(victim,'🌑-'+betrayDmg,'damage');
+          animUnit(victim,'hit',300);
+          if(victim.hp <= 0){ victim.alive = false; log(victim.icon+' '+victim.name+' 被队友击杀...','death'); animUnit(victim,'dying',700); }
+        }
+      }
+      // 吟游诗人：全队士气+5%（首次回合给全队加buff）
+      if(!u.isEnemy && u.hero && u.hero.isBard && u.hero.bardMorale && !u._bardBuffApplied){
+        u._bardBuffApplied = true;
+        var moraleMult = u.hero.bardMorale;
+        allUnits.filter(function(a){ return !a.isEnemy && a.alive; }).forEach(function(ally){
+          ally.atk = Math.floor(ally.atk * (1 + moraleMult));
+          ally.maxHP = Math.floor(ally.maxHP * (1 + moraleMult));
+          ally.hp = Math.min(ally.hp + Math.floor(ally.maxHP * moraleMult), ally.maxHP);
+        });
+        log('🎵 '+u.icon+u.name+' 吟唱「'+u.hero.bardPoem.name+'」！全队士气+5%！','buff');
+        showFloat(u,'🎵士气+5%','heal');
+      }
     }
     
     // 按速度排序行动
@@ -7814,6 +7881,29 @@ function calcDamage(attacker,defender,skill=null,skillIdx=-1){
   }
   
   // 术士：DOT伤害+50%（在executeSkill中处理）
+  
+  // 基因突变：使用突变获得的被动技能
+  if(attacker.hero && attacker.hero.isGeneMutation && attacker.hero.geneMutatedPassive){
+    var gp = attacker.hero.geneMutatedPassive;
+    // 狂怒（战士被动）：生命低于30%时攻击+50%
+    if(gp.name === '狂怒' && attacker.hp/attacker.maxHP < 0.3) atk=Math.floor(atk*1.5);
+    // 奥术精通（法师被动）：技能伤害+30%
+    if(gp.name === '奥术精通' && skill) atk=Math.floor(atk*1.3);
+    // 暗影步（刺客被动）：闪避+25%（在闪避判定中处理）
+    // 精准（游侠被动）：攻击无视20%防御
+    if(gp.name === '精准') def=Math.floor(def*0.8);
+    // 灵魂虹吸（术士被动）：伤害15%转化为生命
+    // 生命链接（治愈者被动）：治疗+40%（在治疗技能中处理）
+    // 圣光庇护（圣骑士被动）：致命伤害保留1HP（在受击判定中处理）
+    // 铁壁（守护者被动）：受伤-20%
+    if(gp.name === '铁壁') def=Math.floor(def*1.2);
+  }
+  
+  // 基因突变被动（防御者）
+  if(defender.hero && defender.hero.isGeneMutation && defender.hero.geneMutatedPassive){
+    var gp2 = defender.hero.geneMutatedPassive;
+    if(gp2.name === '铁壁') def=Math.floor(def*1.2);
+  }
   
   // 基础伤害计算
   let mult=skill?skill.mult:1.0;
@@ -8651,6 +8741,32 @@ async function runBattle(stageId){
         return d.duration>0;
       });
       u.buffs=u.buffs.filter(b=>{b.duration--;return b.duration>0});
+      // ===== 合成事件战斗效果（地牢） =====
+      // 暗影侵蚀：每回合20%概率失控攻击队友
+      if(!u.isEnemy && u.hero && u.hero.isShadowCursed && Math.random() < (u.hero.shadowCurseChance || 0.2)){
+        var allies = allUnits.filter(function(a){ return !a.isEnemy && a.alive && a.uid !== u.uid; });
+        if(allies.length > 0){
+          var victim = allies[Math.floor(Math.random() * allies.length)];
+          var betrayDmg = Math.floor(u.atk * 0.8);
+          victim.hp = Math.max(0, victim.hp - betrayDmg);
+          log('🌑 '+u.icon+u.name+' 暗影侵蚀发作！失控攻击了队友 '+victim.icon+victim.name+'，造成 '+betrayDmg+' 伤害！','debuff');
+          showFloat(victim,'🌑-'+betrayDmg,'damage');
+          animUnit(victim,'hit',300);
+          if(victim.hp <= 0){ victim.alive = false; log(victim.icon+' '+victim.name+' 被队友击杀...','death'); animUnit(victim,'dying',700); }
+        }
+      }
+      // 吟游诗人：全队士气+5%（首次回合给全队加buff）
+      if(!u.isEnemy && u.hero && u.hero.isBard && u.hero.bardMorale && !u._bardBuffApplied){
+        u._bardBuffApplied = true;
+        var moraleMult = u.hero.bardMorale;
+        allUnits.filter(function(a){ return !a.isEnemy && a.alive; }).forEach(function(ally){
+          ally.atk = Math.floor(ally.atk * (1 + moraleMult));
+          ally.maxHP = Math.floor(ally.maxHP * (1 + moraleMult));
+          ally.hp = Math.min(ally.hp + Math.floor(ally.maxHP * moraleMult), ally.maxHP);
+        });
+        log('🎵 '+u.icon+u.name+' 吟唱「'+u.hero.bardPoem.name+'」！全队士气+5%！','buff');
+        showFloat(u,'🎵士气+5%','heal');
+      }
     });
     renderTeams();
     await sleep(200);
@@ -9947,6 +10063,16 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
       (hero.isMutation?'<div class="merge-result-mutation">☣️ 异变英雄 · 超越极限</div>':'')+
       (hero.isUpset?'<div class="merge-result-mutation" style="color:#2ecc71">🍀 以弱胜强 · 逆境翻盘</div>':'')+
       (hero.bondInfo?'<div class="merge-result-mutation" style="color:#5dade2">🔗 '+hero.bondInfo.name+' · '+hero.bondInfo.desc+'</div>':'')+
+      (hero.isGeneMutation?'<div class="merge-result-mutation" style="color:#22d3ee">🧬 基因突变 · 获得'+(hero.geneMutatedPassive?hero.geneMutatedPassive.name:'')+'被动</div>':'')+
+      (hero.inscription?'<div class="merge-result-mutation" style="color:#fb923c">📜 '+hero.inscription.name+' · '+hero.inscription.desc+'</div>':'')+
+      (hero.isShadowCursed?'<div class="merge-result-mutation" style="color:#6366f1">🌑 暗影侵蚀 · 全属性+25% 但可能失控</div>':'')+
+      (hero.isAwakened?'<div class="merge-result-mutation" style="color:#facc15">🏆 英雄觉醒 · 满级+额外天赋点</div>':'')+
+      (hero.isFrogCursed?'<div class="merge-result-mutation" style="color:#4ade80">🐸 青蛙诅咒 · 3天后解除并+20%</div>':'')+
+      (hero.isBard&&hero.bardPoem?'<div class="merge-result-mutation" style="color:#c084fc">🎵 '+hero.bardPoem.name+' · 全队士气+5%</div>':'')+
+      (hero.isBlackHole?'<div class="merge-result-mutation" style="color:#7c3aed">🌀 黑洞吞噬 · 吞噬了'+hero.blackHoleVictim+'</div>':'')+
+      (hero.isBalanced?'<div class="merge-result-mutation" style="color:#fbbf24">⚖️ 天平审判 · 属性重新分配</div>':'')+
+      (hero.isReincarnated?'<div class="merge-result-mutation" style="color:#a78bfa">🔄 轮回转生 · 从'+ROLES[hero.reincarnatedFrom]?ROLES[hero.reincarnatedFrom].name:'?')+'转生</div>':'')+
+      (hero.isSoulSwap?'<div class="merge-result-mutation" style="color:#e879f9">🎭 灵魂交换 · 外观与属性不匹配</div>':'')+
       '<div class="merge-result-quality" style="color:'+qualityColors[hero.quality]+'">'+QUALITY_NAMES[hero.quality]+'</div>'+
       '<div class="merge-result-name">'+displayName+'</div>'+
       '<div style="font-size:12px;color:var(--text2);margin-bottom:4px">'+(ROLES[hero.role]?ROLES[hero.role].icon+' '+ROLES[hero.role].name:'')+' · Lv.'+hero.level+'</div>'+
@@ -12320,7 +12446,7 @@ function renderHeroCard(h){
     <div class="hero-info">
       <div class="hero-name"><span class="q-${displayQuality}">${displayName}</span> ${inTeam?'<span class="text-green text-xs">[队伍中]</span>':''} ${h.isMutation?'<span style="color:#a855f7;font-size:10px">☣️异变</span>':''}</div>
       <div class="hero-meta">${role.icon} ${role.name} · ${QUALITY_NAMES[displayQuality]} · Lv.${h.level} ${h.bonusSkills.length>0?'<span class="text-purple">★合成</span>':''} ${h.mutatedSkills&&h.mutatedSkills.length>0?'<span style="color:#d4a0ff;font-size:10px">🧬含变异</span>':''}</div>
-      <div class="text-xs text-dim" style="margin:4px 0;padding:4px;background:rgba(0,0,0,.2);border-radius:4px">💡 ${roleTraits[displayRole]||'未知职业'}</div>
+      <div class="text-xs text-dim" style="margin:4px 0;padding:4px;background:rgba(0,0,0,.2);border-radius:4px">💡 ${roleTraits[displayRole]||'未知职业'}${h.isGeneMutation&&h.geneMutatedPassive?' · <span style="color:#22d3ee">🧬突变被动:'+h.geneMutatedPassive.name+'</span>':''}${h.inscription?' · <span style="color:#fb923c">📜'+h.inscription.name+'</span>':''}${h.isShadowCursed?' · <span style="color:#6366f1">🌑暗影侵蚀</span>':''}${h.isFrogCursed?' · <span style="color:#4ade80">🐸青蛙诅咒</span>':''}${h.isBard&&h.bardPoem?' · <span style="color:#c084fc">🎵'+h.bardPoem.name+'</span>':''}${h.isAwakened?' · <span style="color:#facc15">🏆觉醒</span>':''}${h.isBlackHole?' · <span style="color:#7c3aed">🌀黑洞</span>':''}${h.isBalanced?' · <span style="color:#fbbf24">⚖️天平</span>':''}${h.isReincarnated?' · <span style="color:#a78bfa">🔄转生</span>':''}${h.isSoulSwap?' · <span style="color:#e879f9">🎭灵魂交换</span>':''}</div>
       <div class="hero-stats">
         <span class="stat-tag" title="${statTips.maxHP}">❤️<b>${stats.maxHP}</b></span>
         <span class="stat-tag" title="${statTips.atk}">⚔️<b>${stats.atk}</b></span>
