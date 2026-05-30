@@ -2461,7 +2461,7 @@ body{
 
 /* ===== 英雄详情弹窗增强样式 ===== */
 .hero-detail-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:150;display:flex;align-items:center;justify-content:center;padding:10px;animation:fadeIn .25s ease;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.hero-detail-panel{background:linear-gradient(180deg,#1a1a3a,#12122a);border:1px solid var(--border);border-radius:var(--radius-lg);width:100%;max-width:520px;max-height:88vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;box-shadow:var(--shadow-lg);position:relative}
+.hero-detail-panel{background:linear-gradient(180deg,#1a1a3a,#12122a);border:1px solid var(--border);border-radius:var(--radius-lg);width:100%;max-width:420px;max-height:75vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;box-shadow:var(--shadow-lg);position:relative}
 .hero-detail-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.3}
 .hero-detail-panel::-webkit-scrollbar{width:4px}
 .hero-detail-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
@@ -12323,7 +12323,7 @@ function showHeroDetail(uid){
   const displayHeroName = isLockedUnknown ? (h.displayName || '???') : h.name;
 
   const html=`
-  <div class="hero-detail-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="hero-detail-overlay" onclick="if(event.target===this)closeModal()" style="padding:40px 20px">
     <div class="hero-detail-panel">
       <!-- 头部：英雄基本信息 -->
       <div class="hd-header" style="background:linear-gradient(135deg,rgba(${h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':h.quality==='mythic'?'220,50,50':h.quality==='hidden'?'0,255,204':'255,0,255'},.12),transparent)">
@@ -14722,9 +14722,9 @@ function showEquipDetail(equipUid){
   // 操作按钮
   let actionButtons='';
   if(hero){
-    actionButtons='<button class="btn btn-danger" onclick="closeModal();unequipFromHero('+hero.uid+',\''+tpl.type+'\');" style="flex:1">卸下装备</button>';
+    actionButtons='<button class="btn btn-danger" onclick="unequipFromHeroInline('+equipUid+');showEquipDetail('+equipUid+')" style="flex:1">卸下装备</button>';
   }else{
-    actionButtons='<button class="btn btn-primary" onclick="closeModal();showEquipToHero('+equipUid+');" style="flex:1">装备给英雄</button>'
+    actionButtons='<button class="btn btn-primary" onclick="showEquipToHeroInline('+equipUid+')" style="flex:1">装备给英雄</button>'
       +'<button class="btn" onclick="closeModal();enhanceEquipment('+equipUid+');" style="flex:1;background:rgba(255,215,0,.15);border-color:var(--gold);color:var(--gold)">强化</button>'
       +'<button class="btn btn-danger" onclick="closeModal();decomposeEquipment('+equipUid+');" style="flex:1">分解</button>';
   }
@@ -14740,6 +14740,7 @@ function showEquipDetail(equipUid){
     +setHtml
     +skillHtml
     +affixHtml
+    +'<div class="equip-inline-action-area"></div>'
     +'<div style="display:flex;gap:8px;margin-top:16px">'
     +actionButtons
     +'</div>';
@@ -14765,6 +14766,70 @@ function showEquipToHero(equipUid){
 function unequipFromHero(heroUid,slot){
   unequipItem(heroUid,slot);
   showToast('已卸下装备');
+  renderCurrentTab();
+}
+
+// 不关闭弹窗的内联卸下装备
+function unequipFromHeroInline(equipUid){
+  const eq=G.equipment.find(e=>e.uid===equipUid);
+  if(!eq||!eq.heroUid)return;
+  const hero=G.heroes.find(h=>h.uid===eq.heroUid);
+  if(!hero)return;
+  const tpl=EQUIP_TEMPLATES.find(t=>t.id===eq.id);
+  if(!tpl)return;
+  const slot=tpl.type==='weapon'?'weapon':tpl.type==='armor'?'armor':'accessory';
+  unequipItem(hero.uid,slot);
+  showToast('已卸下装备');
+  saveGame();
+  renderCurrentTab();
+}
+
+// 不关闭弹窗的内联装备给英雄（在弹窗内展开英雄列表）
+function showEquipToHeroInline(equipUid){
+  const eq=G.equipment.find(e=>e.uid===equipUid);
+  if(!eq)return;
+  const tpl=EQUIP_TEMPLATES.find(t=>t.id===eq.id);
+  if(!tpl)return;
+  const slot=tpl.type==='weapon'?'weapon':tpl.type==='armor'?'armor':'accessory';
+  const heroes=G.heroes;
+  if(heroes.length===0){showToast('没有英雄');return}
+
+  // 找到弹窗内的操作按钮区域，替换为英雄选择列表
+  const actionArea=document.querySelector('.equip-inline-action-area');
+  if(!actionArea)return;
+
+  let heroListHtml='<div style="margin-top:12px;padding:12px;background:rgba(0,0,0,.2);border-radius:8px;border:1px solid var(--border)">'
+    +'<div style="font-size:13px;color:var(--gold);font-weight:bold;margin-bottom:8px">选择装备对象</div>'
+    +'<div style="display:flex;flex-direction:column;gap:6px">';
+
+  heroes.forEach(function(h){
+    const role=ROLES[h.role];
+    const currentEquipUid=h.equipment[slot];
+    const currentEq=currentEquipUid?G.equipment.find(e=>e.uid===currentEquipUid):null;
+    const currentTpl=currentEq?EQUIP_TEMPLATES.find(t=>t.id===currentEq.id):null;
+    const isEquipped=currentEquipUid!=null;
+
+    heroListHtml+='<div class="hero-card quality-'+h.quality+'" onclick="equipItemInline('+h.uid+','+equipUid+');showEquipDetail('+equipUid+')" style="cursor:pointer;padding:8px;border-radius:8px;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);border:1px solid var(--border)">'
+      +'<div class="hero-avatar" style="width:36px;height:36px;font-size:20px">'+h.icon+'</div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div class="hero-name"><span class="q-'+h.quality+'" style="font-size:13px">'+h.name+'</span></div>'
+      +'<div class="hero-meta" style="font-size:11px">'+role.icon+' '+role.name+' · Lv.'+h.level+'</div>'
+      +(isEquipped?'<div style="font-size:10px;color:var(--text3)">当前: '+(currentTpl?currentTpl.icon+' '+currentTpl.name:'无')+'</div>':'')
+      +'</div>'
+      +'</div>';
+  });
+
+  heroListHtml+='</div>'
+    +'<button class="btn btn-sm" onclick="this.closest(\'.equip-inline-action-area\').innerHTML=\'\'" style="margin-top:8px;width:100%">取消</button>'
+    +'</div>';
+
+  actionArea.innerHTML=heroListHtml;
+}
+
+// 不关闭弹窗的内联装备操作
+function equipItemInline(heroUid,equipUid){
+  equipItem(heroUid,equipUid);
+  saveGame();
   renderCurrentTab();
 }
 
