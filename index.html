@@ -1997,11 +1997,6 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
       <div class="res-item" title="金币"><span class="res-icon">💰</span><span class="res-val" id="res-gold">500</span></div>
       <div class="res-item" title="宝石"><span class="res-icon">💎</span><span class="res-val" id="res-gems">10</span></div>
       <div class="res-item" title="食物"><span class="res-icon">🍞</span><span class="res-val" id="res-food">50</span></div>
-      <div class="res-item" title="声望"><span class="res-icon">🏆</span><span class="res-val" id="res-fame">0</span></div>
-      <span class="sep">|</span>
-      <!-- 建筑材料 -->
-      <div class="res-item" title="石材"><span class="res-icon">🪨</span><span class="res-val" id="res-stone">50</span></div>
-      <div class="res-item" title="铁矿"><span class="res-icon">⛏️</span><span class="res-val" id="res-iron">0</span></div>
       <span class="sep">|</span>
       <!-- 消耗品 -->
       <div class="res-item" title="经验药水"><span class="res-icon">🧪</span><span class="res-val" id="res-expPotion">0</span></div>
@@ -5755,9 +5750,6 @@ function updateResUI(){
   document.getElementById('res-gold').textContent=G.resources.gold;
   document.getElementById('res-gems').textContent=G.resources.gems;
   document.getElementById('res-food').textContent=G.resources.food;
-  document.getElementById('res-fame').textContent=G.resources.fame;
-  document.getElementById('res-stone').textContent=G.resources.stone;
-  document.getElementById('res-iron').textContent=G.resources.iron;
   document.getElementById('res-expPotion').textContent=G.resources.expPotion||0;
 }
 
@@ -6121,13 +6113,13 @@ var G_productionTimer=null;
 
 // 资源上限配置
 const RESOURCE_LIMITS = {
-  gold: 50000000,     // 金币上限 5000万
-  gems: 999999,       // 宝石上限 99万
-  food: 5000000,      // 食物上限 500万
-  stone: 3000000,     // 石材上限 300万
-  iron: 1500000,      // 铁矿上限 150万
-  fame: 999999,       // 声望上限 99万
-  expPotion: 99999999 // 经验药水上限 9999万
+  gold: 999999999,    // 金币上限 9.9亿
+  gems: 99999999,     // 宝石上限 9999万
+  food: 999999999,    // 食物上限 9.9亿
+  stone: 999999999,   // 石材上限 9.9亿
+  iron: 999999999,    // 铁矿上限 9.9亿
+  fame: 999999999,    // 声望上限 9.9亿
+  expPotion: 999999999 // 经验药水上限 9.9亿
 };
 
 function produceResources(){
