@@ -2880,11 +2880,12 @@ function onGuideBattleClick(){
 
 function onGuideMergeClick(){
   if(G.tutorialPhase==='guide' && G.tutorialStep===6){
+    G.tutorialStep=0;
     // 显示合成引导介绍面板
     var mergeIntro=document.getElementById('merge-intro');
     if(mergeIntro) mergeIntro.style.display='block';
-    // 延迟完成引导，让用户有时间阅读介绍
-    setTimeout(function(){finishTutorial()},8000);
+    // 立即完成引导
+    finishTutorial();
     return true;
   }
   return false;
@@ -11666,7 +11667,7 @@ function renderTown(el){
       +'<div class="panel-title"><span class="icon">⚔️</span> 快速入口</div>'
       +'<div class="town-quick-btns">'
         +'<button class="btn btn-primary auto-battle-btn" id="auto-battle-btn" style="flex:1" onclick="startAutoBattle(G.stageProgress)">▶️ 自动推图</button>'
-        +'<button class="btn" id="town-recruit" style="flex:1" onclick="renderTavernRecruit()">🍺 招募</button>'
+        +'<button class="btn" id="town-recruit" style="flex:1" onclick="onGuideRecruitClick()">🍺 招募</button>'
       +'</div>'
     +'</div>'
     +'<div class="town-modules-grid">'
