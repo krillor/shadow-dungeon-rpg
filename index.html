@@ -436,34 +436,7 @@ body{
 }
 #app{display:flex;flex-direction:column;height:100vh;width:100vw}
 
-/* ===== 顶部栏 - 玻璃拟态风格 ===== */
-#top-bar{
-  height:var(--top-h);
-  background:var(--panel-glass);
-  border-bottom:1px solid var(--border);
-  display:flex;
-  align-items:center;
-  padding:0 16px;
-  gap:10px;
-  flex-shrink:0;
-  overflow-x:auto;
-  scrollbar-width:none;
-  -ms-overflow-style:none;
-  flex-wrap:nowrap;
-  box-shadow:var(--shadow-sm),var(--shadow-inset);
-  backdrop-filter:blur(20px) saturate(180%);
-  -webkit-backdrop-filter:blur(20px) saturate(180%);
-  position:relative;
-  z-index:10;
-}
-#top-bar::after{
-  content:'';
-  position:absolute;
-  bottom:0;left:0;right:0;
-  height:1px;
-  background:linear-gradient(90deg,transparent,var(--gold-dim),transparent);
-}
-#top-bar::-webkit-scrollbar{display:none}
+/* 资源项样式（用于其他页面） */
 .res-item{
   display:flex;
   align-items:center;
@@ -732,6 +705,81 @@ body{
 
 
 /* ===== 城镇界面 - 现代风格 ===== */
+/* 城镇主面板 - 整合标题和资源 */
+.town-main-panel{
+  padding:16px;
+}
+/* 城镇头部 - 标题和资源在一行 */
+.town-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding-bottom:12px;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+/* 标题行 */
+.town-title-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.town-title{
+  font-size:16px;
+  font-weight:700;
+  background:linear-gradient(180deg,var(--gold2),var(--gold));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+/* 资源栏 - 精简一行显示 */
+.town-resources-bar{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:nowrap;
+  overflow-x:auto;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+}
+.town-resources-bar::-webkit-scrollbar{display:none}
+.town-res-item{
+  display:flex;
+  align-items:center;
+  gap:3px;
+  padding:3px 8px;
+  background:rgba(0,0,0,0.25);
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.06);
+  white-space:nowrap;
+  flex-shrink:0;
+}
+.town-res-icon{
+  font-size:13px;
+  line-height:1;
+}
+.town-res-val{
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:0.2px;
+}
+.town-res-val.gold{color:#ffd700}
+.town-res-val.gems{color:#a855f7}
+.town-res-val.food{color:#f97316}
+.town-res-val.potion{color:#22c55e}
+.town-res-sep{
+  color:rgba(255,255,255,0.15);
+  font-size:10px;
+  flex-shrink:0;
+}
+/* 响应式：小屏幕时资源换行 */
+@media (max-width:400px){
+  .town-header{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:10px;
+  }
+}
 .town-hero-summary{
   display:flex;
   gap:10px;
@@ -1920,7 +1968,6 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
   #sidebar .nav-btn:hover,#sidebar .nav-btn.active{background:var(--panel2);color:var(--gold);border-color:var(--gold);box-shadow:var(--shadow-gold)}
   #sidebar .nav-btn .nav-icon{font-size:20px}
   #main{padding-bottom:0}
-  #top-bar{height:40px;padding:0 16px;gap:20px}
   .panel{padding:18px;margin-bottom:14px}
   .grid-2{grid-template-columns:1fr 1fr;gap:12px}
   .grid-3{grid-template-columns:1fr 1fr 1fr;gap:12px}
@@ -1992,15 +2039,6 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
     <div class="nav-btn" data-tab="cheats" id="nav-cheats-btn" title="金手指" style="color:#c0392b">🔓<div class="nav-label">金手指</div></div>
   </div>
   <div id="main">
-    <div id="top-bar">
-      <!-- 基础资源 -->
-      <div class="res-item" title="金币"><span class="res-icon">💰</span><span class="res-val" id="res-gold">500</span></div>
-      <div class="res-item" title="宝石"><span class="res-icon">💎</span><span class="res-val" id="res-gems">10</span></div>
-      <div class="res-item" title="食物"><span class="res-icon">🍞</span><span class="res-val" id="res-food">50</span></div>
-      <span class="sep">|</span>
-      <!-- 消耗品 -->
-      <div class="res-item" title="经验药水"><span class="res-icon">🧪</span><span class="res-val" id="res-expPotion">0</span></div>
-    </div>
     <div id="content"></div>
     <div id="battle-panel" style="display:none">
       <div class="panel">
@@ -5764,10 +5802,15 @@ function formatResource(num){
 }
 
 function updateResUI(){
-  document.getElementById('res-gold').textContent=formatResource(G.resources.gold);
-  document.getElementById('res-gems').textContent=formatResource(G.resources.gems);
-  document.getElementById('res-food').textContent=formatResource(G.resources.food);
-  document.getElementById('res-expPotion').textContent=formatResource(G.resources.expPotion||0);
+  // 更新顶部资源栏（如果存在）
+  var goldEl=document.getElementById('res-gold');
+  var gemsEl=document.getElementById('res-gems');
+  var foodEl=document.getElementById('res-food');
+  var expPotionEl=document.getElementById('res-expPotion');
+  if(goldEl)goldEl.textContent=formatResource(G.resources.gold);
+  if(gemsEl)gemsEl.textContent=formatResource(G.resources.gems);
+  if(foodEl)foodEl.textContent=formatResource(G.resources.food);
+  if(expPotionEl)expPotionEl.textContent=formatResource(G.resources.expPotion||0);
 }
 
 // 资源栏更新别名（兼容不同调用）
@@ -8239,7 +8282,10 @@ async function runBattle(stageId){
       log('🔥 '+G.pveWinStreak+'连胜！奖励加成 +'+Math.round((streakBonus-1)*100)+'%','crit');
     }
     if(luckyBonus>1) log('🍀 幸运加成 +'+Math.round((luckyBonus-1)*100)+'%','info');
-    showToast('战斗胜利！'+(G.pveWinStreak>=3?G.pveWinStreak+'连胜！':''));
+    // 自动战斗时不显示胜利提示，只显示失败提示
+    if(!G_autoBattle){
+      showToast('战斗胜利！'+(G.pveWinStreak>=3?G.pveWinStreak+'连胜！':''));
+    }
     
     // 更新成就统计
     updateStat('kills', stage.enemies.length);
@@ -11013,11 +11059,31 @@ function renderTown(el){
   //   if(offline) G.offlineEarnings=offline;
   // }catch(e){console.error('[Town Error] offline:',e);}
   
+  // 获取资源数据
+  var gold=G.resources&&G.resources.gold!==undefined?formatResource(G.resources.gold):'0';
+  var gems=G.resources&&G.resources.gems!==undefined?formatResource(G.resources.gems):'0';
+  var food=G.resources&&G.resources.food!==undefined?formatResource(G.resources.food):'0';
+  var expPotion=G.resources&&G.resources.expPotion!==undefined?formatResource(G.resources.expPotion):'0';
+  
   // 构建HTML
   try{
-    el.innerHTML='<div class="panel">'
-      +'<div class="panel-title"><span class="icon">🏰</span> 暗影地牢</div>'
-      +'<div style="color:var(--text2);font-size:12px;line-height:1.8">'
+    el.innerHTML='<div class="panel town-main-panel">'
+      +'<div class="town-header">'
+        +'<div class="town-title-row">'
+          +'<span class="icon">🏰</span>'
+          +'<span class="town-title">暗影地牢</span>'
+        +'</div>'
+        +'<div class="town-resources-bar">'
+          +'<div class="town-res-item"><span class="town-res-icon">💰</span><span class="town-res-val gold" id="res-gold">'+gold+'</span></div>'
+          +'<span class="town-res-sep">·</span>'
+          +'<div class="town-res-item"><span class="town-res-icon">💎</span><span class="town-res-val gems" id="res-gems">'+gems+'</span></div>'
+          +'<span class="town-res-sep">·</span>'
+          +'<div class="town-res-item"><span class="town-res-icon">🍞</span><span class="town-res-val food" id="res-food">'+food+'</span></div>'
+          +'<span class="town-res-sep">·</span>'
+          +'<div class="town-res-item"><span class="town-res-icon">🧪</span><span class="town-res-val potion" id="res-expPotion">'+expPotion+'</span></div>'
+        +'</div>'
+      +'</div>'
+      +'<div style="color:var(--text2);font-size:12px;line-height:1.8;margin-top:12px;">'
         +'<p>黑暗笼罩了这片大陆。曾经繁荣的帝国已经覆灭，亡灵和恶魔在废墟中游荡。</p>'
         +'<p>你是最后的希望——一位流浪的指挥官，必须召集英雄，探索地牢，击败黑暗势力。</p>'
         +'<p style="margin-top:8px;color:var(--gold)">当前进度：第 '+(G.stageProgress-1)+' 章已通关（无限模式）</p>'
