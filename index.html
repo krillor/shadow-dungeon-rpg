@@ -9197,6 +9197,11 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
   var qualityColors={common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444',hidden:'#00ffcc',unknown:'#ff00ff'};
   var qualityBg={common:'rgba(136,136,136,.15)',rare:'rgba(74,158,255,.15)',epic:'rgba(168,85,247,.15)',legendary:'rgba(245,158,11,.15)',mythic:'rgba(239,68,68,.15)',hidden:'rgba(0,255,204,.12)',unknown:'rgba(255,0,255,.15)'};
   
+  // 判断是否为未解锁的未知英雄
+  var isUnknownLocked = hero.isUnknown && !hero.isUnlocked;
+  var displayIcon = isUnknownLocked ? (hero.displayIcon || '❓') : hero.icon;
+  var displayName = isUnknownLocked ? (hero.displayName || '???') : hero.name;
+  
   // 创建特效层
   var effects='';
   if(hero.quality==='hidden'){
@@ -9232,17 +9237,25 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
   var hasMutated=hero.mutatedSkills&&hero.mutatedSkills.length>0;
   var mutatedNames=[];
   var mutatedSkillIds=[];
-  var skillsHtml=hero.skills.slice(0,6).map(function(s,i){
-    var isMut=hasMutated&&hero.mutatedSkills.indexOf(i)>=0;
-    var skillData=SKILLS?SKILLS[s]:null;
-    var displayName=skillData?skillData.name:s;
-    if(isMut){
-      mutatedNames.push(displayName);
-      mutatedSkillIds.push(s);
-    }
-    var tip=skillData?' title="🧬 变异技能 - '+(skillData.desc||'')+'"':'';
-    return '<span class="merge-result-skill'+(isMut?' merge-skill-mut':'')+'"'+tip+' data-skill-id="'+s+'" onclick="event.stopPropagation();showSkillDetail(\''+s+'\','+!!isMut+')">'+(isMut?'🧬':'')+displayName+(isMut?'✨':'')+'</span>';
-  }).join('');
+  var skillsHtml;
+  if(isUnknownLocked){
+    // 未知英雄隐藏技能名称
+    skillsHtml = hero.skills.slice(0,6).map(function(s,i){
+      return '<span class="merge-result-skill" style="background:rgba(255,0,255,.2);border-color:#ff00ff">❓???</span>';
+    }).join('');
+  }else{
+    skillsHtml=hero.skills.slice(0,6).map(function(s,i){
+      var isMut=hasMutated&&hero.mutatedSkills.indexOf(i)>=0;
+      var skillData=SKILLS?SKILLS[s]:null;
+      var displayName=skillData?skillData.name:s;
+      if(isMut){
+        mutatedNames.push(displayName);
+        mutatedSkillIds.push(s);
+      }
+      var tip=skillData?' title="🧬 变异技能 - '+(skillData.desc||'')+'"':'';
+      return '<span class="merge-result-skill'+(isMut?' merge-skill-mut':'')+'"'+tip+' data-skill-id="'+s+'" onclick="event.stopPropagation();showSkillDetail(\''+s+'\','+!!isMut+')">'+(isMut?'🧬':'')+displayName+(isMut?'✨':'')+'</span>';
+    }).join('');
+  }
   
   // 如果有变异技能，添加专门的变异提示区域（可点击查看详情）
   var mutateBanner='';
@@ -9287,22 +9300,30 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
   
   var heroPower=calcHeroPower?calcHeroPower(hero):0;
   
+  // 属性显示：未知英雄隐藏真实数值
+  var displayHP = isUnknownLocked ? '???' : stats.maxHP;
+  var displayATK = isUnknownLocked ? '???' : stats.atk;
+  var displayDEF = isUnknownLocked ? '???' : stats.def;
+  var displaySPD = isUnknownLocked ? '???' : stats.spd;
+  var displayMP = isUnknownLocked ? '???' : stats.maxMP;
+  var displayPower = isUnknownLocked ? '???' : heroPower;
+  
   var html=effects+'<div class="merge-result-overlay" onclick="closeMergeResult()">'+
     '<div class="merge-result-card" onclick="event.stopPropagation()" style="max-height:90vh;overflow-y:auto">'+
-      '<div class="merge-result-avatar" style="background:'+qualityBg[hero.quality]+';border-color:'+qualityColors[hero.quality]+'">'+hero.icon+'</div>'+
+      '<div class="merge-result-avatar" style="background:'+qualityBg[hero.quality]+';border-color:'+qualityColors[hero.quality]+'">'+displayIcon+'</div>'+
       (hero.isMutation?'<div class="merge-result-mutation">☣️ 异变英雄 · 超越极限</div>':'')+
       (hero.isUpset?'<div class="merge-result-mutation" style="color:#2ecc71">🍀 以弱胜强 · 逆境翻盘</div>':'')+
       (hero.bondInfo?'<div class="merge-result-mutation" style="color:#5dade2">🔗 '+hero.bondInfo.name+' · '+hero.bondInfo.desc+'</div>':'')+
       '<div class="merge-result-quality" style="color:'+qualityColors[hero.quality]+'">'+QUALITY_NAMES[hero.quality]+'</div>'+
-      '<div class="merge-result-name">'+hero.name+'</div>'+
+      '<div class="merge-result-name">'+displayName+'</div>'+
       '<div style="font-size:12px;color:var(--text2);margin-bottom:4px">'+(ROLES[hero.role]?ROLES[hero.role].icon+' '+ROLES[hero.role].name:'')+' · Lv.'+hero.level+'</div>'+
       '<div class="merge-result-stats">'+
-        '<div class="merge-result-stat">❤️ 生命<b>'+stats.maxHP+growthTag(stats.maxHP,avgMatHP)+'</b></div>'+
-        '<div class="merge-result-stat">⚔️ 攻击<b>'+stats.atk+growthTag(stats.atk,avgMatATK)+'</b></div>'+
-        '<div class="merge-result-stat">🛡️ 防御<b>'+stats.def+growthTag(stats.def,avgMatDEF)+'</b></div>'+
-        '<div class="merge-result-stat">💨 速度<b>'+stats.spd+growthTag(stats.spd,avgMatSPD)+'</b></div>'+
-        '<div class="merge-result-stat">💎 魔法<b>'+stats.maxMP+growthTag(stats.maxMP,avgMatMP)+'</b></div>'+
-        '<div class="merge-result-stat">⚡ 战力<b>'+heroPower+growthTag(heroPower,avgMatPow)+'</b></div>'+
+        '<div class="merge-result-stat">❤️ 生命<b>'+displayHP+(isUnknownLocked?'':growthTag(stats.maxHP,avgMatHP))+'</b></div>'+
+        '<div class="merge-result-stat">⚔️ 攻击<b>'+displayATK+(isUnknownLocked?'':growthTag(stats.atk,avgMatATK))+'</b></div>'+
+        '<div class="merge-result-stat">🛡️ 防御<b>'+displayDEF+(isUnknownLocked?'':growthTag(stats.def,avgMatDEF))+'</b></div>'+
+        '<div class="merge-result-stat">💨 速度<b>'+displaySPD+(isUnknownLocked?'':growthTag(stats.spd,avgMatSPD))+'</b></div>'+
+        '<div class="merge-result-stat">💎 魔法<b>'+displayMP+(isUnknownLocked?'':growthTag(stats.maxMP,avgMatMP))+'</b></div>'+
+        '<div class="merge-result-stat">⚡ 战力<b>'+displayPower+(isUnknownLocked?'':growthTag(heroPower,avgMatPow))+'</b></div>'+
       '</div>'+
       '<div class="merge-result-skills">'+skillsHtml+'</div>'+
       mutateBanner+
