@@ -8282,7 +8282,10 @@ async function runBattle(stageId){
       log('🔥 '+G.pveWinStreak+'连胜！奖励加成 +'+Math.round((streakBonus-1)*100)+'%','crit');
     }
     if(luckyBonus>1) log('🍀 幸运加成 +'+Math.round((luckyBonus-1)*100)+'%','info');
-    showToast('战斗胜利！'+(G.pveWinStreak>=3?G.pveWinStreak+'连胜！':''));
+    // 自动战斗时不显示胜利提示，只显示失败提示
+    if(!G_autoBattle){
+      showToast('战斗胜利！'+(G.pveWinStreak>=3?G.pveWinStreak+'连胜！':''));
+    }
     
     // 更新成就统计
     updateStat('kills', stage.enemies.length);
