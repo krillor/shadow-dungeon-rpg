@@ -1,0 +1,45 @@
+---
+name: github-auto-push
+description: "自动记住 GitHub Token 并在修改文件后自动推送到 GitHub。支持保存 Token、自动提交、自动推送、配置 GitHub Pages 等功能。"
+license: Proprietary
+version: 1.0.0
+author: SOLO
+
+# Skill 配置
+config:
+  # Token 存储路径
+  token_file: ~/.github_token
+  # 默认仓库信息存储路径
+  repo_config_file: ~/.github_repo_config
+
+# 触发条件
+triggers:
+  - type: file_modified
+    patterns:
+      - "*.html"
+      - "*.css"
+      - "*.js"
+      - "*.md"
+    auto_push: true
+
+# 命令
+commands:
+  - name: save-token
+    description: 保存 GitHub Personal Access Token
+    usage: "save-token <token>"
+  
+  - name: set-repo
+    description: 设置目标仓库信息
+    usage: "set-repo <username> <repo-name>"
+  
+  - name: push-now
+    description: 立即推送当前修改到 GitHub
+    usage: "push-now [commit-message]"
+  
+  - name: setup-pages
+    description: 配置 GitHub Pages
+    usage: "setup-pages [branch]"
+  
+  - name: status
+    description: 查看当前 Git 状态和配置
+    usage: "status"
