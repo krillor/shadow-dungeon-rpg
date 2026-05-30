@@ -2752,45 +2752,51 @@ function showGuideTip(targetId,tipTitle,tipText,arrowDir){
   hideGuideTip();
   var targetEl=document.getElementById(targetId);
   if(!targetEl || !G_guideHighlightEl || !G_guideTooltipEl) return;
-  var rect=targetEl.getBoundingClientRect();
-  G_guideHighlightEl.style.display='block';
-  G_guideHighlightEl.style.left=(rect.left-6)+'px';
-  G_guideHighlightEl.style.top=(rect.top-6)+'px';
-  G_guideHighlightEl.style.width=(rect.width+12)+'px';
-  G_guideHighlightEl.style.height=(rect.height+12)+'px';
-  var tooltip=G_guideTooltipEl;
-  tooltip.style.display='block';
-  tooltip.innerHTML='<div class="guide-title">'+tipTitle+'</div><div style="white-space:pre-line">'+tipText+'</div>';
-  var tooltipRect=tooltip.getBoundingClientRect();
-  var tooltipW=tooltipRect.width||260;
-  var tooltipH=tooltipRect.height||120;
-  var left,top;
-  if(!arrowDir){
-    var spaceBelow=window.innerHeight-rect.bottom;
-    var spaceAbove=rect.top;
-    if(spaceBelow>tooltipH+40) arrowDir='below';
-    else if(spaceAbove>tooltipH+40) arrowDir='above';
-    else if(rect.left+rect.width/2<window.innerWidth/2) arrowDir='right';
-    else arrowDir='left';
-  }
-  if(arrowDir==='below'){
-    left=rect.left+rect.width/2-tooltipW/2;
-    top=rect.bottom+16;
-  }else if(arrowDir==='above'){
-    left=rect.left+rect.width/2-tooltipW/2;
-    top=rect.top-tooltipH-16;
-  }else if(arrowDir==='right'){
-    left=rect.right+16;
-    top=rect.top+rect.height/2-tooltipH/2;
-  }else{
-    left=rect.left-tooltipW-16;
-    top=rect.top+rect.height/2-tooltipH/2;
-  }
-  left=Math.max(10,Math.min(left,window.innerWidth-tooltipW-10));
-  top=Math.max(10,Math.min(top,window.innerHeight-tooltipH-10));
-  tooltip.style.left=left+'px';
-  tooltip.style.top=top+'px';
-  tooltip.onclick=function(e){e.stopPropagation()};
+  // 确保目标元素在可视区域内，滚动到可见位置
+  targetEl.scrollIntoView({behavior:'smooth',block:'center'});
+  // 等待滚动完成后再计算位置
+  setTimeout(function(){
+    if(!G_guideHighlightEl || !G_guideTooltipEl) return;
+    var rect=targetEl.getBoundingClientRect();
+    G_guideHighlightEl.style.display='block';
+    G_guideHighlightEl.style.left=(rect.left-6)+'px';
+    G_guideHighlightEl.style.top=(rect.top-6)+'px';
+    G_guideHighlightEl.style.width=(rect.width+12)+'px';
+    G_guideHighlightEl.style.height=(rect.height+12)+'px';
+    var tooltip=G_guideTooltipEl;
+    tooltip.style.display='block';
+    tooltip.innerHTML='<div class="guide-title">'+tipTitle+'</div><div style="white-space:pre-line">'+tipText+'</div>';
+    var tooltipRect=tooltip.getBoundingClientRect();
+    var tooltipW=tooltipRect.width||260;
+    var tooltipH=tooltipRect.height||120;
+    var left,top;
+    if(!arrowDir){
+      var spaceBelow=window.innerHeight-rect.bottom;
+      var spaceAbove=rect.top;
+      if(spaceBelow>tooltipH+40) arrowDir='below';
+      else if(spaceAbove>tooltipH+40) arrowDir='above';
+      else if(rect.left+rect.width/2<window.innerWidth/2) arrowDir='right';
+      else arrowDir='left';
+    }
+    if(arrowDir==='below'){
+      left=rect.left+rect.width/2-tooltipW/2;
+      top=rect.bottom+16;
+    }else if(arrowDir==='above'){
+      left=rect.left+rect.width/2-tooltipW/2;
+      top=rect.top-tooltipH-16;
+    }else if(arrowDir==='right'){
+      left=rect.right+16;
+      top=rect.top+rect.height/2-tooltipH/2;
+    }else{
+      left=rect.left-tooltipW-16;
+      top=rect.top+rect.height/2-tooltipH/2;
+    }
+    left=Math.max(10,Math.min(left,window.innerWidth-tooltipW-10));
+    top=Math.max(10,Math.min(top,window.innerHeight-tooltipH-10));
+    tooltip.style.left=left+'px';
+    tooltip.style.top=top+'px';
+    tooltip.onclick=function(e){e.stopPropagation()};
+  }, 350);
 }
 
 function hideGuideTip(){
