@@ -5792,10 +5792,15 @@ function formatResource(num){
 }
 
 function updateResUI(){
-  document.getElementById('res-gold').textContent=formatResource(G.resources.gold);
-  document.getElementById('res-gems').textContent=formatResource(G.resources.gems);
-  document.getElementById('res-food').textContent=formatResource(G.resources.food);
-  document.getElementById('res-expPotion').textContent=formatResource(G.resources.expPotion||0);
+  // 更新顶部资源栏（如果存在）
+  var goldEl=document.getElementById('res-gold');
+  var gemsEl=document.getElementById('res-gems');
+  var foodEl=document.getElementById('res-food');
+  var expPotionEl=document.getElementById('res-expPotion');
+  if(goldEl)goldEl.textContent=formatResource(G.resources.gold);
+  if(gemsEl)gemsEl.textContent=formatResource(G.resources.gems);
+  if(foodEl)foodEl.textContent=formatResource(G.resources.food);
+  if(expPotionEl)expPotionEl.textContent=formatResource(G.resources.expPotion||0);
 }
 
 // 资源栏更新别名（兼容不同调用）
@@ -11056,10 +11061,10 @@ function renderTown(el){
           +'<span class="town-title">暗影地牢</span>'
         +'</div>'
         +'<div class="town-resources-bar">'
-          +'<div class="town-res-item" title="金币"><span class="town-res-icon">💰</span><span class="town-res-val">'+gold+'</span></div>'
-          +'<div class="town-res-item" title="宝石"><span class="town-res-icon">💎</span><span class="town-res-val">'+gems+'</span></div>'
-          +'<div class="town-res-item" title="食物"><span class="town-res-icon">🍞</span><span class="town-res-val">'+food+'</span></div>'
-          +'<div class="town-res-item" title="经验药水"><span class="town-res-icon">🧪</span><span class="town-res-val">'+expPotion+'</span></div>'
+          +'<div class="town-res-item" title="金币"><span class="town-res-icon">💰</span><span class="town-res-val" id="res-gold">'+gold+'</span></div>'
+          +'<div class="town-res-item" title="宝石"><span class="town-res-icon">💎</span><span class="town-res-val" id="res-gems">'+gems+'</span></div>'
+          +'<div class="town-res-item" title="食物"><span class="town-res-icon">🍞</span><span class="town-res-val" id="res-food">'+food+'</span></div>'
+          +'<div class="town-res-item" title="经验药水"><span class="town-res-icon">🧪</span><span class="town-res-val" id="res-expPotion">'+expPotion+'</span></div>'
         +'</div>'
       +'</div>'
       +'<div style="color:var(--text2);font-size:12px;line-height:1.8;margin-top:12px;">'
