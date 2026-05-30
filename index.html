@@ -15683,14 +15683,16 @@ function cheatGems(){
 
 function cheatAllResources(){
   if(!G_cheats.enabled){showToast('请先开启金手指');return;}
-  G.resources.gold += 999999;
-  G.resources.gems += 999;
-  G.resources.stone += 999;
-  G.resources.iron += 999;
-  G.resources.food += 999;
-  G.resources.fame += 999;
+  G.resources.gold = 100000000;
+  G.resources.gems = 100000000;
+  G.resources.stone = 100000000;
+  G.resources.iron = 100000000;
+  G.resources.food = 100000000;
+  G.resources.fame = 100000000;
+  G.resources.expPotion = 100000000;
   updateResUI();
-  showToast('📦 所有资源已加满');
+  saveGame();
+  showToast('📦 所有资源已加满至1亿');
 }
 
 function cheatMaxLevel(){
@@ -16735,16 +16737,16 @@ function cheatAddBreakthroughMaterial(type, amount){
 // 全部资源加满
 function cheatAllResources(){
   if(!G_cheats.enabled){showToast('请先开启金手指');return;}
-  G.resources.gold = 99999999;
-  G.resources.gems = 99999;
-  G.resources.food = 99999;
-  G.resources.stone = 99999;
-  G.resources.iron = 99999;
-  G.resources.fame = 99999;
-  G.resources.expPotion = 99999;
+  G.resources.gold = 100000000;
+  G.resources.gems = 100000000;
+  G.resources.food = 100000000;
+  G.resources.stone = 100000000;
+  G.resources.iron = 100000000;
+  G.resources.fame = 100000000;
+  G.resources.expPotion = 100000000;
   updateResUI();
   saveGame();
-  showToast('💰 所有资源已加满！');
+  showToast('💰 所有资源已加满至1亿！');
 }
 
 // 全部突破材料加满
