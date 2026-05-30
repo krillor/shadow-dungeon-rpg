@@ -8960,7 +8960,8 @@ function generateFusedHero(heroes){
   
   // 未知英雄使用模板固定属性，不继承材料属性
   var maxHP, atk, def, spd, maxMP;
-  
+  var inheritMult = 1.0; // 默认值，未知英雄使用固定倍率
+
   if(isUnknownHero){
     // 未知英雄使用模板的隐藏属性
     maxHP = unknownTemplate.hiddenStats.maxHP;
@@ -8968,6 +8969,8 @@ function generateFusedHero(heroes){
     def = unknownTemplate.hiddenStats.def;
     spd = unknownTemplate.hiddenStats.spd;
     maxMP = unknownTemplate.hiddenStats.maxMP;
+    // 未知英雄使用固定继承倍率 4.0（与品质倍率一致）
+    inheritMult = 4.0;
   }else{
     var minBoost=Math.max(1,1+Math.floor(resultQualityIdx/2));
     var maxBoost=5;
