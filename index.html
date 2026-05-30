@@ -4588,6 +4588,8 @@ let G = {
   // 合成异象系统
   currentOmen: 'normal',
   omenExpireTime: 0,
+  // 一键招募解锁状态（持久化到存档）
+  recruitPasswordVerified: false,
 };
 
 // ==================== 存档系统（多存档+备份管理） ====================
@@ -10700,15 +10702,14 @@ function recruitAllHeroes(minQuality){
   renderTavernRecruit();
 }
 
-// 一键招募密码验证状态
-var G_recruitPasswordVerified = false;
+// 一键招募密码验证状态（已从全局变量改为G对象属性，实现持久化）
 var G_pendingRecruitQuality = null; // 待执行的品质筛选
 const RECRUIT_PASSWORD = '1076667471'; // 一键招募密码
 
 // 显示密码验证弹窗
 function showRecruitPasswordDialog(quality){
   // 如果已验证过，直接执行招募
-  if(G_recruitPasswordVerified){
+  if(G.recruitPasswordVerified){
     recruitAllHeroes(quality);
     return;
   }
@@ -10748,7 +10749,8 @@ function verifyRecruitPassword(){
   
   var password = input.value.trim();
   if(password === RECRUIT_PASSWORD){
-    G_recruitPasswordVerified = true;
+    G.recruitPasswordVerified = true;
+    saveGame(); // 保存解锁状态到存档
     closeModal();
     showToast('✅ 密码正确，一键招募功能已解锁！');
     // 执行待处理的招募
