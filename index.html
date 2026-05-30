@@ -2363,7 +2363,16 @@ const UNKNOWN_HERO_TEMPLATES = [
     quality: 'unknown',
     skills: ['void_slash','dimension_door','void_shield','reality_tear'],
     lore: '来自虚空裂缝的神秘存在，其真实形态无法被凡人理解。只有在完成虚空试炼后，才能窥见其真正的力量。',
-    hiddenStats: {maxHP: 8888, atk: 888, def: 666, spd: 188, maxMP: 888}
+    hiddenStats: {maxHP: 8888, atk: 888, def: 666, spd: 188, maxMP: 888},
+    // 解锁任务配置
+    unlockQuest: {
+      name: '虚空试炼',
+      desc: '证明你能够穿越虚空的考验',
+      conditions: [
+        {type: 'stages_cleared', target: 50, desc: '通关50个关卡'},
+        {type: 'assassin_merged', target: 10, desc: '合成刺客英雄10次'}
+      ]
+    }
   },
   {
     id: 'chaos_oracle',
@@ -2373,7 +2382,16 @@ const UNKNOWN_HERO_TEMPLATES = [
     quality: 'unknown',
     skills: ['chaos_bolt','fate_weave','prophecy_shield','doomsday'],
     lore: '能够窥见命运之线的神秘法师，但代价是永远被混沌之力侵蚀。只有最坚定的勇者才能承受其力量。',
-    hiddenStats: {maxHP: 6666, atk: 999, def: 444, spd: 144, maxMP: 999}
+    hiddenStats: {maxHP: 6666, atk: 999, def: 444, spd: 144, maxMP: 999},
+    unlockQuest: {
+      name: '混沌试炼',
+      desc: '在混沌中寻找秩序',
+      conditions: [
+        {type: 'stages_cleared', target: 60, desc: '通关60个关卡'},
+        {type: 'mage_merged', target: 15, desc: '合成法师英雄15次'},
+        {type: 'mythic_merged', target: 3, desc: '合成神话英雄3次'}
+      ]
+    }
   },
   {
     id: 'eternal_guardian',
@@ -2383,7 +2401,16 @@ const UNKNOWN_HERO_TEMPLATES = [
     quality: 'unknown',
     skills: ['time_stop','eternal_shield','ageless_will','temporal_lock'],
     lore: '超越了时间流逝的古老守护者，据说已经守护了这个世界数千年。只有完成时间试炼，才能获得其认可。',
-    hiddenStats: {maxHP: 12888, atk: 555, def: 888, spd: 99, maxMP: 666}
+    hiddenStats: {maxHP: 12888, atk: 555, def: 888, spd: 99, maxMP: 666},
+    unlockQuest: {
+      name: '永恒试炼',
+      desc: '经受时间的考验',
+      conditions: [
+        {type: 'stages_cleared', target: 80, desc: '通关80个关卡'},
+        {type: 'guardian_merged', target: 12, desc: '合成守护者英雄12次'},
+        {type: 'legendary_merged', target: 5, desc: '合成传说英雄5次'}
+      ]
+    }
   },
   {
     id: 'soul_reaper',
@@ -2393,7 +2420,16 @@ const UNKNOWN_HERO_TEMPLATES = [
     quality: 'unknown',
     skills: ['soul_drain','spirit_chains','death_aura','soul_harvest'],
     lore: '游走在生死之间的神秘存在，能够操控灵魂的力量。只有经历过生死考验的勇者，才能驾驭这股力量。',
-    hiddenStats: {maxHP: 7777, atk: 777, def: 555, spd: 166, maxMP: 777}
+    hiddenStats: {maxHP: 7777, atk: 777, def: 555, spd: 166, maxMP: 777},
+    unlockQuest: {
+      name: '灵魂试炼',
+      desc: '直面生死的边界',
+      conditions: [
+        {type: 'stages_cleared', target: 70, desc: '通关70个关卡'},
+        {type: 'warlock_merged', target: 8, desc: '合成术士英雄8次'},
+        {type: 'enemies_killed', target: 500, desc: '击杀500个敌人'}
+      ]
+    }
   },
   {
     id: 'star_drifter',
@@ -2403,7 +2439,16 @@ const UNKNOWN_HERO_TEMPLATES = [
     quality: 'unknown',
     skills: ['star_arrow','cosmic_dodge','meteor_shower','galactic_barrage'],
     lore: '来自遥远星空的流浪者，掌握着星辰的力量。只有完成星穹试炼，才能获得其真正的力量。',
-    hiddenStats: {maxHP: 6666, atk: 888, def: 444, spd: 222, maxMP: 666}
+    hiddenStats: {maxHP: 6666, atk: 888, def: 444, spd: 222, maxMP: 666},
+    unlockQuest: {
+      name: '星穹试炼',
+      desc: '追逐星辰的足迹',
+      conditions: [
+        {type: 'stages_cleared', target: 55, desc: '通关55个关卡'},
+        {type: 'ranger_merged', target: 10, desc: '合成游侠英雄10次'},
+        {type: 'rare_merged', target: 20, desc: '合成稀有英雄20次'}
+      ]
+    }
   }
 ];
 
@@ -4740,6 +4785,24 @@ function loadGame(){
     if(G.pveMaxStreak===undefined) G.pveMaxStreak=0;
     if(!G.achievements) G.achievements={unlocked:{},progress:{},totalClaimed:0};
     if(!G.stats) G.stats={totalKills:0,totalHeroesRecruited:0,totalEquipmentForged:0,totalEquipmentMerged:0,totalGoldEarned:0,totalGemsEarned:0,maxStageReached:1,maxHeroLevel:0};
+    // 未知英雄解锁任务进度追踪
+    if(!G.unknownQuestProgress) G.unknownQuestProgress={
+      stages_cleared: 0,
+      assassin_merged: 0,
+      mage_merged: 0,
+      guardian_merged: 0,
+      warlock_merged: 0,
+      ranger_merged: 0,
+      warrior_merged: 0,
+      healer_merged: 0,
+      paladin_merged: 0,
+      mythic_merged: 0,
+      legendary_merged: 0,
+      epic_merged: 0,
+      rare_merged: 0,
+      common_merged: 0,
+      enemies_killed: 0
+    };
     // 旧存档兼容性：引导相关变量
     if(G.tutorialDone===undefined){
       if(G.heroes && G.heroes.length>0){
@@ -5334,6 +5397,111 @@ function updateStat(type, value) {
       checkAchievement('special_5');
       break;
   }
+}
+
+// ==================== 未知英雄解锁任务系统 ====================
+// 更新未知英雄解锁任务进度
+function updateUnknownQuestProgress(type, value){
+  if(!G.unknownQuestProgress) G.unknownQuestProgress = {
+    stages_cleared: 0, assassin_merged: 0, mage_merged: 0, guardian_merged: 0,
+    warlock_merged: 0, ranger_merged: 0, warrior_merged: 0, healer_merged: 0, paladin_merged: 0,
+    mythic_merged: 0, legendary_merged: 0, epic_merged: 0, rare_merged: 0, common_merged: 0,
+    enemies_killed: 0
+  };
+  if(G.unknownQuestProgress[type] !== undefined){
+    G.unknownQuestProgress[type] += value;
+    // 检查是否有未知英雄可以解锁
+    checkUnknownHeroUnlock();
+  }
+}
+
+// 检查未知英雄解锁条件
+function checkUnknownHeroUnlock(){
+  if(!G.unknownQuestProgress) return;
+  
+  // 遍历所有未知英雄
+  G.heroes.forEach(function(hero){
+    if(!hero.isUnknown || hero.isUnlocked || !hero.unknownTemplate) return;
+    
+    var quest = hero.unknownTemplate.unlockQuest;
+    if(!quest || !quest.conditions) return;
+    
+    // 检查所有条件是否满足
+    var allConditionsMet = quest.conditions.every(function(cond){
+      var progress = G.unknownQuestProgress[cond.type] || 0;
+      return progress >= cond.target;
+    });
+    
+    if(allConditionsMet){
+      // 解锁未知英雄！
+      unlockUnknownHero(hero);
+    }
+  });
+}
+
+// 解锁未知英雄（揭示真实身份）
+function unlockUnknownHero(hero){
+  if(!hero || !hero.unknownTemplate) return;
+  
+  var tpl = hero.unknownTemplate;
+  hero.isUnlocked = true;
+  hero.name = tpl.name;
+  hero.icon = tpl.icon;
+  hero.role = tpl.role;
+  hero.lore = tpl.lore;
+  hero.displayName = tpl.name;
+  hero.displayIcon = tpl.icon;
+  hero.displayRole = tpl.role;
+  
+  // 显示解锁动画
+  showUnknownHeroUnlockEffect(hero);
+  
+  saveGame();
+}
+
+// 显示未知英雄解锁特效
+function showUnknownHeroUnlockEffect(hero){
+  var tpl = hero.unknownTemplate;
+  var html = '<div style="text-align:center;padding:20px">'
+    + '<div style="font-size:48px;margin-bottom:16px;animation:pulse 1s infinite">✨</div>'
+    + '<div style="font-size:18px;font-weight:bold;color:#ff00ff;margin-bottom:8px">🎉 未知英雄解锁！</div>'
+    + '<div style="font-size:24px;margin:16px 0">' + tpl.icon + '</div>'
+    + '<div style="font-size:20px;font-weight:bold;color:' + QUALITY_COLORS.unknown + '">' + tpl.name + '</div>'
+    + '<div style="font-size:12px;color:var(--text2);margin-top:8px">' + ROLES[tpl.role].icon + ' ' + ROLES[tpl.role].name + ' · ' + QUALITY_NAMES.unknown + '</div>'
+    + '<div style="font-size:11px;color:var(--text3);margin-top:12px;font-style:italic">"' + tpl.lore + '"</div>'
+    + '</div>';
+  
+  showModal('🌌 神秘揭示', html);
+  showToast('🌌 ' + tpl.name + ' 已解锁！');
+}
+
+// 获取未知英雄解锁进度
+function getUnknownHeroQuestProgress(hero){
+  if(!hero || !hero.isUnknown || !hero.unknownTemplate || !hero.unknownTemplate.unlockQuest) return null;
+  
+  var quest = hero.unknownTemplate.unlockQuest;
+  var conditions = quest.conditions.map(function(cond){
+    var current = (G.unknownQuestProgress && G.unknownQuestProgress[cond.type]) || 0;
+    return {
+      type: cond.type,
+      target: cond.target,
+      current: Math.min(current, cond.target),
+      desc: cond.desc,
+      completed: current >= cond.target
+    };
+  });
+  
+  var completed = conditions.every(function(c){return c.completed;});
+  var progress = conditions.reduce(function(sum, c){return sum + (c.completed ? 1 : 0);}, 0);
+  
+  return {
+    name: quest.name,
+    desc: quest.desc,
+    conditions: conditions,
+    completed: completed,
+    progress: progress,
+    total: conditions.length
+  };
 }
 
 function showModal(title,contentHTML,buttons){
@@ -8028,6 +8196,10 @@ async function runBattle(stageId){
     updateStat('gemsEarned', rw.gems || 0);
     updateStat('stageReached', stage.id + 1);
     
+    // 更新未知英雄解锁任务进度
+    updateUnknownQuestProgress('stages_cleared', 1);
+    updateUnknownQuestProgress('enemies_killed', stage.enemies.length);
+    
     // 检查战斗相关成就
     checkAchievement('battle_5');
     checkAchievement('battle_6');
@@ -9824,6 +9996,10 @@ function executeMerge(heroUids){
   // 添加新英雄
   G.heroes.push(newHero);
   
+  // 更新未知英雄解锁任务进度（合成职业和品质）
+  updateUnknownQuestProgress(newHero.role + '_merged', 1);
+  updateUnknownQuestProgress(newHero.quality + '_merged', 1);
+  
   // === 合成事件判定（在添加英雄后、展示结果前） ===
   var accident = rollMergeAccident(newHero, heroes);
   var isExplosion = false;
@@ -10790,12 +10966,18 @@ function renderHeroCard(h){
 function showHeroDetail(uid){
   const h=G.heroes.find(x=>x.uid===uid);
   if(!h)return;
-  const role=ROLES[h.role];
-  const stats=getHeroStats(h);
-  const allSkills=[...h.skills,...h.bonusSkills];
+  
+  // 未知英雄特殊处理
+  const isLockedUnknown = h.isUnknown && !h.isUnlocked;
+  const role = isLockedUnknown ? ROLES.unknown : (ROLES[h.role] || ROLES.unknown);
+  const stats = isLockedUnknown ? {maxHP:'???',atk:'???',def:'???',spd:'???',maxMP:'???'} : getHeroStats(h);
+  const allSkills = isLockedUnknown ? [] : [...h.skills,...h.bonusSkills];
   const inTeam=G.team.some(t=>t&&t.uid===h.uid);
-  const power=calcHeroPower(h);
+  const power = isLockedUnknown ? '???' : calcHeroPower(h);
   const levelCap=getHeroLevelCap();
+  
+  // 获取解锁任务进度
+  const questProgress = isLockedUnknown ? getUnknownHeroQuestProgress(h) : null;
 
   // 品质颜色映射
   const qualityColors={common:'#aaa',rare:'#5b9bd5',epic:'#b06ce6',legendary:'#e8c840',mythic:'#ff6b6b'};
@@ -11005,14 +11187,34 @@ function showHeroDetail(uid){
       <div class="hd-section">
         <div class="hd-section-title">🏷️ 品质信息</div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-          <span class="hd-quality-badge hd-quality-${h.quality}" style="font-size:12px;padding:4px 12px">${qualityStars[h.quality]} ${QUALITY_NAMES[h.quality]}</span>
-          <span class="text-xs text-dim">${qualityDescs[h.quality]}</span>
+          <span class="hd-quality-badge hd-quality-${h.quality}" style="font-size:12px;padding:4px 12px">${qualityStars[h.quality]||'✦✦✦✦✦✦✦'} ${QUALITY_NAMES[h.quality]}</span>
+          <span class="text-xs text-dim">${qualityDescs[h.quality]||'神秘品质'}</span>
         </div>
         <div class="hd-power-display">
           <div class="hd-power-label">综合战力</div>
           <div class="hd-power-num">⚡ ${power}</div>
         </div>
       </div>
+
+      ${isLockedUnknown && questProgress ? `
+      <!-- 未知英雄解锁任务 -->
+      <div class="hd-section" style="background:linear-gradient(135deg,rgba(255,0,255,.08),rgba(255,0,255,.02));border-color:rgba(255,0,255,.2)">
+        <div class="hd-section-title" style="color:rgba(255,0,255,.9)">🌌 ${questProgress.name}</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px">${questProgress.desc}</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${questProgress.conditions.map(c => `
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(0,0,0,.2);border-radius:6px;border:1px solid ${c.completed ? 'rgba(39,174,96,.3)' : 'rgba(255,255,255,.05)'}">
+              <span style="font-size:14px">${c.completed ? '✅' : '⏳'}</span>
+              <span style="flex:1;font-size:12px">${c.desc}</span>
+              <span style="font-size:11px;color:${c.completed ? 'var(--green)' : 'var(--text2)'}">${c.current}/${c.target}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div style="margin-top:10px;padding:8px;background:rgba(255,0,255,.05);border-radius:6px;text-align:center">
+          <span style="font-size:12px;color:rgba(255,0,255,.7)">完成全部条件后自动解锁</span>
+        </div>
+      </div>
+      ` : ''}
 
       <!-- 属性详情 -->
       <div class="hd-section">
