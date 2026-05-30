@@ -12884,18 +12884,16 @@ function showTalentTree(heroUid){
   // 50级后开放天赋系统
   if(hero.level<TALENT_CONFIG.unlockLevel){
     openModal(`
-      <div class="tt-overlay" onclick="if(event.target===this)closeModal()">
-        <div class="tt-modal" style="max-width:360px">
-          <div style="text-align:center;padding:20px">
-            <div style="font-size:48px;margin-bottom:12px">🔒</div>
-            <div style="font-size:16px;font-weight:bold;color:var(--gold);margin-bottom:8px">天赋系统尚未解锁</div>
-            <div style="font-size:13px;color:var(--text2);margin-bottom:16px">${hero.name} 需要达到 <b style="color:var(--gold)">Lv.${TALENT_CONFIG.unlockLevel}</b> 才能解锁天赋系统</div>
-            <div style="font-size:12px;color:var(--text3);background:rgba(0,0,0,.2);padding:12px;border-radius:8px">
-              <div>当前等级: <b style="color:var(--red)">Lv.${hero.level}</b></div>
-              <div>还需等级: <b style="color:var(--gold)">${TALENT_CONFIG.unlockLevel-hero.level}级</b></div>
-            </div>
-            <button class="btn btn-primary" style="margin-top:16px" onclick="closeModal()">知道了</button>
+      <div class="tt-modal" style="max-width:360px">
+        <div style="text-align:center;padding:20px">
+          <div style="font-size:48px;margin-bottom:12px">🔒</div>
+          <div style="font-size:16px;font-weight:bold;color:var(--gold);margin-bottom:8px">天赋系统尚未解锁</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:16px">${hero.name} 需要达到 <b style="color:var(--gold)">Lv.${TALENT_CONFIG.unlockLevel}</b> 才能解锁天赋系统</div>
+          <div style="font-size:12px;color:var(--text3);background:rgba(0,0,0,.2);padding:12px;border-radius:8px">
+            <div>当前等级: <b style="color:var(--red)">Lv.${hero.level}</b></div>
+            <div>还需等级: <b style="color:var(--gold)">${TALENT_CONFIG.unlockLevel-hero.level}级</b></div>
           </div>
+          <button class="btn btn-primary" style="margin-top:16px" onclick="closeModal()">知道了</button>
         </div>
       </div>
     `);
@@ -13031,35 +13029,32 @@ function showTalentTree(heroUid){
       .tt-line-locked .tt-line-inner{background:var(--border);opacity:.3}
       .tt-actions{display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
       .tt-actions .btn{flex:1}
-      .tt-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:150;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .25s ease;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
       .tt-modal{background:linear-gradient(180deg,#1a1a3a,#12122a);border:1px solid var(--border);border-radius:var(--radius-lg);width:100%;max-width:480px;max-height:85vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;box-shadow:var(--shadow-lg);position:relative;padding:16px}
       .tt-modal::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--purple),transparent);opacity:.4}
       .tt-modal::-webkit-scrollbar{width:4px}
       .tt-modal::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
       .tt-modal-title{color:var(--purple);font-size:18px;font-weight:700;text-align:center;margin-bottom:12px;letter-spacing:0.5px}
     </style>
-    <div class="tt-overlay" onclick="if(event.target===this)closeModal()">
-      <div class="tt-modal">
-        <div class="tt-modal-title">🌟 天赋树</div>
-        <div class="tt-panel">
-          <div class="tt-header">
-            <div class="tt-hero">
-              <span class="tt-hero-icon">${hero.icon}</span>
-              <span class="tt-hero-name">${hero.name}</span>
-              <span style="font-size:11px;color:var(--text3)">Lv.${hero.level}</span>
-            </div>
-            <div class="tt-points-bar">
-              <div class="tt-points-item"><div class="tt-points-val available">${availablePoints}</div><div class="tt-points-lbl">可用</div></div>
-              <div class="tt-points-item"><div class="tt-points-val used">${usedPoints}</div><div class="tt-points-lbl">已用</div></div>
-              <div class="tt-points-item"><div class="tt-points-val total">${hero.talentPoints}</div><div class="tt-points-lbl">总计</div></div>
-            </div>
+    <div class="tt-modal">
+      <div class="tt-modal-title">🌟 天赋树</div>
+      <div class="tt-panel">
+        <div class="tt-header">
+          <div class="tt-hero">
+            <span class="tt-hero-icon">${hero.icon}</span>
+            <span class="tt-hero-name">${hero.name}</span>
+            <span style="font-size:11px;color:var(--text3)">Lv.${hero.level}</span>
           </div>
-          <div class="tt-tabs">${branchTabs}</div>
-          ${branchKeys.map((key,i)=>`<div class="tt-branch ${i===0?'active':''}" id="tt-branch-${key}">${renderBranch(key)}</div>`).join('')}
-          <div class="tt-actions">
-            <button class="btn" onclick="closeModal();showHeroDetail(${heroUid})">← 返回</button>
-            <button class="btn" style="background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.3);color:#ff6b6b" onclick="resetTalents(${heroUid})">🔄 重置</button>
+          <div class="tt-points-bar">
+            <div class="tt-points-item"><div class="tt-points-val available">${availablePoints}</div><div class="tt-points-lbl">可用</div></div>
+            <div class="tt-points-item"><div class="tt-points-val used">${usedPoints}</div><div class="tt-points-lbl">已用</div></div>
+            <div class="tt-points-item"><div class="tt-points-val total">${hero.talentPoints}</div><div class="tt-points-lbl">总计</div></div>
           </div>
+        </div>
+        <div class="tt-tabs">${branchTabs}</div>
+        ${branchKeys.map((key,i)=>`<div class="tt-branch ${i===0?'active':''}" id="tt-branch-${key}">${renderBranch(key)}</div>`).join('')}
+        <div class="tt-actions">
+          <button class="btn" onclick="closeModal();showHeroDetail(${heroUid})">← 返回</button>
+          <button class="btn" style="background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.3);color:#ff6b6b" onclick="resetTalents(${heroUid})">🔄 重置</button>
         </div>
       </div>
     </div>`;
