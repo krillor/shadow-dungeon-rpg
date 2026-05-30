@@ -11003,9 +11003,9 @@ function showHeroDetail(uid){
   const slotNames={weapon:'武器',armor:'护甲',accessory:'饰品'};
   const slotIcons={weapon:'⚔️',armor:'🛡️',accessory:'💍'};
 
-  // 计算下一级属性预览
+  // 计算下一级属性预览（未知英雄跳过）
   const nextLevelStats={};
-  if(h.level<levelCap){
+  if(!isLockedUnknown && h.level<levelCap){
     const qm=QUALITY_MULT[h.quality];
     nextLevelStats.maxHP=calcStat(role.baseHP,qm,h.level+1);
     nextLevelStats.atk=calcStat(role.baseATK,qm,h.level+1);
@@ -11218,37 +11218,37 @@ function showHeroDetail(uid){
 
       <!-- 属性详情 -->
       <div class="hd-section">
-        <div class="hd-section-title">📊 属性详情 ${h.level<levelCap?'<span class="text-xs text-green">(下一级预览)</span>':''}</div>
+        <div class="hd-section-title">📊 属性详情 ${!isLockedUnknown && h.level<levelCap?'<span class="text-xs text-green">(下一级预览)</span>':''}</div>
         <div class="hd-stat-grid">
           <div class="hd-stat-item">
             <span class="hd-stat-icon">❤️</span>
             <span class="hd-stat-val">${stats.maxHP}</span>
             <span class="hd-stat-label">生命值</span>
-            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${Math.min(100,stats.maxHP/statMaxRef.maxHP*100)}%;background:#c0392b"></div></div>
+            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${isLockedUnknown?0:Math.min(100,stats.maxHP/statMaxRef.maxHP*100)}%;background:#c0392b"></div></div>
           </div>
           <div class="hd-stat-item">
             <span class="hd-stat-icon">⚔️</span>
             <span class="hd-stat-val">${stats.atk}</span>
             <span class="hd-stat-label">攻击力</span>
-            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${Math.min(100,stats.atk/statMaxRef.atk*100)}%;background:#e74c3c"></div></div>
+            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${isLockedUnknown?0:Math.min(100,stats.atk/statMaxRef.atk*100)}%;background:#e74c3c"></div></div>
           </div>
           <div class="hd-stat-item">
             <span class="hd-stat-icon">🛡️</span>
             <span class="hd-stat-val">${stats.def}</span>
             <span class="hd-stat-label">防御力</span>
-            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${Math.min(100,stats.def/statMaxRef.def*100)}%;background:#2980b9"></div></div>
+            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${isLockedUnknown?0:Math.min(100,stats.def/statMaxRef.def*100)}%;background:#2980b9"></div></div>
           </div>
           <div class="hd-stat-item">
             <span class="hd-stat-icon">💨</span>
             <span class="hd-stat-val">${stats.spd}</span>
             <span class="hd-stat-label">速度</span>
-            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${Math.min(100,stats.spd/statMaxRef.spd*100)}%;background:#27ae60"></div></div>
+            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${isLockedUnknown?0:Math.min(100,stats.spd/statMaxRef.spd*100)}%;background:#27ae60"></div></div>
           </div>
           <div class="hd-stat-item">
             <span class="hd-stat-icon">💎</span>
             <span class="hd-stat-val">${stats.maxMP}</span>
             <span class="hd-stat-label">魔法值</span>
-            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${Math.min(100,stats.maxMP/statMaxRef.maxMP*100)}%;background:#8e44ad"></div></div>
+            <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${isLockedUnknown?0:Math.min(100,stats.maxMP/statMaxRef.maxMP*100)}%;background:#8e44ad"></div></div>
           </div>
           <div class="hd-stat-item">
             <span class="hd-stat-icon">⭐</span>
@@ -11257,7 +11257,7 @@ function showHeroDetail(uid){
             <div class="hd-stat-bar"><div class="hd-stat-bar-fill" style="width:${h.level/levelCap*100}%;background:var(--gold)"></div></div>
           </div>
         </div>
-        ${h.level<levelCap?`<div style="margin-top:10px">${buildGrowthHTML()}</div>`:''}
+        ${!isLockedUnknown && h.level<levelCap?`<div style="margin-top:10px">${buildGrowthHTML()}</div>`:''}
       </div>
 
       <!-- 被动技能 -->
@@ -11270,25 +11270,29 @@ function showHeroDetail(uid){
       </div>
 
       <!-- 机制数据 -->
+      ${!isLockedUnknown ? `
       <div class="hd-section">
         <div class="hd-section-title">⚙️ 职业机制</div>
         <div class="hd-mechanism">${buildMechanismHTML()}</div>
       </div>
+      ` : ''}
 
       <!-- 技能列表 -->
       <div class="hd-section">
         <div class="hd-section-title">⚔️ 技能列表 (${allSkills.length})</div>
-        ${buildSkillHTML()}
+        ${isLockedUnknown ? '<div style="text-align:center;padding:16px;color:rgba(255,0,255,.6)">🔒 解锁后显示技能</div>' : buildSkillHTML()}
       </div>
 
       <!-- 装备信息 -->
+      ${!isLockedUnknown ? `
       <div class="hd-section">
         <div class="hd-section-title">🗡️ 装备信息</div>
         <div style="display:flex;flex-direction:column;gap:6px">${buildEquipHTML()}</div>
       </div>
+      ` : ''}
 
       <!-- 特质 -->
-      ${h.traits&&h.traits.length>0?`
+      ${!isLockedUnknown && h.traits&&h.traits.length>0?`
       <div class="hd-section">
         <div class="hd-section-title">🌟 英雄特质</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -11297,6 +11301,7 @@ function showHeroDetail(uid){
       </div>`:''}
 
       <!-- 经验药水使用区域 -->
+      ${!isLockedUnknown ? `
       <div class="hd-section" style="background:rgba(142,68,173,.08)">
         <div class="hd-section-title">🧪 使用经验药水</div>
         <div style="margin-bottom:10px">
@@ -11328,15 +11333,20 @@ function showHeroDetail(uid){
         `:''}
         ${h.level>=levelCap?'<div class="text-xs text-red mt-4">已达当前等级上限，请升级神殿</div>':''}
       </div>
+      ` : ''}
 
       <!-- 操作按钮 -->
       <div class="hd-actions">
+        ${!isLockedUnknown ? `
         <button class="btn btn-primary btn-sm" onclick="closeModal();switchTab('team')">🛡️ 编队</button>
         <button class="btn btn-sm" onclick="closeModal();switchTab('equip')">🗡️ 装备</button>
         <button class="btn btn-sm" style="background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.4);color:#b86eff" onclick="showTalentTree(${h.uid})">🌟 天赋${(h.talentPoints||0)-Object.values(h.talents||{}).reduce((s,p)=>s+p,0)>0?' ('+((h.talentPoints||0)-Object.values(h.talents||{}).reduce((s,p)=>s+p,0))+')':''}</button>
         <button class="btn btn-sm" onclick="showRenameHero(${h.uid})">✏️ 改名</button>
         <button class="btn btn-sm" style="color:${h.locked?'var(--gold)':'var(--text2)'}" onclick="toggleHeroLock(${h.uid})">${h.locked?'🔒 已锁定':'🔓 锁定'}</button>
         <button class="btn btn-sm" style="color:#ff6b6b" onclick="dismissHero(${h.uid})" ${h.locked?'disabled':''}>🗑️ 遣散</button>
+        ` : `
+        <button class="btn btn-sm" style="color:rgba(255,0,255,.7);border-color:rgba(255,0,255,.3);background:rgba(255,0,255,.05)" onclick="closeModal()">🔒 解锁后可用</button>
+        `}
       </div>
     </div>
   </div>`;
