@@ -436,95 +436,7 @@ body{
 }
 #app{display:flex;flex-direction:column;height:100vh;width:100vw}
 
-/* ===== 顶部栏 - 玻璃拟态风格 ===== */
-#top-bar{
-  height:var(--top-h);
-  background:var(--panel-glass);
-  border-bottom:1px solid var(--border);
-  display:flex;
-  align-items:center;
-  padding:0 16px;
-  gap:10px;
-  flex-shrink:0;
-  overflow-x:auto;
-  scrollbar-width:none;
-  -ms-overflow-style:none;
-  flex-wrap:nowrap;
-  box-shadow:var(--shadow-sm),var(--shadow-inset);
-  backdrop-filter:blur(20px) saturate(180%);
-  -webkit-backdrop-filter:blur(20px) saturate(180%);
-  position:relative;
-  z-index:10;
-  cursor:pointer;
-  transition:height 0.3s ease,padding 0.3s ease;
-}
-/* 顶部栏展开状态 - 避免刘海遮挡 */
-#top-bar.expanded{
-  height:auto;
-  min-height:calc(var(--top-h) + 20px);
-  padding-top:24px;
-  padding-bottom:8px;
-  flex-wrap:wrap;
-}
-/* 顶部栏展开按钮 - 更明显的设计 */
-.top-bar-toggle-btn{
-  position:absolute;
-  right:6px;
-  top:50%;
-  transform:translateY(-50%);
-  width:28px;
-  height:28px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:linear-gradient(145deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02));
-  border:1px solid rgba(255,255,255,0.15);
-  border-radius:6px;
-  cursor:pointer;
-  transition:all 0.3s ease;
-  z-index:5;
-}
-.top-bar-toggle-btn:hover{
-  background:linear-gradient(145deg,rgba(255,255,255,0.15),rgba(255,255,255,0.05));
-  border-color:var(--gold);
-  box-shadow:0 2px 8px rgba(212,175,55,0.3);
-}
-.top-bar-toggle-btn:active{
-  transform:translateY(-50%) scale(0.95);
-}
-.top-bar-toggle-icon{
-  font-size:12px;
-  color:var(--gold);
-  transition:transform 0.3s ease;
-  text-shadow:0 1px 2px rgba(0,0,0,0.3);
-}
-#top-bar.expanded .top-bar-toggle-icon{
-  transform:rotate(180deg);
-}
-/* 展开提示文字 */
-.top-bar-hint{
-  position:absolute;
-  right:40px;
-  top:50%;
-  transform:translateY(-50%);
-  font-size:10px;
-  color:var(--text3);
-  opacity:0;
-  transition:opacity 0.3s ease;
-  pointer-events:none;
-  white-space:nowrap;
-}
-#top-bar:hover .top-bar-hint{
-  opacity:0.7;
-}
-#top-bar::after{
-  content:'';
-  position:absolute;
-  bottom:0;left:0;right:0;
-  height:1px;
-  background:linear-gradient(90deg,transparent,var(--gold-dim),transparent);
-}
-#top-bar::-webkit-scrollbar{display:none}
+/* 资源项样式（用于其他页面） */
 .res-item{
   display:flex;
   align-items:center;
@@ -793,6 +705,71 @@ body{
 
 
 /* ===== 城镇界面 - 现代风格 ===== */
+/* 城镇主面板 - 整合标题和资源 */
+.town-main-panel{
+  padding:16px;
+}
+/* 城镇头部 - 标题和资源在一行 */
+.town-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding-bottom:12px;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+/* 标题行 */
+.town-title-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.town-title{
+  font-size:16px;
+  font-weight:700;
+  background:linear-gradient(180deg,var(--gold2),var(--gold));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+/* 资源栏 - 横向排列 */
+.town-resources-bar{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.town-res-item{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  padding:4px 10px;
+  background:linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02));
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,0.08);
+  font-size:11px;
+  white-space:nowrap;
+}
+.town-res-icon{
+  font-size:12px;
+}
+.town-res-val{
+  color:var(--gold);
+  font-weight:600;
+  font-size:12px;
+}
+/* 响应式：小屏幕时资源换行 */
+@media (max-width:400px){
+  .town-header{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:10px;
+  }
+  .town-resources-bar{
+    width:100%;
+    justify-content:flex-start;
+  }
+}
 .town-hero-summary{
   display:flex;
   gap:10px;
@@ -1981,7 +1958,6 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
   #sidebar .nav-btn:hover,#sidebar .nav-btn.active{background:var(--panel2);color:var(--gold);border-color:var(--gold);box-shadow:var(--shadow-gold)}
   #sidebar .nav-btn .nav-icon{font-size:20px}
   #main{padding-bottom:0}
-  #top-bar{height:40px;padding:0 16px;gap:20px}
   .panel{padding:18px;margin-bottom:14px}
   .grid-2{grid-template-columns:1fr 1fr;gap:12px}
   .grid-3{grid-template-columns:1fr 1fr 1fr;gap:12px}
@@ -2053,17 +2029,6 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
     <div class="nav-btn" data-tab="cheats" id="nav-cheats-btn" title="金手指" style="color:#c0392b">🔓<div class="nav-label">金手指</div></div>
   </div>
   <div id="main">
-    <div id="top-bar">
-      <span class="top-bar-hint">点击展开</span>
-      <div class="top-bar-toggle-btn"><span class="top-bar-toggle-icon">▼</span></div>
-      <!-- 基础资源 -->
-      <div class="res-item" title="金币"><span class="res-icon">💰</span><span class="res-val" id="res-gold">500</span></div>
-      <div class="res-item" title="宝石"><span class="res-icon">💎</span><span class="res-val" id="res-gems">10</span></div>
-      <div class="res-item" title="食物"><span class="res-icon">🍞</span><span class="res-val" id="res-food">50</span></div>
-      <span class="sep">|</span>
-      <!-- 消耗品 -->
-      <div class="res-item" title="经验药水"><span class="res-icon">🧪</span><span class="res-val" id="res-expPotion">0</span></div>
-    </div>
     <div id="content"></div>
     <div id="battle-panel" style="display:none">
       <div class="panel">
@@ -11076,11 +11041,28 @@ function renderTown(el){
   //   if(offline) G.offlineEarnings=offline;
   // }catch(e){console.error('[Town Error] offline:',e);}
   
+  // 获取资源数据
+  var gold=G.resources&&G.resources.gold!==undefined?G.resources.gold:0;
+  var gems=G.resources&&G.resources.gems!==undefined?G.resources.gems:0;
+  var food=G.resources&&G.resources.food!==undefined?G.resources.food:0;
+  var expPotion=G.resources&&G.resources.expPotion!==undefined?G.resources.expPotion:0;
+  
   // 构建HTML
   try{
-    el.innerHTML='<div class="panel">'
-      +'<div class="panel-title"><span class="icon">🏰</span> 暗影地牢</div>'
-      +'<div style="color:var(--text2);font-size:12px;line-height:1.8">'
+    el.innerHTML='<div class="panel town-main-panel">'
+      +'<div class="town-header">'
+        +'<div class="town-title-row">'
+          +'<span class="icon">🏰</span>'
+          +'<span class="town-title">暗影地牢</span>'
+        +'</div>'
+        +'<div class="town-resources-bar">'
+          +'<div class="town-res-item" title="金币"><span class="town-res-icon">💰</span><span class="town-res-val">'+gold+'</span></div>'
+          +'<div class="town-res-item" title="宝石"><span class="town-res-icon">💎</span><span class="town-res-val">'+gems+'</span></div>'
+          +'<div class="town-res-item" title="食物"><span class="town-res-icon">🍞</span><span class="town-res-val">'+food+'</span></div>'
+          +'<div class="town-res-item" title="经验药水"><span class="town-res-icon">🧪</span><span class="town-res-val">'+expPotion+'</span></div>'
+        +'</div>'
+      +'</div>'
+      +'<div style="color:var(--text2);font-size:12px;line-height:1.8;margin-top:12px;">'
         +'<p>黑暗笼罩了这片大陆。曾经繁荣的帝国已经覆灭，亡灵和恶魔在废墟中游荡。</p>'
         +'<p>你是最后的希望——一位流浪的指挥官，必须召集英雄，探索地牢，击败黑暗势力。</p>'
         +'<p style="margin-top:8px;color:var(--gold)">当前进度：第 '+(G.stageProgress-1)+' 章已通关（无限模式）</p>'
@@ -16472,36 +16454,6 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
     switchTab(btn.dataset.tab);
   });
 });
-
-// 顶部导航栏点击拉伸功能 - 避免刘海屏遮挡
-(function initTopBarToggle(){
-  var topBar=document.getElementById('top-bar');
-  var toggleBtn=topBar?topBar.querySelector('.top-bar-toggle-btn'):null;
-  var hint=topBar?topBar.querySelector('.top-bar-hint'):null;
-  if(!topBar)return;
-  
-  function toggleExpanded(){
-    topBar.classList.toggle('expanded');
-    if(hint){
-      hint.textContent=topBar.classList.contains('expanded')?'点击收起':'点击展开';
-    }
-  }
-  
-  // 点击按钮触发展开
-  if(toggleBtn){
-    toggleBtn.addEventListener('click',function(e){
-      e.stopPropagation();
-      toggleExpanded();
-    });
-  }
-  
-  // 点击顶部栏空白区域也触发展开
-  topBar.addEventListener('click',function(e){
-    // 如果点击的是资源项内部元素，不触发展开/收起
-    if(e.target.closest('.res-item')||e.target.closest('.sep')||e.target.closest('.top-bar-toggle-btn'))return;
-    toggleExpanded();
-  });
-})();
 
 // 启动游戏
 initGame();
