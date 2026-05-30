@@ -6498,7 +6498,7 @@ function showConfirm(title,message,onConfirm,confirmText,cancelText){
 
 // openModal: 直接将HTML渲染到modal-root（用于showHeroDetail等）
 function openModal(html){
-  document.getElementById('modal-root').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="animation:fadeInScale .4s cubic-bezier(0.4,0,0.2,1)"><button class="btn btn-sm" onclick="closeModal()" style="position:absolute;top:12px;right:12px;z-index:10;padding:2px 8px;font-size:16px;color:var(--text3);background:rgba(255,255,255,.05);border-color:var(--border)">✕</button>${html}</div></div>`;
+  document.getElementById('modal-root').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">${html}</div>`;
 }
 
 // ==================== 英雄特质系统 ====================
@@ -13121,7 +13121,10 @@ function showTalentTree(heroUid){
   }
 
   openModal('<div class="panel" style="max-width:480px">'
-    +'<div class="panel-title"><span class="icon">🌟</span> 天赋树 <span class="text-xs text-dim">'+hero.icon+' '+hero.name+' Lv.'+hero.level+'</span></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.06);position:relative">'
+      +'<div class="panel-title" style="margin-bottom:0;padding-bottom:0;border-bottom:none"><span class="icon">🌟</span> 天赋树 <span class="text-xs text-dim">'+hero.icon+' '+hero.name+' Lv.'+hero.level+'</span></div>'
+      +'<button class="btn btn-sm" onclick="closeModal()" style="padding:2px 8px;font-size:16px;color:var(--text3);background:rgba(255,255,255,.05);border-color:var(--border);flex-shrink:0">✕</button>'
+    +'</div>'
     +'<div class="tt-points-bar" style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:12px;padding:8px;background:rgba(0,0,0,.2);border-radius:var(--radius-sm)">'
       +'<div class="tt-points-item" style="text-align:center"><div class="tt-points-val available" style="font-size:18px;font-weight:bold;color:var(--gold)">'+availablePoints+'</div><div class="tt-points-lbl" style="font-size:10px;color:var(--text3)">可用</div></div>'
       +'<div class="tt-points-item" style="text-align:center"><div class="tt-points-val used" style="font-size:18px;font-weight:bold;color:var(--purple)">'+usedPoints+'</div><div class="tt-points-lbl" style="font-size:10px;color:var(--text3)">已用</div></div>'
