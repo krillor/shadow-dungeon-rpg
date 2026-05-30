@@ -11735,6 +11735,7 @@ function renderTavernRecruit(){
   const goldCosts={common:30,rare:100,epic:300,legendary:0,mythic:0};
   const gemCosts={common:0,rare:0,epic:0,legendary:3,mythic:8};
   const content=document.getElementById('content');
+  var _guideRecruitMarked=false;
   const heroesHTML = options.map(tpl=>{
           const role=ROLES[tpl.role];
           const recruited=G_tavernRecruited.has(tpl.id);
@@ -11752,6 +11753,8 @@ function renderTavernRecruit(){
               <button class="btn btn-sm mt-8" style="background:#555;color:#999;cursor:not-allowed" disabled>已招募</button>
             </div>`;
           }
+          // 引导阶段给第一个可招募英雄的招募按钮加ID
+          var guideId=(!_guideRecruitMarked)?' id="guide-recruit-btn"':''; _guideRecruitMarked=true;
           return`<div class="panel" style="text-align:center">
             <div style="font-size:40px;margin:8px 0">${tpl.icon}</div>
             <div class="q-${tpl.quality}" style="font-size:14px;font-weight:bold">${tpl.name}</div>
@@ -11759,7 +11762,7 @@ function renderTavernRecruit(){
             <div class="text-dim text-xs mt-4">${role.desc}</div>
             <div class="text-xs mt-4" style="color:var(--text3)">技能：${tpl.skills.map(s=>SKILLS[s]?SKILLS[s].name:s).join(', ')}</div>
             <div style="margin-top:8px;color:var(--gold)">${costDisplay}</div>
-            <button class="btn btn-primary btn-sm mt-8" onclick="recruitHero('${tpl.id}')">招募</button>
+            <button class="btn btn-primary btn-sm mt-8"${guideId} onclick="recruitHero('${tpl.id}')">招募</button>
           </div>`;
         }).join('');
   // 保底进度显示
@@ -11868,7 +11871,7 @@ function renderTavernRecruit(){
   
   setTimeout(function(){
     if(G.tutorialPhase==='guide' && G.tutorialStep===2){
-      showGuideTip('tavern-back-btn','🍺 酒馆','选择一位英雄点击「招募」！\n\n招募完成后会自动前往编队页面。','left');
+      showGuideTip('guide-recruit-btn','🍺 酒馆','选择一位英雄点击「招募」！\n\n招募完成后会自动前往编队页面。');
     }
   },200);
 }
