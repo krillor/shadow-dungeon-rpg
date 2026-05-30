@@ -11275,10 +11275,7 @@ function renderTown(el){
         +'<div class="town-resources-bar">'
           +'<div class="town-res-item" title="金币"><span class="town-res-icon">💰</span><span class="town-res-val gold" id="res-gold">'+gold+'</span></div>'
           +'<div class="town-res-item" title="宝石"><span class="town-res-icon">💎</span><span class="town-res-val gems" id="res-gems">'+gems+'</span></div>'
-          +'<div class="town-res-item" title="食物"><span class="town-res-icon">🍞</span><span class="town-res-val food" id="res-food">'+food+'</span></div>'
           +'<div class="town-res-item" title="经验药水"><span class="town-res-icon">🧪</span><span class="town-res-val potion" id="res-expPotion">'+expPotion+'</span></div>'
-          +'<div class="town-res-item" title="石材"><span class="town-res-icon">🪨</span><span class="town-res-val stone" id="res-stone">'+stone+'</span></div>'
-          +'<div class="town-res-item" title="铁矿"><span class="town-res-icon">⛏️</span><span class="town-res-val iron" id="res-iron">'+iron+'</span></div>'
         +'</div>'
       +'</div>'
       +'<div class="town-story-section">'
@@ -14138,10 +14135,12 @@ function renderEquip(el){
     +'<div class="panel-title"><span class="icon">🎒</span> 背包 ('+unequipped.length+'件)</div>'
     +(unequipped.length===0?'<div class="text-dim">背包为空</div>':'<div class="equip-grid">'+unequippedHTML+'</div>')
     +'</div>'
+    /* 已装备模块已屏蔽
     +'<div class="panel">'
     +'<div class="panel-title"><span class="icon">👤</span> 已装备 ('+equipped.length+'件)</div>'
     +(equipped.length===0?'<div class="text-dim">没有已装备的物品</div>':'<div class="equip-grid">'+equippedHTML+'</div>')
     +'</div>'
+    */
     /* 铁匠铺UI已屏蔽
     +'<div class="panel">'
     +'<div class="panel-title"><span class="icon">🔨</span> 铁匠铺 <span class="text-blue">Lv.'+(G.buildings.blacksmith||0)+'</span></div>'
