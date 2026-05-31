@@ -5290,10 +5290,10 @@ function saveGame(){
     meta.slots[slotIdx].heroCount=G.heroes?G.heroes.length:0;
     meta.slots[slotIdx].playTime=G.totalPlayTime||0;
 
-    // ===== 自动备份：每2分钟一次，保留最近3份 =====
+    // ===== 自动备份：每2分钟一次，保留最近5份（约10分钟覆盖） =====
     var now=Date.now();
     var AUTO_BACKUP_INTERVAL=2*60*1000; // 2分钟
-    var MAX_AUTO_BACKUPS=3;
+    var MAX_AUTO_BACKUPS=5; // 5份 × 2分钟 = 10分钟覆盖
     if(!meta.autoBackups) meta.autoBackups=[];
     if(!meta._lastAutoBackupTime) meta._lastAutoBackupTime=0;
 
