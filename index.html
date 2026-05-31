@@ -5636,6 +5636,118 @@ function tryRestoreFromBackup(meta, slotIdx){
   return false;
 }
 
+// 恢复2分钟前的存档
+function restoreTwoMinutesAgoSave(){
+  try{
+    var now=Date.now();
+    var twoMinutesAgo=now-2*60*1000;
+    var meta=getSaveMeta();
+    var slotIdx=meta.currentSlot||0;
+    var bestBackup=null;
+    var bestDiff=Infinity;
+    var bestSource='';
+
+    // 1. 搜索当前槽位的存档时间戳
+    try{
+      var slotRaw=localStorage.getItem(getSlotKey(slotIdx));
+      if(slotRaw){
+        var slotData=JSON.parse(slotRaw);
+        var slotTs=slotData.timestamp||0;
+        if(slotTs>0 && slotTs<=twoMinutesAgo){
+          var diff=Math.abs(twoMinutesAgo-slotTs);
+          if(diff<bestDiff){bestDiff=diff;bestBackup=slotData;bestSource='当前槽位存档';}
+        }
+      }
+    }catch(e){}
+
+    // 2. 搜索自动备份
+    if(meta.autoBackups){
+      for(var i=0;i<meta.autoBackups.length;i++){
+        try{
+          var bk=meta.autoBackups[i];
+          if(bk.timestamp && bk.timestamp<=twoMinutesAgo){
+            var diff=Math.abs(twoMinutesAgo-bk.timestamp);
+            if(diff<bestDiff){
+              var raw=localStorage.getItem(bk.key);
+              if(raw){
+                var data=JSON.parse(raw);
+                if(data&&data.g){bestDiff=diff;bestBackup=data;bestSource='自动备份';}
+              }
+            }
+          }
+        }catch(e){}
+      }
+    }
+
+    // 3. 搜索手动备份
+    if(meta.manualBackups){
+      for(var i=0;i<meta.manualBackups.length;i++){
+        try{
+          var bk=meta.manualBackups[i];
+          if(bk.timestamp && bk.timestamp<=twoMinutesAgo){
+            var diff=Math.abs(twoMinutesAgo-bk.timestamp);
+            if(diff<bestDiff){
+              var raw=localStorage.getItem(bk.key);
+              if(raw){
+                var data=JSON.parse(raw);
+                if(data&&data.g){bestDiff=diff;bestBackup=data;bestSource='手动备份';}
+              }
+            }
+          }
+        }catch(e){}
+      }
+    }
+
+    // 4. 搜索所有槽位
+    for(var i=0;i<MAX_SAVE_SLOTS;i++){
+      try{
+        var raw=localStorage.getItem(getSlotKey(i));
+        if(raw){
+          var data=JSON.parse(raw);
+          if(data&&data.g&&data.timestamp&&data.timestamp<=twoMinutesAgo){
+            var diff=Math.abs(twoMinutesAgo-data.timestamp);
+            if(diff<bestDiff){bestDiff=diff;bestBackup=data;bestSource='槽位'+(i+1);}
+          }
+        }
+      }catch(e){}
+    }
+
+    // 5. 搜索旧格式存档
+    try{
+      var oldRaw=localStorage.getItem(SAVE_KEY);
+      if(oldRaw){
+        var oldData=JSON.parse(oldRaw);
+        if(oldData&&oldData.g&&oldData.timestamp&&oldData.timestamp<=twoMinutesAgo){
+          var diff=Math.abs(twoMinutesAgo-oldData.timestamp);
+          if(diff<bestDiff){bestDiff=diff;bestBackup=oldData;bestSource='旧格式存档';}
+        }
+      }
+    }catch(e){}
+
+    if(!bestBackup){
+      showToast('❌ 未找到2分钟前的存档');
+      return;
+    }
+
+    // 版本迁移兼容
+    bestBackup=migrateSaveData(bestBackup);
+
+    // 恢复数据
+    G.heroIdCounter=bestBackup.heroIdCounter||0;
+    Object.keys(bestBackup.g).forEach(function(k){G[k]=bestBackup.g[k]});
+    initGameAfterLoad();
+    saveGame();
+
+    var backupTime=new Date(bestBackup.timestamp);
+    var timeStr=backupTime.toLocaleTimeString();
+    showToast('✅ 已从'+bestSource+'恢复 ('+timeStr+')');
+    setTimeout(function(){location.reload();},800);
+  }catch(e){
+    console.error('恢复存档失败',e);
+    showToast('❌ 恢复失败: '+e.message);
+  }
+}
+
 // 切换存档槽位
 function switchSaveSlot(slotIdx){
   var meta=getSaveMeta();
@@ -16258,6 +16370,12 @@ function renderLeaderboard(el){
         '<div>点击上方按钮查看排行榜</div>' +
       '</div>' +
     '</div>' +
+  '</div>' +
+  '<div class="panel">' +
+    '<div class="panel-title"><span class="icon">⏪</span> 存档恢复</div>' +
+    '<div style="color:var(--text2);font-size:12px;margin-bottom:12px">恢复到2分钟前的游戏状态，适用于误操作后回档</div>' +
+    '<button class="btn" onclick="showConfirm(\'⏪ 恢复2分钟前存档\',\'确定要恢复到2分钟前的存档吗？\\n\\n当前进度将被覆盖！\\n系统会自动查找最接近2分钟前的存档进行恢复。\',restoreTwoMinutesAgoSave,\'确认恢复\',\'取消\')" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#ef4444">⏪ 恢复2分钟前存档</button>' +
+    '<div style="margin-top:10px;font-size:11px;color:var(--text3)">💡 会搜索所有存档槽位、自动备份和手动备份，找到最接近2分钟前的存档恢复</div>' +
   '</div>' +
   /* 云存档已屏蔽
   '<div class="panel">' +
