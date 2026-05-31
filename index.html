@@ -5275,13 +5275,42 @@ function saveGame(){
   try{
     var meta=getSaveMeta();
     var slotIdx=meta.currentSlot||0;
+    // 存档前校验核心数据完整性
+    if(!G||!G.heroes||!Array.isArray(G.heroes)){
+      console.error('存档校验失败: 核心数据异常，跳过本次保存');
+      return;
+    }
     // 添加版本号用于兼容检测
     var data={g:G,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
     var jsonStr=JSON.stringify(data);
-    // 保存到当前槽位
-    localStorage.setItem(getSlotKey(slotIdx),jsonStr);
+    // 校验序列化结果
+    if(!jsonStr || jsonStr.length<10){
+      console.error('存档序列化失败，跳过本次保存');
+      return;
+    }
+    // 安全写入：先写备份再写主存档，防止写入中途崩溃
+    try{
+      var safeKey=getSlotKey(slotIdx)+'_safe';
+      localStorage.setItem(safeKey,jsonStr);
+      localStorage.setItem(getSlotKey(slotIdx),jsonStr);
+      localStorage.removeItem(safeKey);
+    }catch(writeErr){
+      // localStorage可能满了，尝试清理旧备份后重试
+      console.warn('存档写入失败，尝试清理空间',writeErr);
+      try{
+        if(meta.autoBackups){
+          meta.autoBackups.forEach(function(bk){try{localStorage.removeItem(bk.key);}catch(e){}});
+          meta.autoBackups=[];
+        }
+        localStorage.setItem(getSlotKey(slotIdx),jsonStr);
+      }catch(e2){
+        console.error('存档写入彻底失败',e2);
+        showToast('⚠️ 存档空间不足，请清理浏览器数据');
+        return;
+      }
+    }
     // 同时保持旧键兼容
-    localStorage.setItem(SAVE_KEY,jsonStr);
+    try{localStorage.setItem(SAVE_KEY,jsonStr);}catch(e){}
     // 更新槽位元数据
     if(!meta.slots[slotIdx]) meta.slots[slotIdx]={};
     meta.slots[slotIdx].timestamp=Date.now();
@@ -5301,7 +5330,6 @@ function saveGame(){
 
     // 判断是否需要备份：距上次备份>=2分钟，且当前没有2分钟或10分钟附近的备份
     if(now - meta._lastAutoBackupTime >= TWO_MIN){
-      // 检查是否已有2分钟附近的备份（1.5~2.5分钟内）
       var hasNear2min=false;
       var hasNear10min=false;
       for(var bi=0;bi<meta.autoBackups.length;bi++){
@@ -5310,7 +5338,6 @@ function saveGame(){
         if(age>=TEN_MIN*0.75 && age<=TEN_MIN*1.25) hasNear10min=true;
       }
       if(!hasNear2min) shouldBackup=true;
-      // 如果没有10分钟备份且距上次备份已过10分钟，也触发
       if(!hasNear10min && now - meta._lastAutoBackupTime >= TEN_MIN) shouldBackup=true;
     }
 
@@ -5329,7 +5356,6 @@ function saveGame(){
       meta._lastAutoBackupTime=now;
 
       // 清理旧版本多余备份，只保留最近2份
-      // 先清理localStorage中已不在列表中的旧key
       while(meta.autoBackups.length > 2){
         var old=meta.autoBackups.shift();
         try{localStorage.removeItem(old.key);}catch(e){}
@@ -5337,9 +5363,8 @@ function saveGame(){
     }
 
     saveSaveMeta(meta);
-    // 自动存档静默保存，不弹出提示
   }catch(e){
-    // 屏幕存档错误提示
+    console.error('saveGame异常',e);
   }
 }
 
@@ -5538,18 +5563,22 @@ function loadGame(){
   try{
     var meta=getSaveMeta();
     var slotIdx=meta.currentSlot||0;
-    // 优先从槽位读取，回退到旧键
-    var raw=localStorage.getItem(getSlotKey(slotIdx))||localStorage.getItem(SAVE_KEY);
+    // 优先从槽位读取，回退到旧键，再回退到安全写入备份
+    var raw=localStorage.getItem(getSlotKey(slotIdx))||localStorage.getItem(SAVE_KEY)||localStorage.getItem(getSlotKey(slotIdx)+'_safe');
     if(!raw){
-      // 尝试从自动备份恢复
       return tryRestoreFromBackup(meta, slotIdx);
     }
     var data;
     try{
       data=JSON.parse(raw);
     }catch(parseErr){
-      console.error('存档解析失败，尝试从备份恢复',parseErr);
-      return tryRestoreFromBackup(meta, slotIdx);
+      console.error('存档解析失败，尝试安全备份和备份恢复',parseErr);
+      // 尝试安全写入备份
+      var safeRaw=localStorage.getItem(getSlotKey(slotIdx)+'_safe');
+      if(safeRaw){
+        try{data=JSON.parse(safeRaw);}catch(e){}
+      }
+      if(!data||!data.g) return tryRestoreFromBackup(meta, slotIdx);
     }
     // 存档验证：检查关键字段
     if(!data||typeof data!=='object'){
@@ -5778,6 +5807,171 @@ function restoreTwoMinutesAgoSave(){
     setTimeout(function(){location.reload();},800);
   }catch(e){
     console.error('恢复存档失败',e);
+    showToast('❌ 恢复失败: '+e.message);
+  }
+}
+
+// ===== 异常恢复：深度扫描localStorage中所有可能的存档 =====
+function emergencyRestore(){
+  try{
+    var found=[];
+    var meta=getSaveMeta();
+    var now=Date.now();
+
+    // 1. 扫描所有已知key
+    // 当前槽位
+    for(var i=0;i<MAX_SAVE_SLOTS;i++){
+      try{
+        var raw=localStorage.getItem(getSlotKey(i));
+        if(raw){
+          var d=JSON.parse(raw);
+          if(d&&d.g&&d.g.heroes) found.push({data:d,ts:d.timestamp||0,source:'槽位'+(i+1),size:raw.length});
+        }
+      }catch(e){}
+    }
+    // 安全写入备份
+    for(var i=0;i<MAX_SAVE_SLOTS;i++){
+      try{
+        var raw=localStorage.getItem(getSlotKey(i)+'_safe');
+        if(raw){
+          var d=JSON.parse(raw);
+          if(d&&d.g&&d.g.heroes) found.push({data:d,ts:d.timestamp||0,source:'安全备份'+(i+1),size:raw.length});
+        }
+      }catch(e){}
+    }
+    // 旧格式
+    try{
+      var raw=localStorage.getItem(SAVE_KEY);
+      if(raw){
+        var d=JSON.parse(raw);
+        if(d&&d.g&&d.g.heroes) found.push({data:d,ts:d.timestamp||0,source:'旧格式存档',size:raw.length});
+      }
+    }catch(e){}
+    // 自动备份
+    if(meta.autoBackups){
+      for(var i=0;i<meta.autoBackups.length;i++){
+        try{
+          var raw=localStorage.getItem(meta.autoBackups[i].key);
+          if(raw){
+            var d=JSON.parse(raw);
+            if(d&&d.g&&d.g.heroes) found.push({data:d,ts:meta.autoBackups[i].timestamp||0,source:'自动备份'+(i+1),size:raw.length});
+          }
+        }catch(e){}
+      }
+    }
+    // 手动备份
+    if(meta.manualBackups){
+      for(var i=0;i<meta.manualBackups.length;i++){
+        try{
+          var raw=localStorage.getItem(meta.manualBackups[i].key);
+          if(raw){
+            var d=JSON.parse(raw);
+            if(d&&d.g&&d.g.heroes) found.push({data:d,ts:meta.manualBackups[i].timestamp||0,source:'手动备份'+(i+1),size:raw.length});
+          }
+        }catch(e){}
+      }
+    }
+
+    // 2. 深度扫描localStorage中所有shadow_dungeon开头的key
+    for(var li=0;li<localStorage.length;li++){
+      try{
+        var key=localStorage.key(li);
+        if(key && key.indexOf('shadow_dungeon')===0){
+          // 跳过已扫描的
+          var alreadyScanned=false;
+          for(var si=0;si<found.length;si++){
+            if(found[si].source.indexOf(key.replace('shadow_dungeon_',''))>=0){alreadyScanned=true;break;}
+          }
+          if(alreadyScanned) continue;
+          var raw=localStorage.getItem(key);
+          if(raw){
+            var d=JSON.parse(raw);
+            if(d&&d.g&&d.g.heroes){
+              found.push({data:d,ts:d.timestamp||0,source:'扫描发现:'+key.replace('shadow_dungeon_',''),size:raw.length});
+            }
+          }
+        }
+      }catch(e){}
+    }
+
+    // 3. 去重（按timestamp+heroes长度）
+    var unique=[];
+    var seen={};
+    for(var i=0;i<found.length;i++){
+      var f=found[i];
+      var heroCount=f.data.g.heroes?f.data.g.heroes.length:0;
+      var stage=f.data.g.stageProgress||0;
+      var sig=f.ts+'_'+heroCount+'_'+stage;
+      if(!seen[sig]){
+        seen[sig]=true;
+        unique.push(f);
+      }
+    }
+
+    // 按时间排序（最新在前）
+    unique.sort(function(a,b){return b.ts-a.ts});
+
+    if(unique.length===0){
+      showToast('❌ 未找到任何可恢复的存档');
+      return;
+    }
+
+    // 4. 生成选择列表
+    var listHtml='<div style="max-height:50vh;overflow-y:auto">';
+    listHtml+='<div style="font-size:12px;color:var(--text2);margin-bottom:10px">共找到 '+unique.length+' 个可恢复存档（按时间倒序）</div>';
+    for(var i=0;i<unique.length;i++){
+      var f=unique[i];
+      var d=f.data;
+      var heroCount=d.g.heroes?d.g.heroes.length:0;
+      var stage=d.g.stageProgress||0;
+      var timeStr=f.ts>0?new Date(f.ts).toLocaleString():'未知时间';
+      var ver=d.saveVersion||0;
+      var agoMin=f.ts>0?Math.round((now-f.ts)/60000):'?';
+      listHtml+='<div style="background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;cursor:pointer;transition:all .2s" '
+        +'onclick="this.style.borderColor=\'var(--gold)\'" '
+        +'onmouseover="this.style.borderColor=\'var(--gold)\'" '
+        +'onmouseout="this.style.borderColor=\'var(--border)\'">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center">'
+          +'<div>'
+            +'<div style="font-weight:bold;color:var(--text);font-size:13px">'+f.source+'</div>'
+            +'<div style="font-size:11px;color:var(--text2);margin-top:4px">关卡:'+stage+' | 英雄:'+heroCount+' | 版本:v'+ver+' | 大小:'+(f.size/1024).toFixed(1)+'KB</div>'
+            +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+timeStr+(agoMin!=='?'?' ('+agoMin+'分钟前)':'')+'</div>'
+          +'</div>'
+          +'<button class="btn btn-sm" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#ef4444;white-space:nowrap" '
+            +'onclick="event.stopPropagation();doEmergencyRestore('+i+')">恢复此存档</button>'
+        +'</div>'
+      +'</div>';
+    }
+    listHtml+='</div>';
+
+    // 存储到全局供恢复使用
+    window._emergencyCandidates=unique;
+
+    showModal('🚨 异常恢复',listHtml);
+  }catch(e){
+    console.error('异常恢复扫描失败',e);
+    showToast('❌ 扫描失败: '+e.message);
+  }
+}
+
+// 执行异常恢复
+function doEmergencyRestore(idx){
+  try{
+    var c=window._emergencyCandidates[idx];
+    if(!c){showToast('❌ 存档不存在');return;}
+    var data=c.data;
+    // 版本迁移兼容
+    data=migrateSaveData(data);
+    // 恢复数据
+    G.heroIdCounter=data.heroIdCounter||0;
+    Object.keys(data.g).forEach(function(k){G[k]=data.g[k]});
+    initGameAfterLoad();
+    saveGame();
+    closeModal();
+    showToast('✅ 已从「'+c.source+'」恢复');
+    setTimeout(function(){location.reload();},800);
+  }catch(e){
+    console.error('异常恢复执行失败',e);
     showToast('❌ 恢复失败: '+e.message);
   }
 }
@@ -16412,6 +16606,12 @@ function renderLeaderboard(el){
     '<div style="color:var(--text2);font-size:12px;margin-bottom:12px">恢复到2分钟前的游戏状态，适用于误操作后回档</div>' +
     '<button class="btn" onclick="showConfirm(\'⏪ 恢复2分钟前存档\',\'确定要恢复到2分钟前的存档吗？\\n\\n当前进度将被覆盖！\\n系统会自动查找最接近2分钟前的存档进行恢复。\',restoreTwoMinutesAgoSave,\'确认恢复\',\'取消\')" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#ef4444">⏪ 恢复2分钟前存档</button>' +
     '<div style="margin-top:10px;font-size:11px;color:var(--text3)">💡 会搜索所有存档槽位、自动备份和手动备份，找到最接近2分钟前的存档恢复</div>' +
+  '</div>' +
+  '<div class="panel">' +
+    '<div class="panel-title"><span class="icon">🚨</span> 异常恢复</div>' +
+    '<div style="color:var(--text2);font-size:12px;margin-bottom:12px">深度扫描本地所有存档数据，适用于存档损坏或数据异常时手动选择恢复</div>' +
+    '<button class="btn" onclick="emergencyRestore()" style="background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.4);color:#f59e0b">🚨 扫描并恢复存档</button>' +
+    '<div style="margin-top:10px;font-size:11px;color:var(--text3)">💡 会扫描所有槽位、备份、安全写入记录及localStorage中所有相关数据，列出供选择恢复</div>' +
   '</div>' +
   /* 云存档已屏蔽
   '<div class="panel">' +
