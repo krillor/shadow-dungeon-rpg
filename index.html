@@ -5646,86 +5646,102 @@ function restoreTwoMinutesAgoSave(){
     var bestBackup=null;
     var bestDiff=Infinity;
     var bestSource='';
+    var bestTime=0;
 
-    // 1. 搜索当前槽位的存档时间戳
+    // 收集所有候选存档
+    var candidates=[];
+
+    // 1. 当前槽位存档
     try{
       var slotRaw=localStorage.getItem(getSlotKey(slotIdx));
       if(slotRaw){
         var slotData=JSON.parse(slotRaw);
-        var slotTs=slotData.timestamp||0;
-        if(slotTs>0 && slotTs<=twoMinutesAgo){
-          var diff=Math.abs(twoMinutesAgo-slotTs);
-          if(diff<bestDiff){bestDiff=diff;bestBackup=slotData;bestSource='当前槽位存档';}
+        if(slotData && slotData.g && slotData.timestamp){
+          candidates.push({data:slotData, ts:slotData.timestamp, source:'当前槽位存档'});
         }
       }
     }catch(e){}
 
-    // 2. 搜索自动备份
+    // 2. 自动备份
     if(meta.autoBackups){
       for(var i=0;i<meta.autoBackups.length;i++){
         try{
           var bk=meta.autoBackups[i];
-          if(bk.timestamp && bk.timestamp<=twoMinutesAgo){
-            var diff=Math.abs(twoMinutesAgo-bk.timestamp);
-            if(diff<bestDiff){
-              var raw=localStorage.getItem(bk.key);
-              if(raw){
-                var data=JSON.parse(raw);
-                if(data&&data.g){bestDiff=diff;bestBackup=data;bestSource='自动备份';}
-              }
+          var raw=localStorage.getItem(bk.key);
+          if(raw){
+            var data=JSON.parse(raw);
+            if(data&&data.g){
+              candidates.push({data:data, ts:bk.timestamp||data.timestamp||0, source:'自动备份'});
             }
           }
         }catch(e){}
       }
     }
 
-    // 3. 搜索手动备份
+    // 3. 手动备份
     if(meta.manualBackups){
       for(var i=0;i<meta.manualBackups.length;i++){
         try{
           var bk=meta.manualBackups[i];
-          if(bk.timestamp && bk.timestamp<=twoMinutesAgo){
-            var diff=Math.abs(twoMinutesAgo-bk.timestamp);
-            if(diff<bestDiff){
-              var raw=localStorage.getItem(bk.key);
-              if(raw){
-                var data=JSON.parse(raw);
-                if(data&&data.g){bestDiff=diff;bestBackup=data;bestSource='手动备份';}
-              }
+          var raw=localStorage.getItem(bk.key);
+          if(raw){
+            var data=JSON.parse(raw);
+            if(data&&data.g){
+              candidates.push({data:data, ts:bk.timestamp||data.timestamp||0, source:'手动备份'});
             }
           }
         }catch(e){}
       }
     }
 
-    // 4. 搜索所有槽位
+    // 4. 所有槽位
     for(var i=0;i<MAX_SAVE_SLOTS;i++){
       try{
         var raw=localStorage.getItem(getSlotKey(i));
         if(raw){
           var data=JSON.parse(raw);
-          if(data&&data.g&&data.timestamp&&data.timestamp<=twoMinutesAgo){
-            var diff=Math.abs(twoMinutesAgo-data.timestamp);
-            if(diff<bestDiff){bestDiff=diff;bestBackup=data;bestSource='槽位'+(i+1);}
+          if(data&&data.g&&data.timestamp){
+            candidates.push({data:data, ts:data.timestamp, source:'槽位'+(i+1)});
           }
         }
       }catch(e){}
     }
 
-    // 5. 搜索旧格式存档
+    // 5. 旧格式存档
     try{
       var oldRaw=localStorage.getItem(SAVE_KEY);
       if(oldRaw){
         var oldData=JSON.parse(oldRaw);
-        if(oldData&&oldData.g&&oldData.timestamp&&oldData.timestamp<=twoMinutesAgo){
-          var diff=Math.abs(twoMinutesAgo-oldData.timestamp);
-          if(diff<bestDiff){bestDiff=diff;bestBackup=oldData;bestSource='旧格式存档';}
+        if(oldData&&oldData.g&&oldData.timestamp){
+          candidates.push({data:oldData, ts:oldData.timestamp, source:'旧格式存档'});
         }
       }
     }catch(e){}
 
+    // 优先找2分钟前的，找最接近的
+    for(var i=0;i<candidates.length;i++){
+      var c=candidates[i];
+      if(c.ts<=twoMinutesAgo){
+        var diff=Math.abs(twoMinutesAgo-c.ts);
+        if(diff<bestDiff){bestDiff=diff;bestBackup=c.data;bestSource=c.source;bestTime=c.ts;}
+      }
+    }
+
+    // 如果没找到2分钟前的，退而求其次找最早的存档（排除当前最新的）
+    if(!bestBackup && candidates.length>0){
+      // 按时间排序，找最早的
+      candidates.sort(function(a,b){return a.ts-b.ts});
+      // 排除时间戳等于当前的（即当前最新存档）
+      var oldest=candidates[0];
+      if(oldest && oldest.ts < now-5000){ // 至少5秒前的存档
+        bestBackup=oldest.data;
+        bestSource=oldest.source;
+        bestTime=oldest.ts;
+      }
+    }
+
     if(!bestBackup){
-      showToast('❌ 未找到2分钟前的存档');
+      showToast('❌ 未找到可恢复的存档');
       return;
     }
 
@@ -5738,9 +5754,10 @@ function restoreTwoMinutesAgoSave(){
     initGameAfterLoad();
     saveGame();
 
-    var backupTime=new Date(bestBackup.timestamp);
+    var backupTime=new Date(bestTime);
     var timeStr=backupTime.toLocaleTimeString();
-    showToast('✅ 已从'+bestSource+'恢复 ('+timeStr+')');
+    var minutesAgo=Math.round((now-bestTime)/60000);
+    showToast('✅ 已从'+bestSource+'恢复 ('+timeStr+', 约'+minutesAgo+'分钟前)');
     setTimeout(function(){location.reload();},800);
   }catch(e){
     console.error('恢复存档失败',e);
