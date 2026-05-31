@@ -5201,6 +5201,7 @@ var SAVE_META_KEY='shadow_dungeon_meta';
 var MAX_SAVE_SLOTS=3;
 var MAX_AUTO_BACKUPS=1;
 var MAX_MANUAL_BACKUPS=10;
+var CURRENT_SAVE_VERSION = 2;
 
 // 获取存档元数据
 function getSaveMeta(){
@@ -5275,7 +5276,7 @@ function saveGame(){
     var meta=getSaveMeta();
     var slotIdx=meta.currentSlot||0;
     // 添加版本号用于兼容检测
-    var data={g:G,heroIdCounter:G.heroIdCounter,saveVersion:1,timestamp:Date.now()};
+    var data={g:G,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
     var jsonStr=JSON.stringify(data);
     // 保存到当前槽位
     localStorage.setItem(getSlotKey(slotIdx),jsonStr);
@@ -5344,7 +5345,7 @@ function createManualBackup(){
   try{
     var meta=getSaveMeta();
     var slotIdx=meta.currentSlot||0;
-    var data={g:G,heroIdCounter:G.heroIdCounter};
+    var data={g:G,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
     var jsonStr=JSON.stringify(data);
     var backupKey='shadow_dungeon_manual_'+Date.now();
     localStorage.setItem(backupKey,jsonStr);
@@ -5394,6 +5395,127 @@ function createManualBackup(){
   }
 }
 
+// 存档版本迁移系统
+function migrateSaveData(data){
+  var version = data.saveVersion || 0;
+  if(version < 1){
+    // v0 -> v1: 确保基本字段存在
+    console.log('迁移存档: v0 -> v1');
+    if(data.g){
+      if(!data.g.mergeTotalCount) data.g.mergeTotalCount=0;
+      if(!data.g.mergeMythicPity) data.g.mergeMythicPity=0;
+      if(!data.g.mergeHiddenPity) data.g.mergeHiddenPity=0;
+      if(!data.g.mergeLucky) data.g.mergeLucky=0;
+      if(!data.g.mergePity) data.g.mergePity=0;
+      if(!data.g.mergeStreak) data.g.mergeStreak={count:0,lastTime:0,cooldownEnd:0};
+      if(!data.g.mergeHistory) data.g.mergeHistory=[];
+      if(!data.g.mergeFragments) data.g.mergeFragments=0;
+      if(!data.g.lastMerge) data.g.lastMerge=null;
+      if(!data.g.achievements) data.g.achievements={unlocked:{},progress:{},totalClaimed:0};
+      if(!data.g.stats) data.g.stats={totalKills:0,totalHeroesRecruited:0,totalEquipmentForged:0,totalEquipmentMerged:0,totalGoldEarned:0,totalGemsEarned:0,maxStageReached:1,maxHeroLevel:0};
+      if(!data.g.unknownQuestProgress) data.g.unknownQuestProgress={stages_cleared:0,assassin_merged:0,mage_merged:0,guardian_merged:0,warlock_merged:0,ranger_merged:0,warrior_merged:0,healer_merged:0,paladin_merged:0,mythic_merged:0,legendary_merged:0,epic_merged:0,rare_merged:0,common_merged:0,enemies_killed:0};
+      if(!data.g.pveWinStreak) data.g.pveWinStreak=0;
+      if(!data.g.pveMaxStreak) data.g.pveMaxStreak=0;
+      if(!data.g.loginStreak) data.g.loginStreak=0;
+      if(!data.g.lastLoginDateStreak) data.g.lastLoginDateStreak='';
+      if(data.g.unknownHeroUnlocked===undefined) data.g.unknownHeroUnlocked=false;
+      if(!data.g.resources) data.g.resources={gold:0,gems:0,food:0};
+      if(!data.g.buildings) data.g.buildings={tavern:0,temple:0,forge:0,arena:0};
+    }
+    data.saveVersion=1;
+  }
+  if(version < 2){
+    // v1 -> v2: 确保新增字段存在
+    console.log('迁移存档: v1 -> v2');
+    if(data.g){
+      if(!data.g.currentOmen) data.g.currentOmen=null;
+      if(!data.g.omenExpireTime) data.g.omenExpireTime=0;
+      if(!data.g.mergeGamble) data.g.mergeGamble='normal';
+      if(!data.g.recruitPasswordVerified) data.g.recruitPasswordVerified=false;
+      if(!data.g.totalPlayTime) data.g.totalPlayTime=0;
+      if(!data.g._lastSaveStage) data.g._lastSaveStage=0;
+      if(!data.g._lastSaveHeroCount) data.g._lastSaveHeroCount=0;
+    }
+    data.saveVersion=2;
+  }
+  return data;
+}
+
+// 加载后的初始化（公共函数，loadGame和备份恢复共用）
+function initGameAfterLoad(){
+  // 修复team和heroes之间的引用关系
+  if(G.team && G.heroes){
+    for(var i=0;i<G.team.length;i++){
+      if(G.team[i]){
+        var matchedHero=G.heroes.find(function(h){return h&&h.uid==G.team[i].uid;});
+        if(matchedHero){G.team[i]=matchedHero;}
+        else{G.team[i]=null;}
+      }
+    }
+  }
+  var today=new Date().toDateString();
+  if(G.arenaState&&G.arenaState.lastChallengeDate!==today){
+    G.arenaState.dailyChallengesUsed=0;
+    G.arenaState.lastChallengeDate=today;
+  }
+  if(G.lastLoginDate!==today){
+    G.dailyBonusClaimed=true;
+    G.lastLoginDate=today;
+  }
+  // 连续登录追踪
+  if(!G.loginStreak) G.loginStreak = 0;
+  if(!G.lastLoginDateStreak) G.lastLoginDateStreak = '';
+  if(G.unknownHeroUnlocked === undefined) G.unknownHeroUnlocked = false;
+  var yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  var yesterdayStr = yesterday.toDateString();
+  if(G.lastLoginDateStreak === today){
+  } else if(G.lastLoginDateStreak === yesterdayStr){
+    G.loginStreak = (G.loginStreak || 0) + 1;
+    G.lastLoginDateStreak = today;
+    if(G.loginStreak >= 2 && !G.unknownHeroUnlocked){
+      G.unknownHeroUnlocked = true;
+    }
+  } else if(G.lastLoginDateStreak !== today){
+    G.loginStreak = 1;
+    G.lastLoginDateStreak = today;
+  }
+  if(G.pveWinStreak===undefined) G.pveWinStreak=0;
+  if(G.pveMaxStreak===undefined) G.pveMaxStreak=0;
+  checkMergeEventExpirations();
+  if(!G.achievements) G.achievements={unlocked:{},progress:{},totalClaimed:0};
+  if(!G.stats) G.stats={totalKills:0,totalHeroesRecruited:0,totalEquipmentForged:0,totalEquipmentMerged:0,totalGoldEarned:0,totalGemsEarned:0,maxStageReached:1,maxHeroLevel:0};
+  if(!G.unknownQuestProgress) G.unknownQuestProgress={
+    stages_cleared: 0,
+    assassin_merged: 0,
+    mage_merged: 0,
+    guardian_merged: 0,
+    warlock_merged: 0,
+    ranger_merged: 0,
+    warrior_merged: 0,
+    healer_merged: 0,
+    paladin_merged: 0,
+    mythic_merged: 0,
+    legendary_merged: 0,
+    epic_merged: 0,
+    rare_merged: 0,
+    common_merged: 0,
+    enemies_killed: 0
+  };
+  if(G.tutorialDone===undefined){
+    if(G.tutorialPhase && G.tutorialPhase!==''){
+      G.tutorialDone=false;
+    }else if(G.heroes && G.heroes.length>0){
+      G.tutorialDone=true;
+    }else{
+      G.tutorialDone=false;
+    }
+  }
+  if(G.tutorialPhase===undefined) G.tutorialPhase='';
+  if(G.tutorialStep===undefined) G.tutorialStep=0;
+  setTimeout(function(){checkAllAchievements();},1000);
+}
+
 // 加载游戏（从当前槽位，带自动备份恢复）
 function loadGame(){
   try{
@@ -5419,10 +5541,11 @@ function loadGame(){
     }
     // 版本检测与迁移
     if(!data.saveVersion){
-      console.log('检测到旧版本存档，进行兼容性处理');
-      // 旧版本存档兼容处理
+      console.log('检测到旧版本存档(v0)，进行兼容性处理');
       data.saveVersion=0;
     }
+    // 执行版本迁移
+    data = migrateSaveData(data);
     G.heroIdCounter=data.heroIdCounter||0;
     var saved=data.g;
     if(!saved||typeof saved!=='object'){
@@ -5430,90 +5553,7 @@ function loadGame(){
       return tryRestoreFromBackup(meta, slotIdx);
     }
     Object.keys(saved).forEach(function(k){G[k]=saved[k]});
-    // 修复：重新建立G.team和G.heroes之间的引用关系（使用 == 宽松比较避免类型不匹配）
-    if(G.team && G.heroes){
-      for(var i=0;i<G.team.length;i++){
-        if(G.team[i]){
-          var matchedHero=G.heroes.find(function(h){return h&&h.uid==G.team[i].uid;});
-          if(matchedHero){G.team[i]=matchedHero;}
-          else{G.team[i]=null;}
-        }
-      }
-    }
-    var today=new Date().toDateString();
-    if(G.arenaState&&G.arenaState.lastChallengeDate!==today){
-      G.arenaState.dailyChallengesUsed=0;
-      G.arenaState.lastChallengeDate=today;
-    }
-    if(G.lastLoginDate!==today){
-      G.dailyBonusClaimed=true;
-      G.lastLoginDate=today;
-    }
-    
-    // 连续登录追踪
-    if(!G.loginStreak) G.loginStreak = 0;
-    if(!G.lastLoginDateStreak) G.lastLoginDateStreak = '';
-    if(G.unknownHeroUnlocked === undefined) G.unknownHeroUnlocked = false;
-    
-    var yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    var yesterdayStr = yesterday.toDateString();
-    
-    if(G.lastLoginDateStreak === today){
-      // 今天已经登录过，不重复计算
-    } else if(G.lastLoginDateStreak === yesterdayStr){
-      // 昨天登录过，连续登录+1
-      G.loginStreak = (G.loginStreak || 0) + 1;
-      G.lastLoginDateStreak = today;
-      
-      // 检查是否解锁未知英雄机制（连续登录2天）
-      if(G.loginStreak >= 2 && !G.unknownHeroUnlocked){
-        G.unknownHeroUnlocked = true;
-        // 未知英雄解锁提示已禁用
-      }
-    } else if(G.lastLoginDateStreak !== today){
-      // 连续登录中断，重新开始
-      G.loginStreak = 1;
-      G.lastLoginDateStreak = today;
-    }
-    if(G.pveWinStreak===undefined) G.pveWinStreak=0;
-    if(G.pveMaxStreak===undefined) G.pveMaxStreak=0;
-    // ===== 合成事件到期检查 =====
-    checkMergeEventExpirations();
-    if(!G.achievements) G.achievements={unlocked:{},progress:{},totalClaimed:0};
-    if(!G.stats) G.stats={totalKills:0,totalHeroesRecruited:0,totalEquipmentForged:0,totalEquipmentMerged:0,totalGoldEarned:0,totalGemsEarned:0,maxStageReached:1,maxHeroLevel:0};
-    // 未知英雄解锁任务进度追踪
-    if(!G.unknownQuestProgress) G.unknownQuestProgress={
-      stages_cleared: 0,
-      assassin_merged: 0,
-      mage_merged: 0,
-      guardian_merged: 0,
-      warlock_merged: 0,
-      ranger_merged: 0,
-      warrior_merged: 0,
-      healer_merged: 0,
-      paladin_merged: 0,
-      mythic_merged: 0,
-      legendary_merged: 0,
-      epic_merged: 0,
-      rare_merged: 0,
-      common_merged: 0,
-      enemies_killed: 0
-    };
-    // 引导状态恢复：如果在引导中途存档，正确恢复引导状态
-    if(G.tutorialDone===undefined){
-      // 如果存档中有引导阶段信息且未完成，说明在引导中途存档
-      if(G.tutorialPhase && G.tutorialPhase!==''){
-        G.tutorialDone=false;
-      }else if(G.heroes && G.heroes.length>0){
-        G.tutorialDone=true;
-      }else{
-        G.tutorialDone=false;
-      }
-    }
-    if(G.tutorialPhase===undefined) G.tutorialPhase='';
-    if(G.tutorialStep===undefined) G.tutorialStep=0;
-    setTimeout(function(){checkAllAchievements();},1000);
+    initGameAfterLoad();
     return true;
   }catch(e){console.error('读档失败',e);return false;}
 }
@@ -5535,6 +5575,7 @@ function tryRestoreFromBackup(meta, slotIdx){
               // 恢复数据
               G.heroIdCounter=data.heroIdCounter||0;
               Object.keys(data.g).forEach(function(k){G[k]=data.g[k]});
+              initGameAfterLoad();
               // 保存恢复到主存档
               saveGame();
               showToast('⚠️ 存档已损坏，已从自动备份恢复');
@@ -5558,6 +5599,7 @@ function tryRestoreFromBackup(meta, slotIdx){
               console.log('从手动备份恢复成功');
               G.heroIdCounter=data.heroIdCounter||0;
               Object.keys(data.g).forEach(function(k){G[k]=data.g[k]});
+              initGameAfterLoad();
               saveGame();
               showToast('⚠️ 存档已损坏，已从手动备份恢复');
               return true;
@@ -5578,6 +5620,7 @@ function tryRestoreFromBackup(meta, slotIdx){
             console.log('从其他槽位'+i+'恢复成功');
             G.heroIdCounter=data.heroIdCounter||0;
             Object.keys(data.g).forEach(function(k){G[k]=data.g[k]});
+            initGameAfterLoad();
             // 切换到该槽位
             meta.currentSlot=i;
             saveSaveMeta(meta);
@@ -5600,7 +5643,7 @@ function switchSaveSlot(slotIdx){
   if(oldSlot===slotIdx){showToast('已在当前槽位');return;}
   // 先保存当前进度到旧槽位
   try{
-    var data={g:G,heroIdCounter:G.heroIdCounter,saveVersion:1,timestamp:Date.now()};
+    var data={g:G,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
     localStorage.setItem(getSlotKey(oldSlot),JSON.stringify(data));
     if(!meta.slots[oldSlot]) meta.slots[oldSlot]={};
     meta.slots[oldSlot].timestamp=Date.now();
@@ -5622,7 +5665,7 @@ function restoreBackup(type, backupIdx){
   var raw=localStorage.getItem(backup.key);
   if(!raw){showToast('备份数据已丢失');return;}
   // 恢复前先备份当前状态（作为手动备份）
-  var currentData={g:G,heroIdCounter:G.heroIdCounter,saveVersion:1,timestamp:Date.now()};
+  var currentData={g:G,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
   var currentBackupKey='shadow_dungeon_manual_'+Date.now();
   localStorage.setItem(currentBackupKey,JSON.stringify(currentData));
   if(!meta.manualBackups) meta.manualBackups=[];
@@ -9844,11 +9887,11 @@ function generateFusedHero(heroes){
     if(upsetBonus)inheritMult+=0.2;
     if(streakCount>=3)inheritMult+=0.1;
     
-    maxHP=Math.floor(avgMaterialHP*(boostedStats.indexOf('maxHP')>=0?inheritMult:1.0));
-    atk=Math.floor(avgMaterialATK*(boostedStats.indexOf('atk')>=0?inheritMult:1.0));
-    def=Math.floor(avgMaterialDEF*(boostedStats.indexOf('def')>=0?inheritMult:1.0));
-    spd=Math.floor(avgMaterialSPD*(boostedStats.indexOf('spd')>=0?inheritMult:1.0));
-    maxMP=Math.floor(avgMaterialMP*(boostedStats.indexOf('maxMP')>=0?inheritMult:1.0));
+    maxHP=Math.max(1,Math.floor(avgMaterialHP*(boostedStats.indexOf('maxHP')>=0?inheritMult:1.0)));
+    atk=Math.max(1,Math.floor(avgMaterialATK*(boostedStats.indexOf('atk')>=0?inheritMult:1.0)));
+    def=Math.max(1,Math.floor(avgMaterialDEF*(boostedStats.indexOf('def')>=0?inheritMult:1.0)));
+    spd=Math.max(1,Math.floor(avgMaterialSPD*(boostedStats.indexOf('spd')>=0?inheritMult:1.0)));
+    maxMP=Math.max(1,Math.floor(avgMaterialMP*(boostedStats.indexOf('maxMP')>=0?inheritMult:1.0)));
     
     if(isDirectHidden||isMutation||isQualityUp||isDirectLegendary||isDirectMythic){
       maxHP=Math.floor(maxHP*1.3);
@@ -10261,16 +10304,16 @@ function rollMergeAccident(hero, materials) {
     case 'timewarp':
       // ATK和DEF互换，HP和SPD互换
       var tmp = hero.atk; hero.atk = hero.def; hero.def = tmp;
-      tmp = hero.maxHP; hero.maxHP = hero.spd * 10; hero.spd = Math.floor(tmp / 10);
+      tmp = hero.maxHP; hero.maxHP = Math.max(10, hero.spd * 10); hero.spd = Math.max(1, Math.floor(tmp / 10));
       result.hero = hero;
       result.message = '🌀 时空扭曲！属性发生了疯狂互换！';
       break;
     case 'ghost':
       hero.isGhost = true;
       hero.ghostExpire = Date.now() + 7 * 24 * 3600 * 1000; // 7天
-      hero.maxHP = Math.floor(hero.maxHP * 0.5);
-      hero.atk = Math.floor(hero.atk * 0.5);
-      hero.def = Math.floor(hero.def * 0.5);
+      hero.maxHP = Math.max(1, Math.floor(hero.maxHP * 0.5));
+      hero.atk = Math.max(1, Math.floor(hero.atk * 0.5));
+      hero.def = Math.max(1, Math.floor(hero.def * 0.5));
       hero.ghostBonus = 0.5; // 附身时+50%全属性
       result.hero = hero;
       result.message = '👻 幽灵英雄诞生！属性减半，但战斗后10%概率附身队友+50%属性';
@@ -10320,10 +10363,10 @@ function rollMergeAccident(hero, materials) {
     case 'soulswap':
       // 继承材料中随机一个英雄的外观和名字，保留合成后属性和技能
       var soulDonor = materials[Math.floor(Math.random() * materials.length)];
+      hero.soulSwapOriginal = { icon: hero.icon, name: hero.name };
       hero.icon = soulDonor.icon;
       hero.name = soulDonor.name;
       hero.isSoulSwap = true;
-      hero.soulSwapOriginal = { icon: hero.icon, name: hero.name };
       result.hero = hero;
       result.message = '🎭 灵魂交换！英雄继承了「' + soulDonor.name + '」的灵魂，但拥有合成后的强大属性！';
       break;
@@ -10399,7 +10442,7 @@ function rollMergeAccident(hero, materials) {
       var lowerQ = qIdx > 0 ? QUALITIES[qIdx - 1] : 'common';
       // 创建第二个英雄（深拷贝）
       var hero2 = JSON.parse(JSON.stringify(hero));
-      hero2.uid = genUid();
+      hero2.uid = ++G.heroIdCounter;
       hero2.quality = lowerQ;
       hero2.name = hero2.name + '·影';
       hero2.isCircusClone = true;
@@ -10447,11 +10490,11 @@ function rollMergeAccident(hero, materials) {
       hero.isFrogCursed = true;
       hero.frogCurseExpire = Date.now() + 3 * 24 * 3600 * 1000;
       hero.frogOriginalStats = { maxHP: hero.maxHP, atk: hero.atk, def: hero.def, spd: hero.spd, maxMP: hero.maxMP };
-      hero.maxHP = Math.floor(hero.maxHP * 0.3);
-      hero.atk = Math.floor(hero.atk * 0.3);
-      hero.def = Math.floor(hero.def * 0.3);
-      hero.spd = Math.floor(hero.spd * 0.3);
-      hero.maxMP = Math.floor(hero.maxMP * 0.3);
+      hero.maxHP = Math.max(1, Math.floor(hero.maxHP * 0.3));
+      hero.atk = Math.max(1, Math.floor(hero.atk * 0.3));
+      hero.def = Math.max(1, Math.floor(hero.def * 0.3));
+      hero.spd = Math.max(1, Math.floor(hero.spd * 0.3));
+      hero.maxMP = Math.max(1, Math.floor(hero.maxMP * 0.3));
       hero.hp = hero.maxHP;
       hero.mp = hero.maxMP;
       result.hero = hero;
@@ -14700,7 +14743,21 @@ function updateMergeUI(){
     if(heroes.length>=2){
       // 预览融合结果（需要金手指开启 showMergeResult 才显示）
       if(G_cheats.enabled && G_cheats.showMergeResult){
+        // 保存合成状态，避免预览产生副作用
+        var _savedMergeTotalCount = G.mergeTotalCount;
+        var _savedMergeMythicPity = G.mergeMythicPity;
+        var _savedMergeHiddenPity = G.mergeHiddenPity;
+        var _savedMergeLucky = G.mergeLucky;
+        var _savedMergePity = G.mergePity;
+        var _savedHeroIdCounter = G.heroIdCounter;
         var preview=generateFusedHero(heroes);
+        // 恢复合成状态
+        G.mergeTotalCount = _savedMergeTotalCount;
+        G.mergeMythicPity = _savedMergeMythicPity;
+        G.mergeHiddenPity = _savedMergeHiddenPity;
+        G.mergeLucky = _savedMergeLucky;
+        G.mergePity = _savedMergePity;
+        G.heroIdCounter = _savedHeroIdCounter;
         resultEl.innerHTML='<span class="result-icon">'+preview.icon+'</span><span class="result-name q-'+preview.quality+'">'+preview.name+'</span><span class="result-quality q-'+preview.quality+'">'+QUALITY_NAMES[preview.quality]+'</span>';
         resultEl.className='merge-result ready';
         var skillNames=preview.skills.map(function(s){return SKILLS[s]?SKILLS[s].icon+SKILLS[s].name:s}).join(' ');
