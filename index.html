@@ -10666,8 +10666,22 @@ function rollMergeAccident(hero, materials) {
   var forceAccident = G_cheats.enabled && (G_cheats.forceAccident || G_cheats.alwaysAccident);
   if (forceAccident) { /* 金手指强制事件，跳过随机判定 */ }
   else if (Math.random() >= MERGE_ACCIDENT_RATE) return null;
+
+  // 镜像数量限制：最多5个，达到后不再触发镜像事件
+  var MAX_MIRROR_HEROES = 5;
+  var currentMirrorCount = 0;
+  if(G.heroes){
+    for(var mi=0;mi<G.heroes.length;mi++){
+      if(G.heroes[mi] && G.heroes[mi].isMirror) currentMirrorCount++;
+    }
+  }
+
   var total = 0;
   for (var k in MERGE_ACCIDENTS) total += MERGE_ACCIDENTS[k].weight;
+  // 如果镜像数量已达上限，从权重中排除镜像事件
+  if(currentMirrorCount >= MAX_MIRROR_HEROES){
+    total -= (MERGE_ACCIDENTS.mirror ? MERGE_ACCIDENTS.mirror.weight : 0);
+  }
   var roll = Math.random() * total, cur = 0;
   var type = 'explosion';
   // 金手指指定事件类型：直接使用指定类型，跳过随机
@@ -10675,6 +10689,8 @@ function rollMergeAccident(hero, materials) {
     type = G_cheats.forceAccidentType;
   } else {
     for (var k in MERGE_ACCIDENTS) {
+      // 跳过镜像事件（如果已达上限）
+      if(currentMirrorCount >= MAX_MIRROR_HEROES && k === 'mirror') continue;
       cur += MERGE_ACCIDENTS[k].weight;
       if (roll < cur) { type = k; break; }
     }
