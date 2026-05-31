@@ -12522,6 +12522,17 @@ function toggleHeroSort(){
 
 // 重置融合状态（解决融合按钮不亮问题）
 function resetMergeState(){
+  // 先清除所有英雄卡片的已选样式（在清空_mergeSlots之前）
+  var usedUids=[];
+  for(var i=0;i<3;i++){
+    if(window._mergeSlots[i]){
+      usedUids.push(window._mergeSlots[i]);
+    }
+  }
+  // 清除所有已选英雄的卡片样式
+  usedUids.forEach(function(uid){
+    updateMergeHeroCardStyle(uid,false);
+  });
   // 清除融合槽位
   window._mergeSlots=[null,null,null];
   // 清除_merging标志（防止卡死）
