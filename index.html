@@ -14417,7 +14417,7 @@ function renderMerge(el){
   
   el.innerHTML=`
     <div class="panel">
-      <div class="panel-title"><span class="icon">⚗️</span> 英雄融合 ${streakHtml?'<span style="float:right;font-size:12px">'+streakHtml+'</span>':''}<button class="btn btn-sm" onclick="resetMergeState()" title="重置融合状态，解决按钮不亮问题" style="float:right;margin-left:8px;font-size:11px;padding:2px 8px">🔄刷新</button></div>
+      <div class="panel-title"><span class="icon">⚗️</span> 英雄融合 ${streakHtml?'<span style="float:right;font-size:12px">'+streakHtml+'</span>':''}</div>
       
       <!-- 融合规则（已隐藏） -->
       
@@ -14541,6 +14541,7 @@ function renderMerge(el){
           <div class="merge-btn-group">
             <button class="btn-merge-clear" onclick="clearMerge()">清空</button>
             <button class="btn-merge-go" id="merge-btn" onclick="doMerge()" ${selectedHeroes.length<2||!canAfford?'disabled':''}>⚗️ 开始融合</button>
+            <button class="btn-merge-clear" onclick="resetMergeState()" title="重置融合状态，解决按钮不亮问题" style="font-size:11px;padding:8px 12px">🔄刷新</button>
           </div>
         </div>
         
