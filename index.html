@@ -10243,7 +10243,8 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
 
 function closeMergeResult(){
   var overlay=document.querySelector('.merge-result-overlay');
-  var flashes=document.querySelectorAll('.merge-mythic-flash,.merge-legendary-flash,.merge-quality-up-flash,.merge-mutation-flash,.merge-mythic-text,.merge-legendary-text,.merge-mythic-particles');
+  // 清理所有可能的特效元素（包括新增的羁绊、连击、逆境等特效）
+  var flashes=document.querySelectorAll('.merge-mythic-flash,.merge-legendary-flash,.merge-quality-up-flash,.merge-mutation-flash,.merge-mythic-text,.merge-legendary-text,.merge-mythic-particles,.merge-bond-flash,.merge-streak-flash,.merge-upset-flash,.merge-enhance-flash');
   if(overlay)overlay.remove();
   flashes.forEach(function(f){f.remove()});
 }
