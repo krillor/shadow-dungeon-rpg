@@ -12556,7 +12556,6 @@ function renderHeroes(el){
         ${["rare","epic","legendary","mythic"].map(q=>`<button class="tab-btn" onclick="filterHeroes('${q}',this)">${QUALITY_NAMES[q]}</button>`).join('')}
         <span style="flex:1"></span>
         <button class="tab-btn" onclick="toggleHeroSort()" id="hero-sort-btn">📊战力↓</button>
-        <button class="tab-btn" onclick="resetMergeState()" title="重置融合状态，解决融合按钮不亮问题">🔄刷新</button>
       </div>
       <div id="hero-list">
         ${sorted.map(h=>renderHeroCard(h)).join('')}
@@ -14418,7 +14417,7 @@ function renderMerge(el){
   
   el.innerHTML=`
     <div class="panel">
-      <div class="panel-title"><span class="icon">⚗️</span> 英雄融合 ${streakHtml?'<span style="float:right;font-size:12px">'+streakHtml+'</span>':''}</div>
+      <div class="panel-title"><span class="icon">⚗️</span> 英雄融合 ${streakHtml?'<span style="float:right;font-size:12px">'+streakHtml+'</span>':''}<button class="btn btn-sm" onclick="resetMergeState()" title="重置融合状态，解决按钮不亮问题" style="float:right;margin-left:8px;font-size:11px;padding:2px 8px">🔄刷新</button></div>
       
       <!-- 融合规则（已隐藏） -->
       
