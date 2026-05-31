@@ -14707,6 +14707,8 @@ function showMergePicker(slotIdx){
 }
 
 function pickMergeHero(slotIdx,heroUid){
+  // 将uid转换为数字类型，避免字符串/数字类型不匹配问题
+  heroUid = Number(heroUid);
   // 如果该槽位已有英雄，先取消选中状态
   var oldHeroUid = window._mergeSlots[slotIdx];
   if(oldHeroUid){
