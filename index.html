@@ -14552,7 +14552,6 @@ function renderMerge(el){
           <div class="merge-btn-group">
             <button class="btn-merge-clear" onclick="clearMerge()">清空</button>
             <button class="btn-merge-go" id="merge-btn" onclick="doMerge()" ${selectedHeroes.length<2||!canAfford?'disabled':''}>⚗️ 开始融合</button>
-            <button class="btn-merge-clear" onclick="resetMergeState()" title="重置融合状态，解决按钮不亮问题" style="font-size:11px;padding:8px 12px">🔄刷新</button>
           </div>
         </div>
         
@@ -14592,6 +14591,18 @@ function renderMerge(el){
 function setMergeQualityFilter(quality){
   window._mergeQualityFilter=quality;
   renderMerge(document.getElementById('content'));
+}
+
+// 装备品质筛选
+function setEquipQualityFilter(quality){
+  window._equipQualityFilter=quality;
+  renderEquip(document.getElementById('content'));
+}
+
+// 装备类型筛选
+function setEquipTypeFilter(type){
+  window._equipTypeFilter=type;
+  renderEquip(document.getElementById('content'));
 }
 
 // 快捷添加英雄
@@ -15075,22 +15086,61 @@ function updateMergeButtonState(){
 }
 
 function renderEquip(el){
-  const unequipped=G.equipment.filter(e=>e.heroUid===null);
-  const equipped=G.equipment.filter(e=>e.heroUid!==null);
+  // 初始化筛选状态
+  if(!window._equipQualityFilter) window._equipQualityFilter='all';
+  if(!window._equipTypeFilter) window._equipTypeFilter='all';
+  const qualityFilter=window._equipQualityFilter;
+  const typeFilter=window._equipTypeFilter;
   
-  // 简化版装备列表 - 只显示名字和套装标记
-  let unequippedHTML='';
-  unequipped.forEach(eq=>{
+  const unequippedAll=G.equipment.filter(e=>e.heroUid===null);
+  const equippedAll=G.equipment.filter(e=>e.heroUid!==null);
+  
+  // 应用筛选
+  const unequipped=unequippedAll.filter(eq=>{
     const tpl=EQUIP_TEMPLATES.find(t=>t.id===eq.id);
-    if(!tpl)return;
+    if(!tpl)return false;
+    if(qualityFilter!=='all' && tpl.quality!==qualityFilter)return false;
+    if(typeFilter!=='all' && tpl.type!==typeFilter)return false;
+    return true;
+  });
+  const equipped=equippedAll.filter(eq=>{
+    const tpl=EQUIP_TEMPLATES.find(t=>t.id===eq.id);
+    if(!tpl)return false;
+    if(qualityFilter!=='all' && tpl.quality!==qualityFilter)return false;
+    if(typeFilter!=='all' && tpl.type!==typeFilter)return false;
+    return true;
+  });
+  
+  // 按品质统计数量
+  const qualityCount={};
+  unequippedAll.forEach(eq=>{
+    const tpl=EQUIP_TEMPLATES.find(t=>t.id===eq.id);
+    if(tpl){
+      qualityCount[tpl.quality]=(qualityCount[tpl.quality]||0)+1;
+    }
+  });
+  
+  // 按类型统计数量
+  const typeCount={weapon:0,armor:0,accessory:0};
+  unequippedAll.forEach(eq=>{
+    const tpl=EQUIP_TEMPLATES.find(t=>t.id===eq.id);
+    if(tpl && typeCount[tpl.type]!==undefined){
+      typeCount[tpl.type]++;
+    }
+  });
+  
+  // 生成装备HTML的通用函数
+  function generateEquipHTML(eq, isEquipped){
+    const tpl=EQUIP_TEMPLATES.find(t=>t.id===eq.id);
+    if(!tpl)return '';
+    const hero=isEquipped?G.heroes.find(h=>h.uid===eq.heroUid):null;
+    if(isEquipped && !hero)return '';
     const enhanceLevel=eq.enhance||0;
     const enhanceBonus=enhanceLevel>0?'+'+enhanceLevel:'';
-    // 套装标记
     let setBadge='';
     if(tpl.setId && EQUIP_SETS[tpl.setId]){
       setBadge='<span class="equip-set-badge">'+EQUIP_SETS[tpl.setId].icon+'</span>';
     }
-    // 词缀数量标记
     var affixCountHtml='';
     if(eq.affixes && eq.affixes.length>0){
       var bestTier=0;
@@ -15100,48 +15150,51 @@ function renderEquip(el){
       var tierClr=AFFIX_TIERS[bestTier-1].color;
       affixCountHtml='<span style="font-size:9px;color:'+tierClr+';margin-left:3px">🔮'+eq.affixes.length+'</span>';
     }
-    unequippedHTML+='<div class="equip-item quality-'+tpl.quality+'" onclick="showEquipDetail('+eq.uid+')">'
+    var heroTag=isEquipped?'<span class="equip-hero">→ '+hero.icon+hero.name+'</span>':'';
+    return '<div class="equip-item quality-'+tpl.quality+'" onclick="showEquipDetail('+eq.uid+')">'
       +'<span class="equip-icon">'+tpl.icon+'</span>'
       +'<span class="equip-name q-'+tpl.quality+'">'+tpl.name+'<span class="equip-enhance">'+enhanceBonus+'</span></span>'
       +affixCountHtml
       +setBadge
+      +heroTag
       +'</div>';
+  }
+  
+  // 生成未装备列表
+  let unequippedHTML='';
+  unequipped.forEach(eq=>{
+    unequippedHTML+=generateEquipHTML(eq, false);
   });
   
-  // 已装备列表 - 简化展示
+  // 生成已装备列表
   let equippedHTML='';
   equipped.forEach(eq=>{
-    const tpl=EQUIP_TEMPLATES.find(t=>t.id===eq.id);
-    const hero=G.heroes.find(h=>h.uid===eq.heroUid);
-    if(!tpl||!hero)return;
-    const enhanceLevel=eq.enhance||0;
-    const enhanceBonus=enhanceLevel>0?'+'+enhanceLevel:'';
-    // 套装标记
-    let setBadge='';
-    if(tpl.setId && EQUIP_SETS[tpl.setId]){
-      setBadge='<span class="equip-set-badge">'+EQUIP_SETS[tpl.setId].icon+'</span>';
+    equippedHTML+=generateEquipHTML(eq, true);
+  });
+  
+  // 品质筛选按钮
+  const qualityOrder=['mythic','legendary','epic','rare','common'];
+  const qualityNames={common:'普通',rare:'稀有',epic:'史诗',legendary:'传说',mythic:'神话'};
+  let qualityFilterHtml='<button class="tab-btn '+(qualityFilter==='all'?'active':'')+'" onclick="setEquipQualityFilter(\'all\')" style="font-size:11px;padding:6px 12px">全部('+unequippedAll.length+')</button>';
+  qualityOrder.forEach(q=>{
+    const count=qualityCount[q]||0;
+    if(count>0){
+      qualityFilterHtml+='<button class="tab-btn '+(qualityFilter===q?'active':'')+'" onclick="setEquipQualityFilter(\''+q+'\')" style="font-size:11px;padding:6px 12px"><span class="q-'+q+'">'+qualityNames[q]+'</span>('+count+')</button>';
     }
-    // 词缀数量标记
-    var affixCountHtml2='';
-    if(eq.affixes && eq.affixes.length>0){
-      var bestTier2=0;
-      for(var aci2=0;aci2<eq.affixes.length;aci2++){
-        if(eq.affixes[aci2].tier>bestTier2) bestTier2=eq.affixes[aci2].tier;
-      }
-      var tierClr2=AFFIX_TIERS[bestTier2-1].color;
-      affixCountHtml2='<span style="font-size:9px;color:'+tierClr2+';margin-left:3px">🔮'+eq.affixes.length+'</span>';
+  });
+  
+  // 类型筛选按钮
+  const typeNames={weapon:'⚔️武器',armor:'🛡️护甲',accessory:'💍饰品'};
+  let typeFilterHtml='<button class="tab-btn '+(typeFilter==='all'?'active':'')+'" onclick="setEquipTypeFilter(\'all\')" style="font-size:11px;padding:6px 12px">全部类型</button>';
+  Object.keys(typeCount).forEach(t=>{
+    const count=typeCount[t]||0;
+    if(count>0){
+      typeFilterHtml+='<button class="tab-btn '+(typeFilter===t?'active':'')+'" onclick="setEquipTypeFilter(\''+t+'\')" style="font-size:11px;padding:6px 12px">'+typeNames[t]+'('+count+')</button>';
     }
-    equippedHTML+='<div class="equip-item quality-'+tpl.quality+'" onclick="showEquipDetail('+eq.uid+')">'
-      +'<span class="equip-icon">'+tpl.icon+'</span>'
-      +'<span class="equip-name q-'+tpl.quality+'">'+tpl.name+'<span class="equip-enhance">'+enhanceBonus+'</span></span>'
-      +affixCountHtml2
-      +setBadge
-      +'<span class="equip-hero">→ '+hero.icon+hero.name+'</span>'
-      +'</div>';
   });
   
   el.innerHTML='<style>'
-    +'.equip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}'
+    +'.equip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}'
     +'.equip-item{display:flex;align-items:center;gap:6px;padding:8px 10px;background:linear-gradient(145deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:var(--transition);position:relative}'
     +'.equip-item:hover{transform:translateY(-2px);border-color:var(--border-light);box-shadow:var(--shadow-sm)}'
     +'.equip-item:active{transform:translateY(0)}'
@@ -15149,7 +15202,12 @@ function renderEquip(el){
     +'.equip-item .equip-name{font-size:12px;font-weight:bold;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
     +'.equip-item .equip-enhance{color:var(--blue);font-size:10px;margin-left:2px}'
     +'.equip-item .equip-set-badge{position:absolute;top:-4px;right:-4px;font-size:10px;background:var(--panel);border:1px solid var(--gold);border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)}'
-    +'.equip-item .equip-hero{font-size:10px;color:var(--text2);margin-left:auto}'
+    +'.equip-item .equip-hero{font-size:10px;color:var(--text2);margin-left:auto;white-space:nowrap}'
+    +'.equip-filter-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.05)}'
+    +'.equip-filter-label{font-size:12px;color:var(--text2);margin-right:6px;display:flex;align-items:center}'
+    +'.tab-btn{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;transition:all .2s}'
+    +'.tab-btn:hover{background:rgba(255,255,255,.1)}'
+    +'.tab-btn.active{background:var(--gold);color:#000;border-color:var(--gold);font-weight:bold}'
     +'/* ===== 突破系统样式 ===== */'
     +'.arena-diff-btn{padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;transition:all .2s}'
     +'.arena-diff-btn:hover{transform:translateY(-2px);border-color:var(--gold);box-shadow:0 4px 12px rgba(0,0,0,.2)}'
@@ -15181,32 +15239,19 @@ function renderEquip(el){
     +'</div>'
     +'</div>'
     +'<div class="panel">'
-    +'<div class="panel-title"><span class="icon">🎒</span> 背包 ('+unequipped.length+'件)</div>'
+    +'<div class="panel-title"><span class="icon">🎒</span> 背包 ('+unequipped.length+'/'+unequippedAll.length+'件)</div>'
+    +'<div class="equip-filter-row">'
+    +'<span class="equip-filter-label">品质:</span>'+qualityFilterHtml
+    +'</div>'
+    +'<div class="equip-filter-row" style="border-bottom:none;padding-bottom:0;margin-bottom:8px">'
+    +'<span class="equip-filter-label">类型:</span>'+typeFilterHtml
+    +'</div>'
     +(unequipped.length===0?'<div class="text-dim">背包为空</div>':'<div class="equip-grid">'+unequippedHTML+'</div>')
     +'</div>'
-    /* 已装备模块已屏蔽
     +'<div class="panel">'
-    +'<div class="panel-title"><span class="icon">👤</span> 已装备 ('+equipped.length+'件)</div>'
+    +'<div class="panel-title"><span class="icon">👤</span> 已装备 ('+equipped.length+'/'+equippedAll.length+'件)</div>'
     +(equipped.length===0?'<div class="text-dim">没有已装备的物品</div>':'<div class="equip-grid">'+equippedHTML+'</div>')
     +'</div>'
-    */
-    /* 铁匠铺UI已屏蔽
-    +'<div class="panel">'
-    +'<div class="panel-title"><span class="icon">🔨</span> 铁匠铺 <span class="text-blue">Lv.'+(G.buildings.blacksmith||0)+'</span></div>'
-    +'<div class="text-dim text-sm mb-8">锻造装备需要铁矿，品质受铁匠铺等级限制</div>'
-    +'<div class="btn-group">'
-    +'<button class="btn btn-primary" onclick="forgeEquipment(\'common\')">🔨 普通 (💰100 ⛏️5)</button>'
-    +'<button class="btn btn-primary" onclick="forgeEquipment(\'rare\')">🔨 稀有 (💰300 ⛏️15)</button>'
-    +'<button class="btn btn-primary" onclick="forgeEquipment(\'epic\')">🔨 史诗 (💰800 ⛏️40)</button>'
-    +'<button class="btn btn-primary" onclick="forgeEquipment(\'legendary\')">🔨 传说 (💰2000 ⛏️100)</button>'
-    +'<button class="btn btn-primary" onclick="forgeEquipment(\'mythic\')">🔨 神话 (💰5000 ⛏️250)</button>'
-    +'</div>'
-    +'<div style="margin-top:12px;padding:10px;background:rgba(0,0,0,.2);border-radius:8px">'
-    +'<div style="color:var(--gold);margin-bottom:6px">💡 强化说明</div>'
-    +'<div class="text-xs text-dim">强化消耗铁矿，每级+10%属性，最高+10。分解装备返还部分铁矿。</div>'
-    +'</div>'
-    +'</div>'
-    */
 }
 
 // 显示装备详情弹窗
