@@ -14643,6 +14643,8 @@ function quickAddMergeHeroes(mode){
 }
 
 function addMergeHero(heroUid){
+  // 将uid转换为数字类型，避免字符串/数字类型不匹配问题
+  heroUid = Number(heroUid);
   // 检查英雄是否已经在槽位中（使用 == 宽松比较）
   for(var i=0;i<3;i++){
     if(window._mergeSlots[i]!=null && window._mergeSlots[i]==heroUid){
@@ -14664,6 +14666,8 @@ function addMergeHero(heroUid){
 }
 
 function removeMergeHero(heroUid){
+  // 将uid转换为数字类型，避免字符串/数字类型不匹配问题
+  heroUid = Number(heroUid);
   for(var i=0;i<3;i++){
     if(window._mergeSlots[i]!=null && window._mergeSlots[i]==heroUid){
       window._mergeSlots[i]=null;
