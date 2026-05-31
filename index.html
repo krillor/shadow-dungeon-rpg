@@ -5289,40 +5289,41 @@ function saveGame(){
     meta.slots[slotIdx].stageProgress=G.stageProgress||1;
     meta.slots[slotIdx].heroCount=G.heroes?G.heroes.length:0;
     meta.slots[slotIdx].playTime=G.totalPlayTime||0;
-    // 自动备份（只在重要节点：通关、合成成功、获得高品质英雄）
-    var shouldAutoSave=false;
-    // 检查是否是重要节点存档
-    if(G._lastSaveStage!==G.stageProgress){
-      // 通关了新关卡
-      shouldAutoSave=true;
-      G._lastSaveStage=G.stageProgress;
-    }
-    if(G._lastSaveHeroCount!==G.heroes.length){
-      // 英雄数量变化（合成/招募）
-      shouldAutoSave=true;
-      G._lastSaveHeroCount=G.heroes.length;
-    }
-    
-    if(shouldAutoSave){
-      // 清除旧备份
-      if(meta.autoBackups){
-        meta.autoBackups.forEach(function(bk){try{localStorage.removeItem(bk.key);}catch(e){}});
-      }
-      var backupKey='shadow_dungeon_auto_'+Date.now();
+
+    // ===== 自动备份：每2分钟一次，保留最近3份 =====
+    var now=Date.now();
+    var AUTO_BACKUP_INTERVAL=2*60*1000; // 2分钟
+    var MAX_AUTO_BACKUPS=3;
+    if(!meta.autoBackups) meta.autoBackups=[];
+    if(!meta._lastAutoBackupTime) meta._lastAutoBackupTime=0;
+
+    // 检查是否距上次自动备份已过2分钟
+    if(now - meta._lastAutoBackupTime >= AUTO_BACKUP_INTERVAL){
+      // 创建新备份
+      var backupKey='shadow_dungeon_auto_'+now;
       localStorage.setItem(backupKey,jsonStr);
-      meta.autoBackups=[{
+      var newBackup={
         key:backupKey,
         slotIdx:slotIdx,
-        timestamp:Date.now(),
+        timestamp:now,
         stageProgress:G.stageProgress||1,
         heroCount:G.heroes?G.heroes.length:0,
         totalPower:calcTotalPower()
-      }];
+      };
+      meta.autoBackups.push(newBackup);
+      meta._lastAutoBackupTime=now;
+
+      // 只保留最近3份，删除多余的
+      while(meta.autoBackups.length > MAX_AUTO_BACKUPS){
+        var old=meta.autoBackups.shift();
+        try{localStorage.removeItem(old.key);}catch(e){}
+      }
     }
+
     saveSaveMeta(meta);
     // 自动存档静默保存，不弹出提示
   }catch(e){
-    // 屏蔽存档错误提示
+    // 屏幕存档错误提示
   }
 }
 
