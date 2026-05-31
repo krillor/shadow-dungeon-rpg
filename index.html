@@ -5274,7 +5274,8 @@ function saveGame(){
   try{
     var meta=getSaveMeta();
     var slotIdx=meta.currentSlot||0;
-    var data={g:G,heroIdCounter:G.heroIdCounter};
+    // 添加版本号用于兼容检测
+    var data={g:G,heroIdCounter:G.heroIdCounter,saveVersion:1,timestamp:Date.now()};
     var jsonStr=JSON.stringify(data);
     // 保存到当前槽位
     localStorage.setItem(getSlotKey(slotIdx),jsonStr);
@@ -5393,23 +5394,47 @@ function createManualBackup(){
   }
 }
 
-// 加载游戏（从当前槽位）
+// 加载游戏（从当前槽位，带自动备份恢复）
 function loadGame(){
   try{
     var meta=getSaveMeta();
     var slotIdx=meta.currentSlot||0;
     // 优先从槽位读取，回退到旧键
     var raw=localStorage.getItem(getSlotKey(slotIdx))||localStorage.getItem(SAVE_KEY);
-    if(!raw)return false;
-    var data=JSON.parse(raw);
+    if(!raw){
+      // 尝试从自动备份恢复
+      return tryRestoreFromBackup(meta, slotIdx);
+    }
+    var data;
+    try{
+      data=JSON.parse(raw);
+    }catch(parseErr){
+      console.error('存档解析失败，尝试从备份恢复',parseErr);
+      return tryRestoreFromBackup(meta, slotIdx);
+    }
+    // 存档验证：检查关键字段
+    if(!data||typeof data!=='object'){
+      console.error('存档数据无效');
+      return tryRestoreFromBackup(meta, slotIdx);
+    }
+    // 版本检测与迁移
+    if(!data.saveVersion){
+      console.log('检测到旧版本存档，进行兼容性处理');
+      // 旧版本存档兼容处理
+      data.saveVersion=0;
+    }
     G.heroIdCounter=data.heroIdCounter||0;
     var saved=data.g;
+    if(!saved||typeof saved!=='object'){
+      console.error('存档数据缺少G对象');
+      return tryRestoreFromBackup(meta, slotIdx);
+    }
     Object.keys(saved).forEach(function(k){G[k]=saved[k]});
-    // 修复：重新建立G.team和G.heroes之间的引用关系
+    // 修复：重新建立G.team和G.heroes之间的引用关系（使用 == 宽松比较避免类型不匹配）
     if(G.team && G.heroes){
       for(var i=0;i<G.team.length;i++){
         if(G.team[i]){
-          var matchedHero=G.heroes.find(function(h){return h&&h.uid===G.team[i].uid;});
+          var matchedHero=G.heroes.find(function(h){return h&&h.uid==G.team[i].uid;});
           if(matchedHero){G.team[i]=matchedHero;}
           else{G.team[i]=null;}
         }
@@ -5493,6 +5518,81 @@ function loadGame(){
   }catch(e){console.error('读档失败',e);return false;}
 }
 
+// 尝试从备份恢复
+function tryRestoreFromBackup(meta, slotIdx){
+  console.log('尝试从备份恢复...');
+  // 优先尝试自动备份
+  if(meta.autoBackups && meta.autoBackups.length>0){
+    for(var i=0;i<meta.autoBackups.length;i++){
+      var bk=meta.autoBackups[i];
+      if(bk.slotIdx===slotIdx){
+        try{
+          var raw=localStorage.getItem(bk.key);
+          if(raw){
+            var data=JSON.parse(raw);
+            if(data&&data.g){
+              console.log('从自动备份恢复成功');
+              // 恢复数据
+              G.heroIdCounter=data.heroIdCounter||0;
+              Object.keys(data.g).forEach(function(k){G[k]=data.g[k]});
+              // 保存恢复到主存档
+              saveGame();
+              showToast('⚠️ 存档已损坏，已从自动备份恢复');
+              return true;
+            }
+          }
+        }catch(e){console.error('自动备份恢复失败',e);}
+      }
+    }
+  }
+  // 尝试手动备份
+  if(meta.manualBackups && meta.manualBackups.length>0){
+    for(var i=0;i<meta.manualBackups.length;i++){
+      var bk=meta.manualBackups[i];
+      if(bk.slotIdx===slotIdx){
+        try{
+          var raw=localStorage.getItem(bk.key);
+          if(raw){
+            var data=JSON.parse(raw);
+            if(data&&data.g){
+              console.log('从手动备份恢复成功');
+              G.heroIdCounter=data.heroIdCounter||0;
+              Object.keys(data.g).forEach(function(k){G[k]=data.g[k]});
+              saveGame();
+              showToast('⚠️ 存档已损坏，已从手动备份恢复');
+              return true;
+            }
+          }
+        }catch(e){console.error('手动备份恢复失败',e);}
+      }
+    }
+  }
+  // 尝试其他槽位
+  for(var i=0;i<MAX_SAVE_SLOTS;i++){
+    if(i!==slotIdx){
+      try{
+        var raw=localStorage.getItem(getSlotKey(i));
+        if(raw){
+          var data=JSON.parse(raw);
+          if(data&&data.g){
+            console.log('从其他槽位'+i+'恢复成功');
+            G.heroIdCounter=data.heroIdCounter||0;
+            Object.keys(data.g).forEach(function(k){G[k]=data.g[k]});
+            // 切换到该槽位
+            meta.currentSlot=i;
+            saveSaveMeta(meta);
+            saveGame();
+            showToast('⚠️ 当前槽位损坏，已从槽位'+(i+1)+'恢复');
+            return true;
+          }
+        }
+      }catch(e){}
+    }
+  }
+  console.error('所有恢复尝试失败');
+  return false;
+}
+
 // 切换存档槽位
 function switchSaveSlot(slotIdx){
   var meta=getSaveMeta();
@@ -5500,7 +5600,7 @@ function switchSaveSlot(slotIdx){
   if(oldSlot===slotIdx){showToast('已在当前槽位');return;}
   // 先保存当前进度到旧槽位
   try{
-    var data={g:G,heroIdCounter:G.heroIdCounter};
+    var data={g:G,heroIdCounter:G.heroIdCounter,saveVersion:1,timestamp:Date.now()};
     localStorage.setItem(getSlotKey(oldSlot),JSON.stringify(data));
     if(!meta.slots[oldSlot]) meta.slots[oldSlot]={};
     meta.slots[oldSlot].timestamp=Date.now();
@@ -5522,7 +5622,7 @@ function restoreBackup(type, backupIdx){
   var raw=localStorage.getItem(backup.key);
   if(!raw){showToast('备份数据已丢失');return;}
   // 恢复前先备份当前状态（作为手动备份）
-  var currentData={g:G,heroIdCounter:G.heroIdCounter};
+  var currentData={g:G,heroIdCounter:G.heroIdCounter,saveVersion:1,timestamp:Date.now()};
   var currentBackupKey='shadow_dungeon_manual_'+Date.now();
   localStorage.setItem(currentBackupKey,JSON.stringify(currentData));
   if(!meta.manualBackups) meta.manualBackups=[];
