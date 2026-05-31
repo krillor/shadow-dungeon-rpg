@@ -12519,6 +12519,25 @@ function toggleHeroSort(){
   });
   cards.forEach(function(c){list.appendChild(c)});
 }
+
+// 重置融合状态（解决融合按钮不亮问题）
+function resetMergeState(){
+  // 清除融合槽位
+  window._mergeSlots=[null,null,null];
+  // 清除_merging标志（防止卡死）
+  window._merging=false;
+  // 清除pending状态
+  window._pendingMergeResult=false;
+  window._accidentHero=null;
+  window._accidentMats=null;
+  // 清除特效元素
+  var flashes=document.querySelectorAll('.merge-mythic-flash,.merge-legendary-flash,.merge-quality-up-flash,.merge-mutation-flash,.merge-mythic-text,.merge-legendary-text,.merge-mythic-particles,.merge-bond-flash,.merge-streak-flash,.merge-upset-flash,.merge-enhance-flash,.merge-result-overlay');
+  flashes.forEach(function(f){f.remove()});
+  // 刷新当前界面
+  renderCurrentTab();
+  showToast('🔄 融合状态已重置，请重新选择英雄进行融合');
+}
+
 function renderHeroes(el){
   if(G.heroes.length===0){
     el.innerHTML=`<div class="panel"><div class="panel-title"><span class="icon">⚔️</span> 英雄列表</div><div class="text-dim">还没有英雄，去酒馆招募吧！</div><div class="btn-group mt-8"><button class="btn btn-primary" onclick="renderTavernRecruit()">🍺 前往酒馆</button></div></div>`;
@@ -12537,6 +12556,7 @@ function renderHeroes(el){
         ${["rare","epic","legendary","mythic"].map(q=>`<button class="tab-btn" onclick="filterHeroes('${q}',this)">${QUALITY_NAMES[q]}</button>`).join('')}
         <span style="flex:1"></span>
         <button class="tab-btn" onclick="toggleHeroSort()" id="hero-sort-btn">📊战力↓</button>
+        <button class="tab-btn" onclick="resetMergeState()" title="重置融合状态，解决融合按钮不亮问题">🔄刷新</button>
       </div>
       <div id="hero-list">
         ${sorted.map(h=>renderHeroCard(h)).join('')}
