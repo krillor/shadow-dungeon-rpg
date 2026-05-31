@@ -16684,18 +16684,6 @@ function renderLeaderboard(el){
       '</div>' +
     '</div>' +
   '</div>' +
-  '<div class="panel">' +
-    '<div class="panel-title"><span class="icon">⏪</span> 存档恢复</div>' +
-    '<div style="color:var(--text2);font-size:12px;margin-bottom:12px">恢复到2分钟前的游戏状态，适用于误操作后回档</div>' +
-    '<button class="btn" onclick="showConfirm(\'⏪ 恢复2分钟前存档\',\'确定要恢复到2分钟前的存档吗？\\n\\n当前进度将被覆盖！\\n系统会自动查找最接近2分钟前的存档进行恢复。\',restoreTwoMinutesAgoSave,\'确认恢复\',\'取消\')" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#ef4444">⏪ 恢复2分钟前存档</button>' +
-    '<div style="margin-top:10px;font-size:11px;color:var(--text3)">💡 会搜索所有存档槽位、自动备份和手动备份，找到最接近2分钟前的存档恢复</div>' +
-  '</div>' +
-  '<div class="panel">' +
-    '<div class="panel-title"><span class="icon">🚨</span> 异常恢复</div>' +
-    '<div style="color:var(--text2);font-size:12px;margin-bottom:12px">深度扫描本地所有存档数据，适用于存档损坏或数据异常时手动选择恢复</div>' +
-    '<button class="btn" onclick="emergencyRestore()" style="background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.4);color:#f59e0b">🚨 扫描并恢复存档</button>' +
-    '<div style="margin-top:10px;font-size:11px;color:var(--text3)">💡 会扫描所有槽位、备份、安全写入记录及localStorage中所有相关数据，列出供选择恢复</div>' +
-  '</div>' +
   /* 云存档已屏蔽
   '<div class="panel">' +
     '<div class="panel-title"><span class="icon">☁️</span> 云存档</div>' +
@@ -17267,13 +17255,13 @@ function renderCheats(el){
           <div style="font-size:11px;color:var(--text3);margin-top:6px">重新播放序章故事和交互引导</div>
         </div>
         <div class="panel" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.3)">
-          <div class="panel-title">☁️ 云端数据管理（管理员）</div>
+          <div class="panel-title">💾 存档管理</div>
+          <div style="color:var(--text2);font-size:12px;margin-bottom:12px">存档恢复与异常数据修复</div>
           <div class="btn-group">
-            <input type="text" id="admin-query-name" placeholder="输入玩家名字" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:rgba(0,0,0,.3);color:var(--text);font-size:13px;outline:none">
-            <button class="btn btn-primary" onclick="adminQueryPlayerData()">🔍 查看数据</button>
-            <button class="btn btn-danger" onclick="adminDeletePlayerData()">🗑️ 删除</button>
+            <button class="btn" onclick="showConfirm('⏪ 恢复2分钟前存档','确定要恢复到2分钟前的存档吗？\\n\\n当前进度将被覆盖！\\n系统会自动查找最接近2分钟前的存档进行恢复。',restoreTwoMinutesAgoSave,'确认恢复','取消')" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#ef4444">⏪ 恢复2分钟前</button>
+            <button class="btn" onclick="emergencyRestore()" style="background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.4);color:#f59e0b">🚨 异常恢复</button>
           </div>
-          <div id="admin-query-result" style="margin-top:8px;font-size:12px;display:none"></div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3)">恢复2分钟前：自动查找最近存档 | 异常恢复：深度扫描所有存档数据供选择</div>
         </div>
       </div>
     </div>
