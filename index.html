@@ -9235,7 +9235,7 @@ function sleep(ms){
 // ==================== 合成系统 ====================
 function findMergeRecipe(heroUids){
   if(heroUids.length<2)return null;
-  const heroes=heroUids.map(uid=>G.heroes.find(h=>h.uid===uid)).filter(Boolean);
+  const heroes=heroUids.map(uid=>G.heroes.find(h=>h.uid==uid)).filter(Boolean);
   if(heroes.length<2)return null;
   return{recipe:{result:'__dynamic__',inheritSkills:true,lore:'英雄的融合创造了新的存在。'},usedHeroes:heroes};
 }
@@ -11045,7 +11045,7 @@ function getMergeStreakInfo(){
 }
 
 function executeMerge(heroUids){
-  const heroes=heroUids.map(uid=>G.heroes.find(h=>h.uid===uid)).filter(Boolean);
+  const heroes=heroUids.map(uid=>G.heroes.find(h=>h.uid==uid)).filter(Boolean);
   if(heroes.length<2){showToast('请至少选择2个英雄！');return false}
   
   // 检查是否有锁定的英雄
@@ -14596,7 +14596,7 @@ function updateMergeUI(){
   const btn=document.getElementById('merge-btn');
 
   if(activeSlots.length>=2){
-    const heroes=activeSlots.map(uid=>G.heroes.find(h=>h.uid===uid)).filter(Boolean);
+    const heroes=activeSlots.map(uid=>G.heroes.find(h=>h.uid==uid)).filter(Boolean);
     if(heroes.length>=2){
       // 预览融合结果（需要金手指开启 showMergeResult 才显示）
       if(G_cheats.enabled && G_cheats.showMergeResult){
@@ -14647,7 +14647,7 @@ function doMerge(){
     return;
   }
   // 计算合成费用
-  var validHeroes=activeSlots.map(function(uid){return G.heroes.find(function(h){return h.uid===uid})}).filter(Boolean);
+  var validHeroes=activeSlots.map(function(uid){return G.heroes.find(function(h){return h.uid==uid})}).filter(Boolean);
   if(validHeroes.length < 2){
     showToast('选中的英雄不存在，请重新选择');
     return;
