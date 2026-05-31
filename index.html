@@ -14939,7 +14939,7 @@ function renderMerge(el){
         <div class="merge-actions">
           <div class="merge-cost-info">💰 消耗: <b style="color:${canAfford?'var(--gold)':'var(--red)'}">${totalCostText}</b></div>
           <div class="merge-btn-group">
-            <button class="btn-merge-go" id="merge-btn" onclick="doMerge()" ${selectedHeroes.length<2||!canAfford?'disabled':''} style="flex:1;font-size:16px;padding:14px 24px">⚗️ 开始融合</button>
+            <button class="btn-merge-go" id="merge-btn" onclick="doMerge()" disabled style="flex:1;font-size:16px;padding:14px 24px">⚗️ 开始融合</button>
           </div>
         </div>
         
