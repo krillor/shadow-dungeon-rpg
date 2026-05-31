@@ -5290,16 +5290,31 @@ function saveGame(){
     meta.slots[slotIdx].heroCount=G.heroes?G.heroes.length:0;
     meta.slots[slotIdx].playTime=G.totalPlayTime||0;
 
-    // ===== 自动备份：每2分钟一次，保留最近5份（约10分钟覆盖） =====
+    // ===== 自动备份：保留2份（2分钟前 + 10分钟前） =====
     var now=Date.now();
-    var AUTO_BACKUP_INTERVAL=2*60*1000; // 2分钟
-    var MAX_AUTO_BACKUPS=5; // 5份 × 2分钟 = 10分钟覆盖
     if(!meta.autoBackups) meta.autoBackups=[];
     if(!meta._lastAutoBackupTime) meta._lastAutoBackupTime=0;
 
-    // 检查是否距上次自动备份已过2分钟
-    if(now - meta._lastAutoBackupTime >= AUTO_BACKUP_INTERVAL){
-      // 创建新备份
+    var TWO_MIN=2*60*1000;
+    var TEN_MIN=10*60*1000;
+    var shouldBackup=false;
+
+    // 判断是否需要备份：距上次备份>=2分钟，且当前没有2分钟或10分钟附近的备份
+    if(now - meta._lastAutoBackupTime >= TWO_MIN){
+      // 检查是否已有2分钟附近的备份（1.5~2.5分钟内）
+      var hasNear2min=false;
+      var hasNear10min=false;
+      for(var bi=0;bi<meta.autoBackups.length;bi++){
+        var age=now-meta.autoBackups[bi].timestamp;
+        if(age>=TWO_MIN*0.75 && age<=TWO_MIN*1.25) hasNear2min=true;
+        if(age>=TEN_MIN*0.75 && age<=TEN_MIN*1.25) hasNear10min=true;
+      }
+      if(!hasNear2min) shouldBackup=true;
+      // 如果没有10分钟备份且距上次备份已过10分钟，也触发
+      if(!hasNear10min && now - meta._lastAutoBackupTime >= TEN_MIN) shouldBackup=true;
+    }
+
+    if(shouldBackup){
       var backupKey='shadow_dungeon_auto_'+now;
       localStorage.setItem(backupKey,jsonStr);
       var newBackup={
@@ -5313,8 +5328,9 @@ function saveGame(){
       meta.autoBackups.push(newBackup);
       meta._lastAutoBackupTime=now;
 
-      // 只保留最近3份，删除多余的
-      while(meta.autoBackups.length > MAX_AUTO_BACKUPS){
+      // 清理旧版本多余备份，只保留最近2份
+      // 先清理localStorage中已不在列表中的旧key
+      while(meta.autoBackups.length > 2){
         var old=meta.autoBackups.shift();
         try{localStorage.removeItem(old.key);}catch(e){}
       }
