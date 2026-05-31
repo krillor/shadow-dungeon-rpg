@@ -15154,9 +15154,10 @@ function pickMergeHero(slotIdx,heroUid){
 }
 
 function updateMergeUI(){
-  const slots=window._mergeSlots;
+  const slots=window._mergeSlots||[null,null,null];
   for(let i=0;i<3;i++){
     const el=document.getElementById('merge-slot-'+i);
+    if(!el) continue;
     const hero=slots[i]?G.heroes.find(h=>h.uid==slots[i]):null;
     if(hero){
       el.innerHTML='<span class="slot-icon">'+hero.icon+'</span><span class="slot-name q-'+hero.quality+'">'+hero.name+'</span><span class="slot-remove" onclick="event.stopPropagation();removeMergeSlot('+i+')">×</span>';
@@ -15176,9 +15177,22 @@ function updateMergeUI(){
   if(activeSlots.length>=2){
     const heroes=activeSlots.map(uid=>G.heroes.find(h=>h.uid==uid)).filter(Boolean);
     if(heroes.length>=2){
-      // 预览融合结果（需要金手指开启 showMergeResult 才显示）
+      // 计算费用并检查是否足够
+      var qIdx=heroes.map(function(h){return QUALITIES.indexOf(h.quality)});
+      var mQ=Math.max.apply(null,qIdx);
+      var mergeCost=(mQ+1)*200;
+      var canAfford=(G.resources.gold||0)>=mergeCost;
+      // 检查赌局费用
+      var gambleInfo=getGambleInfo();
+      if(G_mergeGamble!=='normal'&&gambleInfo.cost>0){
+        if(gambleInfo.costType==='gems'){
+          canAfford=canAfford&&(G.resources.gems||0)>=gambleInfo.cost;
+        }else{
+          canAfford=(G.resources.gold||0)>=(mergeCost+gambleInfo.cost);
+        }
+      }
+      
       if(G_cheats.enabled && G_cheats.showMergeResult){
-        // 保存合成状态，避免预览产生副作用
         var _savedMergeTotalCount = G.mergeTotalCount;
         var _savedMergeMythicPity = G.mergeMythicPity;
         var _savedMergeHiddenPity = G.mergeHiddenPity;
@@ -15186,42 +15200,51 @@ function updateMergeUI(){
         var _savedMergePity = G.mergePity;
         var _savedHeroIdCounter = G.heroIdCounter;
         var preview=generateFusedHero(heroes);
-        // 恢复合成状态
         G.mergeTotalCount = _savedMergeTotalCount;
         G.mergeMythicPity = _savedMergeMythicPity;
         G.mergeHiddenPity = _savedMergeHiddenPity;
         G.mergeLucky = _savedMergeLucky;
         G.mergePity = _savedMergePity;
         G.heroIdCounter = _savedHeroIdCounter;
-        resultEl.innerHTML='<span class="result-icon">'+preview.icon+'</span><span class="result-name q-'+preview.quality+'">'+preview.name+'</span><span class="result-quality q-'+preview.quality+'">'+QUALITY_NAMES[preview.quality]+'</span>';
-        resultEl.className='merge-result ready';
-        var skillNames=preview.skills.map(function(s){return SKILLS[s]?SKILLS[s].icon+SKILLS[s].name:s}).join(' ');
-        previewEl.innerHTML='<span class="text-green">✓ 可融合：'+preview.icon+' '+preview.name+' ('+QUALITY_NAMES[preview.quality]+')</span>'
-          +'<br><span class="text-xs text-dim">❤️'+preview.maxHP+' ⚔️'+preview.atk+' 🛡️'+preview.def+' 🏃'+preview.spd+' 💧'+preview.maxMP+'</span>'
-          +'<br><span class="text-xs text-purple">技能：'+skillNames+'</span>';
+        if(resultEl){
+          resultEl.innerHTML='<span class="result-icon">'+preview.icon+'</span><span class="result-name q-'+preview.quality+'">'+preview.name+'</span><span class="result-quality q-'+preview.quality+'">'+QUALITY_NAMES[preview.quality]+'</span>';
+          resultEl.className='merge-result ready';
+        }
+        if(previewEl){
+          var skillNames=preview.skills.map(function(s){return SKILLS[s]?SKILLS[s].icon+SKILLS[s].name:s}).join(' ');
+          previewEl.innerHTML='<span class="text-green">✓ 可融合：'+preview.icon+' '+preview.name+' ('+QUALITY_NAMES[preview.quality]+')</span>'
+            +'<br><span class="text-xs text-dim">❤️'+preview.maxHP+' ⚔️'+preview.atk+' 🛡️'+preview.def+' 🏃'+preview.spd+' 💧'+preview.maxMP+'</span>'
+            +'<br><span class="text-xs text-purple">技能：'+skillNames+'</span>';
+        }
       }else{
         var bondPrev=detectMergeBond(heroes);
-        var qIdx=heroes.map(function(h){return QUALITIES.indexOf(h.quality)});
-        var mQ=Math.max.apply(null,qIdx);
         var cost=(mQ+1)*200;
         var bondStr=bondPrev?'<br><span class="merge-bond-tag">'+bondPrev.name+'</span> <span style="color:#5dade2;font-size:11px">'+bondPrev.desc+'</span>':'';
-        resultEl.innerHTML='<span class="result-icon" style="animation:float 2s ease-in-out infinite">❓</span><span class="result-name" style="color:var(--text3)">???</span>';
-        resultEl.className='merge-result ready';
-        previewEl.innerHTML='<span class="text-green">✓ 已选择 '+heroes.length+' 个英雄，可进行融合</span>'
-          +'<br><span class="text-xs text-dim">💰 消耗 '+cost+' 金币'+bondStr+'</span>';
+        if(resultEl){
+          resultEl.innerHTML='<span class="result-icon" style="animation:float 2s ease-in-out infinite">❓</span><span class="result-name" style="color:var(--text3)">???</span>';
+          resultEl.className='merge-result ready';
+        }
+        if(previewEl){
+          previewEl.innerHTML='<span class="text-green">✓ 已选择 '+heroes.length+' 个英雄，可进行融合</span>'
+            +'<br><span class="text-xs text-dim">💰 消耗 '+cost+' 金币'+bondStr+'</span>';
+        }
       }
-      btn.disabled=false;
+      if(btn) btn.disabled=!canAfford;
     }else{
-      resultEl.innerHTML='<span class="result-placeholder">?</span><span class="result-hint">融合结果</span>';
-      resultEl.className='merge-result';
-      previewEl.innerHTML='<span class="text-red">英雄不存在</span>';
-      btn.disabled=true;
+      if(resultEl){
+        resultEl.innerHTML='<span class="result-placeholder">?</span><span class="result-hint">融合结果</span>';
+        resultEl.className='merge-result';
+      }
+      if(previewEl) previewEl.innerHTML='<span class="text-red">英雄不存在</span>';
+      if(btn) btn.disabled=true;
     }
   }else{
-    resultEl.innerHTML='<span class="result-placeholder">?</span><span class="result-hint">融合结果</span>';
-    resultEl.className='merge-result';
-    previewEl.innerHTML='请选择至少2个英雄进行融合';
-    btn.disabled=true;
+    if(resultEl){
+      resultEl.innerHTML='<span class="result-placeholder">?</span><span class="result-hint">融合结果</span>';
+      resultEl.className='merge-result';
+    }
+    if(previewEl) previewEl.innerHTML='请选择至少2个英雄进行融合';
+    if(btn) btn.disabled=true;
   }
 }
 
