@@ -5238,12 +5238,12 @@ function initDB() {
       
       // 元数据存储
       if (!db.objectStoreNames.contains('meta')) {
-        db.createObjectStore('meta', { keyPath: 'key' });
+        db.createObjectStore('meta', { keyPath: 'slotIdx' });
       }
       
       // 备份存储
       if (!db.objectStoreNames.contains('backups')) {
-        var bs = db.createObjectStore('backups', { keyPath: 'key', autoIncrement: true });
+        var bs = db.createObjectStore('backups', { keyPath: 'slotIdx' });
         bs.createIndex('slotIdx', 'slotIdx');
         bs.createIndex('timestamp', 'timestamp');
       }
@@ -5362,12 +5362,9 @@ function restoreSaveData(data) {
   // 版本迁移
   if (data.version < 5) {
     console.log('迁移存档: v' + data.version + ' -> v5');
-    // 旧版压缩存档需要解压后重新存储
     if (data.version >= 3 && data.game && typeof data.game.heroes === 'object') {
-      // 检查是否是压缩格式（短键名）
       if (data.game.h || data.game.sp) {
-        console.warn('检测到旧版压缩存档，尝试解压...');
-        // 旧版压缩格式无法安全恢复，跳过
+        console.warn('检测到旧版压缩存档，无法恢复');
         return false;
       }
     }
@@ -5375,15 +5372,19 @@ function restoreSaveData(data) {
   
   var saved = data.game;
   
-  // 重建队伍引用
+  // 先恢复 heroes（队伍重建需要用到）
+  if (saved.heroes) G.heroes = saved.heroes;
+  
+  // 重建队伍引用（team 存的是 uid 数组）
   if (saved.team && Array.isArray(saved.team)) {
     saved.team = saved.team.map(function(uid) {
       if (!uid) return null;
-      return G.heroes.find(function(h) { return h && h.uid === uid; }) || null;
+      // uid 可能是数字或字符串
+      return G.heroes.find(function(h) { return h && (h.uid === uid || h.uid == uid); }) || null;
     });
   }
   
-  // 复制到 G
+  // 复制到 G（heroes 已在上面恢复，这里会再次覆盖，没问题）
   G.heroIdCounter = data.heroIdCounter || 0;
   Object.keys(saved).forEach(function(k) { G[k] = saved[k]; });
   
@@ -5562,11 +5563,17 @@ async function initStorageSystem() {
 
 // ===== 加载后初始化 =====
 function initGameAfterLoad() {
-  // 重建队伍引用
+  // 重建队伍引用（兼容 uid 和英雄对象两种格式）
   if (G.team && G.heroes) {
-    G.team = G.team.map(function(uid) {
-      if (!uid) return null;
-      return G.heroes.find(function(h) { return h && h.uid === uid; }) || null;
+    G.team = G.team.map(function(item) {
+      if (!item) return null;
+      // 如果已经是英雄对象（有 uid 属性），直接返回
+      if (typeof item === 'object' && item.uid !== undefined) {
+        // 验证英雄是否仍在 heroes 列表中
+        return G.heroes.find(function(h) { return h && h.uid === item.uid; }) || null;
+      }
+      // 如果是 uid（数字或字符串），查找对应英雄
+      return G.heroes.find(function(h) { return h && (h.uid === item || h.uid == item); }) || null;
     });
   }
   
@@ -5822,18 +5829,30 @@ function clearAllBackups() {
 
 // ===== 重置游戏 =====
 function resetGame() {
+  // 清除 localStorage
   lsRemove(META_KEY);
   for (var i = 0; i < MAX_SLOTS; i++) {
     lsRemove(getSlotKey(i));
     lsRemove('shadow_dungeon_slot_' + i);
     lsRemove('shadow_dungeon_slot_' + i + '_safe');
   }
-  // 清理其他残留
   var keys = [];
   for (var k in localStorage) {
     if (k.indexOf('shadow_dungeon') >= 0 || k.indexOf('sd_') >= 0) keys.push(k);
   }
   keys.forEach(function(k) { lsRemove(k); });
+  
+  // 清除 IndexedDB（删除整个数据库）
+  if (_isDBReady && _db) {
+    try {
+      _db.close();
+      _isDBReady = false;
+      _db = null;
+    } catch(e) {}
+    try {
+      indexedDB.deleteDatabase(DB_NAME);
+    } catch(e) {}
+  }
   
   showToast('游戏已重置，正在重新加载...');
   setTimeout(function() { location.reload(); }, 500);
@@ -5899,9 +5918,27 @@ function importSaveFromFile() {
           return;
         }
         
-        // 恢复数据
-        G.heroIdCounter = data.heroIdCounter || 0;
-        Object.keys(data.game).forEach(function(k) { G[k] = data.game[k]; });
+        // 验证数据完整性
+        if (!data.game.heroes || !Array.isArray(data.game.heroes)) {
+          showToast('❌ 存档数据不完整（缺少英雄数据）');
+          return;
+        }
+        
+        // 导入前备份当前进度
+        var currentBackup = prepareSaveData();
+        lsSet('import_backup_' + Date.now(), currentBackup);
+        
+        // 使用 restoreSaveData 恢复（经过迁移检查和队伍重建）
+        var saveObj = {
+          version: data.version,
+          heroIdCounter: data.heroIdCounter || 0,
+          game: data.game
+        };
+        
+        if (!restoreSaveData(saveObj)) {
+          showToast('❌ 存档数据无法恢复');
+          return;
+        }
         
         initGameAfterLoad();
         saveGame();
