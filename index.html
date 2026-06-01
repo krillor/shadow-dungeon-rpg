@@ -6351,7 +6351,7 @@ function showSaveErrorDialog(errorInfo) {
   content += '<div style="display:flex;gap:8px;flex-direction:column">';
   content += '<button class="btn btn-primary" onclick="executeSaveRepair()">🔧 尝试自动修复</button>';
   content += '<button class="btn" onclick="loadCloudSave().then(function(ok){if(ok){closeModal();location.reload();}})">☁️ 从云端恢复</button>';
-  content += '<button class="btn" style="background:var(--danger)" onclick="showConfirm(\'确认重置\',\'确定要重新开始吗？\\n\\n当前所有进度将丢失！\',function(){localStorage.clear();location.reload();},\'确认重置\',\'取消\')">🗑️ 重新开始</button>';
+  content += '<button class="btn" style="background:var(--danger)" onclick="showConfirm(\'确认重置\',\'确定要重新开始吗？\\n\\n当前所有进度将丢失！\',resetGameAndStartNew,\'确认重置\',\'取消\')">🗑️ 重新开始</button>';
   content += '</div>';
   
   content += '</div>';
@@ -6414,7 +6414,7 @@ function showSaveResetDialog() {
   content += '</div>';
   content += '<div style="display:flex;gap:8px;flex-direction:column">';
   content += '<button class="btn btn-primary" onclick="loadCloudSave().then(function(ok){if(ok){closeModal();location.reload();}})">☁️ 尝试云端恢复</button>';
-  content += '<button class="btn" style="background:var(--danger)" onclick="showConfirm(\'确认重置\',\'确定要重新开始吗？\\n\\n此操作不可恢复！\',function(){localStorage.clear();location.reload();},\'确认重置\',\'取消\')">🗑️ 重新开始</button>';
+  content += '<button class="btn" style="background:var(--danger)" onclick="showConfirm(\'确认重置\',\'确定要重新开始吗？\\n\\n此操作不可恢复！\',resetGameAndStartNew,\'确认重置\',\'取消\')">🗑️ 重新开始</button>';
   content += '</div>';
   content += '</div>';
   showModal('无法修复', content);
@@ -6422,7 +6422,20 @@ function showSaveResetDialog() {
 
 // 在健康检查中自动检测并提示异常
 function autoDetectAndHandleSaveError() {
+  // 如果用户选择了重新开始，跳过检测
+  if (localStorage.getItem('shadow_dungeon_reset_flag') === '1') {
+    localStorage.removeItem('shadow_dungeon_reset_flag');
+    console.log('检测到重置标记，跳过存档异常检测');
+    return false;
+  }
+  
   var health = checkLocalSaveHealth();
+  
+  // 无存档不是异常，是新游戏
+  if (!health.ok && health.error === '本地无存档') {
+    console.log('无存档，新游戏开始');
+    return false;
+  }
   
   if (!health.ok) {
     console.error('检测到存档异常:', health.error);
@@ -6436,6 +6449,16 @@ function autoDetectAndHandleSaveError() {
   }
   
   return false; // 无异常
+}
+
+// 重新开始游戏（带标记，避免循环检测）
+function resetGameAndStartNew() {
+  // 设置重置标记
+  localStorage.setItem('shadow_dungeon_reset_flag', '1');
+  // 清除所有存档数据
+  localStorage.clear();
+  // 重新加载
+  location.reload();
 }
 
 // 计算队伍总战力
