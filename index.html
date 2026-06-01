@@ -8109,9 +8109,11 @@ function addHeroExp(hero,amount){
 // ==================== 战斗引擎 ====================
 function createBattleUnit(hero,isEnemy=false){
   const stats=getHeroStats(hero);
+  G_battleUnitIdCounter++;
   return{
     hero:hero, isEnemy:isEnemy,
     name:hero.name, icon:hero.icon,
+    battleId:(isEnemy?'E':'P')+'_'+G_battleUnitIdCounter,
     hp:stats.maxHP, maxHP:stats.maxHP,
     mp:stats.maxMP, maxMP:stats.maxMP,
     atk:stats.atk, def:stats.def, spd:stats.spd,
@@ -8812,7 +8814,8 @@ var _logCount = 0;           // 日志计数器
 var MAX_LOG_LINES = 100;     // 日志最大条数
 
 function getUnitEl(unit) {
-  var uid = unit.name + '-' + unit.icon;
+  // 使用 battleId 作为唯一标识（支持同名同头像的英雄）
+  var uid = unit.battleId || (unit.name + '-' + unit.icon);
   // 检查缓存的元素是否仍在文档中
   if (_unitElCache[uid] && _unitElCache[uid].isConnected) return _unitElCache[uid];
   var el = document.querySelector('[data-battle-uid="' + uid + '"]');
@@ -9034,7 +9037,7 @@ async function runBattle(stageId){
     }).join('');
     var dotsHTML = u.dot.map(function(d) { return '<span class="buff-tag buff-dot">' + d.name + '(' + d.duration + ')</span>'; }).join('');
     var sideClass = isEnemy ? 'enemy-unit' : 'ally-unit';
-    return '<div class="battle-unit ' + sideClass + ' ' + (u.alive ? '' : 'dead') + '" data-battle-uid="' + u.name + '-' + u.icon + '">'
+    return '<div class="battle-unit ' + sideClass + ' ' + (u.alive ? '' : 'dead') + '" data-battle-uid="' + (u.battleId || (u.name + '-' + u.icon)) + '">'
       + '<div class="unit-avatar-wrap">'
       + '<div class="unit-role-icon">' + roleIcon + '</div>'
       + '<div class="unit-avatar quality-' + u.hero.quality + '">' + u.icon + '</div>'
@@ -9051,7 +9054,13 @@ async function runBattle(stageId){
   }
 
   function updateUnitDOM(u) {
-    var el = getUnitEl(u);
+    // 使用 battleId 获取元素（支持同名同头像的英雄）
+    var uid = u.battleId || (u.name + '-' + u.icon);
+    var el = _unitElCache[uid];
+    if (!el || !el.isConnected) {
+      el = document.querySelector('[data-battle-uid="' + uid + '"]');
+      if (el) _unitElCache[uid] = el;
+    }
     if (!el) return;
 
     // 更新存活状态
