@@ -17398,17 +17398,12 @@ function renderCheats(el){
       '</div>' +
       '<div style="margin-top:8px;font-size:11px;color:var(--text3)">查看槽位、备份、导出/导入存档</div>' +
     '</div>' +
-    (cloudProvider === 'taptap' ? (
-    '<div class="panel" style="background:rgba(52,152,219,.1);border-color:rgba(52,152,219,.3);margin-top:12px">' +
-      '<div class="panel-title">☁️ TapTap 云存档</div>' +
-      '<div style="font-size:12px;color:' + (isCloudReady ? 'var(--success)' : 'var(--text3)') + ';margin-bottom:12px">状态: ' + (isCloudReady ? '✅ 已连接' : '⏳ 连接中...') + '</div>' +
-      (tapSaveId ? '<div style="font-size:11px;color:var(--text3);margin-bottom:12px">云端存档 ID: ' + tapSaveId.slice(-8) + '</div>' : '<div style="font-size:11px;color:var(--text3);margin-bottom:12px">云端暂无存档</div>') +
-      '<div class="btn-group">' +
-        '<button class="btn btn-primary" onclick="showCloudSaveConfirm(\'upload\')">📤 上传到云端</button>' +
-        (tapSaveId ? '<button class="btn" onclick="showCloudSaveConfirm(\'download\')">📥 从云端下载</button>' : '') +
-      '</div>' +
-    '</div>'
-    ) : '') +
+    '<div class="panel" style="background:rgba(52,152,219,.1);border-color:rgba(52,152,219,.3);margin-top:12px" id="cloud-save-panel">' +
+      '<div class="panel-title">☁️ 云存档</div>' +
+      '<div id="cloud-save-status" style="font-size:12px;color:var(--text3);margin-bottom:12px">检测中...</div>' +
+      '<div id="cloud-save-info" style="font-size:11px;color:var(--text3);margin-bottom:12px"></div>' +
+      '<div class="btn-group" id="cloud-save-btns"></div>' +
+    '</div>' +
     '<div class="panel" style="margin-top:12px">' +
       '<button class="btn" style="width:100%;color:#ff6b6b;border-color:rgba(255,107,107,.3);background:rgba(255,107,107,.05)" onclick="showConfirm(\'⚠️ 重置游戏\',\'确定要重置所有数据吗？\\n\\n所有槽位进度将丢失！\',resetGame,\'确认重置\',\'取消\')">⚠️ 重置游戏</button>' +
       '<div style="margin-top:8px;font-size:11px;color:var(--text3)">清除所有数据，重新开始</div>' +
@@ -18567,6 +18562,43 @@ function updateCloudStatusUI() {
     statusEl.textContent = '⚠️ 云存档未连接（仅本地存储）';
     statusEl.style.color = 'var(--text3)';
     if (hintEl) hintEl.textContent = '💡 在 TapTap 小游戏中运行可自动启用云存档';
+  }
+  
+  // 更新金手指页面的云存档面板
+  updateCloudSavePanel();
+}
+
+// 动态更新云存档面板内容
+function updateCloudSavePanel() {
+  var statusEl = document.getElementById('cloud-save-status');
+  var infoEl = document.getElementById('cloud-save-info');
+  var btnsEl = document.getElementById('cloud-save-btns');
+  var panelEl = document.getElementById('cloud-save-panel');
+  
+  if (!statusEl || !panelEl) return;
+  
+  if (cloudProvider === 'taptap') {
+    panelEl.style.display = '';
+    statusEl.textContent = isCloudReady ? '✅ TapTap 云存档已连接' : '⏳ 连接中...';
+    statusEl.style.color = isCloudReady ? 'var(--success)' : 'var(--text3)';
+    
+    if (tapSaveId) {
+      infoEl.textContent = '云端存档 ID: ' + tapSaveId.slice(-8);
+    } else {
+      infoEl.textContent = '云端暂无存档';
+    }
+    
+    if (btnsEl) {
+      btnsEl.innerHTML = '<button class="btn btn-primary" onclick="showCloudSaveConfirm(\'upload\')">📤 上传到云端</button>' +
+        (tapSaveId ? '<button class="btn" onclick="showCloudSaveConfirm(\'download\')">📥 从云端下载</button>' : '');
+    }
+  } else {
+    // 非 TapTap 平台显示提示
+    panelEl.style.display = '';
+    statusEl.textContent = '仅本地存储';
+    statusEl.style.color = 'var(--text3)';
+    infoEl.textContent = '在 TapTap 小游戏中运行可启用云存档';
+    if (btnsEl) btnsEl.innerHTML = '';
   }
 }
 
