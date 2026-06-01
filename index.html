@@ -5356,36 +5356,137 @@ function prepareSaveData() {
   return data;
 }
 
-function restoreSaveData(data) {
-  if (!data || !data.game) return false;
+// ===== 解压 V3-V4 压缩存档 =====
+function decompressSaveV3V4(compressed) {
+  if (!compressed || !compressed.h) return null;
   
-  // 版本迁移
-  if (data.version < 5) {
-    console.log('迁移存档: v' + data.version + ' -> v5');
-    if (data.version >= 3 && data.game && typeof data.game.heroes === 'object') {
-      if (data.game.h || data.game.sp) {
-        console.warn('检测到旧版压缩存档，无法恢复');
-        return false;
+  try {
+    var heroes = [];
+    var heroMap = compressed.h;
+    
+    // 重建英雄数据
+    for (var uid in heroMap) {
+      var h = heroMap[uid];
+      var hero = {
+        uid: parseInt(uid),
+        name: h.n,
+        icon: h.i,
+        role: h.r,
+        level: h.l,
+        exp: h.xp || 0,
+        quality: h.q,
+        skills: h.sk || [],
+        talents: h.t || [],
+        traits: h.tr || [],
+        equipment: h.eq || {},
+        bonusSkills: h.bs || [],
+        isMutation: h.m || false
+      };
+      heroes.push(hero);
+    }
+    
+    // 重建队伍
+    var team = (compressed.t || []).map(function(uid) {
+      return heroes.find(function(h) { return h.uid == uid; }) || null;
+    });
+    
+    // 重建装备
+    var equipment = [];
+    if (compressed.eq) {
+      for (var eid in compressed.eq) {
+        var eq = compressed.eq[eid];
+        equipment.push({
+          uid: parseInt(eid),
+          id: eq.id,
+          quality: eq.q,
+          level: eq.l,
+          bonusStats: eq.s || {}
+        });
       }
+    }
+    
+    return {
+      heroes: heroes,
+      team: team,
+      equipment: equipment,
+      stageProgress: compressed.sp || 1,
+      gold: compressed.g || 0,
+      gems: compressed.gm || 0,
+      materials: compressed.m || {},
+      buildings: compressed.b || {},
+      achievements: compressed.a || {},
+      codex: compressed.c || {},
+      heroIdCounter: compressed.hc || heroes.length,
+      totalPlayTime: compressed.pt || 0
+    };
+  } catch(e) {
+    console.error('解压存档失败', e);
+    return null;
+  }
+}
+
+function restoreSaveData(data) {
+  if (!data) return false;
+  
+  // 检测版本
+  var version = data.version || 1;
+  var saved = data.game;
+  
+  // V3-V4 压缩格式检测与解压
+  if (version >= 3 && saved && (saved.h || saved.sp)) {
+    console.log('检测到 V3-V4 压缩存档，正在解压...');
+    var decompressed = decompressSaveV3V4(saved);
+    if (!decompressed) {
+      console.error('解压存档失败');
+      return false;
+    }
+    saved = decompressed;
+    console.log('存档解压成功');
+  }
+  
+  // V1-V2 格式检测（无 version 或 version < 3）
+  if (version < 3) {
+    console.log('迁移存档: v' + version + ' -> v5');
+    // V1-V2 直接就是 game 对象
+    if (!saved && data.heroes) {
+      saved = data;
     }
   }
   
-  var saved = data.game;
+  if (!saved) {
+    console.error('存档数据无效');
+    return false;
+  }
   
-  // 先恢复 heroes（队伍重建需要用到）
-  if (saved.heroes) G.heroes = saved.heroes;
+  // 确保必要字段存在（补丁）
+  if (!saved.heroes) saved.heroes = [];
+  if (!saved.team) saved.team = [];
+  if (!saved.equipment) saved.equipment = [];
+  if (!saved.materials) saved.materials = {};
+  if (!saved.buildings) saved.buildings = {};
+  if (!saved.achievements) saved.achievements = {};
+  if (!saved.codex) saved.codex = {};
+  if (!saved.arenaState) saved.arenaState = { totalWins: 0, winStreak: 0 };
   
-  // 重建队伍引用（team 存的是 uid 数组）
-  if (saved.team && Array.isArray(saved.team)) {
-    saved.team = saved.team.map(function(uid) {
-      if (!uid) return null;
-      // uid 可能是数字或字符串
-      return G.heroes.find(function(h) { return h && (h.uid === uid || h.uid == uid); }) || null;
+  // 先恢复 heroes
+  G.heroes = saved.heroes;
+  
+  // 重建队伍引用（兼容多种格式）
+  if (Array.isArray(saved.team)) {
+    saved.team = saved.team.map(function(item) {
+      if (!item) return null;
+      // 格式1: 已经是英雄对象
+      if (typeof item === 'object' && item.uid !== undefined) {
+        // 验证英雄是否仍存在
+        return G.heroes.find(function(h) { return h && h.uid === item.uid; }) || null;
+      }
+      // 格式2: uid 数字/字符串
+      return G.heroes.find(function(h) { return h && (h.uid === item || h.uid == item); }) || null;
     });
   }
   
-  // 复制到 G（heroes 已在上面恢复，这里会再次覆盖，没问题）
-  G.heroIdCounter = data.heroIdCounter || 0;
+  // 复制到 G
+  G.heroIdCounter = data.heroIdCounter || saved.heroIdCounter || (saved.heroes ? saved.heroes.length : 0);
   Object.keys(saved).forEach(function(k) { G[k] = saved[k]; });
   
   return true;
