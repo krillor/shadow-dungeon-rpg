@@ -12520,40 +12520,9 @@ function recruitAllHeroes(minQuality){
 var G_pendingRecruitQuality = null; // 待执行的品质筛选
 const RECRUIT_PASSWORD = '1076667471'; // 一键招募密码
 
-// 显示密码验证弹窗
+// 显示一键招募品质筛选菜单（已移除密码限制）
 function showRecruitPasswordDialog(quality){
-  // 如果已验证过，直接执行招募
-  if(G.recruitPasswordVerified){
-    recruitAllHeroes(quality);
-    return;
-  }
-  
-  // 保存待执行的品质筛选
-  G_pendingRecruitQuality = quality;
-  
-  var html = '<div style="padding:20px;text-align:center">';
-  html += '<div style="font-size:16px;font-weight:bold;margin-bottom:16px;color:var(--gold)">🔒 一键招募功能已上锁</div>';
-  html += '<div style="font-size:13px;color:var(--text);margin-bottom:20px;line-height:1.6">';
-  html += '您的意见非常重要<br>';
-  html += '请在论坛评价或评论<br>';
-  html += '加群 <span style="color:var(--purple);font-weight:bold">1076667471</span> 领取密码';
-  html += '</div>';
-  html += '<div style="margin-bottom:16px">';
-  html += '<input type="password" id="recruit-password-input" placeholder="请输入密码" style="width:200px;padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:14px;text-align:center;outline:none">';
-  html += '</div>';
-  html += '<div style="display:flex;gap:12px;justify-content:center">';
-  html += '<button class="btn btn-sm" onclick="closeModal();G_pendingRecruitQuality=null;">取消</button>';
-  html += '<button class="btn btn-sm btn-primary" onclick="verifyRecruitPassword()">解锁</button>';
-  html += '</div>';
-  html += '</div>';
-  
-  showModal('🔒 密码验证', html);
-  
-  // 自动聚焦输入框
-  setTimeout(function(){
-    var input = document.getElementById('recruit-password-input');
-    if(input) input.focus();
-  }, 100);
+  recruitAllHeroes(quality);
 }
 
 // 验证密码
