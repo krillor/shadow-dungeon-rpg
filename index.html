@@ -5571,16 +5571,18 @@ function saveGame() {
     
     saveMeta(meta);
     
-    // 云端同步（后台）
-    if (window.isCloudReady && G.playerName) {
+    // TapTap 云端自动同步（每 5 分钟）
+    if (cloudProvider === 'taptap' && isCloudReady) {
       var lastCloud = parseInt(lsGet('_last_cloud') || '0', 10);
-      // 云存档同步已禁用，不再自动上传
-      // if (now - lastCloud >= 5 * 60 * 1000) {
-      //   lsSet('_last_cloud', now.toString());
-      //   setTimeout(function() {
-      //     window.saveToCloud && window.saveToCloud().catch(function(e) { console.warn('云端同步失败', e); });
-      //   }, 100);
-      // }
+      if (now - lastCloud >= 5 * 60 * 1000) {
+        lsSet('_last_cloud', now.toString());
+        console.log('[云存档] 触发自动同步...');
+        setTimeout(function() {
+          tapSaveToCloud().catch(function(e) { 
+            console.error('[云存档] 自动同步失败:', e); 
+          });
+        }, 100);
+      }
     }
     
   } catch(e) {
@@ -6123,9 +6125,138 @@ function showSaveInfo() {
   html += '<button class="btn" onclick="exportSaveToFile();closeModal()">📥 导出</button>';
   html += '<button class="btn" onclick="importSaveFromFile();closeModal()">📤 导入</button>';
   html += '<button class="btn" style="background:var(--danger)" onclick="closeModal();setTimeout(function(){showConfirm(\'确认重置\',\'确定要重置当前槽位吗？所有进度将丢失！\',function(){deleteSaveSlot(' + currentSlot + ');})},100)">🗑️ 重置</button>';
-  html += '</div></div>';
+  html += '</div>';
+  
+  // TapTap 云存档管理区域
+  if (cloudProvider === 'taptap') {
+    html += '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">';
+    html += '<h3 style="margin-bottom:12px">☁️ TapTap 云存档</h3>';
+    
+    var cloudStatus = isCloudReady ? '✅ 已连接' : '⏳ 连接中...';
+    var statusColor = isCloudReady ? 'var(--success)' : 'var(--text3)';
+    html += '<div style="font-size:12px;color:' + statusColor + ';margin-bottom:12px">状态: ' + cloudStatus + '</div>';
+    
+    if (tapSaveId) {
+      html += '<div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:12px">';
+      html += '<div style="font-size:12px;color:var(--text2)">云端存档 ID: ' + tapSaveId.slice(-8) + '</div>';
+      html += '<div style="font-size:11px;color:var(--text3);margin-top:4px">点击"下载"可恢复云端存档</div>';
+      html += '</div>';
+    } else {
+      html += '<div style="font-size:12px;color:var(--text3);margin-bottom:12px">云端暂无存档</div>';
+    }
+    
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+    html += '<button class="btn btn-primary btn-sm" onclick="showCloudSaveConfirm(\'upload\')">📤 上传到云端</button>';
+    if (tapSaveId) {
+      html += '<button class="btn btn-sm" onclick="showCloudSaveConfirm(\'download\')">📥 从云端下载</button>';
+    }
+    html += '</div></div>';
+  }
+  
+  html += '</div>';
   
   showModal('存档', html);
+}
+
+// ===== 云存档操作确认 =====
+function showCloudSaveConfirm(action) {
+  if (action === 'upload') {
+    showConfirm(
+      '📤 上传到云端',
+      '确定要将当前存档上传到 TapTap 云端吗？\n\n云端已有存档将被覆盖！',
+      function() {
+        tapSaveToCloud().then(function(success) {
+          if (success) {
+            console.log('[云存档] 上传成功');
+          }
+        });
+      },
+      '上传',
+      '取消'
+    );
+  } else if (action === 'download') {
+    // 先检查冲突
+    checkCloudConflict().then(function(conflict) {
+      if (conflict) {
+        showCloudConflictDialog();
+      } else {
+        showConfirm(
+          '📥 从云端下载',
+          '确定要从 TapTap 云端下载存档吗？\n\n当前本地存档将被覆盖！',
+          function() {
+            tapLoadCloudSave().then(function(success) {
+              if (success) {
+                console.log('[云存档] 下载成功，重新加载页面');
+                setTimeout(function() { location.reload(); }, 1000);
+              }
+            });
+          },
+          '下载',
+          '取消'
+        );
+      }
+    });
+  }
+}
+
+// ===== 检查云存档冲突 =====
+function checkCloudConflict() {
+  return new Promise(function(resolve) {
+    if (!tapCloudManager || !tapSaveId) {
+      resolve(false);
+      return;
+    }
+    
+    // 获取本地存档时间
+    var meta = getMeta();
+    var localTime = meta.slots[meta.currentSlot || 0]?.timestamp || 0;
+    
+    // 获取云端存档信息
+    tapCloudManager.get(tapSaveId).then(function(result) {
+      if (!result || !result.saveData) {
+        resolve(false);
+        return;
+      }
+      
+      try {
+        var cloudData = JSON.parse(result.saveData);
+        var cloudTime = cloudData.game?.timestamp || cloudData.timestamp || 0;
+        
+        // 如果本地比云端新超过 5 分钟，视为冲突
+        var timeDiff = localTime - cloudTime;
+        console.log('[云存档] 本地时间:', new Date(localTime).toLocaleString());
+        console.log('[云存档] 云端时间:', new Date(cloudTime).toLocaleString());
+        console.log('[云存档] 时间差:', Math.floor(timeDiff / 1000 / 60), '分钟');
+        
+        resolve(Math.abs(timeDiff) > 5 * 60 * 1000);
+      } catch(e) {
+        console.error('[云存档] 解析云端存档失败:', e);
+        resolve(false);
+      }
+    }).catch(function(e) {
+      console.error('[云存档] 获取云端存档失败:', e);
+      resolve(false);
+    });
+  });
+}
+
+// ===== 云存档冲突对话框 =====
+function showCloudConflictDialog() {
+  var html = '<div style="padding:20px;text-align:center">';
+  html += '<div style="font-size:48px;margin-bottom:16px">⚠️</div>';
+  html += '<div style="font-size:16px;font-weight:bold;margin-bottom:12px;color:var(--gold)">检测到存档冲突</div>';
+  html += '<div style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:20px">';
+  html += '本地存档和云端存档时间差异较大<br>';
+  html += '请选择要保留的版本：';
+  html += '</div>';
+  
+  html += '<div style="display:flex;flex-direction:column;gap:10px">';
+  html += '<button class="btn" onclick="closeModal();tapLoadCloudSave().then(function(s){if(s)setTimeout(function(){location.reload()},1000)})">📥 使用云端存档</button>';
+  html += '<button class="btn" onclick="closeModal();tapSaveToCloud()">📤 使用本地存档（上传到云端）</button>';
+  html += '<button class="btn" style="background:var(--bg2)" onclick="closeModal()">❌ 取消</button>';
+  html += '</div></div>';
+  
+  showModal('存档冲突', html);
 }
 
 // ===== 查看备份列表 =====
@@ -18035,7 +18166,10 @@ function initTapTapCloud() {
 
 // TapTap 保存到云端
 function tapSaveToCloud() {
+  console.log('[云存档] 开始上传到 TapTap 云端...');
+  
   if (!tapCloudManager) {
+    console.error('[云存档] TapTap 云存档管理器未初始化');
     showToast('❌ TapTap 云存档未就绪');
     return Promise.resolve(false);
   }
@@ -18045,13 +18179,18 @@ function tapSaveToCloud() {
   // 使用无损存档数据
   var saveData = prepareSaveData();
   saveData.provider = 'taptap';
+  saveData.timestamp = Date.now(); // 添加时间戳用于冲突检测
   var jsonStr = JSON.stringify(saveData);
+  
+  console.log('[云存档] 存档大小:', (jsonStr.length / 1024).toFixed(2), 'KB');
+  console.log('[云存档] 关卡:', G.stageProgress, '英雄:', G.heroes ? G.heroes.length : 0);
   
   var playedTime = Math.floor((G.totalPlayTime || 0));
   var progressValue = Math.min(100, Math.floor((G.stageProgress || 1) / 50 * 100));
   
   if (tapSaveId) {
     // 更新已有存档
+    console.log('[云存档] 更新已有存档:', tapSaveId);
     return tapCloudManager.save(tapSaveId, jsonStr, {
       summary: TAP_SAVE_SUMMARY,
       description: '关卡 ' + (G.stageProgress || 1) + ' | 英雄 ' + (G.heroes ? G.heroes.length : 0) + ' | ' + new Date().toLocaleString(),
@@ -18059,15 +18198,16 @@ function tapSaveToCloud() {
       progressValue: progressValue
     }).then(function() {
       showToast('☁️ 已保存到 TapTap 云端');
-      console.log('TapTap 云存档更新成功');
+      console.log('[云存档] ✅ 上传成功');
       return true;
     }).catch(function(err) {
-      console.error('TapTap 云存档更新失败:', err);
-      showToast('❌ TapTap 云端保存失败');
+      console.error('[云存档] ❌ 上传失败:', err);
+      showToast('❌ TapTap 云端保存失败: ' + (err.message || '未知错误'));
       return false;
     });
   } else {
     // 创建新存档
+    console.log('[云存档] 创建新存档');
     return tapCloudManager.create({
       summary: TAP_SAVE_SUMMARY,
       description: '暗影地牢 RPG 初始云存档',
@@ -18075,7 +18215,7 @@ function tapSaveToCloud() {
       progressValue: progressValue
     }).then(function(result) {
       tapSaveId = result.saveId;
-      console.log('TapTap 云存档创建成功:', tapSaveId);
+      console.log('[云存档] 存档创建成功:', tapSaveId);
       // 创建后再保存数据
       return tapCloudManager.save(tapSaveId, jsonStr, {
         summary: TAP_SAVE_SUMMARY,
@@ -18084,11 +18224,12 @@ function tapSaveToCloud() {
         progressValue: progressValue
       }).then(function() {
         showToast('☁️ 已保存到 TapTap 云端');
+        console.log('[云存档] ✅ 上传成功');
         return true;
       });
     }).catch(function(err) {
-      console.error('TapTap 云存档创建失败:', err);
-      showToast('❌ TapTap 云端保存失败');
+      console.error('[云存档] ❌ 创建存档失败:', err);
+      showToast('❌ TapTap 云端保存失败: ' + (err.message || '未知错误'));
       return false;
     });
   }
