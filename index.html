@@ -17855,8 +17855,14 @@ function detectCloudProvider() {
     console.log('检测到 TapTap 小游戏环境');
     return 'taptap';
   }
-  // Supabase 云端存档已禁用
-  console.log('云端存档已禁用，仅使用本地存储');
+  // 检测 Supabase SDK 是否可用（用于排行榜）
+  if (typeof supabase !== 'undefined' && supabase.createClient) {
+    if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+      console.log('检测到 Supabase 环境');
+      return 'supabase';
+    }
+  }
+  console.log('未检测到云存档环境');
   return 'none';
 }
 
@@ -18236,26 +18242,16 @@ function checkAndSyncFromCloud() {
 
 // 统一保存到云端
 function saveToCloud() {
-  if (cloudProvider === 'taptap') {
-    return tapSaveToCloud();
-  } else if (cloudProvider === 'supabase') {
-    return supabaseSaveToCloud();
-  } else {
-    showToast('❌ 云存档服务不可用');
-    return Promise.resolve(false);
-  }
+  // 云存档保存已禁用（仅保留排行榜功能）
+  showToast('❌ 云存档已禁用');
+  return Promise.resolve(false);
 }
 
 // 统一从云端加载
 function loadCloudSave() {
-  if (cloudProvider === 'taptap') {
-    return tapLoadCloudSave();
-  } else if (cloudProvider === 'supabase') {
-    return supabaseLoadCloudSave();
-  } else {
-    showToast('❌ 云存档服务不可用');
-    return Promise.resolve(false);
-  }
+  // 云存档加载已禁用（仅保留排行榜功能）
+  showToast('❌ 云存档已禁用');
+  return Promise.resolve(false);
 }
 
 // 更新云存档 UI 状态显示
