@@ -5475,22 +5475,7 @@ async function loadGame() {
     }
     
     if (!data) {
-      console.warn('当前槽位无存档，尝试其他槽位...');
-      // 尝试其他槽位
-      for (var i = 0; i < MAX_SLOTS; i++) {
-        if (i === slotIdx) continue;
-        data = await dbGet('saves', i) || lsGet(getSlotKey(i));
-        if (data) {
-          meta.currentSlot = i;
-          saveMeta(meta);
-          console.log('从槽位 ' + (i+1) + ' 恢复存档');
-          break;
-        }
-      }
-    }
-    
-    if (!data) {
-      console.warn('未找到存档');
+      console.warn('当前槽位 ' + (slotIdx+1) + ' 无存档，初始化新游戏');
       return false;
     }
     
