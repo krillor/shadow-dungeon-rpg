@@ -16812,6 +16812,20 @@ function loadLeaderboardData(type){
   
   var typeInfo = typeNames[type] || typeNames.power;
   
+  // 检查云端连接状态
+  if (!isCloudReady || !sb || !deviceId) {
+    var statusHTML = '<div style="text-align:center;padding:40px 0;color:var(--text3)">' +
+      '<div style="font-size:24px;margin-bottom:8px">☁️</div>' +
+      '<div style="font-weight:bold;margin-bottom:8px;color:var(--text)">排行榜服务未连接</div>' +
+      '<div style="font-size:12px;line-height:1.8">';
+    if (!sb) { statusHTML += 'Supabase SDK 未加载<br>'; }
+    else if (!deviceId) { statusHTML += '设备 ID 未生成<br>'; }
+    else { statusHTML += '云端服务连接失败<br>'; }
+    statusHTML += '<br>排行榜需要网络连接，请检查：<br>1. 网络是否正常<br>2. 是否在 TapTap 平台内打开<br>3. 刷新页面重试</div></div>';
+    listEl.innerHTML = statusHTML;
+    return;
+  }
+  
   getLeaderboard(type, 1000).then(function(entries) {
     if(entries.length === 0){
       listEl.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px 0">' +
@@ -16867,7 +16881,15 @@ function loadLeaderboardData(type){
       listEl.innerHTML = html;
     });
   }).catch(function(err) {
-    listEl.innerHTML = '<div style="text-align:center;color:var(--red);padding:40px 0">加载失败: ' + (err.message || '未知错误') + '</div>';
+    console.error('排行榜加载失败:', err);
+    var errMsg = err.message || '未知错误';
+    listEl.innerHTML = '<div style="text-align:center;padding:40px 0">' +
+      '<div style="font-size:24px;margin-bottom:8px">❌</div>' +
+      '<div style="font-weight:bold;margin-bottom:8px;color:var(--red)">排行榜加载失败</div>' +
+      '<div style="font-size:12px;color:var(--text3);line-height:1.8">' +
+      '错误: ' + errMsg + '<br><br>' +
+      '可能原因：<br>1. 网络连接不稳定<br>2. TapTap 平台网络限制<br>3. Supabase 服务暂时不可用<br><br>' +
+      '请稍后刷新页面重试</div></div>';
   });
 }
 
