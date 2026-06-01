@@ -17867,14 +17867,8 @@ function detectCloudProvider() {
     console.log('检测到 TapTap 小游戏环境');
     return 'taptap';
   }
-  // 检测 Supabase SDK 是否可用
-  if (typeof supabase !== 'undefined' && supabase.createClient) {
-    if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
-      console.log('检测到 Supabase 环境');
-      return 'supabase';
-    }
-  }
-  console.log('未检测到云存档环境');
+  // Supabase 云端存档已禁用
+  console.log('云端存档已禁用，仅使用本地存储');
   return 'none';
 }
 
