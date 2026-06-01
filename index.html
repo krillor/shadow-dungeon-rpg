@@ -5442,12 +5442,13 @@ function saveGame() {
     // 云端同步（后台）
     if (window.isCloudReady && G.playerName) {
       var lastCloud = parseInt(lsGet('_last_cloud') || '0', 10);
-      if (now - lastCloud >= 5 * 60 * 1000) {
-        lsSet('_last_cloud', now.toString());
-        setTimeout(function() {
-          window.saveToCloud && window.saveToCloud().catch(function(e) { console.warn('云端同步失败', e); });
-        }, 100);
-      }
+      // 云存档同步已禁用，不再自动上传
+      // if (now - lastCloud >= 5 * 60 * 1000) {
+      //   lsSet('_last_cloud', now.toString());
+      //   setTimeout(function() {
+      //     window.saveToCloud && window.saveToCloud().catch(function(e) { console.warn('云端同步失败', e); });
+      //   }, 100);
+      // }
     }
     
   } catch(e) {
