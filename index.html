@@ -5708,6 +5708,8 @@ function switchSaveSlot(slotIdx) {
     return;
   }
   
+  showToast('正在切换槽位...');
+  
   // 保存当前进度到旧槽位（同步写 localStorage，确保不丢失）
   var data = prepareSaveData();
   lsSet(getSlotKey(oldSlot), data);
@@ -5725,7 +5727,10 @@ function switchSaveSlot(slotIdx) {
   // 后台异步写 IndexedDB（不阻塞 reload）
   dbSet('saves', oldSlot, data);
   
-  location.reload();
+  // 延迟 reload 确保 saveMeta 完成
+  setTimeout(function() {
+    location.reload();
+  }, 100);
 }
 
 // ===== 从备份恢复 =====
