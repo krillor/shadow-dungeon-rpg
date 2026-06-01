@@ -5966,21 +5966,29 @@ function checkLocalSaveHealth() {
   }
 }
 
-// 检查云存档健康状态
+// 检查云存档健康状态（带超时）
 function checkCloudSaveHealth() {
   return new Promise(function(resolve) {
+    // 3秒超时
+    var timeoutId = setTimeout(function() {
+      resolve({ ok: false, error: '检查超时' });
+    }, 3000);
+    
     if (cloudProvider === 'none') {
+      clearTimeout(timeoutId);
       resolve({ ok: false, error: '未启用云存档' });
       return;
     }
     
     if (cloudProvider === 'taptap') {
       if (!tapCloudManager || !tapSaveId) {
+        clearTimeout(timeoutId);
         resolve({ ok: false, error: 'TapTap 云存档未初始化' });
         return;
       }
       
       tapCloudManager.get(tapSaveId).then(function(result) {
+        clearTimeout(timeoutId);
         if (!result || !result.saveData) {
           resolve({ ok: false, error: '云端存档为空' });
           return;
@@ -6000,16 +6008,19 @@ function checkCloudSaveHealth() {
           resolve({ ok: false, provider: 'TapTap', error: '解析失败: ' + e.message });
         }
       }).catch(function(err) {
+        clearTimeout(timeoutId);
         resolve({ ok: false, provider: 'TapTap', error: '获取失败: ' + (err.message || '未知错误') });
       });
     } else if (cloudProvider === 'supabase') {
       if (!isCloudReady || !deviceId) {
+        clearTimeout(timeoutId);
         resolve({ ok: false, error: 'Supabase 未连接' });
         return;
       }
       
       sb.from('saves').select('*').eq('device_id', deviceId).limit(1)
         .then(function(result) {
+          clearTimeout(timeoutId);
           if (result.error || !result.data || result.data.length === 0) {
             resolve({ ok: false, provider: 'Supabase', error: '云端无存档' });
             return;
@@ -6034,9 +6045,11 @@ function checkCloudSaveHealth() {
           });
         })
         .catch(function(err) {
+          clearTimeout(timeoutId);
           resolve({ ok: false, provider: 'Supabase', error: '查询失败: ' + (err.message || '未知错误') });
         });
     } else {
+      clearTimeout(timeoutId);
       resolve({ ok: false, error: '未知的云存档提供商' });
     }
   });
@@ -6047,28 +6060,43 @@ function performHealthCheck() {
   var checkResult = {
     timestamp: Date.now(),
     local: null,
-    cloud: null,
+    cloud: { ok: false, error: '检查中...' },
     overall: false
   };
   
-  // 检查本地存档
+  // 检查本地存档（同步，立即完成）
   checkResult.local = checkLocalSaveHealth();
   
-  // 检查云存档（异步）
+  // 立即更新本地状态到 UI（不等待云端）
+  saveHealthStatus.lastCheck = Date.now();
+  saveHealthStatus.localSaveOK = checkResult.local.ok;
+  saveHealthStatus.isHealthy = checkResult.local.ok;
+  
+  if (!checkResult.local.ok) {
+    saveHealthStatus.errors.push('本地: ' + checkResult.local.error);
+  }
+  
+  // 先显示本地状态
+  updateSaveHealthUI(checkResult);
+  
+  // 如果没有云存档，直接返回
+  if (cloudProvider === 'none') {
+    checkResult.cloud = { ok: false, error: '未启用' };
+    saveHealthStatus.cloudSaveOK = false;
+    updateSaveHealthUI(checkResult);
+    console.log('存档健康检查完成（无云端）:', checkResult);
+    return checkResult;
+  }
+  
+  // 检查云存档（异步，不阻塞）
   checkCloudSaveHealth().then(function(cloudResult) {
     checkResult.cloud = cloudResult;
     
-    // 更新全局状态
-    saveHealthStatus.lastCheck = Date.now();
-    saveHealthStatus.localSaveOK = checkResult.local.ok;
-    saveHealthStatus.cloudSaveOK = checkResult.cloud.ok;
-    saveHealthStatus.isHealthy = checkResult.local.ok; // 本地存档健康即算整体健康
+    // 更新云端状态
+    saveHealthStatus.cloudSaveOK = cloudResult.ok;
     
-    if (!checkResult.local.ok) {
-      saveHealthStatus.errors.push('本地: ' + checkResult.local.error);
-    }
-    if (!checkResult.cloud.ok && cloudProvider !== 'none') {
-      saveHealthStatus.errors.push('云端: ' + checkResult.cloud.error);
+    if (!cloudResult.ok) {
+      saveHealthStatus.errors.push('云端: ' + cloudResult.error);
     }
     
     // 只保留最近10条错误
@@ -6076,7 +6104,7 @@ function performHealthCheck() {
       saveHealthStatus.errors = saveHealthStatus.errors.slice(-10);
     }
     
-    // 更新 UI
+    // 更新 UI（带云端结果）
     updateSaveHealthUI(checkResult);
     
     console.log('存档健康检查完成:', checkResult);
