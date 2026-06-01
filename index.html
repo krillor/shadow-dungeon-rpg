@@ -18381,13 +18381,19 @@ function checkAndSyncFromCloud() {
 
 // 统一保存到云端
 function saveToCloud() {
-  // 云存档保存已禁用（仅保留排行榜功能）
+  if (cloudProvider === 'taptap') {
+    return tapSaveToCloud();
+  }
+  // 其他平台禁用云存档
   return Promise.resolve(false);
 }
 
 // 统一从云端加载
 function loadCloudSave() {
-  // 云存档加载已禁用（仅保留排行榜功能）
+  if (cloudProvider === 'taptap') {
+    return tapLoadCloudSave();
+  }
+  // 其他平台禁用云存档
   return Promise.resolve(false);
 }
 
