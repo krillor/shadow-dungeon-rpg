@@ -5366,6 +5366,19 @@ function saveGame(){
     }
 
     saveSaveMeta(meta);
+    
+    // 自动云端同步（每5分钟最多同步一次，避免频繁请求）
+    if (isCloudReady && deviceId && G.playerName && G.playerName.trim() !== '') {
+      var lastCloudSync = parseInt(localStorage.getItem('shadow_dungeon_last_cloud_sync') || '0', 10);
+      var fiveMinutes = 5 * 60 * 1000;
+      if (Date.now() - lastCloudSync >= fiveMinutes) {
+        localStorage.setItem('shadow_dungeon_last_cloud_sync', Date.now().toString());
+        // 异步保存，不阻塞游戏
+        setTimeout(function() {
+          saveToCloud().catch(function(e) { console.error('自动云端同步失败', e); });
+        }, 100);
+      }
+    }
   }catch(e){
     console.error('saveGame异常',e);
   }
@@ -16684,17 +16697,15 @@ function renderLeaderboard(el){
       '</div>' +
     '</div>' +
   '</div>' +
-  /* 云存档已屏蔽
   '<div class="panel">' +
     '<div class="panel-title"><span class="icon">☁️</span> 云存档</div>' +
-    '<div style="color:var(--text2);font-size:12px;margin-bottom:12px">手动保存/恢复完整游戏状态到云端，换设备不丢失</div>' +
+    '<div style="color:var(--text2);font-size:12px;margin-bottom:12px">游戏数据自动同步到云端，换设备不丢失</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-      '<button class="btn btn-primary" onclick="saveToCloud()">💾 上传存档</button>' +
+      '<button class="btn btn-primary" onclick="saveToCloud()">💾 立即同步</button>' +
       '<button class="btn" onclick="showConfirm(\'📥 从云端恢复\',\'确定要从云端恢复存档吗？\\n\\n当前本地进度将被覆盖！\',loadCloudSave,\'确认恢复\',\'取消\')">📥 恢复存档</button>' +
     '</div>' +
-    '<div style="margin-top:10px;font-size:11px;color:var(--text3)">💡 上传会保存当前完整游戏状态，恢复将覆盖本地进度</div>' +
+    '<div style="margin-top:10px;font-size:11px;color:var(--text3)">💡 游戏会在关键操作时自动同步到云端</div>' +
   '</div>' +
-  */
   '';
 
   setTimeout(function(){ loadLeaderboardData('power'); }, 100);
@@ -17888,7 +17899,8 @@ function initSupabase() {
       if (result.data && result.data.user) {
         isCloudReady = true;
         console.log('Supabase ready, Device ID:', deviceId);
-        // 不在这里加载云端存档，等本地读档完成后再决定是否从云端恢复
+        // 云端连接成功后，自动检查并同步云端存档
+        checkAndSyncFromCloud();
       }
     }).catch(function(error) {
       console.error('Supabase auth error:', error);
@@ -17899,6 +17911,55 @@ function initSupabase() {
     console.error('Supabase init error:', e);
     return false;
   }
+}
+
+// 检查云端是否有存档，如有且本地无存档则自动恢复
+function checkAndSyncFromCloud() {
+  if (!isCloudReady || !deviceId) return;
+  
+  // 检查本地是否有存档
+  var meta = getSaveMeta();
+  var slotIdx = meta.currentSlot || 0;
+  var localRaw = localStorage.getItem(getSlotKey(slotIdx));
+  
+  // 如果本地有存档，不自动覆盖（用户可能有本地进度）
+  if (localRaw) {
+    console.log('本地存档存在，跳过云端自动恢复');
+    // 但仍尝试将本地存档同步到云端（首次同步）
+    var localData;
+    try { localData = JSON.parse(localRaw); } catch(e) { return; }
+    // 如果云端没有存档，则上传本地存档
+    sb.from('saves').select('device_id').eq('device_id', deviceId).limit(1)
+      .then(function(result) {
+        if (!result.error && (!result.data || result.data.length === 0)) {
+          console.log('云端无存档，正在上传本地存档...');
+          // 延迟一点执行，确保游戏状态已加载
+          setTimeout(function() { saveToCloud(); }, 2000);
+        }
+      }).catch(function(e) { console.error('检查云端存档失败', e); });
+    return;
+  }
+  
+  // 本地无存档，尝试从云端恢复
+  console.log('本地无存档，检查云端存档...');
+  sb.from('saves').select('*').eq('device_id', deviceId).limit(1)
+    .then(function(result) {
+      if (result.error) {
+        console.error('检查云端存档失败:', result.error);
+        return;
+      }
+      var data = result.data && result.data[0] ? result.data[0] : null;
+      if (data && data.game_state) {
+        console.log('发现云端存档，正在恢复...');
+        G.heroIdCounter = data.hero_id_counter || 0;
+        Object.keys(data.game_state).forEach(function(k) { G[k] = data.game_state[k]; });
+        saveGame();
+        showToast('☁️ 已从云端恢复存档');
+        setTimeout(function() { location.reload(); }, 500);
+      } else {
+        console.log('云端也没有存档，将创建新游戏');
+      }
+    }).catch(function(e) { console.error('云端恢复失败', e); });
 }
 
 // 保存到云端（完整游戏状态）
