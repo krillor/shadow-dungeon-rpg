@@ -2834,16 +2834,25 @@ function finishTutorial(){
   // 引导完成奖励
   var rewardGold = 1000;
   var rewardGems = 20;
-  var rewardMaterials = { 'iron_ore': 10, 'magic_dust': 5 };
+  var rewardIronOre = 10;
   
   G.gold = (G.gold || 0) + rewardGold;
   G.gems = (G.gems || 0) + rewardGems;
-  for (var key in rewardMaterials) {
-    G.materials[key] = (G.materials[key] || 0) + rewardMaterials[key];
+  G.materials['iron_ore'] = (G.materials['iron_ore'] || 0) + rewardIronOre;
+  
+  // 随机赠送一个传说英雄
+  var legendaryTemplates = HERO_TEMPLATES.filter(function(t) { return t.quality === 'legendary'; });
+  if (legendaryTemplates.length > 0) {
+    var randomTpl = legendaryTemplates[Math.floor(Math.random() * legendaryTemplates.length)];
+    var hero = createHero(randomTpl.id);
+    G.heroes.push(hero);
+    updateStat('heroRecruited', 1);
+    showToast('🎉 引导完成！获得: ' + rewardGold + '金币, ' + rewardGems + '宝石, ' + rewardIronOre + '铁矿, 传说英雄 ' + hero.icon + hero.name);
+  } else {
+    showToast('🎉 引导完成！获得: ' + rewardGold + '金币, ' + rewardGems + '宝石, ' + rewardIronOre + '铁矿');
   }
   
   saveGame();
-  showToast('🎉 引导完成！获得: ' + rewardGold + '金币, ' + rewardGems + '宝石, 10铁矿, 5魔法尘');
 }
 
 function onGuideRecruitClick(){
