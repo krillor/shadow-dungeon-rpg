@@ -18153,6 +18153,8 @@ function initTapTapCloud() {
       isCloudReady = true;
       cloudProvider = 'taptap';
       console.log('TapTap 云存档初始化成功');
+      // 更新云存档面板
+      updateCloudSavePanel();
       // 自动同步
       checkAndSyncFromCloud();
     }).catch(function(err) {
@@ -18160,6 +18162,8 @@ function initTapTapCloud() {
       // 即使列表查询失败，也标记为可用（可能是首次使用）
       isCloudReady = true;
       cloudProvider = 'taptap';
+      // 更新云存档面板
+      updateCloudSavePanel();
       checkAndSyncFromCloud();
     });
     
@@ -18513,6 +18517,8 @@ function initCloudSave() {
     return initTapTapCloud();
   } else {
     console.log('无可用云存档服务，仅使用本地存储');
+    // 更新面板显示仅本地存储
+    setTimeout(updateCloudSavePanel, 100);
     return false;
   }
 }
