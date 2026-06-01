@@ -1477,7 +1477,7 @@ body{
 }
 
 /* ===== 战斗单位卡片 ===== */
-.battle-unit{position:relative;background:linear-gradient(145deg,#16213e,#1a1a2e);border:2px solid var(--border);border-radius:var(--radius-sm);padding:6px;min-width:110px;transition:all .4s ease;overflow:visible;width:100%}
+.battle-unit{position:relative;background:linear-gradient(145deg,#16213e,#1a1a2e);border:2px solid var(--border);border-radius:var(--radius-sm);padding:6px;min-width:110px;transition:transform .4s ease,opacity .4s ease;overflow:visible;width:100%}
 .battle-unit::after{content:'';position:absolute;top:-1px;left:-1px;right:-1px;bottom:-1px;border-radius:8px;opacity:0;transition:opacity .3s;pointer-events:none}
 .battle-unit.ally-unit{border-color:rgba(93,173,226,.3)}
 .battle-unit.ally-unit::after{box-shadow:0 0 10px rgba(93,173,226,.3)}
@@ -5195,25 +5195,21 @@ let G = {
   recruitPasswordVerified: false,
 };
 
-// ==================== 存档系统（多存档+备份管理） ====================
-var SAVE_KEY='shadow_dungeon_save';
-var SAVE_META_KEY='shadow_dungeon_meta';
-var MAX_SAVE_SLOTS=3;
-var MAX_AUTO_BACKUPS=2;
-var MAX_MANUAL_BACKUPS=5; // 减少手动备份数量
-var CURRENT_SAVE_VERSION = 4; // 升级版本号 - IndexedDB
+// ==================== 存档系统 V5（无损序列化 + IndexedDB 为主存储） ====================
+// 版本号
+var SAVE_VERSION = 5;
 
-// ===== IndexedDB 存档系统 =====
-var DB_NAME = 'ShadowDungeonDB';
+// ===== IndexedDB 主存储系统 =====
+var DB_NAME = 'ShadowDungeonDB_v5';
 var DB_VERSION = 1;
-var db = null;
-var isDBReady = false;
+var _db = null;
+var _isDBReady = false;
 
-// 初始化 IndexedDB
-function initIndexedDB() {
-  return new Promise(function(resolve, reject) {
+// 初始化 IndexedDB（主存储）
+function initDB() {
+  return new Promise(function(resolve) {
     if (!window.indexedDB) {
-      console.log('IndexedDB 不支持，回退到 localStorage');
+      console.warn('IndexedDB 不可用，将使用 localStorage');
       resolve(false);
       return;
     }
@@ -5225,485 +5221,405 @@ function initIndexedDB() {
       resolve(false);
     };
     
-    request.onsuccess = function(event) {
-      db = event.target.result;
-      isDBReady = true;
+    request.onsuccess = function(e) {
+      _db = e.target.result;
+      _isDBReady = true;
       console.log('IndexedDB 初始化成功');
       resolve(true);
     };
     
-    request.onupgradeneeded = function(event) {
-      var database = event.target.result;
+    request.onupgradeneeded = function(e) {
+      var db = e.target.result;
       
-      // 创建存档存储
-      if (!database.objectStoreNames.contains('saves')) {
-        var saveStore = database.createObjectStore('saves', { keyPath: 'key' });
-        saveStore.createIndex('slotIdx', 'slotIdx', { unique: false });
-        saveStore.createIndex('timestamp', 'timestamp', { unique: false });
+      // 存档存储（主存储）
+      if (!db.objectStoreNames.contains('saves')) {
+        db.createObjectStore('saves', { keyPath: 'slotIdx' });
       }
       
-      // 创建元数据存储
-      if (!database.objectStoreNames.contains('meta')) {
-        database.createObjectStore('meta', { keyPath: 'key' });
+      // 元数据存储
+      if (!db.objectStoreNames.contains('meta')) {
+        db.createObjectStore('meta', { keyPath: 'key' });
       }
       
-      // 创建备份存储
-      if (!database.objectStoreNames.contains('backups')) {
-        var backupStore = database.createObjectStore('backups', { keyPath: 'key' });
-        backupStore.createIndex('slotIdx', 'slotIdx', { unique: false });
-        backupStore.createIndex('timestamp', 'timestamp', { unique: false });
-        backupStore.createIndex('type', 'type', { unique: false });
+      // 备份存储
+      if (!db.objectStoreNames.contains('backups')) {
+        var bs = db.createObjectStore('backups', { keyPath: 'key', autoIncrement: true });
+        bs.createIndex('slotIdx', 'slotIdx');
+        bs.createIndex('timestamp', 'timestamp');
       }
     };
   });
 }
 
-// IndexedDB 通用操作
-function dbGet(storeName, key) {
-  return new Promise(function(resolve, reject) {
-    if (!isDBReady || !db) {
-      resolve(null);
-      return;
-    }
+// IndexedDB 异步操作封装
+function dbGet(store, key) {
+  return new Promise(function(resolve) {
+    if (!_isDBReady || !_db) { resolve(null); return; }
     try {
-      var transaction = db.transaction([storeName], 'readonly');
-      var store = transaction.objectStore(storeName);
-      var request = store.get(key);
-      request.onsuccess = function() { resolve(request.result ? request.result.value : null); };
-      request.onerror = function() { resolve(null); };
+      var tx = _db.transaction(store, 'readonly');
+      var req = tx.objectStore(store).get(key);
+      req.onsuccess = function() { resolve(req.result ? req.result.data : null); };
+      req.onerror = function() { resolve(null); };
     } catch(e) { resolve(null); }
   });
 }
 
-function dbSet(storeName, key, value, extra) {
-  return new Promise(function(resolve, reject) {
-    if (!isDBReady || !db) {
-      resolve(false);
-      return;
-    }
+function dbSet(store, key, data) {
+  return new Promise(function(resolve) {
+    if (!_isDBReady || !_db) { resolve(false); return; }
     try {
-      var transaction = db.transaction([storeName], 'readwrite');
-      var store = transaction.objectStore(storeName);
-      var data = { key: key, value: value, timestamp: Date.now() };
-      if (extra) Object.assign(data, extra);
-      var request = store.put(data);
-      request.onsuccess = function() { resolve(true); };
-      request.onerror = function() { resolve(false); };
+      var tx = _db.transaction(store, 'readwrite');
+      var req = tx.objectStore(store).put({ slotIdx: key, data: data, timestamp: Date.now() });
+      req.onsuccess = function() { resolve(true); };
+      req.onerror = function() { resolve(false); };
     } catch(e) { resolve(false); }
   });
 }
 
-function dbDelete(storeName, key) {
-  return new Promise(function(resolve, reject) {
-    if (!isDBReady || !db) {
-      resolve(false);
-      return;
-    }
+function dbDelete(store, key) {
+  return new Promise(function(resolve) {
+    if (!_isDBReady || !_db) { resolve(false); return; }
     try {
-      var transaction = db.transaction([storeName], 'readwrite');
-      var store = transaction.objectStore(storeName);
-      var request = store.delete(key);
-      request.onsuccess = function() { resolve(true); };
-      request.onerror = function() { resolve(false); };
+      var tx = _db.transaction(store, 'readwrite');
+      tx.objectStore(store).delete(key);
+      resolve(true);
     } catch(e) { resolve(false); }
   });
 }
 
-function dbGetAll(storeName, indexName, query) {
-  return new Promise(function(resolve, reject) {
-    if (!isDBReady || !db) {
-      resolve([]);
-      return;
-    }
-    try {
-      var transaction = db.transaction([storeName], 'readonly');
-      var store = transaction.objectStore(storeName);
-      var target = indexName ? store.index(indexName) : store;
-      var request = query ? target.getAll(query) : target.getAll();
-      request.onsuccess = function() { 
-        resolve(request.result ? request.result.map(function(r) { return r.value; }) : []); 
-      };
-      request.onerror = function() { resolve([]); };
-    } catch(e) { resolve([]); }
-  });
-}
-
-// ===== 存档压缩优化 =====
-// 短键名映射表（减少存储空间）
-var SAVE_KEY_MAP = {
-  // 短键 -> 原键
-  'pn': 'playerName',
-  'r': 'resources',
-  'h': 'heroes',
-  't': 'team',
-  'e': 'equipment',
-  'b': 'buildings',
-  'sp': 'stageProgress',
-  'hic': 'heroIdCounter',
-  'pws': 'pveWinStreak',
-  'pms': 'pveMaxStreak',
-  'lld': 'lastLoginDate',
-  'dbc': 'dailyBonusClaimed',
-  'ls': 'loginStreak',
-  'llds': 'lastLoginDateStreak',
-  'uhu': 'unknownHeroUnlocked',
-  'cd': 'codex',
-  'es': 'exploreStats',
-  'lot': 'lastOnlineTime',
-  'as': 'arenaState',
-  'ac': 'achievements',
-  'st': 'stats',
-  'co': 'currentOmen',
-  'oet': 'omenExpireTime',
-  'rpv': 'recruitPasswordVerified',
-  'tpt': 'totalPlayTime',
-  'mtc': 'mergeTotalCount',
-  'mmp': 'mergeMythicPity',
-  'mhp': 'mergeHiddenPity',
-  'bm': 'breakthroughMaterials',
-  'hb': 'heroBreakthrough',
-  'uqp': 'unknownQuestProgress',
-};
-var SAVE_KEY_MAP_REV = {}; // 反向映射
-Object.keys(SAVE_KEY_MAP).forEach(function(k){ SAVE_KEY_MAP_REV[SAVE_KEY_MAP[k]] = k; });
-
-// ===== 兼容层：localStorage 与 IndexedDB 桥接 =====
-var useIndexedDB = false;
-var migrationDone = false;
-
-// 初始化存储系统（自动检测并迁移）
-async function initStorageSystem() {
-  // 尝试初始化 IndexedDB
-  var dbReady = await initIndexedDB();
-  
-  if (dbReady) {
-    useIndexedDB = true;
-    console.log('使用 IndexedDB 存储');
-    // 检查是否需要迁移旧存档
-    await migrateFromLocalStorage();
-  } else {
-    useIndexedDB = false;
-    console.log('使用 localStorage 存储（IndexedDB 不可用）');
+// ===== localStorage 尽力而为副本 =====
+function lsSet(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+    return true;
+  } catch(e) {
+    // 配额超限，吞掉错误
+    console.warn('localStorage 写入失败（可能配额不足）');
+    return false;
   }
+}
+
+function lsGet(key) {
+  try {
+    var raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function lsRemove(key) {
+  try { localStorage.removeItem(key); } catch(e) {}
+}
+
+// ===== 存档键名 =====
+var META_KEY = 'shadow_dungeon_meta_v5';
+var SLOT_PREFIX = 'sd_slot_';
+
+// 获取槽位键名
+function getSlotKey(idx) { return SLOT_PREFIX + idx; }
+
+// ===== 存档配置 =====
+var MAX_SLOTS = 3;
+var MAX_AUTO_BACKUPS = 2;
+var MAX_MANUAL_BACKUPS = 5;
+
+// ===== 元数据管理（同步）=====
+function getMeta() {
+  return lsGet(META_KEY) || { currentSlot: 0, slots: {}, autoBackups: [], manualBackups: [] };
+}
+
+function saveMeta(meta) {
+  lsSet(META_KEY, meta);
+  // 后台同步到 IndexedDB
+  if (_isDBReady) dbSet('meta', 'main', meta);
+}
+
+// ===== 无损序列化 =====
+function prepareSaveData() {
+  var data = {
+    version: SAVE_VERSION,
+    heroIdCounter: G.heroIdCounter || 0,
+    timestamp: Date.now()
+  };
+  
+  // 复制完整 G 对象（无损）
+  var gCopy = {};
+  Object.keys(G).forEach(function(k) {
+    gCopy[k] = G[k];
+  });
+  
+  // 队伍存 uid 引用（用于读档重建）
+  if (gCopy.team && Array.isArray(gCopy.team)) {
+    gCopy.team = gCopy.team.map(function(h) { return h ? h.uid : null; });
+  }
+  
+  data.game = gCopy;
+  return data;
+}
+
+function restoreSaveData(data) {
+  if (!data || !data.game) return false;
+  
+  // 版本迁移
+  if (data.version < 5) {
+    console.log('迁移存档: v' + data.version + ' -> v5');
+    // 旧版压缩存档需要解压后重新存储
+    if (data.version >= 3 && data.game && typeof data.game.heroes === 'object') {
+      // 检查是否是压缩格式（短键名）
+      if (data.game.h || data.game.sp) {
+        console.warn('检测到旧版压缩存档，尝试解压...');
+        // 旧版压缩格式无法安全恢复，跳过
+        return false;
+      }
+    }
+  }
+  
+  var saved = data.game;
+  
+  // 重建队伍引用
+  if (saved.team && Array.isArray(saved.team)) {
+    saved.team = saved.team.map(function(uid) {
+      if (!uid) return null;
+      return G.heroes.find(function(h) { return h && h.uid === uid; }) || null;
+    });
+  }
+  
+  // 复制到 G
+  G.heroIdCounter = data.heroIdCounter || 0;
+  Object.keys(saved).forEach(function(k) { G[k] = saved[k]; });
   
   return true;
 }
 
-// 从 localStorage 迁移到 IndexedDB
-async function migrateFromLocalStorage() {
-  if (migrationDone) return;
-  
+// ===== 核心存盘函数 =====
+function saveGame() {
   try {
-    // 检查是否已经迁移过
-    var migrated = await dbGet('meta', 'migrated_from_ls');
-    if (migrated) {
-      migrationDone = true;
+    // 校验
+    if (!G || !G.heroes || !Array.isArray(G.heroes)) {
+      console.error('存档校验失败：核心数据异常');
       return;
     }
     
-    console.log('开始从 localStorage 迁移存档...');
+    var meta = getMeta();
+    var slotIdx = meta.currentSlot || 0;
     
-    // 迁移元数据
-    var metaRaw = localStorage.getItem(SAVE_META_KEY);
-    if (metaRaw) {
-      var meta = JSON.parse(metaRaw);
-      await dbSet('meta', 'save_meta', meta);
-      console.log('元数据已迁移');
-    }
+    // 准备数据
+    var data = prepareSaveData();
     
-    // 迁移存档槽位
-    for (var i = 0; i < MAX_SAVE_SLOTS; i++) {
-      var slotKey = getSlotKey(i);
-      var slotRaw = localStorage.getItem(slotKey);
-      if (slotRaw) {
-        var slotData = JSON.parse(slotRaw);
-        await dbSet('saves', slotKey, slotData, { slotIdx: i });
-        console.log('槽位 ' + i + ' 已迁移');
+    // 写入 IndexedDB（主存储）
+    dbSet('saves', slotIdx, data);
+    
+    // localStorage 尽力而为（失败不报错）
+    lsSet(getSlotKey(slotIdx), data);
+    
+    // 更新元数据
+    if (!meta.slots[slotIdx]) meta.slots[slotIdx] = {};
+    meta.slots[slotIdx].timestamp = Date.now();
+    meta.slots[slotIdx].stageProgress = G.stageProgress || 1;
+    meta.slots[slotIdx].heroCount = G.heroes ? G.heroes.length : 0;
+    meta.slots[slotIdx].playTime = G.totalPlayTime || 0;
+    
+    // 自动备份（IndexedDB）
+    var now = Date.now();
+    if (!meta._lastAutoBackup) meta._lastAutoBackup = 0;
+    
+    if (now - meta._lastAutoBackup >= 2 * 60 * 1000) { // 2分钟
+      var backupKey = 'auto_' + now;
+      var backupData = { slotIdx: slotIdx, data: data, timestamp: now };
+      dbSet('backups', backupKey, backupData);
+      meta.autoBackups = meta.autoBackups || [];
+      meta.autoBackups.push({ key: backupKey, slotIdx: slotIdx, timestamp: now });
+      // 限制数量
+      while (meta.autoBackups.length > MAX_AUTO_BACKUPS) {
+        var old = meta.autoBackups.shift();
+        dbDelete('backups', old.key);
       }
-      
-      // 迁移安全备份
-      var safeKey = slotKey + '_safe';
-      var safeRaw = localStorage.getItem(safeKey);
-      if (safeRaw) {
-        var safeData = JSON.parse(safeRaw);
-        await dbSet('backups', safeKey, safeData, { slotIdx: i, type: 'safe' });
+      meta._lastAutoBackup = now;
+    }
+    
+    saveMeta(meta);
+    
+    // 云端同步（后台）
+    if (window.isCloudReady && G.playerName) {
+      var lastCloud = parseInt(lsGet('_last_cloud') || '0', 10);
+      if (now - lastCloud >= 5 * 60 * 1000) {
+        lsSet('_last_cloud', now.toString());
+        setTimeout(function() {
+          window.saveToCloud && window.saveToCloud().catch(function(e) { console.warn('云端同步失败', e); });
+        }, 100);
       }
     }
     
-    // 迁移旧格式存档
-    var oldRaw = localStorage.getItem(SAVE_KEY);
-    if (oldRaw) {
-      var oldData = JSON.parse(oldRaw);
-      await dbSet('saves', SAVE_KEY, oldData, { slotIdx: -1 });
-      console.log('旧格式存档已迁移');
-    }
-    
-    // 标记迁移完成
-    await dbSet('meta', 'migrated_from_ls', true);
-    await dbSet('meta', 'migration_time', Date.now());
-    migrationDone = true;
-    
-    console.log('存档迁移完成！');
-    showToast('✅ 存档已升级到新存储系统');
-    
-  } catch (e) {
-    console.error('迁移失败:', e);
+  } catch(e) {
+    console.error('saveGame 异常', e);
   }
 }
 
-// 统一存储接口（自动选择 IndexedDB 或 localStorage）
-var StorageAPI = {
-  get: async function(key, storeName) {
-    if (useIndexedDB && storeName) {
-      return await dbGet(storeName, key);
+// ===== 核心读档函数 =====
+async function loadGame() {
+  try {
+    var meta = await dbGet('meta', 'main') || getMeta();
+    var slotIdx = meta.currentSlot || 0;
+    
+    // 1. 优先从 IndexedDB 读取
+    var data = await dbGet('saves', slotIdx);
+    
+    // 2. 回退到 localStorage
+    if (!data) {
+      data = lsGet(getSlotKey(slotIdx));
     }
-    // 回退到 localStorage
-    try {
-      var raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : null;
-    } catch(e) { return null; }
-  },
-  
-  set: async function(key, value, storeName, extra) {
-    if (useIndexedDB && storeName) {
-      return await dbSet(storeName, key, value, extra);
+    
+    // 3. 回退到旧格式
+    if (!data) {
+      data = lsGet('shadow_dungeon_slot_' + slotIdx); // 旧版键名
     }
-    // 回退到 localStorage
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-      return true;
-    } catch(e) { return false; }
-  },
-  
-  remove: async function(key, storeName) {
-    if (useIndexedDB && storeName) {
-      return await dbDelete(storeName, key);
+    
+    if (!data) {
+      console.warn('当前槽位无存档，尝试其他槽位...');
+      // 尝试其他槽位
+      for (var i = 0; i < MAX_SLOTS; i++) {
+        if (i === slotIdx) continue;
+        data = await dbGet('saves', i) || lsGet(getSlotKey(i));
+        if (data) {
+          meta.currentSlot = i;
+          saveMeta(meta);
+          console.log('从槽位 ' + (i+1) + ' 恢复存档');
+          break;
+        }
+      }
     }
-    // 回退到 localStorage
-    try {
-      localStorage.removeItem(key);
-      return true;
-    } catch(e) { return false; }
+    
+    if (!data) {
+      console.warn('未找到存档');
+      return false;
+    }
+    
+    // 恢复数据
+    if (!restoreSaveData(data)) {
+      // 迁移失败，尝试从备份恢复
+      return await restoreFromBackup(meta, slotIdx);
+    }
+    
+    initGameAfterLoad();
+    return true;
+    
+  } catch(e) {
+    console.error('loadGame 异常', e);
+    return false;
   }
-};
+}
 
-// 压缩游戏数据（使用短键名+剔除默认值）
-function compressGameData(g) {
-  var compressed = {};
-  
-  // 遍历所有属性，使用短键名
-  Object.keys(g).forEach(function(key) {
-    var shortKey = SAVE_KEY_MAP_REV[key] || key;
-    var value = g[key];
+// 从备份恢复
+async function restoreFromBackup(meta, slotIdx) {
+  try {
+    // 尝试 IndexedDB 自动备份
+    var backups = meta.autoBackups || [];
+    for (var i = backups.length - 1; i >= 0; i--) {
+      var bk = backups[i];
+      var data = await dbGet('backups', bk.key);
+      if (data && data.data) {
+        if (restoreSaveData(data.data)) {
+          initGameAfterLoad();
+          saveGame();
+          showToast('⚠️ 已从自动备份恢复');
+          return true;
+        }
+      }
+    }
     
-    // 跳过空值和默认值
-    if (value === null || value === undefined) return;
-    if (Array.isArray(value) && value.length === 0) return;
-    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) return;
+    // 尝试手动备份
+    var manualBks = meta.manualBackups || [];
+    for (var i = manualBks.length - 1; i >= 0; i--) {
+      var bk = manualBks[i];
+      var data = lsGet(bk.key);
+      if (data && restoreSaveData(data)) {
+        initGameAfterLoad();
+        saveGame();
+        showToast('⚠️ 已从手动备份恢复');
+        return true;
+      }
+    }
     
-    // 特殊处理：英雄数组只存必要属性
-    if (key === 'heroes' && Array.isArray(value)) {
-      compressed[shortKey] = value.map(function(h) {
-        if (!h) return null;
-        // 只存储非默认属性
-        var compressedHero = { id: h.id, template: h.template, level: h.level };
-        // 只存非默认值
-        if (h.exp !== 0) compressedHero.exp = h.exp;
-        if (h.hp !== h.maxHP) compressedHero.hp = h.hp;
-        if (h.mp !== h.maxMP) compressedHero.mp = h.mp;
-        if (h.maxHP) compressedHero.mhp = h.maxHP;
-        if (h.atk) compressedHero.atk = h.atk;
-        if (h.def) compressedHero.def = h.def;
-        if (h.spd) compressedHero.spd = h.spd;
-        if (h.maxMP) compressedHero.mmp = h.maxMP;
-        if (h.quality) compressedHero.q = h.quality;
-        if (h.equipment) compressedHero.eq = h.equipment;
-        if (h.skills) compressedHero.sk = h.skills;
-        if (h.isFrogCursed) compressedHero.fc = h.isFrogCursed;
-        if (h.frogCurseExpire) compressedHero.fce = h.frogCurseExpire;
-        if (h.frogOriginalStats) compressedHero.fos = h.frogOriginalStats;
-        if (h.isGhost) compressedHero.ig = h.isGhost;
-        if (h.ghostExpire) compressedHero.ge = h.ghostExpire;
-        if (h.ghostBonus) compressedHero.gb = h.ghostBonus;
-        if (h.isMirror) compressedHero.im = h.isMirror;
-        if (h.mirrorExpire) compressedHero.me = h.mirrorExpire;
-        if (h.breakthrough) compressedHero.bt = h.breakthrough;
-        return compressedHero;
-      });
-    }
-    // 特殊处理：装备数组
-    else if (key === 'equipment' && Array.isArray(value)) {
-      compressed[shortKey] = value.map(function(eq) {
-        if (!eq) return null;
-        var compressedEq = { id: eq.id, template: eq.template };
-        if (eq.level !== 1) compressedEq.lv = eq.level;
-        if (eq.quality) compressedEq.q = eq.quality;
-        if (eq.equippedBy !== null) compressedEq.eb = eq.equippedBy;
-        return compressedEq;
-      });
-    }
-    // 特殊处理：队伍（只存ID引用）
-    else if (key === 'team' && Array.isArray(value)) {
-      compressed[shortKey] = value.map(function(h) { return h ? h.id : null; });
-    }
-    else {
-      compressed[shortKey] = value;
-    }
-  });
+    return false;
+  } catch(e) {
+    console.error('restoreFromBackup 失败', e);
+    return false;
+  }
+}
+
+// ===== 初始化存储系统 =====
+var storageReady = false;
+
+async function initStorageSystem() {
+  var dbOk = await initDB();
+  if (dbOk) {
+    console.log('使用 IndexedDB 存储（主存储）');
+  } else {
+    console.warn('使用 localStorage 存储（容量有限）');
+  }
+  storageReady = true;
+  return true;
+}
+
+// ===== 加载后初始化 =====
+function initGameAfterLoad() {
+  // 重建队伍引用
+  if (G.team && G.heroes) {
+    G.team = G.team.map(function(uid) {
+      if (!uid) return null;
+      return G.heroes.find(function(h) { return h && h.uid === uid; }) || null;
+    });
+  }
   
-  return compressed;
-}
-
-// 解压游戏数据
-function decompressGameData(compressed) {
-  var g = {};
+  // 每日重置
+  var today = new Date().toDateString();
+  if (G.arenaState && G.arenaState.lastChallengeDate !== today) {
+    G.arenaState.dailyChallengesUsed = 0;
+    G.arenaState.lastChallengeDate = today;
+  }
+  if (G.lastLoginDate !== today) {
+    G.dailyBonusClaimed = true;
+    G.lastLoginDate = today;
+  }
   
-  // 遍历所有属性，还原键名
-  Object.keys(compressed).forEach(function(shortKey) {
-    var originalKey = SAVE_KEY_MAP[shortKey] || shortKey;
-    var value = compressed[shortKey];
-    
-    // 特殊处理：英雄数组
-    if (originalKey === 'heroes' && Array.isArray(value)) {
-      g[originalKey] = value.map(function(ch) {
-        if (!ch) return null;
-        // 从模板重建英雄
-        var template = HERO_TEMPLATES[ch.template];
-        if (!template) return null;
-        
-        var hero = {
-          id: ch.id,
-          template: ch.template,
-          name: template.name,
-          level: ch.level || 1,
-          exp: ch.exp || 0,
-          maxHP: ch.mhp || template.maxHP,
-          hp: ch.hp !== undefined ? ch.hp : (ch.mhp || template.maxHP),
-          atk: ch.atk || template.atk,
-          def: ch.def || template.def,
-          spd: ch.spd || template.spd,
-          maxMP: ch.mmp || template.maxMP || 0,
-          mp: ch.mp !== undefined ? ch.mp : (ch.mmp || template.maxMP || 0),
-          quality: ch.q || template.quality || 'common',
-          equipment: ch.eq || [null,null,null,null],
-          skills: ch.sk || template.skills || [],
-          isFrogCursed: ch.fc || false,
-          frogCurseExpire: ch.fce || 0,
-          frogOriginalStats: ch.fos || null,
-          isGhost: ch.ig || false,
-          ghostExpire: ch.ge || 0,
-          ghostBonus: ch.gb || null,
-          isMirror: ch.im || false,
-          mirrorExpire: ch.me || 0,
-          breakthrough: ch.bt || 0,
-        };
-        return hero;
-      });
-    }
-    // 特殊处理：装备数组
-    else if (originalKey === 'equipment' && Array.isArray(value)) {
-      g[originalKey] = value.map(function(ceq) {
-        if (!ceq) return null;
-        var template = EQUIPMENT_TEMPLATES[ceq.template];
-        if (!template) return null;
-        
-        return {
-          id: ceq.id,
-          template: ceq.template,
-          name: template.name,
-          type: template.type,
-          level: ceq.lv || 1,
-          quality: ceq.q || template.quality || 'common',
-          stats: template.stats || {},
-          equippedBy: ceq.eb !== undefined ? ceq.eb : null,
-        };
-      });
-    }
-    // 特殊处理：队伍（从ID引用还原）
-    else if (originalKey === 'team' && Array.isArray(value)) {
-      g[originalKey] = value.map(function(id) { return null; }); // 先初始化，稍后在loadGame中重建引用
-      g._teamIds = value; // 暂存ID列表
-    }
-    else {
-      g[originalKey] = value;
-    }
-  });
+  // 登录连续性
+  if (!G.loginStreak) G.loginStreak = 0;
+  if (!G.lastLoginDateStreak) G.lastLoginDateStreak = '';
+  var yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (G.lastLoginDateStreak === new Date().toDateString()) {
+    // 今天已登录
+  } else if (G.lastLoginDateStreak === yesterday.toDateString()) {
+    G.loginStreak = (G.loginStreak || 0) + 1;
+    G.lastLoginDateStreak = today;
+  } else {
+    G.loginStreak = 1;
+    G.lastLoginDateStreak = today;
+  }
   
-  return g;
+  // 合成事件到期检查
+  checkMergeEventExpirations();
+  
+  // 默认值
+  if (!G.achievements) G.achievements = { unlocked: {}, progress: {}, totalClaimed: 0 };
+  if (!G.stats) G.stats = { totalKills: 0, totalHeroesRecruited: 0, totalEquipmentForged: 0, totalEquipmentMerged: 0, totalGoldEarned: 0, totalGemsEarned: 0, maxStageReached: 1, maxHeroLevel: 0 };
+  if (!G.tutorialDone) G.tutorialDone = !!(G.heroes && G.heroes.length > 0);
+  if (G.tutorialPhase === undefined) G.tutorialPhase = '';
+  if (G.tutorialStep === undefined) G.tutorialStep = 0;
+  
+  setTimeout(function() { checkAllAchievements && checkAllAchievements(); }, 1000);
 }
 
-// 获取存档元数据（支持 IndexedDB 和 localStorage）
-// 同步版本 - 用于 saveGame 等需要同步调用的场景
-function getSaveMetaSync(){
-  try{
-    var raw = localStorage.getItem(SAVE_META_KEY);
-    return raw ? JSON.parse(raw) : {currentSlot:0,slots:{},autoBackups:[],manualBackups:[]};
-  }catch(e){return {currentSlot:0,slots:{},autoBackups:[],manualBackups:[]};}
-}
-
-// 同步版本 - 保存到 localStorage
-function saveSaveMetaSync(meta){
-  try{
-    localStorage.setItem(SAVE_META_KEY, JSON.stringify(meta));
-    // 后台同步到 IndexedDB
-    if (isDBReady) {
-      setTimeout(function() { dbSet('meta', 'save_meta', meta); }, 0);
-    }
-  }catch(e){}
-}
-
-// 异步版本 - 用于初始化和需要等待的场景
-async function getSaveMeta(){
-  try{
-    // 优先从 IndexedDB 读取
-    var meta = await StorageAPI.get('save_meta', 'meta');
-    if (meta) return meta;
-    // 回退到 localStorage
-    var raw = localStorage.getItem(SAVE_META_KEY);
-    return raw ? JSON.parse(raw) : {currentSlot:0,slots:{},autoBackups:[],manualBackups:[]};
-  }catch(e){return {currentSlot:0,slots:{},autoBackups:[],manualBackups:[]};}
-}
-
-// 异步版本 - 保存到 IndexedDB + localStorage
-async function saveSaveMeta(meta){
-  try{
-    // 同步保存到 localStorage（主要存储）
-    localStorage.setItem(SAVE_META_KEY, JSON.stringify(meta));
-    // 异步保存到 IndexedDB
-    await StorageAPI.set('save_meta', meta, 'meta');
-  }catch(e){}
-}
-
-// 获取当前存档槽位键名
-function getSlotKey(slotIdx){
-  return 'shadow_dungeon_slot_'+slotIdx;
-}
-
-// 获取当前槽位数据（支持 IndexedDB）
-async function getCurrentSlotData(){
-  var meta = await getSaveMeta();
-  var slotIdx = meta.currentSlot || 0;
-  try{
-    var data = await StorageAPI.get(getSlotKey(slotIdx), 'saves');
-    if (data) return data;
-    // 回退到 localStorage
-    var raw = localStorage.getItem(getSlotKey(slotIdx));
-    return raw ? JSON.parse(raw) : null;
-  }catch(e){return null;}
-}
-
-// 保存游戏（到当前槽位+自动备份）
-// ==================== 合成事件到期检查 ====================
-function checkMergeEventExpirations(){
-  if(!G.heroes) return;
+// ===== 合成事件到期检查 =====
+function checkMergeEventExpirations() {
+  if (!G.heroes) return;
   var now = Date.now();
   var changed = false;
-  G.heroes.forEach(function(h){
-    // 青蛙诅咒到期解除
-    if(h.isFrogCursed && h.frogCurseExpire && now >= h.frogCurseExpire){
+  
+  G.heroes.forEach(function(h) {
+    // 青蛙诅咒到期
+    if (h.isFrogCursed && h.frogCurseExpire && now >= h.frogCurseExpire) {
       h.isFrogCursed = false;
-      // 属性恢复到原来的120%（比原来+20%）
-      if(h.frogOriginalStats){
+      if (h.frogOriginalStats) {
         h.maxHP = Math.floor(h.frogOriginalStats.maxHP * 1.2);
         h.atk = Math.floor(h.frogOriginalStats.atk * 1.2);
         h.def = Math.floor(h.frogOriginalStats.def * 1.2);
@@ -5715,1628 +5631,340 @@ function checkMergeEventExpirations(){
       }
       changed = true;
     }
-    // 幽灵英雄到期消失
-    if(h.isGhost && h.ghostExpire && now >= h.ghostExpire){
+    // 幽灵到期
+    if (h.isGhost && h.ghostExpire && now >= h.ghostExpire) {
       h.isGhost = false;
       delete h.ghostExpire;
       delete h.ghostBonus;
       changed = true;
     }
-    // 镜像英雄到期消失
-    if(h.isMirror && h.mirrorExpire && now >= h.mirrorExpire){
-      var mIdx = G.heroes.indexOf(h);
-      if(mIdx >= 0) G.heroes.splice(mIdx, 1);
+    // 镜像到期
+    if (h.isMirror && h.mirrorExpire && now >= h.mirrorExpire) {
+      var idx = G.heroes.indexOf(h);
+      if (idx >= 0) G.heroes.splice(idx, 1);
       changed = true;
     }
   });
-  if(changed) saveGame();
+  
+  if (changed) saveGame();
 }
 
-// 同步版本 saveGame - 主要保存逻辑，使用 localStorage（同步，保证数据完整性）
-function saveGame(){
-  try{
-    var meta = getSaveMetaSync(); // 使用同步版本
-    var slotIdx = meta.currentSlot || 0;
-    
-    // 存档前校验核心数据完整性
-    if(!G || !G.heroes || !Array.isArray(G.heroes)){
-      console.error('存档校验失败: 核心数据异常，跳过本次保存');
-      return;
-    }
-    
-    // 使用压缩存储（v4版本）
-    var compressedG = compressGameData(G);
-    var data = { g: compressedG, heroIdCounter: G.heroIdCounter, saveVersion: CURRENT_SAVE_VERSION, timestamp: Date.now() };
-    var jsonStr = JSON.stringify(data);
-    
-    // 校验序列化结果
-    if(!jsonStr || jsonStr.length < 10){
-      console.error('存档序列化失败，跳过本次保存');
-      return;
-    }
-    
-    // 安全写入：先写备份再写主存档（localStorage 同步写入）
-    var safeKey = getSlotKey(slotIdx) + '_safe';
-    try {
-      localStorage.setItem(safeKey, jsonStr);
-      localStorage.setItem(getSlotKey(slotIdx), jsonStr);
-      localStorage.removeItem(safeKey);
-    } catch(writeErr) {
-      console.warn('存档写入失败，尝试清理空间', writeErr);
-      // 清理旧备份后重试
-      try {
-        if(meta.autoBackups){
-          meta.autoBackups.forEach(function(bk){ try{ localStorage.removeItem(bk.key); }catch(e){} });
-          meta.autoBackups = [];
-        }
-        localStorage.setItem(getSlotKey(slotIdx), jsonStr);
-      } catch(e2) {
-        console.error('存档写入彻底失败', e2);
-        showToast('⚠️ 存档空间不足，请清理浏览器数据');
-        return;
-      }
-    }
-    
-    // 更新槽位元数据
-    if(!meta.slots[slotIdx]) meta.slots[slotIdx] = {};
-    meta.slots[slotIdx].timestamp = Date.now();
-    meta.slots[slotIdx].size = jsonStr.length;
-    meta.slots[slotIdx].stageProgress = G.stageProgress || 1;
-    meta.slots[slotIdx].heroCount = G.heroes ? G.heroes.length : 0;
-    meta.slots[slotIdx].playTime = G.totalPlayTime || 0;
-
-    // ===== 自动备份：保留2份 =====
-    var now = Date.now();
-    if(!meta.autoBackups) meta.autoBackups = [];
-    if(!meta._lastAutoBackupTime) meta._lastAutoBackupTime = 0;
-
-    var TWO_MIN = 2 * 60 * 1000;
-    var TEN_MIN = 10 * 60 * 1000;
-    var shouldBackup = false;
-
-    if(now - meta._lastAutoBackupTime >= TWO_MIN){
-      var hasNear2min = false;
-      var hasNear10min = false;
-      for(var bi = 0; bi < meta.autoBackups.length; bi++){
-        var age = now - meta.autoBackups[bi].timestamp;
-        if(age >= TWO_MIN * 0.75 && age <= TWO_MIN * 1.25) hasNear2min = true;
-        if(age >= TEN_MIN * 0.75 && age <= TEN_MIN * 1.25) hasNear10min = true;
-      }
-      if(!hasNear2min) shouldBackup = true;
-      if(!hasNear10min && now - meta._lastAutoBackupTime >= TEN_MIN) shouldBackup = true;
-    }
-
-    if(shouldBackup){
-      var backupKey = 'shadow_dungeon_auto_' + now;
-      try { localStorage.setItem(backupKey, jsonStr); } catch(e) {}
-      var newBackup = {
-        key: backupKey,
-        slotIdx: slotIdx,
-        timestamp: now,
-        stageProgress: G.stageProgress || 1,
-        heroCount: G.heroes ? G.heroes.length : 0,
-        totalPower: calcTotalPower()
-      };
-      meta.autoBackups.push(newBackup);
-      meta._lastAutoBackupTime = now;
-
-      // 清理旧备份
-      while(meta.autoBackups.length > 2){
-        var old = meta.autoBackups.shift();
-        try{ localStorage.removeItem(old.key); }catch(e){}
-      }
-    }
-
-    saveSaveMetaSync(meta);
-    
-    // 后台异步同步到 IndexedDB（fire-and-forget，不阻塞主流程）
-    syncToIndexedDBAsync(data, meta, slotIdx);
-    
-    // 自动云端同步
-    if (isCloudReady && deviceId && G.playerName && G.playerName.trim() !== '') {
-      var lastCloudSync = parseInt(localStorage.getItem('shadow_dungeon_last_cloud_sync') || '0', 10);
-      var fiveMinutes = 5 * 60 * 1000;
-      if (Date.now() - lastCloudSync >= fiveMinutes) {
-        localStorage.setItem('shadow_dungeon_last_cloud_sync', Date.now().toString());
-        setTimeout(function() {
-          saveToCloud().catch(function(e) { console.error('自动云端同步失败', e); });
-        }, 100);
-      }
-    }
-  } catch(e) {
-    console.error('saveGame异常', e);
-  }
-}
-
-// 后台异步同步到 IndexedDB（不阻塞主流程）
-function syncToIndexedDBAsync(data, meta, slotIdx) {
-  if (!isDBReady) return;
-  
-  setTimeout(function() {
-    try {
-      // 同步存档数据
-      dbSet('saves', getSlotKey(slotIdx), data, { slotIdx: slotIdx });
-      dbSet('meta', 'save_meta', meta);
-      
-      // 同步备份
-      if (meta.autoBackups && meta.autoBackups.length > 0) {
-        var latestBackup = meta.autoBackups[meta.autoBackups.length - 1];
-        if (latestBackup) {
-          dbSet('backups', latestBackup.key, data, { slotIdx: slotIdx, type: 'auto' });
-        }
-      }
-    } catch(e) {
-      console.warn('IndexedDB 异步同步失败:', e);
-    }
-  }, 0);
-}
-
-// ==================== 存档健康检查系统 ====================
-
-// 存档健康状态
-var saveHealthStatus = {
-  lastCheck: 0,
-  isHealthy: true,
-  localSaveOK: false,
-  cloudSaveOK: false,
-  lastSaveTime: 0,
-  lastSaveSize: 0,
-  errors: []
-};
-
-// 验证存档数据完整性
-function validateSaveData(data) {
-  var errors = [];
-  
-  if (!data) {
-    errors.push('存档数据为空');
-    return { valid: false, errors: errors };
-  }
-  
-  // 检查必需字段
-  if (!data.g) errors.push('缺少游戏数据(g)');
-  if (typeof data.heroIdCounter !== 'number') errors.push('英雄计数器异常');
-  if (!data.saveVersion) errors.push('缺少版本号');
-  
-  // 检查游戏数据完整性
-  if (data.g) {
-    if (!Array.isArray(data.g.heroes)) errors.push('英雄数据格式错误');
-    if (typeof data.g.stageProgress !== 'number') errors.push('关卡进度异常');
-    if (!data.g.playerName) errors.push('玩家名称为空');
-  }
-  
-  // 检查存档大小（警告如果超过 5MB）
-  var jsonStr = JSON.stringify(data);
-  if (jsonStr.length > 5 * 1024 * 1024) {
-    errors.push('存档过大(' + Math.round(jsonStr.length/1024/1024*100)/100 + 'MB)，可能导致存储失败');
-  }
-  
-  return {
-    valid: errors.length === 0,
-    errors: errors,
-    size: jsonStr.length,
-    timestamp: data.timestamp || Date.now()
-  };
-}
-
-// 检查本地存档健康状态
-function checkLocalSaveHealth() {
+// ===== 手动备份 =====
+function createManualBackup() {
   try {
-    var meta = getSaveMetaSync();
+    var meta = getMeta();
     var slotIdx = meta.currentSlot || 0;
-    var slotKey = getSlotKey(slotIdx);
+    var data = prepareSaveData();
+    var backupKey = 'manual_' + Date.now();
     
-    // 检查主存档
-    var raw = localStorage.getItem(slotKey);
-    if (!raw) {
-      return { ok: false, error: '本地无存档', slot: slotIdx };
-    }
+    // 保存到 localStorage
+    lsSet(backupKey, data);
     
-    // 解析并验证
-    var data;
-    try {
-      data = JSON.parse(raw);
-    } catch(e) {
-      return { ok: false, error: '存档解析失败: ' + e.message, slot: slotIdx };
-    }
+    var stage = G.stageProgress || 1;
+    var heroCount = G.heroes ? G.heroes.length : 0;
     
-    var validation = validateSaveData(data);
-    if (!validation.valid) {
-      return { ok: false, error: '存档验证失败: ' + validation.errors.join(', '), slot: slotIdx, details: validation.errors };
-    }
-    
-    // 检查备份
-    var hasBackup = false;
-    if (meta.autoBackups && meta.autoBackups.length > 0) {
-      var latestBackup = meta.autoBackups[meta.autoBackups.length - 1];
-      var backupRaw = localStorage.getItem(latestBackup.key);
-      hasBackup = !!backupRaw;
-    }
-    
-    return {
-      ok: true,
-      slot: slotIdx,
-      size: validation.size,
-      timestamp: validation.timestamp,
-      hasBackup: hasBackup,
-      version: data.saveVersion
-    };
-  } catch(e) {
-    return { ok: false, error: '检查失败: ' + e.message };
-  }
-}
-
-// 检查云存档健康状态（带超时）
-function checkCloudSaveHealth() {
-  return new Promise(function(resolve) {
-    // 3秒超时
-    var timeoutId = setTimeout(function() {
-      resolve({ ok: false, error: '检查超时' });
-    }, 3000);
-    
-    if (cloudProvider === 'none') {
-      clearTimeout(timeoutId);
-      resolve({ ok: false, error: '未启用云存档' });
-      return;
-    }
-    
-    if (cloudProvider === 'taptap') {
-      if (!tapCloudManager || !tapSaveId) {
-        clearTimeout(timeoutId);
-        resolve({ ok: false, error: 'TapTap 云存档未初始化' });
-        return;
-      }
-      
-      tapCloudManager.get(tapSaveId).then(function(result) {
-        clearTimeout(timeoutId);
-        if (!result || !result.saveData) {
-          resolve({ ok: false, error: '云端存档为空' });
-          return;
-        }
-        
-        try {
-          var data = JSON.parse(result.saveData);
-          var validation = validateSaveData(data);
-          resolve({
-            ok: validation.valid,
-            provider: 'TapTap',
-            size: result.saveData.length,
-            timestamp: data.timestamp,
-            error: validation.valid ? null : validation.errors.join(', ')
-          });
-        } catch(e) {
-          resolve({ ok: false, provider: 'TapTap', error: '解析失败: ' + e.message });
-        }
-      }).catch(function(err) {
-        clearTimeout(timeoutId);
-        resolve({ ok: false, provider: 'TapTap', error: '获取失败: ' + (err.message || '未知错误') });
-      });
-    } else if (cloudProvider === 'supabase') {
-      if (!isCloudReady || !deviceId) {
-        clearTimeout(timeoutId);
-        resolve({ ok: false, error: 'Supabase 未连接' });
-        return;
-      }
-      
-      sb.from('saves').select('*').eq('device_id', deviceId).limit(1)
-        .then(function(result) {
-          clearTimeout(timeoutId);
-          if (result.error || !result.data || result.data.length === 0) {
-            resolve({ ok: false, provider: 'Supabase', error: '云端无存档' });
-            return;
-          }
-          
-          var data = result.data[0];
-          var gameState = data.game_state;
-          if (!gameState) {
-            resolve({ ok: false, provider: 'Supabase', error: '云端存档格式错误' });
-            return;
-          }
-          
-          var saveObj = { g: gameState, heroIdCounter: data.hero_id_counter, saveVersion: data.saveVersion };
-          var validation = validateSaveData(saveObj);
-          
-          resolve({
-            ok: validation.valid,
-            provider: 'Supabase',
-            size: JSON.stringify(gameState).length,
-            timestamp: data.lastSave,
-            error: validation.valid ? null : validation.errors.join(', ')
-          });
-        })
-        .catch(function(err) {
-          clearTimeout(timeoutId);
-          resolve({ ok: false, provider: 'Supabase', error: '查询失败: ' + (err.message || '未知错误') });
-        });
-    } else {
-      clearTimeout(timeoutId);
-      resolve({ ok: false, error: '未知的云存档提供商' });
-    }
-  });
-}
-
-// 执行完整健康检查
-function performHealthCheck() {
-  var checkResult = {
-    timestamp: Date.now(),
-    local: null,
-    cloud: { ok: false, error: '检查中...' },
-    overall: false
-  };
-  
-  // 检查本地存档（同步，立即完成）
-  checkResult.local = checkLocalSaveHealth();
-  
-  // 立即更新本地状态到 UI（不等待云端）
-  saveHealthStatus.lastCheck = Date.now();
-  saveHealthStatus.localSaveOK = checkResult.local.ok;
-  saveHealthStatus.isHealthy = checkResult.local.ok;
-  
-  if (!checkResult.local.ok) {
-    saveHealthStatus.errors.push('本地: ' + checkResult.local.error);
-  }
-  
-  // 先显示本地状态
-  updateSaveHealthUI(checkResult);
-  
-  // 如果没有云存档，直接返回
-  if (cloudProvider === 'none') {
-    checkResult.cloud = { ok: false, error: '未启用' };
-    saveHealthStatus.cloudSaveOK = false;
-    updateSaveHealthUI(checkResult);
-    console.log('存档健康检查完成（无云端）:', checkResult);
-    return checkResult;
-  }
-  
-  // 检查云存档（异步，不阻塞）
-  checkCloudSaveHealth().then(function(cloudResult) {
-    checkResult.cloud = cloudResult;
-    
-    // 更新云端状态
-    saveHealthStatus.cloudSaveOK = cloudResult.ok;
-    
-    if (!cloudResult.ok) {
-      saveHealthStatus.errors.push('云端: ' + cloudResult.error);
-    }
-    
-    // 只保留最近10条错误
-    if (saveHealthStatus.errors.length > 10) {
-      saveHealthStatus.errors = saveHealthStatus.errors.slice(-10);
-    }
-    
-    // 更新 UI（带云端结果）
-    updateSaveHealthUI(checkResult);
-    
-    console.log('存档健康检查完成:', checkResult);
-  });
-  
-  return checkResult;
-}
-
-// 更新存档健康状态 UI
-function updateSaveHealthUI(result) {
-  var statusEl = document.getElementById('save-health-status');
-  var detailEl = document.getElementById('save-health-detail');
-  
-  if (!statusEl) return;
-  
-  if (result.local.ok && (result.cloud.ok || cloudProvider === 'none')) {
-    statusEl.textContent = '✅ 存档安全';
-    statusEl.style.color = 'var(--success, #4caf50)';
-  } else if (result.local.ok) {
-    statusEl.textContent = '⚠️ 本地安全，云端异常';
-    statusEl.style.color = 'var(--warning, #ff9800)';
-  } else {
-    statusEl.textContent = '❌ 存档异常！';
-    statusEl.style.color = 'var(--danger, #f44336)';
-  }
-  
-  if (detailEl && result) {
-    var details = [];
-    if (result.local.ok) {
-      details.push('本地: ' + Math.round(result.local.size / 1024) + 'KB');
-    } else {
-      details.push('本地: ' + result.local.error);
-    }
-    
-    if (cloudProvider !== 'none') {
-      if (result.cloud && result.cloud.ok) {
-        details.push('云端: ' + result.cloud.provider + ' ' + Math.round(result.cloud.size / 1024) + 'KB');
-      } else if (result.cloud) {
-        details.push('云端: ' + result.cloud.error);
-      }
-    }
-    
-    detailEl.textContent = details.join(' | ');
-  }
-}
-
-// 显示存档健康详情弹窗
-function showSaveHealthDetails() {
-  performHealthCheck();
-  
-  setTimeout(function() {
-    var content = '<div style="padding:16px">';
-    content += '<h3 style="margin-bottom:16px">📊 存档健康报告</h3>';
-    
-    // 本地存档状态
-    content += '<div style="margin-bottom:12px;padding:12px;background:var(--bg2);border-radius:8px">';
-    content += '<div style="font-weight:bold;margin-bottom:8px">💾 本地存档</div>';
-    var local = saveHealthStatus.localSaveOK;
-    content += '<div style="color:' + (local ? 'var(--success)' : 'var(--danger)') + '">';
-    content += local ? '✅ 健康' : '❌ 异常';
-    content += '</div>';
-    content += '</div>';
-    
-    // 云存档状态
-    content += '<div style="margin-bottom:12px;padding:12px;background:var(--bg2);border-radius:8px">';
-    content += '<div style="font-weight:bold;margin-bottom:8px">☁️ 云存档</div>';
-    if (cloudProvider === 'none') {
-      content += '<div style="color:var(--text3)">未启用</div>';
-    } else {
-      var cloud = saveHealthStatus.cloudSaveOK;
-      content += '<div style="color:' + (cloud ? 'var(--success)' : 'var(--danger)') + '">';
-      content += cloud ? '✅ 已连接 (' + cloudProvider + ')' : '❌ 异常';
-      content += '</div>';
-    }
-    content += '</div>';
-    
-    // 最近错误
-    if (saveHealthStatus.errors.length > 0) {
-      content += '<div style="margin-bottom:12px;padding:12px;background:var(--bg2);border-radius:8px">';
-      content += '<div style="font-weight:bold;margin-bottom:8px">⚠️ 最近问题</div>';
-      content += '<div style="font-size:12px;color:var(--text2)">';
-      saveHealthStatus.errors.slice(-3).forEach(function(err) {
-        content += '<div style="margin-bottom:4px">• ' + err + '</div>';
-      });
-      content += '</div>';
-      content += '</div>';
-    }
-    
-    // 操作按钮
-    content += '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">';
-    content += '<button class="btn btn-primary" onclick="performHealthCheck();showToast(\'正在重新检查...\')">🔄 重新检查</button>';
-    content += '<button class="btn" onclick="createManualBackup();showToast(\'已创建手动备份\')">💾 立即备份</button>';
-    // 如果有异常，显示修复按钮
-    if (!saveHealthStatus.localSaveOK) {
-      content += '<button class="btn" style="background:var(--warning)" onclick="closeModal();executeSaveRepair()">🔧 修复存档</button>';
-    }
-    content += '</div>';
-    
-    content += '</div>';
-    
-    showModal('存档健康检查', content);
-  }, 500);
-}
-
-// 定期自动检查存档健康（每5分钟）
-function startAutoHealthCheck() {
-  // 立即执行一次
-  setTimeout(performHealthCheck, 5000);
-  
-  // 定期执行
-  setInterval(function() {
-    performHealthCheck();
-  }, 5 * 60 * 1000); // 5分钟
-}
-
-// ==================== 存档异常处理和自动修复 ====================
-
-// 尝试修复损坏的存档
-function attemptSaveRepair() {
-  console.log('尝试修复存档...');
-  var repairLog = [];
-  
-  try {
-    var meta = getSaveMetaSync();
-    var slotIdx = meta.currentSlot || 0;
-    var slotKey = getSlotKey(slotIdx);
-    
-    // 尝试1：从安全备份恢复
-    var safeKey = slotKey + '_safe';
-    var safeRaw = localStorage.getItem(safeKey);
-    if (safeRaw) {
-      try {
-        var safeData = JSON.parse(safeRaw);
-        if (validateSaveData(safeData).valid) {
-          localStorage.setItem(slotKey, safeRaw);
-          repairLog.push('✅ 从安全备份恢复成功');
-          return { success: true, log: repairLog, method: 'safe_backup' };
-        }
-      } catch(e) {
-        repairLog.push('❌ 安全备份也损坏');
-      }
-    }
-    
-    // 尝试2：从自动备份恢复
-    if (meta.autoBackups && meta.autoBackups.length > 0) {
-      for (var i = meta.autoBackups.length - 1; i >= 0; i--) {
-        var backup = meta.autoBackups[i];
-        var backupRaw = localStorage.getItem(backup.key);
-        if (backupRaw) {
-          try {
-            var backupData = JSON.parse(backupRaw);
-            if (validateSaveData(backupData).valid) {
-              localStorage.setItem(slotKey, backupRaw);
-              repairLog.push('✅ 从自动备份恢复成功（' + new Date(backup.timestamp).toLocaleString() + '）');
-              return { success: true, log: repairLog, method: 'auto_backup', backupTime: backup.timestamp };
-            }
-          } catch(e) {
-            repairLog.push('❌ 自动备份 ' + (i + 1) + ' 也损坏');
-          }
-        }
-      }
-    }
-    
-    // 尝试3：从手动备份恢复
-    if (meta.manualBackups && meta.manualBackups.length > 0) {
-      for (var i = 0; i < meta.manualBackups.length; i++) {
-        var backup = meta.manualBackups[i];
-        var backupRaw = localStorage.getItem(backup.key);
-        if (backupRaw) {
-          try {
-            var backupData = JSON.parse(backupRaw);
-            if (validateSaveData(backupData).valid) {
-              localStorage.setItem(slotKey, backupRaw);
-              repairLog.push('✅ 从手动备份恢复成功（' + (backup.note || '手动备份') + '）');
-              return { success: true, log: repairLog, method: 'manual_backup', backupTime: backup.timestamp };
-            }
-          } catch(e) {
-            repairLog.push('❌ 手动备份 ' + (i + 1) + ' 也损坏');
-          }
-        }
-      }
-    }
-    
-    // 尝试4：从其他槽位恢复
-    for (var i = 0; i < MAX_SAVE_SLOTS; i++) {
-      if (i !== slotIdx) {
-        var otherKey = getSlotKey(i);
-        var otherRaw = localStorage.getItem(otherKey);
-        if (otherRaw) {
-          try {
-            var otherData = JSON.parse(otherRaw);
-            if (validateSaveData(otherData).valid) {
-              localStorage.setItem(slotKey, otherRaw);
-              meta.currentSlot = i;
-              saveSaveMetaSync(meta);
-              repairLog.push('✅ 从槽位 ' + (i + 1) + ' 恢复成功');
-              return { success: true, log: repairLog, method: 'other_slot', slot: i };
-            }
-          } catch(e) {
-            repairLog.push('❌ 槽位 ' + (i + 1) + ' 也损坏');
-          }
-        }
-      }
-    }
-    
-    // 尝试5：从云端恢复（如果有）
-    if (cloudProvider !== 'none' && isCloudReady) {
-      repairLog.push('⏳ 尝试从云端恢复...');
-      return { success: false, log: repairLog, needCloud: true };
-    }
-    
-    // 所有修复尝试都失败
-    repairLog.push('❌ 所有修复尝试都失败');
-    return { success: false, log: repairLog, needReset: true };
-    
-  } catch(e) {
-    repairLog.push('❌ 修复过程出错: ' + e.message);
-    return { success: false, log: repairLog, error: e.message };
-  }
-}
-
-// 显示存档异常处理弹窗
-function showSaveErrorDialog(errorInfo) {
-  var content = '<div style="padding:16px">';
-  content += '<div style="text-align:center;margin-bottom:16px">';
-  content += '<div style="font-size:48px;margin-bottom:8px">⚠️</div>';
-  content += '<div style="font-size:16px;font-weight:bold;color:var(--danger)">检测到存档异常</div>';
-  content += '</div>';
-  
-  content += '<div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:16px">';
-  content += '<div style="font-weight:bold;margin-bottom:8px">错误信息</div>';
-  content += '<div style="font-size:12px;color:var(--text2)">' + (errorInfo || '存档数据损坏或无法读取') + '</div>';
-  content += '</div>';
-  
-  content += '<div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:16px">';
-  content += '<div style="font-weight:bold;margin-bottom:8px">可选操作</div>';
-  content += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">';
-  content += '1. <b>自动修复</b>：尝试从备份恢复存档<br>';
-  content += '2. <b>云端恢复</b>：从云端下载最新存档<br>';
-  content += '3. <b>重新开始</b>：创建新游戏（会丢失进度）';
-  content += '</div>';
-  content += '</div>';
-  
-  content += '<div style="display:flex;gap:8px;flex-direction:column">';
-  content += '<button class="btn btn-primary" onclick="executeSaveRepair()">🔧 尝试自动修复</button>';
-  content += '<button class="btn" onclick="loadCloudSave().then(function(ok){if(ok){closeModal();location.reload();}})">☁️ 从云端恢复</button>';
-  content += '<button class="btn" style="background:var(--danger)" onclick="showConfirm(\'确认重置\',\'确定要重新开始吗？\\n\\n当前所有进度将丢失！\',resetGameAndStartNew,\'确认重置\',\'取消\')">🗑️ 重新开始</button>';
-  content += '</div>';
-  
-  content += '</div>';
-  
-  showModal('存档异常', content);
-}
-
-// 执行存档修复
-function executeSaveRepair() {
-  showToast('⏳ 正在尝试修复存档...');
-  
-  setTimeout(function() {
-    var result = attemptSaveRepair();
-    
-    if (result.success) {
-      // 修复成功
-      var content = '<div style="padding:16px;text-align:center">';
-      content += '<div style="font-size:48px;margin-bottom:8px">✅</div>';
-      content += '<div style="font-size:16px;font-weight:bold;color:var(--success);margin-bottom:16px">存档修复成功！</div>';
-      content += '<div style="background:var(--bg2);border-radius:8px;padding:12px;text-align:left;margin-bottom:16px">';
-      content += '<div style="font-weight:bold;margin-bottom:8px">修复记录</div>';
-      result.log.forEach(function(log) {
-        content += '<div style="font-size:12px;margin-bottom:4px">' + log + '</div>';
-      });
-      content += '</div>';
-      content += '<button class="btn btn-primary" style="width:100%" onclick="closeModal();location.reload()">🔄 重新加载游戏</button>';
-      content += '</div>';
-      showModal('修复成功', content);
-    } else if (result.needCloud) {
-      // 需要云端恢复
-      loadCloudSave().then(function(ok) {
-        if (ok) {
-          closeModal();
-          location.reload();
-        } else {
-          showToast('❌ 云端恢复也失败了');
-          showSaveResetDialog();
-        }
-      });
-    } else if (result.needReset) {
-      // 需要重置
-      showSaveResetDialog();
-    } else {
-      // 其他错误
-      showToast('❌ 修复失败: ' + (result.error || '未知错误'));
-    }
-  }, 500);
-}
-
-// 显示重置确认弹窗
-function showSaveResetDialog() {
-  var content = '<div style="padding:16px;text-align:center">';
-  content += '<div style="font-size:48px;margin-bottom:8px">💔</div>';
-  content += '<div style="font-size:16px;font-weight:bold;color:var(--danger);margin-bottom:16px">无法修复存档</div>';
-  content += '<div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--text2)">';
-  content += '所有本地备份都已损坏或不存在。<br><br>';
-  content += '你可以选择：<br>';
-  content += '1. 尝试从云端恢复（如果有云存档）<br>';
-  content += '2. 重新开始新游戏';
-  content += '</div>';
-  content += '<div style="display:flex;gap:8px;flex-direction:column">';
-  content += '<button class="btn btn-primary" onclick="loadCloudSave().then(function(ok){if(ok){closeModal();location.reload();}})">☁️ 尝试云端恢复</button>';
-  content += '<button class="btn" style="background:var(--danger)" onclick="showConfirm(\'确认重置\',\'确定要重新开始吗？\\n\\n此操作不可恢复！\',resetGameAndStartNew,\'确认重置\',\'取消\')">🗑️ 重新开始</button>';
-  content += '</div>';
-  content += '</div>';
-  showModal('无法修复', content);
-}
-
-// 在健康检查中自动检测并提示异常
-function autoDetectAndHandleSaveError() {
-  // 如果用户选择了重新开始，跳过检测
-  if (localStorage.getItem('shadow_dungeon_reset_flag') === '1') {
-    localStorage.removeItem('shadow_dungeon_reset_flag');
-    console.log('检测到重置标记，跳过存档异常检测');
-    return false;
-  }
-  
-  var health = checkLocalSaveHealth();
-  
-  // 无存档不是异常，是新游戏
-  if (!health.ok && health.error === '本地无存档') {
-    console.log('无存档，新游戏开始');
-    return false;
-  }
-  
-  if (!health.ok) {
-    console.error('检测到存档异常:', health.error);
-    
-    // 延迟显示弹窗，避免游戏启动时干扰
-    setTimeout(function() {
-      showSaveErrorDialog(health.error);
-    }, 2000);
-    
-    return true; // 有异常
-  }
-  
-  return false; // 无异常
-}
-
-// 重新开始游戏（带标记，避免循环检测）
-function resetGameAndStartNew() {
-  // 设置重置标记
-  localStorage.setItem('shadow_dungeon_reset_flag', '1');
-  // 清除所有存档数据
-  localStorage.clear();
-  // 重新加载
-  location.reload();
-}
-
-// 计算队伍总战力
-function calcTotalPower(){
-  var total=0;
-  if(G.heroes){
-    for(var i=0;i<G.heroes.length;i++){
-      var h=G.heroes[i];
-      if(h){
-        total+=h.atk+h.def+h.maxHP+h.spd;
-      }
-    }
-  }
-  return total;
-}
-
-// 手动备份（玩家主动创建）
-function createManualBackup(){
-  try{
-    var meta=getSaveMetaSync(); // 使用同步版本
-    var slotIdx=meta.currentSlot||0;
-    // 使用压缩格式保存（与 saveGame 一致）
-    var compressedG = compressGameData(G);
-    var data={g:compressedG,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
-    var jsonStr=JSON.stringify(data);
-    var backupKey='shadow_dungeon_manual_'+Date.now();
-    localStorage.setItem(backupKey,jsonStr);
-    var stage=G.stageProgress||1;
-    var heroCount=G.heroes?G.heroes.length:0;
-    var power=calcTotalPower();
-    if(!meta.manualBackups) meta.manualBackups=[];
+    meta.manualBackups = meta.manualBackups || [];
     meta.manualBackups.unshift({
-      key:backupKey,
-      slotIdx:slotIdx,
-      timestamp:Date.now(),
-      stageProgress:stage,
-      heroCount:heroCount,
-      totalPower:power,
-      note:'手动备份'
+      key: backupKey,
+      slotIdx: slotIdx,
+      timestamp: Date.now(),
+      stageProgress: stage,
+      heroCount: heroCount,
+      note: '手动备份'
     });
-    // 限制手动备份数量
-    while(meta.manualBackups.length>MAX_MANUAL_BACKUPS){
-      var old=meta.manualBackups.pop();
-      try{localStorage.removeItem(old.key);}catch(e){}
+    
+    while (meta.manualBackups.length > MAX_MANUAL_BACKUPS) {
+      var old = meta.manualBackups.pop();
+      lsRemove(old.key);
     }
-    saveSaveMetaSync(meta);
-    // 显示成功弹窗
-    showModal('📌 备份创建成功',`
-      <div style="text-align:center;padding:10px 0">
-        <div style="font-size:40px;margin-bottom:12px">✅</div>
-        <div style="font-size:14px;font-weight:bold;color:var(--gold);margin-bottom:16px">手动备份已保存</div>
-        <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px;text-align:left">
-          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)">
-            <span style="color:var(--text2)">关卡</span>
-            <span style="color:var(--text)">${stage}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)">
-            <span style="color:var(--text2)">英雄数</span>
-            <span style="color:var(--text)">${heroCount}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;padding:4px 0">
-            <span style="color:var(--text2)">总战力</span>
-            <span style="color:var(--gold);font-weight:bold">⚔️${power}</span>
-          </div>
-        </div>
-        <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="closeModal();renderCurrentTab()">确定</button>
-      </div>
-    `);
-  }catch(e){
+    
+    saveMeta(meta);
+    
+    showModal('📌 备份成功', '<div style="text-align:center;padding:20px">' +
+      '<div style="font-size:48px">✅</div>' +
+      '<div style="font-weight:bold;margin:16px 0">手动备份已保存</div>' +
+      '<div style="font-size:12px;color:var(--text2)">关卡: ' + stage + ' | 英雄: ' + heroCount + '</div>' +
+      '<button class="btn btn-primary" style="width:100%;margin-top:20px" onclick="closeModal()">确定</button>' +
+    '</div>');
+    
+  } catch(e) {
     showToast('❌ 备份失败');
   }
 }
 
-// 存档版本迁移系统
-function migrateSaveData(data){
-  var version = data.saveVersion || 0;
-  if(version < 1){
-    // v0 -> v1: 确保基本字段存在
-    console.log('迁移存档: v0 -> v1');
-    if(data.g){
-      if(!data.g.mergeTotalCount) data.g.mergeTotalCount=0;
-      if(!data.g.mergeMythicPity) data.g.mergeMythicPity=0;
-      if(!data.g.mergeHiddenPity) data.g.mergeHiddenPity=0;
-      if(!data.g.mergeLucky) data.g.mergeLucky=0;
-      if(!data.g.mergePity) data.g.mergePity=0;
-      if(!data.g.mergeStreak) data.g.mergeStreak={count:0,lastTime:0,cooldownEnd:0};
-      if(!data.g.mergeHistory) data.g.mergeHistory=[];
-      if(!data.g.mergeFragments) data.g.mergeFragments=0;
-      if(!data.g.lastMerge) data.g.lastMerge=null;
-      if(!data.g.achievements) data.g.achievements={unlocked:{},progress:{},totalClaimed:0};
-      if(!data.g.stats) data.g.stats={totalKills:0,totalHeroesRecruited:0,totalEquipmentForged:0,totalEquipmentMerged:0,totalGoldEarned:0,totalGemsEarned:0,maxStageReached:1,maxHeroLevel:0};
-      if(!data.g.unknownQuestProgress) data.g.unknownQuestProgress={stages_cleared:0,assassin_merged:0,mage_merged:0,guardian_merged:0,warlock_merged:0,ranger_merged:0,warrior_merged:0,healer_merged:0,paladin_merged:0,mythic_merged:0,legendary_merged:0,epic_merged:0,rare_merged:0,common_merged:0,enemies_killed:0};
-      if(!data.g.pveWinStreak) data.g.pveWinStreak=0;
-      if(!data.g.pveMaxStreak) data.g.pveMaxStreak=0;
-      if(!data.g.loginStreak) data.g.loginStreak=0;
-      if(!data.g.lastLoginDateStreak) data.g.lastLoginDateStreak='';
-      if(data.g.unknownHeroUnlocked===undefined) data.g.unknownHeroUnlocked=false;
-      if(!data.g.resources) data.g.resources={gold:0,gems:0,food:0};
-      if(!data.g.buildings) data.g.buildings={tavern:0,temple:0,forge:0,arena:0};
-    }
-    data.saveVersion=1;
-  }
-  if(version < 2){
-    // v1 -> v2: 确保新增字段存在
-    console.log('迁移存档: v1 -> v2');
-    if(data.g){
-      if(!data.g.currentOmen) data.g.currentOmen=null;
-      if(!data.g.omenExpireTime) data.g.omenExpireTime=0;
-      if(!data.g.mergeGamble) data.g.mergeGamble='normal';
-      if(!data.g.recruitPasswordVerified) data.g.recruitPasswordVerified=false;
-      if(!data.g.totalPlayTime) data.g.totalPlayTime=0;
-      if(!data.g._lastSaveStage) data.g._lastSaveStage=0;
-      if(!data.g._lastSaveHeroCount) data.g._lastSaveHeroCount=0;
-    }
-    data.saveVersion=2;
-  }
-  if(version < 3){
-    // v2 -> v3: 压缩格式迁移
-    console.log('迁移存档: v2 -> v3 (压缩格式)');
-    data.saveVersion=3;
-  }
-  if(version < 4){
-    // v3 -> v4: IndexedDB 存储迁移（无需特殊处理，StorageAPI会自动处理）
-    console.log('迁移存档: v3 -> v4 (IndexedDB存储)');
-    data.saveVersion=4;
-  }
-  return data;
-}
-
-// 加载后的初始化（公共函数，loadGame和备份恢复共用）
-function initGameAfterLoad(){
-  // 修复team和heroes之间的引用关系
-  if(G.team && G.heroes){
-    for(var i=0;i<G.team.length;i++){
-      if(G.team[i]){
-        var matchedHero=G.heroes.find(function(h){return h&&h.uid==G.team[i].uid;});
-        if(matchedHero){G.team[i]=matchedHero;}
-        else{G.team[i]=null;}
-      }
-    }
-  }
-  var today=new Date().toDateString();
-  if(G.arenaState&&G.arenaState.lastChallengeDate!==today){
-    G.arenaState.dailyChallengesUsed=0;
-    G.arenaState.lastChallengeDate=today;
-  }
-  if(G.lastLoginDate!==today){
-    G.dailyBonusClaimed=true;
-    G.lastLoginDate=today;
-  }
-  // 连续登录追踪
-  if(!G.loginStreak) G.loginStreak = 0;
-  if(!G.lastLoginDateStreak) G.lastLoginDateStreak = '';
-  if(G.unknownHeroUnlocked === undefined) G.unknownHeroUnlocked = false;
-  var yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  var yesterdayStr = yesterday.toDateString();
-  if(G.lastLoginDateStreak === today){
-  } else if(G.lastLoginDateStreak === yesterdayStr){
-    G.loginStreak = (G.loginStreak || 0) + 1;
-    G.lastLoginDateStreak = today;
-    if(G.loginStreak >= 2 && !G.unknownHeroUnlocked){
-      G.unknownHeroUnlocked = true;
-    }
-  } else if(G.lastLoginDateStreak !== today){
-    G.loginStreak = 1;
-    G.lastLoginDateStreak = today;
-  }
-  if(G.pveWinStreak===undefined) G.pveWinStreak=0;
-  if(G.pveMaxStreak===undefined) G.pveMaxStreak=0;
-  checkMergeEventExpirations();
-  if(!G.achievements) G.achievements={unlocked:{},progress:{},totalClaimed:0};
-  if(!G.stats) G.stats={totalKills:0,totalHeroesRecruited:0,totalEquipmentForged:0,totalEquipmentMerged:0,totalGoldEarned:0,totalGemsEarned:0,maxStageReached:1,maxHeroLevel:0};
-  if(!G.unknownQuestProgress) G.unknownQuestProgress={
-    stages_cleared: 0,
-    assassin_merged: 0,
-    mage_merged: 0,
-    guardian_merged: 0,
-    warlock_merged: 0,
-    ranger_merged: 0,
-    warrior_merged: 0,
-    healer_merged: 0,
-    paladin_merged: 0,
-    mythic_merged: 0,
-    legendary_merged: 0,
-    epic_merged: 0,
-    rare_merged: 0,
-    common_merged: 0,
-    enemies_killed: 0
-  };
-  if(G.tutorialDone===undefined){
-    if(G.tutorialPhase && G.tutorialPhase!==''){
-      G.tutorialDone=false;
-    }else if(G.heroes && G.heroes.length>0){
-      G.tutorialDone=true;
-    }else{
-      G.tutorialDone=false;
-    }
-  }
-  if(G.tutorialPhase===undefined) G.tutorialPhase='';
-  if(G.tutorialStep===undefined) G.tutorialStep=0;
-  setTimeout(function(){checkAllAchievements();},1000);
-}
-
-// 加载游戏（从当前槽位，带自动备份恢复）
-async function loadGame(){
-  try{
-    var meta = await getSaveMeta();
-    var slotIdx = meta.currentSlot || 0;
-    
-    // 优先从 IndexedDB 读取
-    var data = await StorageAPI.get(getSlotKey(slotIdx), 'saves');
-    
-    // 回退到 localStorage
-    if(!data){
-      var raw = localStorage.getItem(getSlotKey(slotIdx)) || localStorage.getItem(SAVE_KEY) || localStorage.getItem(getSlotKey(slotIdx) + '_safe');
-      if(!raw){
-        return await tryRestoreFromBackup(meta, slotIdx);
-      }
-      try{
-        data = JSON.parse(raw);
-      }catch(parseErr){
-        console.error('存档解析失败，尝试安全备份和备份恢复', parseErr);
-        var safeRaw = localStorage.getItem(getSlotKey(slotIdx) + '_safe');
-        if(safeRaw){
-          try{ data = JSON.parse(safeRaw); }catch(e){}
-        }
-        if(!data || !data.g) return await tryRestoreFromBackup(meta, slotIdx);
-      }
-    }
-    
-    // 存档验证
-    if(!data || typeof data !== 'object'){
-      console.error('存档数据无效');
-      return await tryRestoreFromBackup(meta, slotIdx);
-    }
-    
-    // 版本检测与迁移
-    if(!data.saveVersion){
-      console.log('检测到旧版本存档(v0)，进行兼容性处理');
-      data.saveVersion = 0;
-    }
-    
-    data = migrateSaveData(data);
-    G.heroIdCounter = data.heroIdCounter || 0;
-    var saved = data.g;
-    
-    if(!saved || typeof saved !== 'object'){
-      console.error('存档数据缺少G对象');
-      return await tryRestoreFromBackup(meta, slotIdx);
-    }
-    
-    // 根据版本决定是否解压缩
-    if(data.saveVersion >= 3){
-      console.log('解压缩v' + data.saveVersion + '存档...');
-      saved = decompressGameData(saved);
-    }
-    
-    Object.keys(saved).forEach(function(k){ G[k] = saved[k]; });
-    
-    // 重建队伍引用
-    if(G._teamIds && Array.isArray(G._teamIds)){
-      G.team = G._teamIds.map(function(id){
-        if(!id) return null;
-        return G.heroes.find(function(h){ return h && h.id === id; }) || null;
-      });
-      delete G._teamIds;
-    }
-    
-    initGameAfterLoad();
-    return true;
-  }catch(e){ console.error('读档失败', e); return false; }
-}
-
-// 尝试从备份恢复（同步版本，使用 localStorage）
-function tryRestoreFromBackup(meta, slotIdx){
-  console.log('尝试从备份恢复...');
-  
-  // 辅助函数：加载备份数据（支持压缩格式）
-  function loadBackupData(data){
-    if(!data || !data.g) return null;
-    var saved = data.g;
-    // 检查是否为压缩格式
-    if(data.saveVersion >= 3){
-      saved = decompressGameData(saved);
-    }
-    return saved;
+// ===== 切换存档槽位 =====
+function switchSaveSlot(slotIdx) {
+  var meta = getMeta();
+  var oldSlot = meta.currentSlot || 0;
+  if (oldSlot === slotIdx) {
+    showToast('已在当前槽位');
+    return;
   }
   
-  // 优先尝试自动备份（不限槽位，优先同槽位）
-  if(meta.autoBackups && meta.autoBackups.length>0){
-    // 先找同槽位的
-    for(var i=0;i<meta.autoBackups.length;i++){
-      var bk=meta.autoBackups[i];
-      if(bk.slotIdx===slotIdx){
-        try{
-          var raw=localStorage.getItem(bk.key);
-          if(raw){
-            var data=JSON.parse(raw);
-            var saved=loadBackupData(data);
-            if(saved){
-              console.log('从自动备份恢复成功');
-              G.heroIdCounter=data.heroIdCounter||0;
-              Object.keys(saved).forEach(function(k){G[k]=saved[k]});
-              initGameAfterLoad();
-              saveGame();
-              showToast('⚠️ 存档已损坏，已从自动备份恢复');
-              return true;
-            }
-          }
-        }catch(e){console.error('自动备份恢复失败',e);}
-      }
-    }
-    // 再找其他槽位的
-    for(var i=0;i<meta.autoBackups.length;i++){
-      var bk=meta.autoBackups[i];
-      if(bk.slotIdx!==slotIdx){
-        try{
-          var raw=localStorage.getItem(bk.key);
-          if(raw){
-            var data=JSON.parse(raw);
-            var saved=loadBackupData(data);
-            if(saved){
-              console.log('从其他槽位自动备份恢复成功');
-              G.heroIdCounter=data.heroIdCounter||0;
-              Object.keys(saved).forEach(function(k){G[k]=saved[k]});
-              initGameAfterLoad();
-              meta.currentSlot=bk.slotIdx;
-              saveSaveMetaSync(meta);
-              saveGame();
-              showToast('⚠️ 存档已损坏，已从槽位'+(bk.slotIdx+1)+'的自动备份恢复');
-              return true;
-            }
-          }
-        }catch(e){console.error('自动备份恢复失败',e);}
-      }
-    }
-  }
-  // 尝试手动备份（不限槽位，优先同槽位）
-  if(meta.manualBackups && meta.manualBackups.length>0){
-    for(var i=0;i<meta.manualBackups.length;i++){
-      var bk=meta.manualBackups[i];
-      if(bk.slotIdx===slotIdx){
-        try{
-          var raw=localStorage.getItem(bk.key);
-          if(raw){
-            var data=JSON.parse(raw);
-            var saved=loadBackupData(data);
-            if(saved){
-              console.log('从手动备份恢复成功');
-              G.heroIdCounter=data.heroIdCounter||0;
-              Object.keys(saved).forEach(function(k){G[k]=saved[k]});
-              initGameAfterLoad();
-              saveGame();
-              showToast('⚠️ 存档已损坏，已从手动备份恢复');
-              return true;
-            }
-          }
-        }catch(e){console.error('手动备份恢复失败',e);}
-      }
-    }
-    for(var i=0;i<meta.manualBackups.length;i++){
-      var bk=meta.manualBackups[i];
-      if(bk.slotIdx!==slotIdx){
-        try{
-          var raw=localStorage.getItem(bk.key);
-          if(raw){
-            var data=JSON.parse(raw);
-            var saved=loadBackupData(data);
-            if(saved){
-              console.log('从其他槽位手动备份恢复成功');
-              G.heroIdCounter=data.heroIdCounter||0;
-              Object.keys(saved).forEach(function(k){G[k]=saved[k]});
-              initGameAfterLoad();
-              meta.currentSlot=bk.slotIdx;
-              saveSaveMetaSync(meta);
-              saveGame();
-              showToast('⚠️ 存档已损坏，已从槽位'+(bk.slotIdx+1)+'的手动备份恢复');
-              return true;
-            }
-          }
-        }catch(e){console.error('手动备份恢复失败',e);}
-      }
-    }
-  }
-  // 尝试其他槽位
-  for(var i=0;i<MAX_SAVE_SLOTS;i++){
-    if(i!==slotIdx){
-      try{
-        var raw=localStorage.getItem(getSlotKey(i));
-        if(raw){
-          var data=JSON.parse(raw);
-          var saved=loadBackupData(data);
-          if(saved){
-            console.log('从其他槽位'+i+'恢复成功');
-            G.heroIdCounter=data.heroIdCounter||0;
-            Object.keys(saved).forEach(function(k){G[k]=saved[k]});
-            initGameAfterLoad();
-            // 切换到该槽位
-            meta.currentSlot=i;
-            saveSaveMetaSync(meta);
-            saveGame();
-            showToast('⚠️ 当前槽位损坏，已从槽位'+(i+1)+'恢复');
-            return true;
-          }
-        }
-      }catch(e){}
-    }
-  }
-  console.error('所有恢复尝试失败');
-  return false;
-}
-
-// 恢复2分钟前的存档
-function restoreTwoMinutesAgoSave(){
-  try{
-    var now=Date.now();
-    var twoMinutesAgo=now-2*60*1000;
-    var meta=getSaveMeta();
-    var slotIdx=meta.currentSlot||0;
-    var bestBackup=null;
-    var bestDiff=Infinity;
-    var bestSource='';
-    var bestTime=0;
-
-    // 收集所有候选存档
-    var candidates=[];
-
-    // 1. 当前槽位存档
-    try{
-      var slotRaw=localStorage.getItem(getSlotKey(slotIdx));
-      if(slotRaw){
-        var slotData=JSON.parse(slotRaw);
-        if(slotData && slotData.g && slotData.timestamp){
-          candidates.push({data:slotData, ts:slotData.timestamp, source:'当前槽位存档'});
-        }
-      }
-    }catch(e){}
-
-    // 2. 自动备份
-    if(meta.autoBackups){
-      for(var i=0;i<meta.autoBackups.length;i++){
-        try{
-          var bk=meta.autoBackups[i];
-          var raw=localStorage.getItem(bk.key);
-          if(raw){
-            var data=JSON.parse(raw);
-            if(data&&data.g){
-              candidates.push({data:data, ts:bk.timestamp||data.timestamp||0, source:'自动备份'});
-            }
-          }
-        }catch(e){}
-      }
-    }
-
-    // 3. 手动备份
-    if(meta.manualBackups){
-      for(var i=0;i<meta.manualBackups.length;i++){
-        try{
-          var bk=meta.manualBackups[i];
-          var raw=localStorage.getItem(bk.key);
-          if(raw){
-            var data=JSON.parse(raw);
-            if(data&&data.g){
-              candidates.push({data:data, ts:bk.timestamp||data.timestamp||0, source:'手动备份'});
-            }
-          }
-        }catch(e){}
-      }
-    }
-
-    // 4. 所有槽位
-    for(var i=0;i<MAX_SAVE_SLOTS;i++){
-      try{
-        var raw=localStorage.getItem(getSlotKey(i));
-        if(raw){
-          var data=JSON.parse(raw);
-          if(data&&data.g&&data.timestamp){
-            candidates.push({data:data, ts:data.timestamp, source:'槽位'+(i+1)});
-          }
-        }
-      }catch(e){}
-    }
-
-    // 5. 旧格式存档
-    try{
-      var oldRaw=localStorage.getItem(SAVE_KEY);
-      if(oldRaw){
-        var oldData=JSON.parse(oldRaw);
-        if(oldData&&oldData.g&&oldData.timestamp){
-          candidates.push({data:oldData, ts:oldData.timestamp, source:'旧格式存档'});
-        }
-      }
-    }catch(e){}
-
-    // 优先找2分钟前的，找最接近的
-    for(var i=0;i<candidates.length;i++){
-      var c=candidates[i];
-      if(c.ts<=twoMinutesAgo){
-        var diff=Math.abs(twoMinutesAgo-c.ts);
-        if(diff<bestDiff){bestDiff=diff;bestBackup=c.data;bestSource=c.source;bestTime=c.ts;}
-      }
-    }
-
-    // 如果没找到2分钟前的，退而求其次找最早的存档（排除当前最新的）
-    if(!bestBackup && candidates.length>0){
-      // 按时间排序，找最早的
-      candidates.sort(function(a,b){return a.ts-b.ts});
-      // 排除时间戳等于当前的（即当前最新存档）
-      var oldest=candidates[0];
-      if(oldest && oldest.ts < now-5000){ // 至少5秒前的存档
-        bestBackup=oldest.data;
-        bestSource=oldest.source;
-        bestTime=oldest.ts;
-      }
-    }
-
-    if(!bestBackup){
-      showToast('❌ 未找到可恢复的存档');
-      return;
-    }
-
-    // 版本迁移兼容
-    bestBackup=migrateSaveData(bestBackup);
-
-    // 恢复数据
-    G.heroIdCounter=bestBackup.heroIdCounter||0;
-    Object.keys(bestBackup.g).forEach(function(k){G[k]=bestBackup.g[k]});
-    initGameAfterLoad();
-    saveGame();
-
-    var backupTime=new Date(bestTime);
-    var timeStr=backupTime.toLocaleTimeString();
-    var minutesAgo=Math.round((now-bestTime)/60000);
-    showToast('✅ 已从'+bestSource+'恢复 ('+timeStr+', 约'+minutesAgo+'分钟前)');
-    setTimeout(function(){location.reload();},800);
-  }catch(e){
-    console.error('恢复存档失败',e);
-    showToast('❌ 恢复失败: '+e.message);
-  }
-}
-
-// ===== 异常恢复：深度扫描localStorage中所有可能的存档 =====
-function emergencyRestore(){
-  try{
-    var found=[];
-    var meta=getSaveMeta();
-    var now=Date.now();
-
-    // 1. 扫描所有已知key
-    // 当前槽位
-    for(var i=0;i<MAX_SAVE_SLOTS;i++){
-      try{
-        var raw=localStorage.getItem(getSlotKey(i));
-        if(raw){
-          var d=JSON.parse(raw);
-          if(d&&d.g&&d.g.heroes) found.push({data:d,ts:d.timestamp||0,source:'槽位'+(i+1),size:raw.length});
-        }
-      }catch(e){}
-    }
-    // 安全写入备份
-    for(var i=0;i<MAX_SAVE_SLOTS;i++){
-      try{
-        var raw=localStorage.getItem(getSlotKey(i)+'_safe');
-        if(raw){
-          var d=JSON.parse(raw);
-          if(d&&d.g&&d.g.heroes) found.push({data:d,ts:d.timestamp||0,source:'安全备份'+(i+1),size:raw.length});
-        }
-      }catch(e){}
-    }
-    // 旧格式
-    try{
-      var raw=localStorage.getItem(SAVE_KEY);
-      if(raw){
-        var d=JSON.parse(raw);
-        if(d&&d.g&&d.g.heroes) found.push({data:d,ts:d.timestamp||0,source:'旧格式存档',size:raw.length});
-      }
-    }catch(e){}
-    // 自动备份
-    if(meta.autoBackups){
-      for(var i=0;i<meta.autoBackups.length;i++){
-        try{
-          var raw=localStorage.getItem(meta.autoBackups[i].key);
-          if(raw){
-            var d=JSON.parse(raw);
-            if(d&&d.g&&d.g.heroes) found.push({data:d,ts:meta.autoBackups[i].timestamp||0,source:'自动备份'+(i+1),size:raw.length});
-          }
-        }catch(e){}
-      }
-    }
-    // 手动备份
-    if(meta.manualBackups){
-      for(var i=0;i<meta.manualBackups.length;i++){
-        try{
-          var raw=localStorage.getItem(meta.manualBackups[i].key);
-          if(raw){
-            var d=JSON.parse(raw);
-            if(d&&d.g&&d.g.heroes) found.push({data:d,ts:meta.manualBackups[i].timestamp||0,source:'手动备份'+(i+1),size:raw.length});
-          }
-        }catch(e){}
-      }
-    }
-
-    // 2. 深度扫描localStorage中所有shadow_dungeon开头的key
-    for(var li=0;li<localStorage.length;li++){
-      try{
-        var key=localStorage.key(li);
-        if(key && key.indexOf('shadow_dungeon')===0){
-          // 跳过已扫描的
-          var alreadyScanned=false;
-          for(var si=0;si<found.length;si++){
-            if(found[si].source.indexOf(key.replace('shadow_dungeon_',''))>=0){alreadyScanned=true;break;}
-          }
-          if(alreadyScanned) continue;
-          var raw=localStorage.getItem(key);
-          if(raw){
-            var d=JSON.parse(raw);
-            if(d&&d.g&&d.g.heroes){
-              found.push({data:d,ts:d.timestamp||0,source:'扫描发现:'+key.replace('shadow_dungeon_',''),size:raw.length});
-            }
-          }
-        }
-      }catch(e){}
-    }
-
-    // 3. 去重（按timestamp+heroes长度）
-    var unique=[];
-    var seen={};
-    for(var i=0;i<found.length;i++){
-      var f=found[i];
-      var heroCount=f.data.g.heroes?f.data.g.heroes.length:0;
-      var stage=f.data.g.stageProgress||0;
-      var sig=f.ts+'_'+heroCount+'_'+stage;
-      if(!seen[sig]){
-        seen[sig]=true;
-        unique.push(f);
-      }
-    }
-
-    // 按时间排序（最新在前）
-    unique.sort(function(a,b){return b.ts-a.ts});
-
-    if(unique.length===0){
-      showToast('❌ 未找到任何可恢复的存档');
-      return;
-    }
-
-    // 4. 生成选择列表
-    var listHtml='<div style="max-height:50vh;overflow-y:auto">';
-    listHtml+='<div style="font-size:12px;color:var(--text2);margin-bottom:10px">共找到 '+unique.length+' 个可恢复存档（按时间倒序）</div>';
-    for(var i=0;i<unique.length;i++){
-      var f=unique[i];
-      var d=f.data;
-      var heroCount=d.g.heroes?d.g.heroes.length:0;
-      var stage=d.g.stageProgress||0;
-      var timeStr=f.ts>0?new Date(f.ts).toLocaleString():'未知时间';
-      var ver=d.saveVersion||0;
-      var agoMin=f.ts>0?Math.round((now-f.ts)/60000):'?';
-      listHtml+='<div style="background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;cursor:pointer;transition:all .2s" '
-        +'onclick="this.style.borderColor=\'var(--gold)\'" '
-        +'onmouseover="this.style.borderColor=\'var(--gold)\'" '
-        +'onmouseout="this.style.borderColor=\'var(--border)\'">'
-        +'<div style="display:flex;justify-content:space-between;align-items:center">'
-          +'<div>'
-            +'<div style="font-weight:bold;color:var(--text);font-size:13px">'+f.source+'</div>'
-            +'<div style="font-size:11px;color:var(--text2);margin-top:4px">关卡:'+stage+' | 英雄:'+heroCount+' | 版本:v'+ver+' | 大小:'+(f.size/1024).toFixed(1)+'KB</div>'
-            +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+timeStr+(agoMin!=='?'?' ('+agoMin+'分钟前)':'')+'</div>'
-          +'</div>'
-          +'<button class="btn btn-sm" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#ef4444;white-space:nowrap" '
-            +'onclick="event.stopPropagation();doEmergencyRestore('+i+')">恢复此存档</button>'
-        +'</div>'
-      +'</div>';
-    }
-    listHtml+='</div>';
-
-    // 存储到全局供恢复使用
-    window._emergencyCandidates=unique;
-
-    showModal('🚨 异常恢复',listHtml);
-  }catch(e){
-    console.error('异常恢复扫描失败',e);
-    showToast('❌ 扫描失败: '+e.message);
-  }
-}
-
-// 执行异常恢复
-function doEmergencyRestore(idx){
-  try{
-    var c=window._emergencyCandidates[idx];
-    if(!c){showToast('❌ 存档不存在');return;}
-    var data=c.data;
-    // 版本迁移兼容
-    data=migrateSaveData(data);
-    // 恢复数据
-    G.heroIdCounter=data.heroIdCounter||0;
-    Object.keys(data.g).forEach(function(k){G[k]=data.g[k]});
-    initGameAfterLoad();
-    saveGame();
-    closeModal();
-    showToast('✅ 已从「'+c.source+'」恢复');
-    setTimeout(function(){location.reload();},800);
-  }catch(e){
-    console.error('异常恢复执行失败',e);
-    showToast('❌ 恢复失败: '+e.message);
-  }
-}
-
-// 切换存档槽位
-function switchSaveSlot(slotIdx){
-  var meta=getSaveMetaSync(); // 使用同步版本
-  var oldSlot=meta.currentSlot||0;
-  if(oldSlot===slotIdx){showToast('已在当前槽位');return;}
-  // 先保存当前进度到旧槽位
-  try{
-    var compressedG = compressGameData(G);
-    var data={g:compressedG,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
-    localStorage.setItem(getSlotKey(oldSlot),JSON.stringify(data));
-    if(!meta.slots[oldSlot]) meta.slots[oldSlot]={};
-    meta.slots[oldSlot].timestamp=Date.now();
-    meta.slots[oldSlot].stageProgress=G.stageProgress||1;
-    meta.slots[oldSlot].heroCount=G.heroes?G.heroes.length:0;
-  }catch(e){}
-  meta.currentSlot=slotIdx;
-  saveSaveMetaSync(meta);
-  // 重新加载页面
+  // 保存当前进度
+  saveGame();
+  
+  meta.currentSlot = slotIdx;
+  saveMeta(meta);
+  
   location.reload();
 }
 
-// 从备份恢复
-function restoreBackup(type, backupIdx){
-  var meta=getSaveMetaSync(); // 使用同步版本
-  var backups=type==='auto'?meta.autoBackups:meta.manualBackups;
-  if(!backups||!backups[backupIdx]){showToast('备份不存在');return;}
-  var backup=backups[backupIdx];
-  var raw=localStorage.getItem(backup.key);
-  if(!raw){showToast('备份数据已丢失');return;}
-  // 恢复前先备份当前状态（作为手动备份）
-  var compressedCurrentG = compressGameData(G);
-  var currentData={g:compressedCurrentG,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
-  var currentBackupKey='shadow_dungeon_manual_'+Date.now();
-  localStorage.setItem(currentBackupKey,JSON.stringify(currentData));
-  if(!meta.manualBackups) meta.manualBackups=[];
-  meta.manualBackups.unshift({
-    key:currentBackupKey,
-    slotIdx:meta.currentSlot,
-    timestamp:Date.now(),
-    stageProgress:G.stageProgress||1,
-    heroCount:G.heroes?G.heroes.length:0,
-    note:'恢复前自动保存'
-  });
-  while(meta.manualBackups.length>MAX_MANUAL_BACKUPS){
-    var old=meta.manualBackups.pop();
-    try{localStorage.removeItem(old.key);}catch(e){}
+// ===== 从备份恢复 =====
+function restoreBackup(type, idx) {
+  var meta = getMeta();
+  var backups = type === 'auto' ? (meta.autoBackups || []) : (meta.manualBackups || []);
+  if (!backups[idx]) {
+    showToast('备份不存在');
+    return;
   }
-  // 写入当前槽位
-  localStorage.setItem(getSlotKey(meta.currentSlot),raw);
-  localStorage.setItem(SAVE_KEY,raw);
-  saveSaveMetaSync(meta);
-  showToast('✅ 已恢复备份，正在重新加载...');
-  setTimeout(function(){location.reload();},500);
+  
+  var backup = backups[idx];
+  var data = lsGet(backup.key);
+  if (!data) {
+    showToast('备份数据已丢失');
+    return;
+  }
+  
+  // 先备份当前
+  var currentBackup = 'current_' + Date.now();
+  lsSet(currentBackup, prepareSaveData());
+  meta.manualBackups = meta.manualBackups || [];
+  meta.manualBackups.unshift({
+    key: currentBackup,
+    slotIdx: meta.currentSlot,
+    timestamp: Date.now(),
+    stageProgress: G.stageProgress || 1,
+    heroCount: G.heroes ? G.heroes.length : 0,
+    note: '恢复前备份'
+  });
+  saveMeta(meta);
+  
+  // 恢复
+  if (restoreSaveData(data)) {
+    initGameAfterLoad();
+    saveGame();
+    showToast('✅ 已恢复备份');
+    setTimeout(function() { location.reload(); }, 500);
+  } else {
+    showToast('❌ 恢复失败');
+  }
 }
 
-// 删除指定槽位存档
-function deleteSaveSlot(slotIdx){
-  var meta=getSaveMetaSync(); // 使用同步版本
-  localStorage.removeItem(getSlotKey(slotIdx));
+// ===== 删除存档 =====
+function deleteSaveSlot(slotIdx) {
+  var meta = getMeta();
+  
+  // 删除 IndexedDB
+  dbDelete('saves', slotIdx);
+  
+  // 删除 localStorage
+  lsRemove(getSlotKey(slotIdx));
+  
   delete meta.slots[slotIdx];
-  saveSaveMetaSync(meta);
-  showToast('🗑️ 槽位'+(slotIdx+1)+'已删除');
-  if((meta.currentSlot||0)===slotIdx){
-    // 删除的是当前槽位，切换到第一个有数据的槽位
-    var found=false;
-    for(var i=0;i<MAX_SAVE_SLOTS;i++){
-      if(i!==slotIdx && meta.slots[i]){
-        meta.currentSlot=i;
-        saveSaveMetaSync(meta);
+  
+  if ((meta.currentSlot || 0) === slotIdx) {
+    // 切换到其他槽位
+    for (var i = 0; i < MAX_SLOTS; i++) {
+      if (i !== slotIdx && meta.slots[i]) {
+        meta.currentSlot = i;
+        saveMeta(meta);
         location.reload();
         return;
       }
     }
-    // 没有其他存档，重置游戏
-    localStorage.removeItem(SAVE_KEY);
-    location.reload();
-  }else{
+    // 无其他存档
+    resetGame();
+  } else {
+    saveMeta(meta);
+    showToast('🗑️ 槽位' + (slotIdx+1) + '已删除');
     renderCurrentTab();
   }
 }
 
-// 删除自动备份
-function deleteAutoBackup(backupIdx){
-  var meta=getSaveMetaSync(); // 使用同步版本
-  if(!meta.autoBackups||!meta.autoBackups[backupIdx])return;
-  var backup=meta.autoBackups[backupIdx];
-  try{localStorage.removeItem(backup.key);}catch(e){}
-  meta.autoBackups.splice(backupIdx,1);
-  saveSaveMetaSync(meta);
-  showToast('🗑️ 自动备份已删除');
+function deleteBackup(type, idx) {
+  var meta = getMeta();
+  var backups = type === 'auto' ? meta.autoBackups : meta.manualBackups;
+  if (!backups || !backups[idx]) return;
+  
+  lsRemove(backups[idx].key);
+  backups.splice(idx, 1);
+  saveMeta(meta);
+  
+  showToast('🗑️ 备份已删除');
   renderCurrentTab();
 }
 
-// 删除手动备份
-function deleteManualBackup(backupIdx){
-  var meta=getSaveMetaSync(); // 使用同步版本
-  if(!meta.manualBackups||!meta.manualBackups[backupIdx])return;
-  var backup=meta.manualBackups[backupIdx];
-  try{localStorage.removeItem(backup.key);}catch(e){}
-  meta.manualBackups.splice(backupIdx,1);
-  saveSaveMetaSync(meta);
-  showToast('🗑️ 手动备份已删除');
+function clearAllBackups() {
+  var meta = getMeta();
+  
+  (meta.autoBackups || []).forEach(function(b) { lsRemove(b.key); });
+  (meta.manualBackups || []).forEach(function(b) { lsRemove(b.key); });
+  
+  meta.autoBackups = [];
+  meta.manualBackups = [];
+  saveMeta(meta);
+  
+  showToast('🗑️ 所有备份已清理');
   renderCurrentTab();
 }
 
-// 清理所有自动备份
-function clearAutoBackups(){
-  var meta=getSaveMetaSync(); // 使用同步版本
-  if(meta.autoBackups){
-    meta.autoBackups.forEach(function(b){try{localStorage.removeItem(b.key);}catch(e){}});
+// ===== 重置游戏 =====
+function resetGame() {
+  lsRemove(META_KEY);
+  for (var i = 0; i < MAX_SLOTS; i++) {
+    lsRemove(getSlotKey(i));
+    lsRemove('shadow_dungeon_slot_' + i);
+    lsRemove('shadow_dungeon_slot_' + i + '_safe');
   }
-  meta.autoBackups=[];
-  saveSaveMetaSync(meta);
-  showToast('🗑️ 自动备份已清理');
-  renderCurrentTab();
-}
-
-// 清理所有手动备份
-function clearManualBackups(){
-  var meta=getSaveMetaSync(); // 使用同步版本
-  if(meta.manualBackups){
-    meta.manualBackups.forEach(function(b){try{localStorage.removeItem(b.key);}catch(e){}});
+  // 清理其他残留
+  var keys = [];
+  for (var k in localStorage) {
+    if (k.indexOf('shadow_dungeon') >= 0 || k.indexOf('sd_') >= 0) keys.push(k);
   }
-  meta.manualBackups=[];
-  saveSaveMetaSync(meta);
-  showToast('🗑️ 手动备份已清理');
-  renderCurrentTab();
-}
-
-// 格式化时间
-function formatSaveTime(ts){
-  if(!ts)return '未知';
-  var d=new Date(ts);
-  var now=new Date();
-  var diff=now-d;
-  if(diff<60000) return '刚刚';
-  if(diff<3600000) return Math.floor(diff/60000)+'分钟前';
-  if(diff<86400000) return Math.floor(diff/3600000)+'小时前';
-  if(diff<172800000) return '昨天 '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
-  return (d.getMonth()+1)+'/'+d.getDate()+' '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
-}
-
-// 格式化游戏时长
-function formatPlayTime(minutes){
-  if(!minutes||minutes<=0) return '0分钟';
-  if(minutes<60) return Math.floor(minutes)+'分钟';
-  if(minutes<1440) return Math.floor(minutes/60)+'小时'+Math.floor(minutes%60)+'分';
-  return Math.floor(minutes/1440)+'天'+Math.floor((minutes%1440)/60)+'小时';
-}
-
-// 删除存档（兼容旧调用）
-function deleteSave(){
-  var meta=getSaveMeta();
-  var slotIdx=meta.currentSlot||0;
-  showConfirm('删除存档','确定要删除当前存档（槽位'+(slotIdx+1)+'）吗？此操作不可撤销！',function(){deleteSaveSlot(slotIdx);},'删除','取消');
-}
-
-// 重置游戏
-function resetGame(){
-  try{
-    localStorage.removeItem(SAVE_KEY);
-    localStorage.removeItem(SAVE_META_KEY);
-    // 清理所有备份相关数据
-    for(var key in localStorage){
-      if(key.indexOf('shadow_dungeon')>=0){
-        localStorage.removeItem(key);
-      }
-    }
-  }catch(e){}
+  keys.forEach(function(k) { lsRemove(k); });
+  
   showToast('游戏已重置，正在重新加载...');
-  setTimeout(function(){location.reload();},500);
+  setTimeout(function() { location.reload(); }, 500);
+}
+
+function resetGameAndStartNew() {
+  localStorage.setItem('shadow_dungeon_reset', '1');
+  resetGame();
+}
+
+// ===== 文件导出/导入 =====
+function exportSaveToFile() {
+  try {
+    var data = prepareSaveData();
+    var meta = getMeta();
+    var slotIdx = meta.currentSlot || 0;
+    
+    var exportData = {
+      game: data.game,
+      heroIdCounter: data.heroIdCounter,
+      timestamp: data.timestamp,
+      version: SAVE_VERSION,
+      slotIdx: slotIdx,
+      stageProgress: G.stageProgress || 1,
+      heroCount: G.heroes ? G.heroes.length : 0,
+      exportedAt: new Date().toISOString()
+    };
+    
+    var json = JSON.stringify(exportData, null, 2);
+    var blob = new Blob([json], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'shadow_dungeon_save_' + slotIdx + '_' + Date.now() + '.json';
+    a.click();
+    
+    URL.revokeObjectURL(url);
+    showToast('📥 存档已导出');
+    
+  } catch(e) {
+    console.error('导出失败', e);
+    showToast('❌ 导出失败');
+  }
+}
+
+function importSaveFromFile() {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  
+  input.onchange = function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        var data = JSON.parse(ev.target.result);
+        
+        if (!data.game || !data.version) {
+          showToast('❌ 文件格式无效');
+          return;
+        }
+        
+        // 恢复数据
+        G.heroIdCounter = data.heroIdCounter || 0;
+        Object.keys(data.game).forEach(function(k) { G[k] = data.game[k]; });
+        
+        initGameAfterLoad();
+        saveGame();
+        
+        showModal('📤 导入成功', '<div style="text-align:center;padding:20px">' +
+          '<div style="font-size:48px">✅</div>' +
+          '<div style="font-weight:bold;margin:16px 0">存档已导入</div>' +
+          '<div style="font-size:12px;color:var(--text2)">关卡: ' + (data.stageProgress || '?') + ' | 英雄: ' + (data.heroCount || '?') + '</div>' +
+          '<button class="btn btn-primary" style="width:100%;margin-top:20px" onclick="location.reload()">确定</button>' +
+        '</div>');
+        
+      } catch(e2) {
+        console.error('解析失败', e2);
+        showToast('❌ 文件解析失败');
+      }
+    };
+    reader.readAsText(file);
+  };
+  
+  input.click();
+}
+
+// ===== 存档信息显示（三槽位列表）=====
+function showSaveInfo() {
+  var meta = getMeta();
+  var currentSlot = meta.currentSlot || 0;
+  
+  var html = '<div style="padding:16px">';
+  html += '<h3 style="margin-bottom:12px">💾 存档槽位</h3>';
+  
+  // 显示三个槽位
+  for (var i = 0; i < 3; i++) {
+    var slot = meta.slots[i];
+    var isCurrent = (i === currentSlot);
+    var hasData = slot && slot.timestamp;
+    var border = isCurrent ? 'var(--gold)' : 'var(--border)';
+    var bg = isCurrent ? 'rgba(201,162,39,.1)' : 'var(--bg2)';
+    
+    html += '<div style="background:' + bg + ';border:1px solid ' + border + ';border-radius:8px;padding:12px;margin-bottom:8px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<div>';
+    html += '<div style="font-weight:bold;font-size:13px;color:' + (isCurrent ? 'var(--gold)' : 'var(--text)') + '">槽位 ' + (i+1) + (isCurrent ? ' ◀ 当前' : '') + '</div>';
+    if (hasData) {
+      html += '<div style="font-size:11px;color:var(--text2);margin-top:4px">关卡 ' + (slot.stageProgress || '-') + ' | 英雄 ' + (slot.heroCount || 0) + '</div>';
+      html += '<div style="font-size:10px;color:var(--text3)">' + new Date(slot.timestamp).toLocaleString() + '</div>';
+    } else {
+      html += '<div style="font-size:11px;color:var(--text3);margin-top:4px">空</div>';
+    }
+    html += '</div>';
+    if (!isCurrent) {
+      html += '<button class="btn btn-sm" onclick="switchSaveSlot(' + i + ');closeModal()">' + (hasData ? '切换' : '新建') + '</button>';
+    }
+    html += '</div></div>';
+  }
+  
+  html += '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">';
+  html += '<button class="btn btn-primary" onclick="createManualBackup();closeModal()">💾 备份</button>';
+  html += '<button class="btn" onclick="exportSaveToFile();closeModal()">📥 导出</button>';
+  html += '<button class="btn" onclick="importSaveFromFile();closeModal()">📤 导入</button>';
+  html += '<button class="btn" style="background:var(--danger)" onclick="closeModal();showConfirm(\'确认重置\',\'确定要重置当前槽位吗？所有进度将丢失！\',function(){deleteSaveSlot(' + currentSlot + ')})">🗑️ 重置</button>';
+  html += '</div></div>';
+  
+  showModal('存档', html);
+}
+
+// ===== 计算队伍战力 =====
+function calcTotalPower() {
+  var total = 0;
+  if (G.heroes) {
+    G.heroes.forEach(function(h) {
+      if (h) total += (h.atk || 0) + (h.def || 0) + (h.maxHP || 0) + (h.spd || 0);
+    });
+  }
+  return total;
 }
 
 // 每日登录奖励领取
@@ -7442,9 +6070,9 @@ function checkOfflineEarnings(){
 }
 
 function deleteSave(){
-  // showConfirm 已在按钮处处理
-  localStorage.removeItem(SAVE_KEY);
-  showToast('🗑️ 存档已删除');
+  var meta = getMeta();
+  var slotIdx = meta.currentSlot || 0;
+  showConfirm('删除存档', '确定要删除当前存档（槽位' + (slotIdx+1) + '）吗？此操作不可撤销！', function() { deleteSaveSlot(slotIdx); }, '删除', '取消');
 }
 
 // ==================== H5独立模式检测 ====================
@@ -8913,6 +7541,8 @@ async function runArenaBattle(teamHeroes,opponents,difficulty){
     line.className='log-line log-'+cls;
     line.textContent=msg;
     logEl.appendChild(line);
+    _logCount++;
+    if(_logCount>MAX_LOG_LINES){var first=logEl.firstChild;if(first)logEl.removeChild(first);}
     logEl.scrollTop=logEl.scrollHeight;
   }
   
@@ -10077,7 +8707,7 @@ function recordBattleStat(unit,stat,value){
     };
   }
   G_battleStats[key][stat]=(G_battleStats[key][stat]||0)+value;
-  updateBattleStatsBoard();
+  markStatsDirty();
 }
 
 function forceEndBattle(){
@@ -10173,12 +8803,83 @@ function updatePauseButton(){
     }
   }
 }
-function getUnitEl(unit){var uid=unit.name+'-'+unit.icon;return document.querySelector('[data-battle-uid="'+uid+'"]')}
-function showFloat(unit,text,cls){var el=getUnitEl(unit);if(!el)return;var num=document.createElement('div');num.className='float-num '+(cls||'');num.textContent=text;el.appendChild(num);setTimeout(function(){if(num.parentNode)num.parentNode.removeChild(num)},1100)}
-function showSkillEffect(skillIcon,skillName,elementClass){if(!_battleScene)return;var overlay=document.createElement('div');overlay.className='skill-effect-overlay '+(elementClass||'');overlay.innerHTML='<div class="skill-effect-bg"></div><div class="skill-effect-text">'+skillIcon+' '+skillName+'</div>';_battleScene.appendChild(overlay);setTimeout(function(){if(overlay.parentNode)overlay.parentNode.removeChild(overlay)},900)}
-function animUnit(unit,cls,duration){var el=getUnitEl(unit);if(!el)return;el.classList.add(cls);setTimeout(function(){el.classList.remove(cls)},duration||400)}
-function highlightUnit(unit){document.querySelectorAll('.battle-unit.acting').forEach(function(el){el.classList.remove('acting')});var el=getUnitEl(unit);if(el)el.classList.add('acting')}
-function clearHighlight(){document.querySelectorAll('.battle-unit.acting').forEach(function(el){el.classList.remove('acting')})}
+// ===== 战斗性能优化：DOM 缓存与对象池 =====
+var _unitElCache = {};       // uid -> DOM 元素缓存
+var _currentHighlight = null; // 当前高亮元素缓存
+var _floatPool = [];         // 浮动数字对象池
+var _statsDirty = false;     // 统计面板脏标记
+var _logCount = 0;           // 日志计数器
+var MAX_LOG_LINES = 100;     // 日志最大条数
+
+function getUnitEl(unit) {
+  var uid = unit.name + '-' + unit.icon;
+  // 检查缓存的元素是否仍在文档中
+  if (_unitElCache[uid] && _unitElCache[uid].isConnected) return _unitElCache[uid];
+  var el = document.querySelector('[data-battle-uid="' + uid + '"]');
+  if (el) _unitElCache[uid] = el;
+  return el;
+}
+
+function clearUnitElCache() { _unitElCache = {}; _currentHighlight = null; }
+
+function showFloat(unit, text, cls) {
+  var el = getUnitEl(unit);
+  if (!el) return;
+  var num;
+  // 对象池复用
+  if (_floatPool.length > 0) {
+    num = _floatPool.pop();
+    num.className = 'float-num ' + (cls || '');
+    num.textContent = text;
+    num.style.display = '';
+  } else {
+    num = document.createElement('div');
+    num.className = 'float-num ' + (cls || '');
+    num.textContent = text;
+  }
+  el.appendChild(num);
+  setTimeout(function() {
+    if (num.parentNode) num.parentNode.removeChild(num);
+    num.style.display = 'none';
+    if (_floatPool.length < 30) _floatPool.push(num); // 限制池大小
+  }, 1100);
+}
+
+function showSkillEffect(skillIcon, skillName, elementClass) {
+  if (!_battleScene) return;
+  var overlay = document.createElement('div');
+  overlay.className = 'skill-effect-overlay ' + (elementClass || '');
+  overlay.innerHTML = '<div class="skill-effect-bg"></div><div class="skill-effect-text">' + skillIcon + ' ' + skillName + '</div>';
+  _battleScene.appendChild(overlay);
+  setTimeout(function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 900);
+}
+
+function animUnit(unit, cls, duration) {
+  var el = getUnitEl(unit);
+  if (!el) return;
+  el.classList.add(cls);
+  setTimeout(function() { el.classList.remove(cls); }, duration || 400);
+}
+
+function highlightUnit(unit) {
+  if (_currentHighlight) { _currentHighlight.classList.remove('acting'); _currentHighlight = null; }
+  var el = getUnitEl(unit);
+  if (el) { el.classList.add('acting'); _currentHighlight = el; }
+}
+
+function clearHighlight() {
+  if (_currentHighlight) { _currentHighlight.classList.remove('acting'); _currentHighlight = null; }
+}
+
+// 统计面板脏标记更新（延迟到渲染帧）
+function markStatsDirty() {
+  if (!_statsDirty) {
+    _statsDirty = true;
+    requestAnimationFrame(function() {
+      if (_statsDirty) { updateBattleStatsBoard(); _statsDirty = false; }
+    });
+  }
+}
 function stopAutoBattle(){
   G_autoBattle=false;
   G_battleRunning=false;
@@ -10277,6 +8978,11 @@ async function runBattle(stageId){
   var pbbRound=0;
   const roundBadge=document.getElementById('battle-round-badge');
   logEl.innerHTML='';
+  _logCount = 0;
+  _unitElCache = {};
+  _currentHighlight = null;
+  _floatPool = [];
+  _statsDirty = false;
   battleInfoEl.innerHTML=`<div class="log-title">⚔️ 第${stage.id}章：${stage.name}</div><div class="text-dim text-sm">${stage.desc}</div>`;
   if(stage.modifiers&&stage.modifiers.length>0){
     battleInfoEl.innerHTML+='<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">'+stage.modifiers.map(function(m){return '<span class="stage-modifier-tag" style="font-size:11px;padding:2px 8px">'+m.name+' '+m.desc+'</span>'}).join('')+'</div>';
@@ -10296,57 +9002,113 @@ async function runBattle(stageId){
     logEl.scrollTop=logEl.scrollHeight;
   }
 
-  function renderTeams(){
-    playerTeamEl.innerHTML=playerUnits.map(u=>{
-      const hpPct=Math.max(0,(u.hp/u.maxHP)*100);
-      const mpPct=Math.max(0,(u.mp/u.maxMP)*100);
-      const shieldPct=u.maxHP>0?Math.min(100,(u.shield/u.maxHP)*100):0;
-      const isLow=hpPct<30;
-      const roleIcon=ROLES[u.hero.role]?ROLES[u.hero.role].icon:'⚔️';
-      const buffsHTML=u.buffs.map(b=>{
-        const isPos=b.mult>1||b.stat==='taunt'||b.stat==='dodge'||b.stat==='reflect'||b.stat==='stun';
-        return '<span class="buff-tag '+(isPos?'buff-positive':'buff-negative')+'">'+(b.name||b.stat)+(b.duration>0?'('+b.duration+')':'')+'</span>';
-      }).join('');
-      const dotsHTML=u.dot.map(d=>'<span class="buff-tag buff-dot">'+d.name+'('+d.duration+')</span>').join('');
-      return '<div class="battle-unit ally-unit '+(u.alive?'':'dead')+'" data-battle-uid="'+u.name+'-'+u.icon+'">'
-        +'<div class="unit-avatar-wrap">'
-        +'<div class="unit-role-icon">'+roleIcon+'</div>'
-        +'<div class="unit-avatar quality-'+u.hero.quality+'">'+u.icon+'</div>'
-        +'<div class="unit-level">'+u.hero.level+'</div>'
-        +'</div>'
-        +'<div class="unit-name">'+u.name+'</div>'
-        +'<div class="unit-bars">'
-        +'<div class="unit-bar"><span class="unit-bar-label">HP</span><div class="unit-bar-track"><div class="unit-bar-fill hp '+(isLow?'low':'')+'" style="width:'+hpPct+'%"></div></div><span class="unit-bar-val">'+Math.max(0,u.hp)+'/'+u.maxHP+'</span></div>'
-        +'<div class="unit-bar"><span class="unit-bar-label">MP</span><div class="unit-bar-track"><div class="unit-bar-fill mp" style="width:'+mpPct+'%"></div></div><span class="unit-bar-val">'+u.mp+'/'+u.maxMP+'</span></div>'
-        +(u.shield>0?'<div class="unit-bar unit-shield-bar"><span class="unit-bar-label" style="color:#54a0ff">🛡</span><div class="unit-bar-track"><div class="unit-bar-fill shield-bar" style="width:'+shieldPct+'%"></div></div><span class="unit-bar-val" style="color:#54a0ff">'+u.shield+'</span></div>':'')
-        +'</div>'
-        +'<div class="unit-buffs">'+buffsHTML+dotsHTML+'</div>'
-        +'</div>';
+  // ===== renderTeams：首次全量渲染，后续增量更新 =====
+  // 注意：_teamsRendered 必须是 runBattle 级别的变量，不能放在 renderTeams 内部
+  var _teamsRendered = false;
+
+  function renderTeams() {
+    if (!_teamsRendered) {
+      // 首次：全量 innerHTML 渲染
+      _teamsRendered = true;
+      playerTeamEl.innerHTML = playerUnits.map(u => buildUnitHTML(u, false)).join('');
+      enemyTeamEl.innerHTML = enemyUnits.map(u => buildUnitHTML(u, true)).join('');
+      // 缓存所有元素引用
+      playerUnits.forEach(function(u) { getUnitEl(u); });
+      enemyUnits.forEach(function(u) { getUnitEl(u); });
+    } else {
+      // 后续：增量更新（只更新变化的属性）
+      playerUnits.forEach(function(u) { updateUnitDOM(u); });
+      enemyUnits.forEach(function(u) { updateUnitDOM(u); });
+    }
+  }
+
+  function buildUnitHTML(u, isEnemy) {
+    var hpPct = Math.max(0, (u.hp / u.maxHP) * 100);
+    var mpPct = Math.max(0, (u.mp / u.maxMP) * 100);
+    var shieldPct = u.maxHP > 0 ? Math.min(100, (u.shield / u.maxHP) * 100) : 0;
+    var isLow = hpPct < 30;
+    var roleIcon = ROLES[u.hero.role] ? ROLES[u.hero.role].icon : '⚔️';
+    var buffsHTML = u.buffs.map(function(b) {
+      var isPos = b.mult > 1 || b.stat === 'taunt' || b.stat === 'dodge' || b.stat === 'reflect' || b.stat === 'stun';
+      return '<span class="buff-tag ' + (isPos ? 'buff-positive' : 'buff-negative') + '">' + (b.name || b.stat) + (b.duration > 0 ? '(' + b.duration + ')' : '') + '</span>';
     }).join('');
-    enemyTeamEl.innerHTML=enemyUnits.map(u=>{
-      const hpPct=Math.max(0,(u.hp/u.maxHP)*100);
-      const shieldPct=u.maxHP>0?Math.min(100,(u.shield/u.maxHP)*100):0;
-      const isLow=hpPct<30;
-      const roleIcon=ROLES[u.hero.role]?ROLES[u.hero.role].icon:'⚔️';
-      const buffsHTML=u.buffs.map(b=>{
-        const isPos=b.mult>1||b.stat==='taunt'||b.stat==='dodge'||b.stat==='reflect'||b.stat==='stun';
-        return '<span class="buff-tag '+(isPos?'buff-positive':'buff-negative')+'">'+(b.name||b.stat)+(b.duration>0?'('+b.duration+')':'')+'</span>';
+    var dotsHTML = u.dot.map(function(d) { return '<span class="buff-tag buff-dot">' + d.name + '(' + d.duration + ')</span>'; }).join('');
+    var sideClass = isEnemy ? 'enemy-unit' : 'ally-unit';
+    return '<div class="battle-unit ' + sideClass + ' ' + (u.alive ? '' : 'dead') + '" data-battle-uid="' + u.name + '-' + u.icon + '">'
+      + '<div class="unit-avatar-wrap">'
+      + '<div class="unit-role-icon">' + roleIcon + '</div>'
+      + '<div class="unit-avatar quality-' + u.hero.quality + '">' + u.icon + '</div>'
+      + '<div class="unit-level">' + u.hero.level + '</div>'
+      + '</div>'
+      + '<div class="unit-name">' + u.name + '</div>'
+      + '<div class="unit-bars">'
+      + '<div class="unit-bar"><span class="unit-bar-label">HP</span><div class="unit-bar-track"><div class="unit-bar-fill hp ' + (isLow ? 'low' : '') + '" style="width:' + hpPct + '%"></div></div><span class="unit-bar-val">' + Math.max(0, u.hp) + '/' + u.maxHP + '</span></div>'
+      + '<div class="unit-bar"><span class="unit-bar-label">MP</span><div class="unit-bar-track"><div class="unit-bar-fill mp" style="width:' + mpPct + '%"></div></div><span class="unit-bar-val">' + u.mp + '/' + u.maxMP + '</span></div>'
+      + (u.shield > 0 ? '<div class="unit-bar unit-shield-bar"><span class="unit-bar-label" style="color:#54a0ff">🛡</span><div class="unit-bar-track"><div class="unit-bar-fill shield-bar" style="width:' + shieldPct + '%"></div></div><span class="unit-bar-val" style="color:#54a0ff">' + u.shield + '</span></div>' : '')
+      + '</div>'
+      + '<div class="unit-buffs">' + buffsHTML + dotsHTML + '</div>'
+      + '</div>';
+  }
+
+  function updateUnitDOM(u) {
+    var el = getUnitEl(u);
+    if (!el) return;
+
+    // 更新存活状态
+    if (u.alive) { el.classList.remove('dead'); }
+    else { el.classList.add('dead'); }
+
+    // 更新 HP 条（第一个 .unit-bar）
+    var hpPct = Math.max(0, (u.hp / u.maxHP) * 100);
+    var hpBar = el.querySelector('.unit-bar');
+    if (hpBar) {
+      var hpFill = hpBar.querySelector('.unit-bar-fill.hp');
+      if (hpFill) {
+        hpFill.style.width = hpPct + '%';
+        if (hpPct < 30) hpFill.classList.add('low');
+        else hpFill.classList.remove('low');
+      }
+      var hpVal = hpBar.querySelector('.unit-bar-val');
+      if (hpVal) hpVal.textContent = Math.max(0, u.hp) + '/' + u.maxHP;
+    }
+
+    // 更新 MP 条（第二个 .unit-bar）
+    var mpPct = Math.max(0, (u.mp / u.maxMP) * 100);
+    var mpBars = el.querySelectorAll('.unit-bar');
+    if (mpBars.length > 1) {
+      var mpFill = mpBars[1].querySelector('.unit-bar-fill.mp');
+      if (mpFill) mpFill.style.width = mpPct + '%';
+      var mpVal = mpBars[1].querySelector('.unit-bar-val');
+      if (mpVal) mpVal.textContent = u.mp + '/' + u.maxMP;
+    }
+
+    // 更新护盾
+    var shieldBar = el.querySelector('.unit-shield-bar');
+    if (u.shield > 0) {
+      if (!shieldBar) {
+        var barsDiv = el.querySelector('.unit-bars');
+        if (barsDiv) {
+          var shieldPct = u.maxHP > 0 ? Math.min(100, (u.shield / u.maxHP) * 100) : 0;
+          barsDiv.insertAdjacentHTML('beforeend',
+            '<div class="unit-bar unit-shield-bar"><span class="unit-bar-label" style="color:#54a0ff">🛡</span><div class="unit-bar-track"><div class="unit-bar-fill shield-bar" style="width:' + shieldPct + '%"></div></div><span class="unit-bar-val" style="color:#54a0ff">' + u.shield + '</span></div>');
+        }
+      } else {
+        var shieldPct = u.maxHP > 0 ? Math.min(100, (u.shield / u.maxHP) * 100) : 0;
+        shieldBar.querySelector('.unit-bar-fill').style.width = shieldPct + '%';
+        shieldBar.querySelector('.unit-bar-val').textContent = u.shield;
+      }
+    }
+
+    // 更新 buff/dot 显示
+    var buffsDiv = el.querySelector('.unit-buffs');
+    if (buffsDiv) {
+      var buffsHTML = u.buffs.map(function(b) {
+        var isPos = b.mult > 1 || b.stat === 'taunt' || b.stat === 'dodge' || b.stat === 'reflect' || b.stat === 'stun';
+        return '<span class="buff-tag ' + (isPos ? 'buff-positive' : 'buff-negative') + '">' + (b.name || b.stat) + (b.duration > 0 ? '(' + b.duration + ')' : '') + '</span>';
       }).join('');
-      const dotsHTML=u.dot.map(d=>'<span class="buff-tag buff-dot">'+d.name+'('+d.duration+')</span>').join('');
-      return '<div class="battle-unit enemy-unit '+(u.alive?'':'dead')+'" data-battle-uid="'+u.name+'-'+u.icon+'">'
-        +'<div class="unit-avatar-wrap">'
-        +'<div class="unit-role-icon">'+roleIcon+'</div>'
-        +'<div class="unit-avatar quality-'+u.hero.quality+'">'+u.icon+'</div>'
-        +'<div class="unit-level">'+u.hero.level+'</div>'
-        +'</div>'
-        +'<div class="unit-name">'+u.name+'</div>'
-        +'<div class="unit-bars">'
-        +'<div class="unit-bar"><span class="unit-bar-label">HP</span><div class="unit-bar-track"><div class="unit-bar-fill hp '+(isLow?'low':'')+'" style="width:'+hpPct+'%"></div></div><span class="unit-bar-val">'+Math.max(0,u.hp)+'/'+u.maxHP+'</span></div>'
-        +(u.shield>0?'<div class="unit-bar unit-shield-bar"><span class="unit-bar-label" style="color:#54a0ff">🛡</span><div class="unit-bar-track"><div class="unit-bar-fill shield-bar" style="width:'+shieldPct+'%"></div></div><span class="unit-bar-val" style="color:#54a0ff">'+u.shield+'</span></div>':'')
-        +'</div>'
-        +'<div class="unit-buffs">'+buffsHTML+dotsHTML+'</div>'
-        +'</div>';
-    }).join('');
+      var dotsHTML = u.dot.map(function(d) { return '<span class="buff-tag buff-dot">' + d.name + '(' + d.duration + ')</span>'; }).join('');
+      buffsDiv.innerHTML = buffsHTML + dotsHTML;
+    }
   }
 
   renderTeams();
@@ -10565,7 +9327,7 @@ async function runBattle(stageId){
               checkEquipSpecialSkill(target,'onHit',unit,allUnits);
             }
           }
-          updateBattleStatsBoard();
+          markStatsDirty();
         }
       }
 
@@ -10715,6 +9477,8 @@ async function runBattle(stageId){
         saveToCloud();
       }
     }
+    // 战斗结束清理缓存
+    clearUnitElCache();
   }
 }
 
@@ -17838,18 +16602,6 @@ function renderLeaderboard(el){
     '</div>' +
     '<div style="margin-top:10px;font-size:11px;color:var(--text3)" id="cloud-provider-hint">💡 游戏会在关键操作时自动同步到云端</div>' +
   '</div>' +
-  '<div class="panel">' +
-    '<div class="panel-title"><span class="icon">🛡️</span> 存档安全</div>' +
-    '<div style="margin-bottom:12px">' +
-      '<div id="save-health-status" style="font-weight:bold;font-size:14px;margin-bottom:4px">⏳ 正在检查...</div>' +
-      '<div id="save-health-detail" style="font-size:11px;color:var(--text2)">等待首次检查完成</div>' +
-    '</div>' +
-    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-      '<button class="btn btn-sm" onclick="showSaveHealthDetails()">📊 查看详情</button>' +
-      '<button class="btn btn-sm" onclick="createManualBackup();showToast(\'已创建手动备份\')">💾 手动备份</button>' +
-    '</div>' +
-    '<div style="margin-top:10px;font-size:11px;color:var(--text3)">💡 系统每5分钟自动检查存档健康状态</div>' +
-  '</div>' +
   '';
 
   setTimeout(function(){ loadLeaderboardData('power'); }, 100);
@@ -18298,17 +17050,15 @@ function renderCheats(el){
       '</div>' +
     '</div>' +
     '<div class="panel" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.3);margin-top:12px">' +
-      '<div class="panel-title">💾 存档管理</div>' +
-      '<div style="color:var(--text2);font-size:12px;margin-bottom:12px">存档恢复与异常数据修复</div>' +
+      '<div class="panel-title">💾 存档</div>' +
       '<div class="btn-group">' +
-        '<button class="btn" onclick="showConfirm(\'⏪ 恢复2分钟前存档\',\'确定要恢复到2分钟前的存档吗？\\n\\n当前进度将被覆盖！\\n系统会自动查找最接近2分钟前的存档进行恢复。\',restoreTwoMinutesAgoSave,\'确认恢复\',\'取消\')" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#ef4444">⏪ 恢复2分钟前</button>' +
-        '<button class="btn" onclick="emergencyRestore()" style="background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.4);color:#f59e0b">🚨 异常恢复</button>' +
+        '<button class="btn btn-primary" onclick="showSaveInfo()">📊 存档管理</button>' +
       '</div>' +
-      '<div style="margin-top:8px;font-size:11px;color:var(--text3)">恢复2分钟前：自动查找最近存档 | 异常恢复：深度扫描所有存档数据供选择</div>' +
+      '<div style="margin-top:8px;font-size:11px;color:var(--text3)">查看槽位、备份、导出/导入存档</div>' +
     '</div>' +
     '<div class="panel" style="margin-top:12px">' +
-      '<button class="btn" style="width:100%;color:#ff6b6b;border-color:rgba(255,107,107,.3);background:rgba(255,107,107,.05)" onclick="showConfirm(\'⚠️ 重置游戏\',\'确定要重置游戏吗？\\n\\n所有数据将被清除且不可恢复！\',resetGame,\'确认重置\',\'取消\')">⚠️ 重置游戏</button>' +
-      '<div style="margin-top:8px;font-size:11px;color:var(--text3)">清除所有游戏数据，重新开始</div>' +
+      '<button class="btn" style="width:100%;color:#ff6b6b;border-color:rgba(255,107,107,.3);background:rgba(255,107,107,.05)" onclick="showConfirm(\'⚠️ 重置游戏\',\'确定要重置所有数据吗？\\n\\n所有槽位进度将丢失！\',resetGame,\'确认重置\',\'取消\')">⚠️ 重置游戏</button>' +
+      '<div style="margin-top:8px;font-size:11px;color:var(--text3)">清除所有数据，重新开始</div>' +
     '</div>';
     return;
   }
@@ -18419,15 +17169,6 @@ function renderCheats(el){
           <div style="font-size:11px;color:var(--text3);margin-top:6px">重新播放序章故事和交互引导</div>
         </div>
       </div>
-    </div>
-    <div class="panel" style="background:rgba(231,76,60,.1);border-color:rgba(231,76,60,.3)">
-      <div class="panel-title">💾 存档管理</div>
-      <div style="color:var(--text2);font-size:12px;margin-bottom:12px">存档恢复与异常数据修复</div>
-      <div class="btn-group">
-        <button class="btn" onclick="showConfirm('⏪ 恢复2分钟前存档','确定要恢复到2分钟前的存档吗？\\n\\n当前进度将被覆盖！\\n系统会自动查找最接近2分钟前的存档进行恢复。',restoreTwoMinutesAgoSave,'确认恢复','取消')" style="background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#ef4444">⏪ 恢复2分钟前</button>
-        <button class="btn" onclick="emergencyRestore()" style="background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.4);color:#f59e0b">🚨 异常恢复</button>
-      </div>
-      <div style="margin-top:8px;font-size:11px;color:var(--text3)">恢复2分钟前：自动查找最近存档 | 异常恢复：深度扫描所有存档数据供选择</div>
     </div>
     <div class="panel" style="background:rgba(39,174,96,.1);border-color:rgba(39,174,96,.3)">
       <div class="panel-title">🎁 兑换码</div>
@@ -19090,15 +17831,9 @@ function tapSaveToCloud() {
   
   showToast('⏳ 正在上传到 TapTap 云端...');
   
-  // 构建存档数据
-  var compressedG = compressGameData(G);
-  var saveData = {
-    g: compressedG,
-    heroIdCounter: G.heroIdCounter || 0,
-    saveVersion: CURRENT_SAVE_VERSION,
-    timestamp: Date.now(),
-    provider: 'taptap'
-  };
+  // 使用无损存档数据
+  var saveData = prepareSaveData();
+  saveData.provider = 'taptap';
   var jsonStr = JSON.stringify(saveData);
   
   var playedTime = Math.floor((G.totalPlayTime || 0));
@@ -19169,37 +17904,23 @@ function tapLoadCloudSave() {
     }
     
     try {
-      var data = JSON.parse(result.saveData);
-      if (!data || !data.g) {
+      var cloudData = JSON.parse(result.saveData);
+      if (!cloudData || !cloudData.game) {
         showToast('❌ TapTap 云端存档格式不兼容');
         return false;
       }
       
-      // 版本迁移
-      data = migrateSaveData(data);
-      G.heroIdCounter = data.heroIdCounter || 0;
-      var saved = data.g;
-      
-      // 解压缩
-      if (data.saveVersion >= 3) {
-        saved = decompressGameData(saved);
+      // 使用新的恢复函数
+      if (restoreSaveData(cloudData)) {
+        initGameAfterLoad();
+        saveGame();
+        showToast('✅ 已从 TapTap 云端恢复，正在刷新...');
+        setTimeout(function() { location.reload(); }, 800);
+        return true;
+      } else {
+        showToast('❌ TapTap 云端存档解析失败');
+        return false;
       }
-      
-      Object.keys(saved).forEach(function(k) { G[k] = saved[k]; });
-      
-      // 重建队伍引用
-      if (G._teamIds && Array.isArray(G._teamIds)) {
-        G.team = G._teamIds.map(function(id) {
-          if (!id) return null;
-          return G.heroes.find(function(h) { return h && h.id === id; }) || null;
-        });
-        delete G._teamIds;
-      }
-      
-      saveGame();
-      showToast('✅ 已从 TapTap 云端恢复，正在刷新...');
-      setTimeout(function() { location.reload(); }, 800);
-      return true;
     } catch (e) {
       console.error('TapTap 云存档解析失败:', e);
       showToast('❌ TapTap 云端存档解析失败');
@@ -19216,11 +17937,11 @@ function tapLoadCloudSave() {
 function tapCheckAndSync() {
   if (!tapCloudManager) return;
   
-  var meta = getSaveMetaSync();
+  var meta = getMeta();
   var slotIdx = meta.currentSlot || 0;
-  var localRaw = localStorage.getItem(getSlotKey(slotIdx));
+  var localData = lsGet(getSlotKey(slotIdx));
   
-  if (localRaw) {
+  if (localData) {
     // 本地有存档，上传到云端（如果云端没有）
     if (!tapSaveId) {
       console.log('TapTap 云端无存档，上传本地存档...');
@@ -19296,16 +18017,11 @@ function supabaseSaveToCloud() {
   
   showToast('⏳ 正在上传到云端...');
   
-  var compressedG = compressGameData(G);
-  var saveData = {
-    device_id: deviceId,
-    player_name: G.playerName,
-    game_state: compressedG,
-    hero_id_counter: G.heroIdCounter || 0,
-    lastSave: Date.now(),
-    saveVersion: CURRENT_SAVE_VERSION,
-    provider: 'supabase'
-  };
+  // 使用无损存档数据
+  var saveData = prepareSaveData();
+  saveData.device_id = deviceId;
+  saveData.player_name = G.playerName;
+  saveData.provider = 'supabase';
   
   return sb.from('saves').upsert(saveData, { onConflict: 'device_id' })
     .then(function(result) {
@@ -19340,41 +18056,29 @@ function supabaseLoadCloudSave() {
         showToast('❌ 查询失败：' + result.error.message);
         return false;
       }
-      var data = result.data && result.data[0] ? result.data[0] : null;
-      if (!data) {
+      var cloudData = result.data && result.data[0] ? result.data[0] : null;
+      if (!cloudData || !cloudData.game) {
         showToast('❌ 云端没有存档');
         return false;
       }
-      var gameState = data.game_state;
-      if (!gameState) {
+      
+      // 使用新的恢复函数
+      var saveObj = {
+        version: cloudData.version || 1,
+        heroIdCounter: cloudData.heroIdCounter || 0,
+        game: cloudData.game
+      };
+      
+      if (restoreSaveData(saveObj)) {
+        initGameAfterLoad();
+        saveGame();
+        showToast('✅ 已从云端恢复，正在刷新...');
+        setTimeout(function() { location.reload(); }, 800);
+        return true;
+      } else {
         showToast('❌ 云端存档格式不兼容');
         return false;
       }
-      
-      // 版本迁移
-      var saveObj = { g: gameState, heroIdCounter: data.hero_id_counter, saveVersion: data.saveVersion || 0 };
-      saveObj = migrateSaveData(saveObj);
-      G.heroIdCounter = saveObj.heroIdCounter || 0;
-      var saved = saveObj.g;
-      
-      if (saveObj.saveVersion >= 3) {
-        saved = decompressGameData(saved);
-      }
-      
-      Object.keys(saved).forEach(function(k) { G[k] = saved[k]; });
-      
-      if (G._teamIds && Array.isArray(G._teamIds)) {
-        G.team = G._teamIds.map(function(id) {
-          if (!id) return null;
-          return G.heroes.find(function(h) { return h && h.id === id; }) || null;
-        });
-        delete G._teamIds;
-      }
-      
-      saveGame();
-      showToast('✅ 已从云端恢复，正在刷新...');
-      setTimeout(function() { location.reload(); }, 800);
-      return true;
     })
     .catch(function(error) {
       console.error('Cloud load failed:', error);
@@ -19387,11 +18091,11 @@ function supabaseLoadCloudSave() {
 function supabaseCheckAndSync() {
   if (!isCloudReady || !deviceId) return;
   
-  var meta = getSaveMetaSync();
+  var meta = getMeta();
   var slotIdx = meta.currentSlot || 0;
-  var localRaw = localStorage.getItem(getSlotKey(slotIdx));
+  var localData = lsGet(getSlotKey(slotIdx));
   
-  if (localRaw) {
+  if (localData) {
     if (!G.playerName || G.playerName.trim() === '') return;
     sb.from('saves').select('device_id').eq('device_id', deviceId).limit(1)
       .then(function(result) {
@@ -19406,20 +18110,20 @@ function supabaseCheckAndSync() {
   sb.from('saves').select('*').eq('device_id', deviceId).limit(1)
     .then(function(result) {
       if (result.error) return;
-      var data = result.data && result.data[0] ? result.data[0] : null;
-      if (data && data.game_state) {
+      var cloudData = result.data && result.data[0] ? result.data[0] : null;
+      if (cloudData && cloudData.game) {
         console.log('发现云端存档，正在恢复...');
-        var saveObj = { g: data.game_state, heroIdCounter: data.hero_id_counter, saveVersion: data.saveVersion || 0 };
-        saveObj = migrateSaveData(saveObj);
-        G.heroIdCounter = saveObj.heroIdCounter || 0;
-        var saved = saveObj.g;
-        if (saveObj.saveVersion >= 3) {
-          saved = decompressGameData(saved);
+        var saveObj = {
+          version: cloudData.version || 1,
+          heroIdCounter: cloudData.heroIdCounter || 0,
+          game: cloudData.game
+        };
+        if (restoreSaveData(saveObj)) {
+          initGameAfterLoad();
+          saveGame();
+          showToast('☁️ 已从云端恢复存档');
+          setTimeout(function() { location.reload(); }, 500);
         }
-        Object.keys(saved).forEach(function(k) { G[k] = saved[k]; });
-        saveGame();
-        showToast('☁️ 已从云端恢复存档');
-        setTimeout(function() { location.reload(); }, 500);
       }
     }).catch(function(e) { console.error('云端恢复失败', e); });
 }
@@ -19695,17 +18399,6 @@ async function initGame(){
   
   // 延迟更新云存档 UI 状态（等待初始化完成）
   setTimeout(updateCloudStatusUI, 3000);
-  
-  // 启动存档健康检查系统
-  startAutoHealthCheck();
-  
-  // 自动检测存档异常（在读档前检查）
-  var hasSaveError = autoDetectAndHandleSaveError();
-  if (hasSaveError) {
-    // 有异常，等待用户处理
-    console.log('检测到存档异常，等待用户处理...');
-    return;
-  }
   
   // 确保引导遮罩初始状态是隐藏的
   var overlay=document.getElementById('tutorial-overlay');
