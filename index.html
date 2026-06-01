@@ -9342,7 +9342,7 @@ async function runBattle(stageId){
 
     renderTeams();
     if(!playerUnits.some(u=>u.alive)){log('💀 战斗失败...队伍全军覆没。','death');break}
-    if(!enemyUnits.some(u=>u.alive)){log('🎉 战斗胜利！','title');break}
+    if(!enemyUnits.some(u=>u.alive)){log('🎉 战斗胜利！','title');renderTeams();break}
 
     allUnits.filter(u=>u.alive).forEach(u=>{u.mp=Math.min(u.maxMP,u.mp+Math.floor(u.maxMP*0.05))});
   }
@@ -9351,6 +9351,8 @@ async function runBattle(stageId){
 
   const won=enemyUnits.every(u=>!u.alive);
   if(won){
+    // 战斗胜利：清空敌方显示区域
+    enemyTeamEl.innerHTML='';
     const rw=stage.rewards;
     // 记录怪物图鉴
     recordMonsterCodex(stage.enemies||enemyUnits);
