@@ -5871,6 +5871,323 @@ function syncToIndexedDBAsync(data, meta, slotIdx) {
   }, 0);
 }
 
+// ==================== 存档健康检查系统 ====================
+
+// 存档健康状态
+var saveHealthStatus = {
+  lastCheck: 0,
+  isHealthy: true,
+  localSaveOK: false,
+  cloudSaveOK: false,
+  lastSaveTime: 0,
+  lastSaveSize: 0,
+  errors: []
+};
+
+// 验证存档数据完整性
+function validateSaveData(data) {
+  var errors = [];
+  
+  if (!data) {
+    errors.push('存档数据为空');
+    return { valid: false, errors: errors };
+  }
+  
+  // 检查必需字段
+  if (!data.g) errors.push('缺少游戏数据(g)');
+  if (typeof data.heroIdCounter !== 'number') errors.push('英雄计数器异常');
+  if (!data.saveVersion) errors.push('缺少版本号');
+  
+  // 检查游戏数据完整性
+  if (data.g) {
+    if (!Array.isArray(data.g.heroes)) errors.push('英雄数据格式错误');
+    if (typeof data.g.stageProgress !== 'number') errors.push('关卡进度异常');
+    if (!data.g.playerName) errors.push('玩家名称为空');
+  }
+  
+  // 检查存档大小（警告如果超过 5MB）
+  var jsonStr = JSON.stringify(data);
+  if (jsonStr.length > 5 * 1024 * 1024) {
+    errors.push('存档过大(' + Math.round(jsonStr.length/1024/1024*100)/100 + 'MB)，可能导致存储失败');
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors: errors,
+    size: jsonStr.length,
+    timestamp: data.timestamp || Date.now()
+  };
+}
+
+// 检查本地存档健康状态
+function checkLocalSaveHealth() {
+  try {
+    var meta = getSaveMetaSync();
+    var slotIdx = meta.currentSlot || 0;
+    var slotKey = getSlotKey(slotIdx);
+    
+    // 检查主存档
+    var raw = localStorage.getItem(slotKey);
+    if (!raw) {
+      return { ok: false, error: '本地无存档', slot: slotIdx };
+    }
+    
+    // 解析并验证
+    var data;
+    try {
+      data = JSON.parse(raw);
+    } catch(e) {
+      return { ok: false, error: '存档解析失败: ' + e.message, slot: slotIdx };
+    }
+    
+    var validation = validateSaveData(data);
+    if (!validation.valid) {
+      return { ok: false, error: '存档验证失败: ' + validation.errors.join(', '), slot: slotIdx, details: validation.errors };
+    }
+    
+    // 检查备份
+    var hasBackup = false;
+    if (meta.autoBackups && meta.autoBackups.length > 0) {
+      var latestBackup = meta.autoBackups[meta.autoBackups.length - 1];
+      var backupRaw = localStorage.getItem(latestBackup.key);
+      hasBackup = !!backupRaw;
+    }
+    
+    return {
+      ok: true,
+      slot: slotIdx,
+      size: validation.size,
+      timestamp: validation.timestamp,
+      hasBackup: hasBackup,
+      version: data.saveVersion
+    };
+  } catch(e) {
+    return { ok: false, error: '检查失败: ' + e.message };
+  }
+}
+
+// 检查云存档健康状态
+function checkCloudSaveHealth() {
+  return new Promise(function(resolve) {
+    if (cloudProvider === 'none') {
+      resolve({ ok: false, error: '未启用云存档' });
+      return;
+    }
+    
+    if (cloudProvider === 'taptap') {
+      if (!tapCloudManager || !tapSaveId) {
+        resolve({ ok: false, error: 'TapTap 云存档未初始化' });
+        return;
+      }
+      
+      tapCloudManager.get(tapSaveId).then(function(result) {
+        if (!result || !result.saveData) {
+          resolve({ ok: false, error: '云端存档为空' });
+          return;
+        }
+        
+        try {
+          var data = JSON.parse(result.saveData);
+          var validation = validateSaveData(data);
+          resolve({
+            ok: validation.valid,
+            provider: 'TapTap',
+            size: result.saveData.length,
+            timestamp: data.timestamp,
+            error: validation.valid ? null : validation.errors.join(', ')
+          });
+        } catch(e) {
+          resolve({ ok: false, provider: 'TapTap', error: '解析失败: ' + e.message });
+        }
+      }).catch(function(err) {
+        resolve({ ok: false, provider: 'TapTap', error: '获取失败: ' + (err.message || '未知错误') });
+      });
+    } else if (cloudProvider === 'supabase') {
+      if (!isCloudReady || !deviceId) {
+        resolve({ ok: false, error: 'Supabase 未连接' });
+        return;
+      }
+      
+      sb.from('saves').select('*').eq('device_id', deviceId).limit(1)
+        .then(function(result) {
+          if (result.error || !result.data || result.data.length === 0) {
+            resolve({ ok: false, provider: 'Supabase', error: '云端无存档' });
+            return;
+          }
+          
+          var data = result.data[0];
+          var gameState = data.game_state;
+          if (!gameState) {
+            resolve({ ok: false, provider: 'Supabase', error: '云端存档格式错误' });
+            return;
+          }
+          
+          var saveObj = { g: gameState, heroIdCounter: data.hero_id_counter, saveVersion: data.saveVersion };
+          var validation = validateSaveData(saveObj);
+          
+          resolve({
+            ok: validation.valid,
+            provider: 'Supabase',
+            size: JSON.stringify(gameState).length,
+            timestamp: data.lastSave,
+            error: validation.valid ? null : validation.errors.join(', ')
+          });
+        })
+        .catch(function(err) {
+          resolve({ ok: false, provider: 'Supabase', error: '查询失败: ' + (err.message || '未知错误') });
+        });
+    } else {
+      resolve({ ok: false, error: '未知的云存档提供商' });
+    }
+  });
+}
+
+// 执行完整健康检查
+function performHealthCheck() {
+  var checkResult = {
+    timestamp: Date.now(),
+    local: null,
+    cloud: null,
+    overall: false
+  };
+  
+  // 检查本地存档
+  checkResult.local = checkLocalSaveHealth();
+  
+  // 检查云存档（异步）
+  checkCloudSaveHealth().then(function(cloudResult) {
+    checkResult.cloud = cloudResult;
+    
+    // 更新全局状态
+    saveHealthStatus.lastCheck = Date.now();
+    saveHealthStatus.localSaveOK = checkResult.local.ok;
+    saveHealthStatus.cloudSaveOK = checkResult.cloud.ok;
+    saveHealthStatus.isHealthy = checkResult.local.ok; // 本地存档健康即算整体健康
+    
+    if (!checkResult.local.ok) {
+      saveHealthStatus.errors.push('本地: ' + checkResult.local.error);
+    }
+    if (!checkResult.cloud.ok && cloudProvider !== 'none') {
+      saveHealthStatus.errors.push('云端: ' + checkResult.cloud.error);
+    }
+    
+    // 只保留最近10条错误
+    if (saveHealthStatus.errors.length > 10) {
+      saveHealthStatus.errors = saveHealthStatus.errors.slice(-10);
+    }
+    
+    // 更新 UI
+    updateSaveHealthUI(checkResult);
+    
+    console.log('存档健康检查完成:', checkResult);
+  });
+  
+  return checkResult;
+}
+
+// 更新存档健康状态 UI
+function updateSaveHealthUI(result) {
+  var statusEl = document.getElementById('save-health-status');
+  var detailEl = document.getElementById('save-health-detail');
+  
+  if (!statusEl) return;
+  
+  if (result.local.ok && (result.cloud.ok || cloudProvider === 'none')) {
+    statusEl.textContent = '✅ 存档安全';
+    statusEl.style.color = 'var(--success, #4caf50)';
+  } else if (result.local.ok) {
+    statusEl.textContent = '⚠️ 本地安全，云端异常';
+    statusEl.style.color = 'var(--warning, #ff9800)';
+  } else {
+    statusEl.textContent = '❌ 存档异常！';
+    statusEl.style.color = 'var(--danger, #f44336)';
+  }
+  
+  if (detailEl && result) {
+    var details = [];
+    if (result.local.ok) {
+      details.push('本地: ' + Math.round(result.local.size / 1024) + 'KB');
+    } else {
+      details.push('本地: ' + result.local.error);
+    }
+    
+    if (cloudProvider !== 'none') {
+      if (result.cloud && result.cloud.ok) {
+        details.push('云端: ' + result.cloud.provider + ' ' + Math.round(result.cloud.size / 1024) + 'KB');
+      } else if (result.cloud) {
+        details.push('云端: ' + result.cloud.error);
+      }
+    }
+    
+    detailEl.textContent = details.join(' | ');
+  }
+}
+
+// 显示存档健康详情弹窗
+function showSaveHealthDetails() {
+  performHealthCheck();
+  
+  setTimeout(function() {
+    var content = '<div style="padding:16px">';
+    content += '<h3 style="margin-bottom:16px">📊 存档健康报告</h3>';
+    
+    // 本地存档状态
+    content += '<div style="margin-bottom:12px;padding:12px;background:var(--bg2);border-radius:8px">';
+    content += '<div style="font-weight:bold;margin-bottom:8px">💾 本地存档</div>';
+    var local = saveHealthStatus.localSaveOK;
+    content += '<div style="color:' + (local ? 'var(--success)' : 'var(--danger)') + '">';
+    content += local ? '✅ 健康' : '❌ 异常';
+    content += '</div>';
+    content += '</div>';
+    
+    // 云存档状态
+    content += '<div style="margin-bottom:12px;padding:12px;background:var(--bg2);border-radius:8px">';
+    content += '<div style="font-weight:bold;margin-bottom:8px">☁️ 云存档</div>';
+    if (cloudProvider === 'none') {
+      content += '<div style="color:var(--text3)">未启用</div>';
+    } else {
+      var cloud = saveHealthStatus.cloudSaveOK;
+      content += '<div style="color:' + (cloud ? 'var(--success)' : 'var(--danger)') + '">';
+      content += cloud ? '✅ 已连接 (' + cloudProvider + ')' : '❌ 异常';
+      content += '</div>';
+    }
+    content += '</div>';
+    
+    // 最近错误
+    if (saveHealthStatus.errors.length > 0) {
+      content += '<div style="margin-bottom:12px;padding:12px;background:var(--bg2);border-radius:8px">';
+      content += '<div style="font-weight:bold;margin-bottom:8px">⚠️ 最近问题</div>';
+      content += '<div style="font-size:12px;color:var(--text2)">';
+      saveHealthStatus.errors.slice(-3).forEach(function(err) {
+        content += '<div style="margin-bottom:4px">• ' + err + '</div>';
+      });
+      content += '</div>';
+      content += '</div>';
+    }
+    
+    // 操作按钮
+    content += '<div style="display:flex;gap:8px;margin-top:16px">';
+    content += '<button class="btn btn-primary" onclick="performHealthCheck();showToast(\'正在重新检查...\')">🔄 重新检查</button>';
+    content += '<button class="btn" onclick="createManualBackup();showToast(\'已创建手动备份\')">💾 立即备份</button>';
+    content += '</div>';
+    
+    content += '</div>';
+    
+    showModal('存档健康检查', content);
+  }, 500);
+}
+
+// 定期自动检查存档健康（每5分钟）
+function startAutoHealthCheck() {
+  // 立即执行一次
+  setTimeout(performHealthCheck, 5000);
+  
+  // 定期执行
+  setInterval(function() {
+    performHealthCheck();
+  }, 5 * 60 * 1000); // 5分钟
+}
+
 // 计算队伍总战力
 function calcTotalPower(){
   var total=0;
@@ -17244,6 +17561,18 @@ function renderLeaderboard(el){
     '</div>' +
     '<div style="margin-top:10px;font-size:11px;color:var(--text3)" id="cloud-provider-hint">💡 游戏会在关键操作时自动同步到云端</div>' +
   '</div>' +
+  '<div class="panel">' +
+    '<div class="panel-title"><span class="icon">🛡️</span> 存档安全</div>' +
+    '<div style="margin-bottom:12px">' +
+      '<div id="save-health-status" style="font-weight:bold;font-size:14px;margin-bottom:4px">⏳ 正在检查...</div>' +
+      '<div id="save-health-detail" style="font-size:11px;color:var(--text2)">等待首次检查完成</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      '<button class="btn btn-sm" onclick="showSaveHealthDetails()">📊 查看详情</button>' +
+      '<button class="btn btn-sm" onclick="createManualBackup();showToast(\'已创建手动备份\')">💾 手动备份</button>' +
+    '</div>' +
+    '<div style="margin-top:10px;font-size:11px;color:var(--text3)">💡 系统每5分钟自动检查存档健康状态</div>' +
+  '</div>' +
   '';
 
   setTimeout(function(){ loadLeaderboardData('power'); }, 100);
@@ -19089,6 +19418,9 @@ async function initGame(){
   
   // 延迟更新云存档 UI 状态（等待初始化完成）
   setTimeout(updateCloudStatusUI, 3000);
+  
+  // 启动存档健康检查系统
+  startAutoHealthCheck();
   
   // 确保引导遮罩初始状态是隐藏的
   var overlay=document.getElementById('tutorial-overlay');
