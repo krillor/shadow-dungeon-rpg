@@ -18342,13 +18342,28 @@ function supabaseCheckAndSync() {
 // ===== 统一云存档接口 =====
 
 // 初始化云存档（自动检测环境）
+// 初始化排行榜服务（始终使用 Supabase）
+function initLeaderboardService() {
+  if (typeof supabase !== 'undefined' && supabase.createClient) {
+    if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+      console.log('初始化排行榜服务 (Supabase)');
+      initSupabase();
+      return true;
+    }
+  }
+  console.log('排行榜服务不可用');
+  return false;
+}
+
+// 初始化云存档服务
 function initCloudSave() {
   var provider = detectCloudProvider();
   
+  // 排行榜始终使用 Supabase（已在 initLeaderboardService 中初始化）
+  // 这里只处理云存档
   if (provider === 'taptap') {
+    console.log('使用 TapTap 云存档');
     return initTapTapCloud();
-  } else if (provider === 'supabase') {
-    return initSupabase();
   } else {
     console.log('无可用云存档服务，仅使用本地存储');
     return false;
@@ -18593,7 +18608,10 @@ async function initGame(){
   // 初始化存储系统（IndexedDB + 自动迁移）
   await initStorageSystem();
   
-  // 初始化云存档（自动检测 TapTap 小游戏 / Supabase）
+  // 初始化排行榜服务（始终使用 Supabase）
+  initLeaderboardService();
+  
+  // 初始化云存档（TapTap 平台用 TapTap 云存档）
   initCloudSave();
   
   // 延迟更新云存档 UI 状态（等待初始化完成）
