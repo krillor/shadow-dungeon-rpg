@@ -9586,6 +9586,31 @@ async function runBattle(stageId){
         log('🎵 '+u.icon+u.name+' 吟唱「'+u.hero.bardPoem.name+'」！全队士气+5%！','buff');
         showFloat(u,'🎵士气+5%','heal');
       }
+      // 变色龙：每场战斗首次回合随机获得一个职业被动
+      if(!u.isEnemy && u.hero && u.hero.isChameleon && !u._chameleonApplied){
+        u._chameleonApplied = true;
+        var allRoles2 = Object.keys(ROLES).filter(function(r){ return r !== 'unknown'; });
+        var chameleonRole = allRoles2[Math.floor(Math.random() * allRoles2.length)];
+        var chameleonPassive = ROLES[chameleonRole].passive;
+        if(chameleonPassive && chameleonPassive.stat){
+          var cVal = chameleonPassive.mult || 0.1;
+          u[chameleonPassive.stat] = Math.floor(u[chameleonPassive.stat] * (1 + cVal));
+          log('🦎 '+u.icon+u.name+' 变色龙！临时获得'+ROLES[chameleonRole].name+'被动：'+chameleonPassive.stat+'+'+Math.floor(cVal*100)+'%','buff');
+          showFloat(u,'🦎被动','buff');
+        }
+      }
+      // 狂战士之血：HP越低攻击越高
+      if(!u.isEnemy && u.hero && u.hero.isBerserker){
+        var hpRatio = u.hp / u.maxHP;
+        var berserkBonus = Math.floor(u.atk * hpRatio * (u.hero.berserkerMaxBonus || 0.8));
+        if(!u._berserkBaseAtk) u._berserkBaseAtk = u.atk;
+        u.atk = u._berserkBaseAtk + berserkBonus;
+      }
+      // 吸血鬼：攻击吸血15%
+      if(!u.isEnemy && u.hero && u.hero.isVampire && !u._vampireApplied){
+        u._vampireApplied = true;
+        u._vampireLifesteal = u.hero.vampireLifesteal || 0.15;
+      }
     });
     renderTeams();
     await sleep(200);
@@ -9682,6 +9707,14 @@ async function runBattle(stageId){
             log('  → 造成 '+dmg+' 点伤害'+(comboNum>0?' ('+(comboNum+1)+'连击)':''),r.crit?'crit':'damage');
             showFloat(target,(r.crit?'💥':'')+dmg,r.crit?'crit':'damage');
             animUnit(target,'hit',300);
+            // 吸血鬼：攻击吸血
+            if(!unit.isEnemy && unit.hero && unit.hero.isVampire && unit._vampireLifesteal && dmg > 0){
+              var healAmt = Math.floor(dmg * unit._vampireLifesteal);
+              if(healAmt > 0){
+                unit.hp = Math.min(unit.maxHP, unit.hp + healAmt);
+                showFloat(unit,'🧛+'+healAmt,'heal');
+              }
+            }
             // 记录统计数据
             recordBattleStat(unit,'damage',dmg);
             recordBattleStat(target,'damageTaken',dmg);
@@ -9701,9 +9734,19 @@ async function runBattle(stageId){
               if(unit.hp<=0){unit.alive=false;log(unit.icon+' '+unit.name+' 倒下了...','death');animUnit(unit,'dying',700)}
             }
             if(target.hp<=0){
-              target.alive=false;log(target.icon+' '+target.name+' 倒下了...','death');animUnit(target,'dying',700);
+              // 凤凰涅槃：死亡时自动复活一次
+              if(!target.isEnemy && target.hero && target.hero.isPhoenix && !target.hero.phoenixUsed){
+                target.hero.phoenixUsed = true;
+                target.hp = Math.floor(target.maxHP * 0.5);
+                target.alive = true;
+                log('🔥 '+target.icon+target.name+' 凤凰涅槃！浴火重生！HP恢复50%！','buff');
+                showFloat(target,'🔥重生','buff');
+                animUnit(target,'heal',500);
+              } else {
+                target.alive=false;log(target.icon+' '+target.name+' 倒下了...','death');animUnit(target,'dying',700);
+              }
               // 装备特殊技能触发 - 击杀 onKill
-              checkEquipSpecialSkill(unit,'onKill',target,allUnits);
+              if(!target.alive) checkEquipSpecialSkill(unit,'onKill',target,allUnits);
             } else {
               // 装备特殊技能触发 - 被攻击者 onHit
               checkEquipSpecialSkill(target,'onHit',unit,allUnits);
@@ -9730,6 +9773,50 @@ async function runBattle(stageId){
   }
 
   if(round>=maxRounds){log('⏰ 回合用尽，战斗平局。','info')}
+
+  // ===== 战后效果处理 =====
+  playerUnits.forEach(function(u){
+    if(!u.hero) return;
+    // 定时炸弹：倒计时减1，到0时爆炸
+    if(u.hero.isTimeBomb && u.hero.timeBombCountdown > 0){
+      u.hero.timeBombCountdown--;
+      if(u.hero.timeBombCountdown <= 0){
+        var bombDmg = u.hero.timeBombDamage || 0;
+        log('💣 '+u.icon+u.name+' 定时炸弹爆炸！对全体敌人造成 '+bombDmg+' 点伤害！','crit');
+        enemyUnits.forEach(function(e){
+          if(e.alive){
+            e.hp = Math.max(0, e.hp - bombDmg);
+            if(e.hp <= 0){ e.alive = false; log(e.icon+' '+e.name+' 被炸弹炸死！','death'); }
+          }
+        });
+        u.hero.isTimeBomb = false;
+      } else {
+        log('💣 '+u.icon+u.name+' 定时炸弹倒计时: '+u.hero.timeBombCountdown,'info');
+      }
+    }
+    // 吸血鬼：战后损失5%最大HP（永久）
+    if(u.hero.isVampire && u.hero.vampireHPDrain){
+      var drainHP = Math.max(1, Math.floor(u.hero.maxHP * u.hero.vampireHPDrain));
+      u.hero.maxHP = Math.max(10, u.hero.maxHP - drainHP);
+      u.hero.hp = u.hero.maxHP;
+      log('🧛 '+u.icon+u.name+' 吸血鬼代价，最大HP -'+drainHP,'debuff');
+    }
+    // 寄生体：战后吸取随机队友10%属性成长
+    if(u.hero.isParasite && u.hero.parasiteRate){
+      var allies2 = playerUnits.filter(function(a){ return a.hero && a.uid !== u.uid && a.alive; });
+      if(allies2.length > 0){
+        var host = allies2[Math.floor(Math.random() * allies2.length)];
+        var pRate = u.hero.parasiteRate;
+        var stolenHP = Math.max(1, Math.floor((host.hero.maxHP || 100) * pRate * 0.01));
+        var stolenAtk = Math.max(1, Math.floor((host.hero.atk || 10) * pRate * 0.01));
+        u.hero.maxHP += stolenHP;
+        u.hero.atk += stolenAtk;
+        host.hero.maxHP = Math.max(10, host.hero.maxHP - stolenHP);
+        host.hero.atk = Math.max(1, host.hero.atk - stolenAtk);
+        log('🦠 '+u.icon+u.name+' 寄生吸取了 '+host.icon+host.name+' 的属性(HP+'+stolenHP+' ATK+'+stolenAtk+')','debuff');
+      }
+    }
+  });
 
   const won=enemyUnits.every(u=>!u.alive);
   if(won){
@@ -10335,8 +10422,17 @@ function generateFusedHero(heroes){
     G.mergeHiddenPity=0; // 开始计算隐藏保底
   }else{
     // 正常随机判定
+    // 先知之眼：应用品质概率加成
+    var oracleBonus = G.oracleBonus || {};
+    var hiddenRate = G_HIDDEN_DIRECT_RATE + (oracleBonus.hidden || 0);
+    var mythicRate = G_MYTHIC_DIRECT_RATE + (oracleBonus.mythic || 0);
+    var legendaryRate = G_LEGENDARY_DIRECT_RATE + (oracleBonus.legendary || 0);
+    var qualityUpRate = G_QUALITY_UP_RATE + (oracleBonus.rare || 0);
+    // 使用先知加成后清零（一次性）
+    G.oracleBonus = {};
+    
     // 0.1% 隐藏品质（最高优先级，无视当前品质）
-    if(Math.random()<G_HIDDEN_DIRECT_RATE){
+    if(Math.random()<hiddenRate){
       newQuality='hidden';
       newQIdx=QUALITIES.indexOf('hidden');
       isMutation=true;
@@ -10346,7 +10442,7 @@ function generateFusedHero(heroes){
       G.mergeHiddenPity=0;
     }
     // 1% 直接神话
-    else if(Math.random()<G_MYTHIC_DIRECT_RATE){
+    else if(Math.random()<mythicRate){
       newQuality='mythic';
       newQIdx=QUALITIES.indexOf('mythic');
       isMutation=true;
@@ -10356,14 +10452,14 @@ function generateFusedHero(heroes){
       G.mergeHiddenPity=0;
     }
     // 3% 直接传说
-    else if(Math.random()<G_LEGENDARY_DIRECT_RATE){
+    else if(Math.random()<legendaryRate){
       newQuality='legendary';
       newQIdx=QUALITIES.indexOf('legendary');
       isMutation=true;
       isDirectLegendary=true;
     }
     // 5% 品质+1（不超过隐藏）
-    else if(Math.random()<G_QUALITY_UP_RATE && newQIdx<QUALITIES.length-1){
+    else if(Math.random()<qualityUpRate && newQIdx<QUALITIES.length-1){
       newQIdx++;
       newQuality=QUALITIES[newQIdx];
       isMutation=true;
@@ -10933,7 +11029,7 @@ function closeMergeResult(){
 // ==================== 合成事件系统 ====================
 const MERGE_ACCIDENTS = {
   // === 原有事件（调整权重） ===
-  explosion: { name:'爆炸', icon:'💥', color:'#ff4444', desc:'材料炸裂！获得碎片', weight:20 },
+  explosion: { name:'爆炸', icon:'💥', color:'#ff4444', desc:'材料炸裂！获得碎片', weight:12 },
   timewarp: { name:'时空扭曲', icon:'🌀', color:'#9b59b6', desc:'属性互换！战士变法师面板', weight:15 },
   ghost: { name:'幽灵英雄', icon:'👻', color:'#00ffcc', desc:'半透明英雄，战斗后10%概率附身', weight:8 },
   clown: { name:'小丑英雄', icon:'🤡', color:'#f39c12', desc:'随机荒谬组合，可能是废物也可能是OP', weight:18 },
@@ -10946,11 +11042,11 @@ const MERGE_ACCIDENTS = {
   inscription: { name:'远古铭文', icon:'📜', color:'#fb923c', desc:'获得随机专属称号+永久属性加成', weight:10 },
   circus: { name:'马戏团', icon:'🎪', color:'#f472b6', desc:'一变二！产出2个品质-1的英雄', weight:8 },
   shadowcurse: { name:'暗影侵蚀', icon:'🌑', color:'#6366f1', desc:'20%概率失控攻击队友，但全属性+25%', weight:8 },
-  awakening: { name:'英雄觉醒', icon:'🏆', color:'#facc15', desc:'直接升满级+额外天赋点', weight:3 },
+  awakening: { name:'英雄觉醒', icon:'🏆', color:'#facc15', desc:'直接升满级+额外天赋点', weight:5 },
   frogcurse: { name:'青蛙诅咒', icon:'🐸', color:'#4ade80', desc:'属性降低70%，3天后解除并+20%', weight:10 },
   bard: { name:'吟游诗人', icon:'🎵', color:'#c084fc', desc:'获得诗歌特质，全队士气+5%', weight:5 },
   dice: { name:'命运骰子', icon:'🎲', color:'#38bdf8', desc:'选择保守或冒险，命运由你决定', weight:10 },
-  blackhole: { name:'黑洞吞噬', icon:'🌀', color:'#7c3aed', desc:'吞噬战力最低队友，获得其50%属性', weight:3 },
+  blackhole: { name:'黑洞吞噬', icon:'🌀', color:'#7c3aed', desc:'吞噬战力最低队友，获得其50%属性', weight:5 },
   // === 第二批新增事件 ===
   phoenix: { name:'凤凰涅槃', icon:'🔥', color:'#ef4444', desc:'英雄死亡时自动复活一次，全属性+15%', weight:5 },
   vampire: { name:'吸血鬼', icon:'🧛', color:'#dc2626', desc:'攻击吸血15%，但每场战斗后损失5%最大HP', weight:8 },
