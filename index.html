@@ -5633,8 +5633,29 @@ function decompressGameData(compressed) {
 }
 
 // 获取存档元数据（支持 IndexedDB 和 localStorage）
+// 同步版本 - 用于 saveGame 等需要同步调用的场景
+function getSaveMetaSync(){
+  try{
+    var raw = localStorage.getItem(SAVE_META_KEY);
+    return raw ? JSON.parse(raw) : {currentSlot:0,slots:{},autoBackups:[],manualBackups:[]};
+  }catch(e){return {currentSlot:0,slots:{},autoBackups:[],manualBackups:[]};}
+}
+
+// 同步版本 - 保存到 localStorage
+function saveSaveMetaSync(meta){
+  try{
+    localStorage.setItem(SAVE_META_KEY, JSON.stringify(meta));
+    // 后台同步到 IndexedDB
+    if (isDBReady) {
+      setTimeout(function() { dbSet('meta', 'save_meta', meta); }, 0);
+    }
+  }catch(e){}
+}
+
+// 异步版本 - 用于初始化和需要等待的场景
 async function getSaveMeta(){
   try{
+    // 优先从 IndexedDB 读取
     var meta = await StorageAPI.get('save_meta', 'meta');
     if (meta) return meta;
     // 回退到 localStorage
@@ -5643,12 +5664,13 @@ async function getSaveMeta(){
   }catch(e){return {currentSlot:0,slots:{},autoBackups:[],manualBackups:[]};}
 }
 
-// 保存存档元数据（支持 IndexedDB 和 localStorage）
+// 异步版本 - 保存到 IndexedDB + localStorage
 async function saveSaveMeta(meta){
   try{
-    await StorageAPI.set('save_meta', meta, 'meta');
-    // 同时备份到 localStorage 以防万一
+    // 同步保存到 localStorage（主要存储）
     localStorage.setItem(SAVE_META_KEY, JSON.stringify(meta));
+    // 异步保存到 IndexedDB
+    await StorageAPI.set('save_meta', meta, 'meta');
   }catch(e){}
 }
 
@@ -5710,9 +5732,10 @@ function checkMergeEventExpirations(){
   if(changed) saveGame();
 }
 
-async function saveGame(){
+// 同步版本 saveGame - 主要保存逻辑，使用 localStorage（同步，保证数据完整性）
+function saveGame(){
   try{
-    var meta = await getSaveMeta();
+    var meta = getSaveMetaSync(); // 使用同步版本
     var slotIdx = meta.currentSlot || 0;
     
     // 存档前校验核心数据完整性
@@ -5732,20 +5755,27 @@ async function saveGame(){
       return;
     }
     
-    // 输出压缩效果日志
-    var originalSize = JSON.stringify({ g: G, heroIdCounter: G.heroIdCounter }).length;
-    console.log('存档压缩: ' + originalSize + ' -> ' + jsonStr.length + ' (节省' + Math.round((1 - jsonStr.length / originalSize) * 100) + '%)');
-    
-    // 安全写入：先写备份再写主存档
+    // 安全写入：先写备份再写主存档（localStorage 同步写入）
     var safeKey = getSlotKey(slotIdx) + '_safe';
-    await StorageAPI.set(safeKey, data, 'backups', { slotIdx: slotIdx, type: 'safe' });
-    await StorageAPI.set(getSlotKey(slotIdx), data, 'saves', { slotIdx: slotIdx });
-    await StorageAPI.remove(safeKey, 'backups');
-    
-    // 同时备份到 localStorage 以防万一
     try {
+      localStorage.setItem(safeKey, jsonStr);
       localStorage.setItem(getSlotKey(slotIdx), jsonStr);
-    } catch(e) {}
+      localStorage.removeItem(safeKey);
+    } catch(writeErr) {
+      console.warn('存档写入失败，尝试清理空间', writeErr);
+      // 清理旧备份后重试
+      try {
+        if(meta.autoBackups){
+          meta.autoBackups.forEach(function(bk){ try{ localStorage.removeItem(bk.key); }catch(e){} });
+          meta.autoBackups = [];
+        }
+        localStorage.setItem(getSlotKey(slotIdx), jsonStr);
+      } catch(e2) {
+        console.error('存档写入彻底失败', e2);
+        showToast('⚠️ 存档空间不足，请清理浏览器数据');
+        return;
+      }
+    }
     
     // 更新槽位元数据
     if(!meta.slots[slotIdx]) meta.slots[slotIdx] = {};
@@ -5755,7 +5785,7 @@ async function saveGame(){
     meta.slots[slotIdx].heroCount = G.heroes ? G.heroes.length : 0;
     meta.slots[slotIdx].playTime = G.totalPlayTime || 0;
 
-    // ===== 自动备份：保留2份（2分钟前 + 10分钟前） =====
+    // ===== 自动备份：保留2份 =====
     var now = Date.now();
     if(!meta.autoBackups) meta.autoBackups = [];
     if(!meta._lastAutoBackupTime) meta._lastAutoBackupTime = 0;
@@ -5764,7 +5794,6 @@ async function saveGame(){
     var TEN_MIN = 10 * 60 * 1000;
     var shouldBackup = false;
 
-    // 判断是否需要备份
     if(now - meta._lastAutoBackupTime >= TWO_MIN){
       var hasNear2min = false;
       var hasNear10min = false;
@@ -5779,7 +5808,7 @@ async function saveGame(){
 
     if(shouldBackup){
       var backupKey = 'shadow_dungeon_auto_' + now;
-      await StorageAPI.set(backupKey, data, 'backups', { slotIdx: slotIdx, type: 'auto' });
+      try { localStorage.setItem(backupKey, jsonStr); } catch(e) {}
       var newBackup = {
         key: backupKey,
         slotIdx: slotIdx,
@@ -5794,11 +5823,14 @@ async function saveGame(){
       // 清理旧备份
       while(meta.autoBackups.length > 2){
         var old = meta.autoBackups.shift();
-        await StorageAPI.remove(old.key, 'backups');
+        try{ localStorage.removeItem(old.key); }catch(e){}
       }
     }
 
-    await saveSaveMeta(meta);
+    saveSaveMetaSync(meta);
+    
+    // 后台异步同步到 IndexedDB（fire-and-forget，不阻塞主流程）
+    syncToIndexedDBAsync(data, meta, slotIdx);
     
     // 自动云端同步
     if (isCloudReady && deviceId && G.playerName && G.playerName.trim() !== '') {
@@ -5814,6 +5846,29 @@ async function saveGame(){
   } catch(e) {
     console.error('saveGame异常', e);
   }
+}
+
+// 后台异步同步到 IndexedDB（不阻塞主流程）
+function syncToIndexedDBAsync(data, meta, slotIdx) {
+  if (!isDBReady) return;
+  
+  setTimeout(function() {
+    try {
+      // 同步存档数据
+      dbSet('saves', getSlotKey(slotIdx), data, { slotIdx: slotIdx });
+      dbSet('meta', 'save_meta', meta);
+      
+      // 同步备份
+      if (meta.autoBackups && meta.autoBackups.length > 0) {
+        var latestBackup = meta.autoBackups[meta.autoBackups.length - 1];
+        if (latestBackup) {
+          dbSet('backups', latestBackup.key, data, { slotIdx: slotIdx, type: 'auto' });
+        }
+      }
+    } catch(e) {
+      console.warn('IndexedDB 异步同步失败:', e);
+    }
+  }, 0);
 }
 
 // 计算队伍总战力
@@ -5833,7 +5888,7 @@ function calcTotalPower(){
 // 手动备份（玩家主动创建）
 function createManualBackup(){
   try{
-    var meta=getSaveMeta();
+    var meta=getSaveMetaSync(); // 使用同步版本
     var slotIdx=meta.currentSlot||0;
     var data={g:G,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
     var jsonStr=JSON.stringify(data);
@@ -5857,7 +5912,7 @@ function createManualBackup(){
       var old=meta.manualBackups.pop();
       try{localStorage.removeItem(old.key);}catch(e){}
     }
-    saveSaveMeta(meta);
+    saveSaveMetaSync(meta);
     // 显示成功弹窗
     showModal('📌 备份创建成功',`
       <div style="text-align:center;padding:10px 0">
@@ -6086,7 +6141,7 @@ async function loadGame(){
   }catch(e){ console.error('读档失败', e); return false; }
 }
 
-// 尝试从备份恢复
+// 尝试从备份恢复（同步版本，使用 localStorage）
 function tryRestoreFromBackup(meta, slotIdx){
   console.log('尝试从备份恢复...');
   
@@ -6140,7 +6195,7 @@ function tryRestoreFromBackup(meta, slotIdx){
               Object.keys(saved).forEach(function(k){G[k]=saved[k]});
               initGameAfterLoad();
               meta.currentSlot=bk.slotIdx;
-              saveSaveMeta(meta);
+              saveSaveMetaSync(meta);
               saveGame();
               showToast('⚠️ 存档已损坏，已从槽位'+(bk.slotIdx+1)+'的自动备份恢复');
               return true;
@@ -6187,7 +6242,7 @@ function tryRestoreFromBackup(meta, slotIdx){
               Object.keys(saved).forEach(function(k){G[k]=saved[k]});
               initGameAfterLoad();
               meta.currentSlot=bk.slotIdx;
-              saveSaveMeta(meta);
+              saveSaveMetaSync(meta);
               saveGame();
               showToast('⚠️ 存档已损坏，已从槽位'+(bk.slotIdx+1)+'的手动备份恢复');
               return true;
@@ -6212,7 +6267,7 @@ function tryRestoreFromBackup(meta, slotIdx){
             initGameAfterLoad();
             // 切换到该槽位
             meta.currentSlot=i;
-            saveSaveMeta(meta);
+            saveSaveMetaSync(meta);
             saveGame();
             showToast('⚠️ 当前槽位损坏，已从槽位'+(i+1)+'恢复');
             return true;
@@ -6521,7 +6576,7 @@ function doEmergencyRestore(idx){
 
 // 切换存档槽位
 function switchSaveSlot(slotIdx){
-  var meta=getSaveMeta();
+  var meta=getSaveMetaSync(); // 使用同步版本
   var oldSlot=meta.currentSlot||0;
   if(oldSlot===slotIdx){showToast('已在当前槽位');return;}
   // 先保存当前进度到旧槽位
@@ -6534,14 +6589,14 @@ function switchSaveSlot(slotIdx){
     meta.slots[oldSlot].heroCount=G.heroes?G.heroes.length:0;
   }catch(e){}
   meta.currentSlot=slotIdx;
-  saveSaveMeta(meta);
+  saveSaveMetaSync(meta);
   // 重新加载页面
   location.reload();
 }
 
 // 从备份恢复
 function restoreBackup(type, backupIdx){
-  var meta=getSaveMeta();
+  var meta=getSaveMetaSync(); // 使用同步版本
   var backups=type==='auto'?meta.autoBackups:meta.manualBackups;
   if(!backups||!backups[backupIdx]){showToast('备份不存在');return;}
   var backup=backups[backupIdx];
@@ -6567,17 +6622,17 @@ function restoreBackup(type, backupIdx){
   // 写入当前槽位
   localStorage.setItem(getSlotKey(meta.currentSlot),raw);
   localStorage.setItem(SAVE_KEY,raw);
-  saveSaveMeta(meta);
+  saveSaveMetaSync(meta);
   showToast('✅ 已恢复备份，正在重新加载...');
   setTimeout(function(){location.reload();},500);
 }
 
 // 删除指定槽位存档
 function deleteSaveSlot(slotIdx){
-  var meta=getSaveMeta();
+  var meta=getSaveMetaSync(); // 使用同步版本
   localStorage.removeItem(getSlotKey(slotIdx));
   delete meta.slots[slotIdx];
-  saveSaveMeta(meta);
+  saveSaveMetaSync(meta);
   showToast('🗑️ 槽位'+(slotIdx+1)+'已删除');
   if((meta.currentSlot||0)===slotIdx){
     // 删除的是当前槽位，切换到第一个有数据的槽位
@@ -6585,7 +6640,7 @@ function deleteSaveSlot(slotIdx){
     for(var i=0;i<MAX_SAVE_SLOTS;i++){
       if(i!==slotIdx && meta.slots[i]){
         meta.currentSlot=i;
-        saveSaveMeta(meta);
+        saveSaveMetaSync(meta);
         location.reload();
         return;
       }
@@ -6600,48 +6655,48 @@ function deleteSaveSlot(slotIdx){
 
 // 删除自动备份
 function deleteAutoBackup(backupIdx){
-  var meta=getSaveMeta();
+  var meta=getSaveMetaSync(); // 使用同步版本
   if(!meta.autoBackups||!meta.autoBackups[backupIdx])return;
   var backup=meta.autoBackups[backupIdx];
   try{localStorage.removeItem(backup.key);}catch(e){}
   meta.autoBackups.splice(backupIdx,1);
-  saveSaveMeta(meta);
+  saveSaveMetaSync(meta);
   showToast('🗑️ 自动备份已删除');
   renderCurrentTab();
 }
 
 // 删除手动备份
 function deleteManualBackup(backupIdx){
-  var meta=getSaveMeta();
+  var meta=getSaveMetaSync(); // 使用同步版本
   if(!meta.manualBackups||!meta.manualBackups[backupIdx])return;
   var backup=meta.manualBackups[backupIdx];
   try{localStorage.removeItem(backup.key);}catch(e){}
   meta.manualBackups.splice(backupIdx,1);
-  saveSaveMeta(meta);
+  saveSaveMetaSync(meta);
   showToast('🗑️ 手动备份已删除');
   renderCurrentTab();
 }
 
 // 清理所有自动备份
 function clearAutoBackups(){
-  var meta=getSaveMeta();
+  var meta=getSaveMetaSync(); // 使用同步版本
   if(meta.autoBackups){
     meta.autoBackups.forEach(function(b){try{localStorage.removeItem(b.key);}catch(e){}});
   }
   meta.autoBackups=[];
-  saveSaveMeta(meta);
+  saveSaveMetaSync(meta);
   showToast('🗑️ 自动备份已清理');
   renderCurrentTab();
 }
 
 // 清理所有手动备份
 function clearManualBackups(){
-  var meta=getSaveMeta();
+  var meta=getSaveMetaSync(); // 使用同步版本
   if(meta.manualBackups){
     meta.manualBackups.forEach(function(b){try{localStorage.removeItem(b.key);}catch(e){}});
   }
   meta.manualBackups=[];
-  saveSaveMeta(meta);
+  saveSaveMetaSync(meta);
   showToast('🗑️ 手动备份已清理');
   renderCurrentTab();
 }
