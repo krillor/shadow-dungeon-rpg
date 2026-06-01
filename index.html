@@ -6001,12 +6001,62 @@ function showSaveInfo() {
   
   html += '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">';
   html += '<button class="btn btn-primary" onclick="createManualBackup()">💾 备份</button>';
+  html += '<button class="btn" onclick="showBackupList()">📋 查看备份</button>';
   html += '<button class="btn" onclick="exportSaveToFile();closeModal()">📥 导出</button>';
   html += '<button class="btn" onclick="importSaveFromFile();closeModal()">📤 导入</button>';
   html += '<button class="btn" style="background:var(--danger)" onclick="closeModal();setTimeout(function(){showConfirm(\'确认重置\',\'确定要重置当前槽位吗？所有进度将丢失！\',function(){deleteSaveSlot(' + currentSlot + ');})},100)">🗑️ 重置</button>';
   html += '</div></div>';
   
   showModal('存档', html);
+}
+
+// ===== 查看备份列表 =====
+function showBackupList() {
+  var meta = getMeta();
+  var currentSlot = meta.currentSlot || 0;
+  var backups = meta.manualBackups || [];
+  
+  var html = '<div style="padding:16px">';
+  html += '<h3 style="margin-bottom:12px">📋 手动备份列表</h3>';
+  
+  if (backups.length === 0) {
+    html += '<div style="text-align:center;padding:20px;color:var(--text3)">暂无备份</div>';
+  } else {
+    backups.forEach(function(bk, idx) {
+      var isCurrentSlot = (bk.slotIdx === currentSlot);
+      var dateStr = new Date(bk.timestamp).toLocaleString();
+      html += '<div style="background:var(--bg2);border:1px solid ' + (isCurrentSlot ? 'var(--gold)' : 'var(--border)') + ';border-radius:8px;padding:12px;margin-bottom:8px">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+      html += '<div>';
+      html += '<div style="font-weight:bold;font-size:13px">' + bk.note + (isCurrentSlot ? ' <span style="color:var(--gold)">[当前槽位]</span>' : '') + '</div>';
+      html += '<div style="font-size:11px;color:var(--text2);margin-top:4px">关卡 ' + (bk.stageProgress || '-') + ' | 英雄 ' + (bk.heroCount || 0) + '</div>';
+      html += '<div style="font-size:10px;color:var(--text3)">' + dateStr + '</div>';
+      html += '</div>';
+      html += '<div style="display:flex;gap:6px">';
+      html += '<button class="btn btn-sm" onclick="restoreFromBackup(\'manual\', ' + idx + ');closeModal()">恢复</button>';
+      html += '<button class="btn btn-sm" style="background:var(--danger);padding:4px 8px;font-size:12px" onclick="deleteBackup(' + idx + ');showBackupList()">🗑️</button>';
+      html += '</div>';
+      html += '</div></div>';
+    });
+  }
+  
+  html += '<div style="margin-top:16px">';
+  html += '<button class="btn" onclick="showSaveInfo()">← 返回存档</button>';
+  html += '</div></div>';
+  
+  showModal('备份列表', html);
+}
+
+// ===== 删除备份 =====
+function deleteBackup(idx) {
+  var meta = getMeta();
+  if (!meta.manualBackups || idx >= meta.manualBackups.length) return;
+  
+  var bk = meta.manualBackups[idx];
+  lsRemove(bk.key);
+  meta.manualBackups.splice(idx, 1);
+  saveMeta(meta);
+  showToast('备份已删除');
 }
 
 // ===== 计算队伍战力 =====
