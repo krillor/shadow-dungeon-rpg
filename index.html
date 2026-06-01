@@ -6194,9 +6194,13 @@ function showSaveHealthDetails() {
     }
     
     // 操作按钮
-    content += '<div style="display:flex;gap:8px;margin-top:16px">';
+    content += '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">';
     content += '<button class="btn btn-primary" onclick="performHealthCheck();showToast(\'正在重新检查...\')">🔄 重新检查</button>';
     content += '<button class="btn" onclick="createManualBackup();showToast(\'已创建手动备份\')">💾 立即备份</button>';
+    // 如果有异常，显示修复按钮
+    if (!saveHealthStatus.localSaveOK) {
+      content += '<button class="btn" style="background:var(--warning)" onclick="closeModal();executeSaveRepair()">🔧 修复存档</button>';
+    }
     content += '</div>';
     
     content += '</div>';
@@ -6214,6 +6218,224 @@ function startAutoHealthCheck() {
   setInterval(function() {
     performHealthCheck();
   }, 5 * 60 * 1000); // 5分钟
+}
+
+// ==================== 存档异常处理和自动修复 ====================
+
+// 尝试修复损坏的存档
+function attemptSaveRepair() {
+  console.log('尝试修复存档...');
+  var repairLog = [];
+  
+  try {
+    var meta = getSaveMetaSync();
+    var slotIdx = meta.currentSlot || 0;
+    var slotKey = getSlotKey(slotIdx);
+    
+    // 尝试1：从安全备份恢复
+    var safeKey = slotKey + '_safe';
+    var safeRaw = localStorage.getItem(safeKey);
+    if (safeRaw) {
+      try {
+        var safeData = JSON.parse(safeRaw);
+        if (validateSaveData(safeData).valid) {
+          localStorage.setItem(slotKey, safeRaw);
+          repairLog.push('✅ 从安全备份恢复成功');
+          return { success: true, log: repairLog, method: 'safe_backup' };
+        }
+      } catch(e) {
+        repairLog.push('❌ 安全备份也损坏');
+      }
+    }
+    
+    // 尝试2：从自动备份恢复
+    if (meta.autoBackups && meta.autoBackups.length > 0) {
+      for (var i = meta.autoBackups.length - 1; i >= 0; i--) {
+        var backup = meta.autoBackups[i];
+        var backupRaw = localStorage.getItem(backup.key);
+        if (backupRaw) {
+          try {
+            var backupData = JSON.parse(backupRaw);
+            if (validateSaveData(backupData).valid) {
+              localStorage.setItem(slotKey, backupRaw);
+              repairLog.push('✅ 从自动备份恢复成功（' + new Date(backup.timestamp).toLocaleString() + '）');
+              return { success: true, log: repairLog, method: 'auto_backup', backupTime: backup.timestamp };
+            }
+          } catch(e) {
+            repairLog.push('❌ 自动备份 ' + (i + 1) + ' 也损坏');
+          }
+        }
+      }
+    }
+    
+    // 尝试3：从手动备份恢复
+    if (meta.manualBackups && meta.manualBackups.length > 0) {
+      for (var i = 0; i < meta.manualBackups.length; i++) {
+        var backup = meta.manualBackups[i];
+        var backupRaw = localStorage.getItem(backup.key);
+        if (backupRaw) {
+          try {
+            var backupData = JSON.parse(backupRaw);
+            if (validateSaveData(backupData).valid) {
+              localStorage.setItem(slotKey, backupRaw);
+              repairLog.push('✅ 从手动备份恢复成功（' + (backup.note || '手动备份') + '）');
+              return { success: true, log: repairLog, method: 'manual_backup', backupTime: backup.timestamp };
+            }
+          } catch(e) {
+            repairLog.push('❌ 手动备份 ' + (i + 1) + ' 也损坏');
+          }
+        }
+      }
+    }
+    
+    // 尝试4：从其他槽位恢复
+    for (var i = 0; i < MAX_SAVE_SLOTS; i++) {
+      if (i !== slotIdx) {
+        var otherKey = getSlotKey(i);
+        var otherRaw = localStorage.getItem(otherKey);
+        if (otherRaw) {
+          try {
+            var otherData = JSON.parse(otherRaw);
+            if (validateSaveData(otherData).valid) {
+              localStorage.setItem(slotKey, otherRaw);
+              meta.currentSlot = i;
+              saveSaveMetaSync(meta);
+              repairLog.push('✅ 从槽位 ' + (i + 1) + ' 恢复成功');
+              return { success: true, log: repairLog, method: 'other_slot', slot: i };
+            }
+          } catch(e) {
+            repairLog.push('❌ 槽位 ' + (i + 1) + ' 也损坏');
+          }
+        }
+      }
+    }
+    
+    // 尝试5：从云端恢复（如果有）
+    if (cloudProvider !== 'none' && isCloudReady) {
+      repairLog.push('⏳ 尝试从云端恢复...');
+      return { success: false, log: repairLog, needCloud: true };
+    }
+    
+    // 所有修复尝试都失败
+    repairLog.push('❌ 所有修复尝试都失败');
+    return { success: false, log: repairLog, needReset: true };
+    
+  } catch(e) {
+    repairLog.push('❌ 修复过程出错: ' + e.message);
+    return { success: false, log: repairLog, error: e.message };
+  }
+}
+
+// 显示存档异常处理弹窗
+function showSaveErrorDialog(errorInfo) {
+  var content = '<div style="padding:16px">';
+  content += '<div style="text-align:center;margin-bottom:16px">';
+  content += '<div style="font-size:48px;margin-bottom:8px">⚠️</div>';
+  content += '<div style="font-size:16px;font-weight:bold;color:var(--danger)">检测到存档异常</div>';
+  content += '</div>';
+  
+  content += '<div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:16px">';
+  content += '<div style="font-weight:bold;margin-bottom:8px">错误信息</div>';
+  content += '<div style="font-size:12px;color:var(--text2)">' + (errorInfo || '存档数据损坏或无法读取') + '</div>';
+  content += '</div>';
+  
+  content += '<div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:16px">';
+  content += '<div style="font-weight:bold;margin-bottom:8px">可选操作</div>';
+  content += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">';
+  content += '1. <b>自动修复</b>：尝试从备份恢复存档<br>';
+  content += '2. <b>云端恢复</b>：从云端下载最新存档<br>';
+  content += '3. <b>重新开始</b>：创建新游戏（会丢失进度）';
+  content += '</div>';
+  content += '</div>';
+  
+  content += '<div style="display:flex;gap:8px;flex-direction:column">';
+  content += '<button class="btn btn-primary" onclick="executeSaveRepair()">🔧 尝试自动修复</button>';
+  content += '<button class="btn" onclick="loadCloudSave().then(function(ok){if(ok){closeModal();location.reload();}})">☁️ 从云端恢复</button>';
+  content += '<button class="btn" style="background:var(--danger)" onclick="showConfirm(\'确认重置\',\'确定要重新开始吗？\\n\\n当前所有进度将丢失！\',function(){localStorage.clear();location.reload();},\'确认重置\',\'取消\')">🗑️ 重新开始</button>';
+  content += '</div>';
+  
+  content += '</div>';
+  
+  showModal('存档异常', content);
+}
+
+// 执行存档修复
+function executeSaveRepair() {
+  showToast('⏳ 正在尝试修复存档...');
+  
+  setTimeout(function() {
+    var result = attemptSaveRepair();
+    
+    if (result.success) {
+      // 修复成功
+      var content = '<div style="padding:16px;text-align:center">';
+      content += '<div style="font-size:48px;margin-bottom:8px">✅</div>';
+      content += '<div style="font-size:16px;font-weight:bold;color:var(--success);margin-bottom:16px">存档修复成功！</div>';
+      content += '<div style="background:var(--bg2);border-radius:8px;padding:12px;text-align:left;margin-bottom:16px">';
+      content += '<div style="font-weight:bold;margin-bottom:8px">修复记录</div>';
+      result.log.forEach(function(log) {
+        content += '<div style="font-size:12px;margin-bottom:4px">' + log + '</div>';
+      });
+      content += '</div>';
+      content += '<button class="btn btn-primary" style="width:100%" onclick="closeModal();location.reload()">🔄 重新加载游戏</button>';
+      content += '</div>';
+      showModal('修复成功', content);
+    } else if (result.needCloud) {
+      // 需要云端恢复
+      loadCloudSave().then(function(ok) {
+        if (ok) {
+          closeModal();
+          location.reload();
+        } else {
+          showToast('❌ 云端恢复也失败了');
+          showSaveResetDialog();
+        }
+      });
+    } else if (result.needReset) {
+      // 需要重置
+      showSaveResetDialog();
+    } else {
+      // 其他错误
+      showToast('❌ 修复失败: ' + (result.error || '未知错误'));
+    }
+  }, 500);
+}
+
+// 显示重置确认弹窗
+function showSaveResetDialog() {
+  var content = '<div style="padding:16px;text-align:center">';
+  content += '<div style="font-size:48px;margin-bottom:8px">💔</div>';
+  content += '<div style="font-size:16px;font-weight:bold;color:var(--danger);margin-bottom:16px">无法修复存档</div>';
+  content += '<div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--text2)">';
+  content += '所有本地备份都已损坏或不存在。<br><br>';
+  content += '你可以选择：<br>';
+  content += '1. 尝试从云端恢复（如果有云存档）<br>';
+  content += '2. 重新开始新游戏';
+  content += '</div>';
+  content += '<div style="display:flex;gap:8px;flex-direction:column">';
+  content += '<button class="btn btn-primary" onclick="loadCloudSave().then(function(ok){if(ok){closeModal();location.reload();}})">☁️ 尝试云端恢复</button>';
+  content += '<button class="btn" style="background:var(--danger)" onclick="showConfirm(\'确认重置\',\'确定要重新开始吗？\\n\\n此操作不可恢复！\',function(){localStorage.clear();location.reload();},\'确认重置\',\'取消\')">🗑️ 重新开始</button>';
+  content += '</div>';
+  content += '</div>';
+  showModal('无法修复', content);
+}
+
+// 在健康检查中自动检测并提示异常
+function autoDetectAndHandleSaveError() {
+  var health = checkLocalSaveHealth();
+  
+  if (!health.ok) {
+    console.error('检测到存档异常:', health.error);
+    
+    // 延迟显示弹窗，避免游戏启动时干扰
+    setTimeout(function() {
+      showSaveErrorDialog(health.error);
+    }, 2000);
+    
+    return true; // 有异常
+  }
+  
+  return false; // 无异常
 }
 
 // 计算队伍总战力
@@ -19449,6 +19671,14 @@ async function initGame(){
   
   // 启动存档健康检查系统
   startAutoHealthCheck();
+  
+  // 自动检测存档异常（在读档前检查）
+  var hasSaveError = autoDetectAndHandleSaveError();
+  if (hasSaveError) {
+    // 有异常，等待用户处理
+    console.log('检测到存档异常，等待用户处理...');
+    return;
+  }
   
   // 确保引导遮罩初始状态是隐藏的
   var overlay=document.getElementById('tutorial-overlay');
