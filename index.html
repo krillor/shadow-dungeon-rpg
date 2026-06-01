@@ -12432,8 +12432,8 @@ function generateRandomHeroForRecruit(minQuality){
 
 // 一键招募所有可招募英雄（支持品质筛选，根据资源持续招募）
 function recruitAllHeroes(minQuality){
-  const MAX_RECRUIT_PER_BATCH = 50; // 每次一键招募最多50个
-  const MAX_TOTAL_HEROES = 120;     // 英雄总数上限120个
+  const MAX_RECRUIT_PER_BATCH = 100; // 每次一键招募最多100个
+  const MAX_TOTAL_HEROES = 200;     // 英雄总数上限200个
   
   var recruited = 0;
   var totalCost = {gold: 0, gems: 0};
@@ -12550,8 +12550,8 @@ function verifyRecruitPassword(){
 
 // 显示一键招募品质筛选菜单
 function showRecruitAllMenu(){
-  const MAX_RECRUIT_PER_BATCH = 50;
-  const MAX_TOTAL_HEROES = 120;
+  const MAX_RECRUIT_PER_BATCH = 100;
+  const MAX_TOTAL_HEROES = 200;
   
   // 获取酒馆等级和最高品质
   const tavernLevel = G.buildings.tavern || 1;
