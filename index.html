@@ -6480,7 +6480,9 @@ function createManualBackup(){
   try{
     var meta=getSaveMetaSync(); // 使用同步版本
     var slotIdx=meta.currentSlot||0;
-    var data={g:G,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
+    // 使用压缩格式保存（与 saveGame 一致）
+    var compressedG = compressGameData(G);
+    var data={g:compressedG,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
     var jsonStr=JSON.stringify(data);
     var backupKey='shadow_dungeon_manual_'+Date.now();
     localStorage.setItem(backupKey,jsonStr);
@@ -7171,7 +7173,8 @@ function switchSaveSlot(slotIdx){
   if(oldSlot===slotIdx){showToast('已在当前槽位');return;}
   // 先保存当前进度到旧槽位
   try{
-    var data={g:G,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
+    var compressedG = compressGameData(G);
+    var data={g:compressedG,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
     localStorage.setItem(getSlotKey(oldSlot),JSON.stringify(data));
     if(!meta.slots[oldSlot]) meta.slots[oldSlot]={};
     meta.slots[oldSlot].timestamp=Date.now();
@@ -7193,7 +7196,8 @@ function restoreBackup(type, backupIdx){
   var raw=localStorage.getItem(backup.key);
   if(!raw){showToast('备份数据已丢失');return;}
   // 恢复前先备份当前状态（作为手动备份）
-  var currentData={g:G,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
+  var compressedCurrentG = compressGameData(G);
+  var currentData={g:compressedCurrentG,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
   var currentBackupKey='shadow_dungeon_manual_'+Date.now();
   localStorage.setItem(currentBackupKey,JSON.stringify(currentData));
   if(!meta.manualBackups) meta.manualBackups=[];
