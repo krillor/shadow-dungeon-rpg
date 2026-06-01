@@ -5995,10 +5995,10 @@ function showSaveInfo() {
   }
   
   html += '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">';
-  html += '<button class="btn btn-primary" onclick="createManualBackup();closeModal()">💾 备份</button>';
+  html += '<button class="btn btn-primary" onclick="createManualBackup()">💾 备份</button>';
   html += '<button class="btn" onclick="exportSaveToFile();closeModal()">📥 导出</button>';
   html += '<button class="btn" onclick="importSaveFromFile();closeModal()">📤 导入</button>';
-  html += '<button class="btn" style="background:var(--danger)" onclick="closeModal();showConfirm(\'确认重置\',\'确定要重置当前槽位吗？所有进度将丢失！\',function(){deleteSaveSlot(' + currentSlot + ')})">🗑️ 重置</button>';
+  html += '<button class="btn" style="background:var(--danger)" onclick="closeModal();setTimeout(function(){showConfirm(\'确认重置\',\'确定要重置当前槽位吗？所有进度将丢失！\',function(){deleteSaveSlot(' + currentSlot + ');})},100)">🗑️ 重置</button>';
   html += '</div></div>';
   
   showModal('存档', html);
