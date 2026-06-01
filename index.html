@@ -5701,11 +5701,22 @@ function switchSaveSlot(slotIdx) {
     return;
   }
   
-  // 保存当前进度
-  saveGame();
+  // 保存当前进度到旧槽位（同步写 localStorage，确保不丢失）
+  var data = prepareSaveData();
+  lsSet(getSlotKey(oldSlot), data);
   
+  // 更新旧槽位元数据
+  if (!meta.slots[oldSlot]) meta.slots[oldSlot] = {};
+  meta.slots[oldSlot].timestamp = Date.now();
+  meta.slots[oldSlot].stageProgress = G.stageProgress || 1;
+  meta.slots[oldSlot].heroCount = G.heroes ? G.heroes.length : 0;
+  
+  // 切换到新槽位
   meta.currentSlot = slotIdx;
   saveMeta(meta);
+  
+  // 后台异步写 IndexedDB（不阻塞 reload）
+  dbSet('saves', oldSlot, data);
   
   location.reload();
 }
