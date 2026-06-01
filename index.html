@@ -5606,6 +5606,21 @@ function saveGame() {
       }
     }
     
+    // Supabase 云端自动同步（每天一次）
+    if ((cloudProvider === 'supabase' || (sb && isCloudReady)) && G.playerName) {
+      var lastSupabaseCloud = parseInt(lsGet('_last_supabase_cloud') || '0', 10);
+      var ONE_DAY = 24 * 60 * 60 * 1000;
+      if (now - lastSupabaseCloud >= ONE_DAY) {
+        lsSet('_last_supabase_cloud', now.toString());
+        console.log('[云存档] 触发 Supabase 每日自动同步...');
+        setTimeout(function() {
+          supabaseSaveToCloud(true).catch(function(e) {
+            console.error('[云存档] Supabase 自动同步失败:', e);
+          });
+        }, 500);
+      }
+    }
+    
   } catch(e) {
     console.error('saveGame 异常', e);
   }
@@ -18704,38 +18719,70 @@ function initSupabase() {
 }
 
 // Supabase 保存到云端
-function supabaseSaveToCloud() {
+// Supabase 云存档可靠性检查
+function validateSaveData(saveData) {
+  var errors = [];
+  if (!saveData) { errors.push('存档数据为空'); return errors; }
+  if (!saveData.game) { errors.push('缺少 game 字段'); }
+  if (!saveData.version) { errors.push('缺少 version 字段'); }
+  if (saveData.game) {
+    if (!saveData.game.heroes || !Array.isArray(saveData.game.heroes)) { errors.push('heroes 数据异常'); }
+    if (!saveData.game.gold && saveData.game.gold !== 0) { errors.push('gold 数据异常'); }
+    if (typeof saveData.game.stageProgress !== 'number') { errors.push('stageProgress 数据异常'); }
+  }
+  var jsonStr = JSON.stringify(saveData);
+  if (jsonStr.length > 5 * 1024 * 1024) { errors.push('存档过大: ' + (jsonStr.length / 1024 / 1024).toFixed(2) + 'MB'); }
+  return errors;
+}
+
+// Supabase 保存到云端（带可靠性检查）
+function supabaseSaveToCloud(silent) {
   if (!isCloudReady || !deviceId) {
-    showToast('❌ 云端未连接，请稍后再试');
+    if (!silent) showToast('❌ 云端未连接，请稍后再试');
     return Promise.resolve(false);
   }
   
   if (!G.playerName || G.playerName.trim() === '') {
-    showPlayerNameInput();
+    if (!silent) showPlayerNameInput();
     return Promise.resolve(false);
   }
   
-  showToast('⏳ 正在上传到云端...');
+  if (!silent) showToast('⏳ 正在上传到云端...');
   
   // 使用无损存档数据
   var saveData = prepareSaveData();
   saveData.device_id = deviceId;
   saveData.player_name = G.playerName;
   saveData.provider = 'supabase';
+  saveData.timestamp = Date.now();
+  
+  // 可靠性检查
+  var errors = validateSaveData(saveData);
+  if (errors.length > 0) {
+    console.error('[云存档] 可靠性检查失败:', errors);
+    if (!silent) showToast('❌ 存档数据异常: ' + errors[0]);
+    return Promise.resolve(false);
+  }
+  
+  var jsonSize = JSON.stringify(saveData).length;
+  console.log('[云存档] 上传中... 大小:', (jsonSize / 1024).toFixed(1), 'KB');
   
   return sb.from('saves').upsert(saveData, { onConflict: 'device_id' })
     .then(function(result) {
       if (result.error) {
-        console.error('Cloud save error:', result.error);
-        showToast('❌ 云端保存失败：' + result.error.message);
+        console.error('[云存档] 保存失败:', result.error);
+        if (!silent) showToast('❌ 云端保存失败：' + result.error.message);
         return false;
       }
-      showToast('☁️ 已保存到云端');
+      // 记录上传时间
+      G._lastCloudSaveTime = Date.now();
+      if (!silent) showToast('☁️ 已保存到云端 (' + (jsonSize / 1024).toFixed(1) + 'KB)');
+      console.log('[云存档] ✅ 上传成功');
       return true;
     })
     .catch(function(error) {
-      console.error('Cloud save failed:', error);
-      showToast('❌ 云端保存失败：' + (error.message || '未知错误'));
+      console.error('[云存档] 保存异常:', error);
+      if (!silent) showToast('❌ 云端保存失败：' + (error.message || '未知错误'));
       return false;
     });
 }
@@ -18875,7 +18922,9 @@ function saveToCloud() {
   if (cloudProvider === 'taptap') {
     return tapSaveToCloud();
   }
-  // 其他平台禁用云存档
+  if (cloudProvider === 'supabase' || (sb && isCloudReady)) {
+    return supabaseSaveToCloud();
+  }
   return Promise.resolve(false);
 }
 
@@ -18884,7 +18933,9 @@ function loadCloudSave() {
   if (cloudProvider === 'taptap') {
     return tapLoadCloudSave();
   }
-  // 其他平台禁用云存档
+  if (cloudProvider === 'supabase' || (sb && isCloudReady)) {
+    return supabaseLoadCloudSave();
+  }
   return Promise.resolve(false);
 }
 
@@ -18936,12 +18987,30 @@ function updateCloudSavePanel() {
       btnsEl.innerHTML = '<button class="btn btn-primary" onclick="showCloudSaveConfirm(\'upload\')">📤 上传到云端</button>' +
         (tapSaveId ? '<button class="btn" onclick="showCloudSaveConfirm(\'download\')">📥 从云端下载</button>' : '');
     }
+  } else if (sb && isCloudReady) {
+    // Supabase 云存档
+    panelEl.style.display = '';
+    statusEl.textContent = '✅ Supabase 云存档已连接';
+    statusEl.style.color = 'var(--success)';
+    
+    var lastSave = parseInt(lsGet('_last_supabase_cloud') || '0', 10);
+    if (lastSave > 0) {
+      var lastDate = new Date(lastSave);
+      infoEl.textContent = '上次云端保存: ' + lastDate.toLocaleDateString() + ' ' + lastDate.toLocaleTimeString().slice(0,5);
+    } else {
+      infoEl.textContent = '尚未上传到云端（每天自动上传一次）';
+    }
+    
+    if (btnsEl) {
+      btnsEl.innerHTML = '<button class="btn btn-primary" onclick="supabaseSaveToCloud()">📤 立即上传</button>' +
+        '<button class="btn" onclick="supabaseLoadCloudSave()">📥 从云端恢复</button>';
+    }
   } else {
-    // 非 TapTap 平台显示提示
+    // 无云存档
     panelEl.style.display = '';
     statusEl.textContent = '仅本地存储';
     statusEl.style.color = 'var(--text3)';
-    infoEl.textContent = '在 TapTap 小游戏中运行可启用云存档';
+    infoEl.textContent = '云端未连接，存档仅保存在本地';
     if (btnsEl) btnsEl.innerHTML = '';
   }
 }
