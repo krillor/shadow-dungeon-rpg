@@ -5432,25 +5432,30 @@ function restoreSaveData(data) {
   var version = data.version || 1;
   var saved = data.game;
   
-  // V3-V4 压缩格式检测与解压
-  if (version >= 3 && saved && (saved.h || saved.sp)) {
-    console.log('检测到 V3-V4 压缩存档，正在解压...');
+  console.log('存档版本: v' + version);
+  
+  // 智能检测压缩格式（不依赖版本号）
+  if (saved && (saved.h || (saved.heroes && typeof saved.heroes === 'object' && !Array.isArray(saved.heroes)))) {
+    console.log('检测到压缩存档，正在解压...');
     var decompressed = decompressSaveV3V4(saved);
-    if (!decompressed) {
-      console.error('解压存档失败');
-      return false;
+    if (decompressed) {
+      saved = decompressed;
+      console.log('存档解压成功');
+    } else {
+      console.warn('解压失败，尝试直接读取');
     }
-    saved = decompressed;
-    console.log('存档解压成功');
   }
   
-  // V1-V2 格式检测（无 version 或 version < 3）
-  if (version < 3) {
-    console.log('迁移存档: v' + version + ' -> v5');
-    // V1-V2 直接就是 game 对象
-    if (!saved && data.heroes) {
-      saved = data;
-    }
+  // V1-V2 格式检测（无 version 或 version < 3，且无 game 包装）
+  if (!saved && (data.heroes || data.team)) {
+    console.log('检测到 V1-V2 格式（无 game 包装）');
+    saved = data;
+  }
+  
+  // V3-V4 可能直接是 game 对象
+  if (!saved && data.stageProgress !== undefined) {
+    console.log('检测到 V3-V4 格式（直接 game 对象）');
+    saved = data;
   }
   
   if (!saved) {
@@ -5458,15 +5463,40 @@ function restoreSaveData(data) {
     return false;
   }
   
-  // 确保必要字段存在（补丁）
-  if (!saved.heroes) saved.heroes = [];
-  if (!saved.team) saved.team = [];
-  if (!saved.equipment) saved.equipment = [];
-  if (!saved.materials) saved.materials = {};
-  if (!saved.buildings) saved.buildings = {};
-  if (!saved.achievements) saved.achievements = {};
-  if (!saved.codex) saved.codex = {};
-  if (!saved.arenaState) saved.arenaState = { totalWins: 0, winStreak: 0 };
+  // ===== 全面字段补丁（向前兼容） =====
+  // 核心数据
+  if (!saved.heroes || !Array.isArray(saved.heroes)) saved.heroes = [];
+  if (!saved.team || !Array.isArray(saved.team)) saved.team = [];
+  if (!saved.equipment || !Array.isArray(saved.equipment)) saved.equipment = [];
+  
+  // 资源
+  if (typeof saved.gold !== 'number') saved.gold = 0;
+  if (typeof saved.gems !== 'number') saved.gems = 0;
+  if (!saved.materials || typeof saved.materials !== 'object') saved.materials = {};
+  
+  // 进度
+  if (typeof saved.stageProgress !== 'number') saved.stageProgress = 1;
+  if (!saved.buildings || typeof saved.buildings !== 'object') saved.buildings = {};
+  if (!saved.achievements || typeof saved.achievements !== 'object') saved.achievements = { unlocked: {}, progress: {}, totalClaimed: 0 };
+  if (!saved.codex || typeof saved.codex !== 'object') saved.codex = { discovered: {}, unlocked: {} };
+  
+  // 竞技场
+  if (!saved.arenaState || typeof saved.arenaState !== 'object') {
+    saved.arenaState = { totalWins: 0, winStreak: 0, maxWinStreak: 0, dailyChallengesUsed: 0 };
+  }
+  
+  // 统计
+  if (!saved.stats || typeof saved.stats !== 'object') {
+    saved.stats = { totalKills: 0, totalHeroesRecruited: 0, totalEquipmentForged: 0, totalEquipmentMerged: 0, totalGoldEarned: 0, totalGemsEarned: 0, maxStageReached: 1, maxHeroLevel: 0 };
+  }
+  
+  // 其他
+  if (typeof saved.totalPlayTime !== 'number') saved.totalPlayTime = 0;
+  if (typeof saved.tutorialDone !== 'boolean') saved.tutorialDone = saved.heroes.length > 0;
+  if (saved.tutorialPhase === undefined) saved.tutorialPhase = '';
+  if (saved.tutorialStep === undefined) saved.tutorialStep = 0;
+  if (!saved.loginStreak) saved.loginStreak = 0;
+  if (!saved.lastLoginDateStreak) saved.lastLoginDateStreak = '';
   
   // 先恢复 heroes
   G.heroes = saved.heroes;
@@ -5489,6 +5519,7 @@ function restoreSaveData(data) {
   G.heroIdCounter = data.heroIdCounter || saved.heroIdCounter || (saved.heroes ? saved.heroes.length : 0);
   Object.keys(saved).forEach(function(k) { G[k] = saved[k]; });
   
+  console.log('存档恢复成功，英雄数: ' + G.heroes.length + ', 关卡: ' + G.stageProgress);
   return true;
 }
 
