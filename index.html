@@ -10950,7 +10950,18 @@ const MERGE_ACCIDENTS = {
   frogcurse: { name:'青蛙诅咒', icon:'🐸', color:'#4ade80', desc:'属性降低70%，3天后解除并+20%', weight:10 },
   bard: { name:'吟游诗人', icon:'🎵', color:'#c084fc', desc:'获得诗歌特质，全队士气+5%', weight:5 },
   dice: { name:'命运骰子', icon:'🎲', color:'#38bdf8', desc:'选择保守或冒险，命运由你决定', weight:10 },
-  blackhole: { name:'黑洞吞噬', icon:'🌀', color:'#7c3aed', desc:'吞噬战力最低队友，获得其50%属性', weight:3 }
+  blackhole: { name:'黑洞吞噬', icon:'🌀', color:'#7c3aed', desc:'吞噬战力最低队友，获得其50%属性', weight:3 },
+  // === 第二批新增事件 ===
+  phoenix: { name:'凤凰涅槃', icon:'🔥', color:'#ef4444', desc:'英雄死亡时自动复活一次，全属性+15%', weight:5 },
+  vampire: { name:'吸血鬼', icon:'🧛', color:'#dc2626', desc:'攻击吸血15%，但每场战斗后损失5%最大HP', weight:8 },
+  alchemist: { name:'炼金术士', icon:'⚗️', color:'#a3e635', desc:'随机将一个属性转化为另一个属性的150%', weight:10 },
+  gambler: { name:'赌徒之魂', icon:'🎰', color:'#f59e0b', desc:'50%概率全属性翻倍，50%概率品质降一级', weight:6 },
+  timebomb: { name:'定时炸弹', icon:'💣', color:'#6b7280', desc:'3场战斗后爆炸，对全体敌人造成巨大伤害', weight:7 },
+  parasite: { name:'寄生体', icon:'🦠', color:'#84cc16', desc:'每场战斗结束后吸取随机队友10%属性成长', weight:6 },
+  chameleon: { name:'变色龙', icon:'🦎', color:'#06b6d4', desc:'每场战斗随机获得一个职业被动，战斗结束消失', weight:8 },
+  oracle: { name:'先知之眼', icon:'🔮', color:'#8b5cf6', desc:'预知下次合成的结果品质，并+10%该品质概率', weight:5 },
+  berserker: { name:'狂战士之血', icon:'🩸', color:'#be123c', desc:'HP越低攻击越高，最高+80%ATK', weight:9 },
+  mimic: { name:'拟态者', icon:'🎭', color:'#ec4899', desc:'完美复制材料中最高品质英雄的全部属性', weight:5 }
 };
 const MERGE_ACCIDENT_RATE = 0.20; // 20%事件率（事件增多后提升）
 
@@ -10970,10 +10981,16 @@ function rollMergeAccident(hero, materials) {
   }
 
   var total = 0;
-  for (var k in MERGE_ACCIDENTS) total += MERGE_ACCIDENTS[k].weight;
+  for (var k in MERGE_ACCIDENTS) {
+    if (!G_cheats.disabledAccidents || !G_cheats.disabledAccidents[k]) {
+      total += MERGE_ACCIDENTS[k].weight;
+    }
+  }
   // 如果镜像数量已达上限，从权重中排除镜像事件
   if(currentMirrorCount >= MAX_MIRROR_HEROES){
-    total -= (MERGE_ACCIDENTS.mirror ? MERGE_ACCIDENTS.mirror.weight : 0);
+    if (!G_cheats.disabledAccidents || !G_cheats.disabledAccidents.mirror) {
+      total -= (MERGE_ACCIDENTS.mirror ? MERGE_ACCIDENTS.mirror.weight : 0);
+    }
   }
   var roll = Math.random() * total, cur = 0;
   var type = 'explosion';
@@ -10982,6 +10999,8 @@ function rollMergeAccident(hero, materials) {
     type = G_cheats.forceAccidentType;
   } else {
     for (var k in MERGE_ACCIDENTS) {
+      // 跳过已禁用的事件
+      if (G_cheats.disabledAccidents && G_cheats.disabledAccidents[k]) continue;
       // 跳过镜像事件（如果已达上限）
       if(currentMirrorCount >= MAX_MIRROR_HEROES && k === 'mirror') continue;
       cur += MERGE_ACCIDENTS[k].weight;
@@ -11245,6 +11264,169 @@ function rollMergeAccident(hero, materials) {
       } else {
         // 没有可吞噬的目标，退化为普通英雄
         result.message = '🌀 黑洞吞噬失败…没有可吞噬的目标。';
+      }
+      break;
+
+    // === 第二批新增事件处理 ===
+    case 'phoenix':
+      // 凤凰涅槃：死亡时自动复活一次，全属性+15%
+      hero.maxHP = Math.floor(hero.maxHP * 1.15);
+      hero.atk = Math.floor(hero.atk * 1.15);
+      hero.def = Math.floor(hero.def * 1.15);
+      hero.spd = Math.floor(hero.spd * 1.15);
+      hero.maxMP = Math.floor(hero.maxMP * 1.15);
+      hero.hp = hero.maxHP;
+      hero.mp = hero.maxMP;
+      hero.isPhoenix = true;
+      hero.phoenixUsed = false;
+      result.hero = hero;
+      result.message = '🔥 凤凰涅槃！英雄获得重生之力，全属性+15%！';
+      break;
+
+    case 'vampire':
+      // 吸血鬼：攻击吸血15%，每场战斗后损失5%最大HP
+      hero.isVampire = true;
+      hero.vampireLifesteal = 0.15;
+      hero.vampireHPDrain = 0.05;
+      hero.maxHP = Math.floor(hero.maxHP * 1.1);
+      hero.atk = Math.floor(hero.atk * 1.1);
+      hero.hp = hero.maxHP;
+      result.hero = hero;
+      result.message = '🧛 吸血鬼！攻击吸血15%，但每场战斗后损失5%最大HP';
+      break;
+
+    case 'alchemist':
+      // 炼金术士：随机转化一个属性为另一个属性的150%
+      var stats = ['maxHP','atk','def','spd','maxMP'];
+      var srcStat = stats[Math.floor(Math.random() * stats.length)];
+      var dstStats = stats.filter(function(s){ return s !== srcStat; });
+      var dstStat = dstStats[Math.floor(Math.random() * dstStats.length)];
+      var transferVal = hero[srcStat];
+      var convertedVal = Math.floor(transferVal * 1.5);
+      hero[srcStat] = Math.max(srcStat === 'maxHP' ? 10 : 1, Math.floor(transferVal * 0.3));
+      hero[dstStat] = hero[dstStat] + convertedVal;
+      hero.hp = hero.maxHP;
+      hero.mp = hero.maxMP;
+      hero.isAlchemist = true;
+      hero.alchemistInfo = { from: srcStat, to: dstStat };
+      var statNames = {maxHP:'HP',atk:'ATK',def:'DEF',spd:'SPD',maxMP:'MP'};
+      result.hero = hero;
+      result.message = '⚗️ 炼金术！' + statNames[srcStat] + '转化为' + statNames[dstStat] + '的150%！';
+      break;
+
+    case 'gambler':
+      // 赌徒之魂：50%全属性翻倍，50%品质降一级
+      if (Math.random() < 0.5) {
+        hero.maxHP *= 2;
+        hero.atk *= 2;
+        hero.def *= 2;
+        hero.spd *= 2;
+        hero.maxMP *= 2;
+        hero.hp = hero.maxHP;
+        hero.mp = hero.maxMP;
+        hero.isGamblerWin = true;
+        result.hero = hero;
+        result.message = '🎰 赌徒大赢！全属性翻倍！！';
+      } else {
+        var gqi = QUALITIES.indexOf(hero.quality);
+        if (gqi > 0) {
+          hero.quality = QUALITIES[gqi - 1];
+          hero.isGamblerLose = true;
+          result.hero = hero;
+          result.message = '🎰 赌徒输了…品质降为' + QUALITY_NAMES[hero.quality];
+        } else {
+          result.hero = hero;
+          result.message = '🎰 赌徒输了…但品质已经是最低，无变化';
+        }
+      }
+      hero.isGambler = true;
+      break;
+
+    case 'timebomb':
+      // 定时炸弹：3场战斗后爆炸，对全体敌人造成巨大伤害
+      hero.isTimeBomb = true;
+      hero.timeBombCountdown = 3;
+      hero.timeBombDamage = Math.floor((hero.atk + hero.def + hero.spd) * 3);
+      hero.maxHP = Math.floor(hero.maxHP * 1.2);
+      hero.atk = Math.floor(hero.atk * 1.2);
+      hero.hp = hero.maxHP;
+      result.hero = hero;
+      result.message = '💣 定时炸弹！3场战斗后爆炸，造成' + hero.timeBombDamage + '点伤害！属性+20%';
+      break;
+
+    case 'parasite':
+      // 寄生体：每场战斗后吸取随机队友10%属性成长
+      hero.isParasite = true;
+      hero.parasiteRate = 0.10;
+      hero.maxHP = Math.floor(hero.maxHP * 1.05);
+      hero.atk = Math.floor(hero.atk * 1.05);
+      hero.hp = hero.maxHP;
+      result.hero = hero;
+      result.message = '🦠 寄生体！每场战斗后吸取随机队友10%属性成长';
+      break;
+
+    case 'chameleon':
+      // 变色龙：每场战斗随机获得一个职业被动
+      hero.isChameleon = true;
+      hero.maxHP = Math.floor(hero.maxHP * 1.08);
+      hero.atk = Math.floor(hero.atk * 1.08);
+      hero.def = Math.floor(hero.def * 1.08);
+      hero.spd = Math.floor(hero.spd * 1.08);
+      hero.hp = hero.maxHP;
+      hero.mp = hero.maxMP;
+      result.hero = hero;
+      result.message = '🦎 变色龙！每场战斗随机获得一个职业被动，全属性+8%';
+      break;
+
+    case 'oracle':
+      // 先知之眼：预知下次合成品质，+10%该品质概率
+      hero.isOracle = true;
+      var oracleQualities = ['rare','epic','legendary','mythic'];
+      var oracleQ = oracleQualities[Math.floor(Math.random() * oracleQualities.length)];
+      hero.oraclePredicted = oracleQ;
+      if (!G.oracleBonus) G.oracleBonus = {};
+      G.oracleBonus[oracleQ] = (G.oracleBonus[oracleQ] || 0) + 0.10;
+      hero.maxHP = Math.floor(hero.maxHP * 1.1);
+      hero.atk = Math.floor(hero.atk * 1.1);
+      hero.hp = hero.maxHP;
+      result.hero = hero;
+      result.message = '🔮 先知之眼！下次合成' + QUALITY_NAMES[oracleQ] + '概率+10%！';
+      break;
+
+    case 'berserker':
+      // 狂战士之血：HP越低攻击越高，最高+80%
+      hero.isBerserker = true;
+      hero.berserkerMaxBonus = 0.80;
+      hero.maxHP = Math.floor(hero.maxHP * 1.1);
+      hero.atk = Math.floor(hero.atk * 1.15);
+      hero.hp = hero.maxHP;
+      result.hero = hero;
+      result.message = '🩸 狂战士之血！HP越低攻击越高（最高+80%ATK）！';
+      break;
+
+    case 'mimic':
+      // 拟态者：完美复制材料中最高品质英雄的全部属性
+      var bestMaterial = null, bestMatQ = -1;
+      materials.forEach(function(m) {
+        var mqi = QUALITIES.indexOf(m.quality);
+        if (mqi > bestMatQ) { bestMatQ = mqi; bestMaterial = m; }
+      });
+      if (bestMaterial) {
+        hero.maxHP = bestMaterial.maxHP || hero.maxHP;
+        hero.atk = bestMaterial.atk || hero.atk;
+        hero.def = bestMaterial.def || hero.def;
+        hero.spd = bestMaterial.spd || hero.spd;
+        hero.maxMP = bestMaterial.maxMP || hero.maxMP;
+        hero.hp = hero.maxHP;
+        hero.mp = hero.maxMP;
+        hero.skills = (bestMaterial.skills || hero.skills).slice();
+        hero.isMimic = true;
+        hero.mimicSource = bestMaterial.name;
+        result.hero = hero;
+        result.message = '🎭 拟态者！完美复制了「' + bestMaterial.name + '」的全部属性！';
+      } else {
+        result.hero = hero;
+        result.message = '🎭 拟态失败…没有可复制的材料。';
       }
       break;
   }
@@ -16605,6 +16787,7 @@ var G_cheats = {
   forceAccident: false,    // 强制事件（单次）
   alwaysAccident: false,   // 持续事件（每次合成必出事件）
   forceAccidentType: null, // 强制指定事件类型（null=随机，设为事件key则必定触发该事件）
+  disabledAccidents: {},   // 禁用的合成事件 { eventName: true }
   // 英雄相关金手指
   forceQuality: null,      // 强制指定品质
   forceLegendary: false,   // 强制传说
@@ -17488,7 +17671,16 @@ function renderCheats(el){
             ${Object.keys(MERGE_ACCIDENTS).map(function(k){
               var a = MERGE_ACCIDENTS[k];
               var active = G_cheats.forceAccidentType === k;
-              return '<button class="btn btn-sm '+(active?'btn-primary':'')+'" onclick="cheatForceAccidentType(\''+k+'\');renderCheats()" style="font-size:11px;'+(active?'border-color:'+a.color+';background:'+a.color+'22':'')+'">'+a.icon+' '+a.name+(active?'[开]':'')+'</button>';
+              var disabled = G_cheats.disabledAccidents && G_cheats.disabledAccidents[k];
+              return '<button class="btn btn-sm '+(active?'btn-primary':(disabled?'':''))+'" onclick="cheatForceAccidentType(\''+k+'\');renderCheats()" style="font-size:11px;'+(active?'border-color:'+a.color+';background:'+a.color+'22':(disabled?'opacity:0.4;text-decoration:line-through':''))+'" title="'+(disabled?'已禁用':'点击指定')+'">'+a.icon+' '+a.name+(active?'[开]':(disabled?'[禁]':''))+'</button>';
+            }).join('')}
+          </div>
+          <div class="btn-group mt-8">
+            <div class="text-xs text-dim mb-4" style="color:var(--text2)">🚫 事件开关（点击禁用/启用单个事件）</div>
+            ${Object.keys(MERGE_ACCIDENTS).map(function(k){
+              var a = MERGE_ACCIDENTS[k];
+              var disabled = G_cheats.disabledAccidents && G_cheats.disabledAccidents[k];
+              return '<button class="btn btn-sm '+(disabled?'':'btn-primary')+'" onclick="toggleAccident(\''+k+'\');renderCheats()" style="font-size:11px;'+(disabled?'':'background:rgba(255,255,255,.05)')+'" title="点击'+(disabled?'启用':'禁用')+'">'+a.icon+' '+(disabled?'✅':'❌')+'</button>';
             }).join('')}
           </div>
           <div class="btn-group mt-8">
@@ -18028,6 +18220,19 @@ function cheatForceAccidentType(accType){
     G_cheats.forceAccidentType = accType;
     var acc = MERGE_ACCIDENTS[accType];
     showToast(acc.icon + ' 已指定事件：' + acc.name + '（配合强制事件或持续事件使用）');
+  }
+}
+
+// 切换合成事件启用/禁用
+function toggleAccident(accType){
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  if(!G_cheats.disabledAccidents) G_cheats.disabledAccidents = {};
+  if(G_cheats.disabledAccidents[accType]){
+    delete G_cheats.disabledAccidents[accType];
+    showToast(MERGE_ACCIDENTS[accType].icon + ' 已启用：' + MERGE_ACCIDENTS[accType].name);
+  } else {
+    G_cheats.disabledAccidents[accType] = true;
+    showToast('🚫 已禁用：' + MERGE_ACCIDENTS[accType].name);
   }
 }
 
