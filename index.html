@@ -5200,8 +5200,192 @@ var SAVE_KEY='shadow_dungeon_save';
 var SAVE_META_KEY='shadow_dungeon_meta';
 var MAX_SAVE_SLOTS=3;
 var MAX_AUTO_BACKUPS=2;
-var MAX_MANUAL_BACKUPS=10;
-var CURRENT_SAVE_VERSION = 2;
+var MAX_MANUAL_BACKUPS=5; // 减少手动备份数量
+var CURRENT_SAVE_VERSION = 3; // 升级版本号
+
+// ===== 存档压缩优化 =====
+// 短键名映射表（减少存储空间）
+var SAVE_KEY_MAP = {
+  // 短键 -> 原键
+  'pn': 'playerName',
+  'r': 'resources',
+  'h': 'heroes',
+  't': 'team',
+  'e': 'equipment',
+  'b': 'buildings',
+  'sp': 'stageProgress',
+  'hic': 'heroIdCounter',
+  'pws': 'pveWinStreak',
+  'pms': 'pveMaxStreak',
+  'lld': 'lastLoginDate',
+  'dbc': 'dailyBonusClaimed',
+  'ls': 'loginStreak',
+  'llds': 'lastLoginDateStreak',
+  'uhu': 'unknownHeroUnlocked',
+  'cd': 'codex',
+  'es': 'exploreStats',
+  'lot': 'lastOnlineTime',
+  'as': 'arenaState',
+  'ac': 'achievements',
+  'st': 'stats',
+  'co': 'currentOmen',
+  'oet': 'omenExpireTime',
+  'rpv': 'recruitPasswordVerified',
+  'tpt': 'totalPlayTime',
+  'mtc': 'mergeTotalCount',
+  'mmp': 'mergeMythicPity',
+  'mhp': 'mergeHiddenPity',
+  'bm': 'breakthroughMaterials',
+  'hb': 'heroBreakthrough',
+  'uqp': 'unknownQuestProgress',
+};
+var SAVE_KEY_MAP_REV = {}; // 反向映射
+Object.keys(SAVE_KEY_MAP).forEach(function(k){ SAVE_KEY_MAP_REV[SAVE_KEY_MAP[k]] = k; });
+
+// 压缩游戏数据（使用短键名+剔除默认值）
+function compressGameData(g) {
+  var compressed = {};
+  
+  // 遍历所有属性，使用短键名
+  Object.keys(g).forEach(function(key) {
+    var shortKey = SAVE_KEY_MAP_REV[key] || key;
+    var value = g[key];
+    
+    // 跳过空值和默认值
+    if (value === null || value === undefined) return;
+    if (Array.isArray(value) && value.length === 0) return;
+    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) return;
+    
+    // 特殊处理：英雄数组只存必要属性
+    if (key === 'heroes' && Array.isArray(value)) {
+      compressed[shortKey] = value.map(function(h) {
+        if (!h) return null;
+        // 只存储非默认属性
+        var compressedHero = { id: h.id, template: h.template, level: h.level };
+        // 只存非默认值
+        if (h.exp !== 0) compressedHero.exp = h.exp;
+        if (h.hp !== h.maxHP) compressedHero.hp = h.hp;
+        if (h.mp !== h.maxMP) compressedHero.mp = h.mp;
+        if (h.maxHP) compressedHero.mhp = h.maxHP;
+        if (h.atk) compressedHero.atk = h.atk;
+        if (h.def) compressedHero.def = h.def;
+        if (h.spd) compressedHero.spd = h.spd;
+        if (h.maxMP) compressedHero.mmp = h.maxMP;
+        if (h.quality) compressedHero.q = h.quality;
+        if (h.equipment) compressedHero.eq = h.equipment;
+        if (h.skills) compressedHero.sk = h.skills;
+        if (h.isFrogCursed) compressedHero.fc = h.isFrogCursed;
+        if (h.frogCurseExpire) compressedHero.fce = h.frogCurseExpire;
+        if (h.frogOriginalStats) compressedHero.fos = h.frogOriginalStats;
+        if (h.isGhost) compressedHero.ig = h.isGhost;
+        if (h.ghostExpire) compressedHero.ge = h.ghostExpire;
+        if (h.ghostBonus) compressedHero.gb = h.ghostBonus;
+        if (h.isMirror) compressedHero.im = h.isMirror;
+        if (h.mirrorExpire) compressedHero.me = h.mirrorExpire;
+        if (h.breakthrough) compressedHero.bt = h.breakthrough;
+        return compressedHero;
+      });
+    }
+    // 特殊处理：装备数组
+    else if (key === 'equipment' && Array.isArray(value)) {
+      compressed[shortKey] = value.map(function(eq) {
+        if (!eq) return null;
+        var compressedEq = { id: eq.id, template: eq.template };
+        if (eq.level !== 1) compressedEq.lv = eq.level;
+        if (eq.quality) compressedEq.q = eq.quality;
+        if (eq.equippedBy !== null) compressedEq.eb = eq.equippedBy;
+        return compressedEq;
+      });
+    }
+    // 特殊处理：队伍（只存ID引用）
+    else if (key === 'team' && Array.isArray(value)) {
+      compressed[shortKey] = value.map(function(h) { return h ? h.id : null; });
+    }
+    else {
+      compressed[shortKey] = value;
+    }
+  });
+  
+  return compressed;
+}
+
+// 解压游戏数据
+function decompressGameData(compressed) {
+  var g = {};
+  
+  // 遍历所有属性，还原键名
+  Object.keys(compressed).forEach(function(shortKey) {
+    var originalKey = SAVE_KEY_MAP[shortKey] || shortKey;
+    var value = compressed[shortKey];
+    
+    // 特殊处理：英雄数组
+    if (originalKey === 'heroes' && Array.isArray(value)) {
+      g[originalKey] = value.map(function(ch) {
+        if (!ch) return null;
+        // 从模板重建英雄
+        var template = HERO_TEMPLATES[ch.template];
+        if (!template) return null;
+        
+        var hero = {
+          id: ch.id,
+          template: ch.template,
+          name: template.name,
+          level: ch.level || 1,
+          exp: ch.exp || 0,
+          maxHP: ch.mhp || template.maxHP,
+          hp: ch.hp !== undefined ? ch.hp : (ch.mhp || template.maxHP),
+          atk: ch.atk || template.atk,
+          def: ch.def || template.def,
+          spd: ch.spd || template.spd,
+          maxMP: ch.mmp || template.maxMP || 0,
+          mp: ch.mp !== undefined ? ch.mp : (ch.mmp || template.maxMP || 0),
+          quality: ch.q || template.quality || 'common',
+          equipment: ch.eq || [null,null,null,null],
+          skills: ch.sk || template.skills || [],
+          isFrogCursed: ch.fc || false,
+          frogCurseExpire: ch.fce || 0,
+          frogOriginalStats: ch.fos || null,
+          isGhost: ch.ig || false,
+          ghostExpire: ch.ge || 0,
+          ghostBonus: ch.gb || null,
+          isMirror: ch.im || false,
+          mirrorExpire: ch.me || 0,
+          breakthrough: ch.bt || 0,
+        };
+        return hero;
+      });
+    }
+    // 特殊处理：装备数组
+    else if (originalKey === 'equipment' && Array.isArray(value)) {
+      g[originalKey] = value.map(function(ceq) {
+        if (!ceq) return null;
+        var template = EQUIPMENT_TEMPLATES[ceq.template];
+        if (!template) return null;
+        
+        return {
+          id: ceq.id,
+          template: ceq.template,
+          name: template.name,
+          type: template.type,
+          level: ceq.lv || 1,
+          quality: ceq.q || template.quality || 'common',
+          stats: template.stats || {},
+          equippedBy: ceq.eb !== undefined ? ceq.eb : null,
+        };
+      });
+    }
+    // 特殊处理：队伍（从ID引用还原）
+    else if (originalKey === 'team' && Array.isArray(value)) {
+      g[originalKey] = value.map(function(id) { return null; }); // 先初始化，稍后在loadGame中重建引用
+      g._teamIds = value; // 暂存ID列表
+    }
+    else {
+      g[originalKey] = value;
+    }
+  });
+  
+  return g;
+}
 
 // 获取存档元数据
 function getSaveMeta(){
@@ -5280,14 +5464,22 @@ function saveGame(){
       console.error('存档校验失败: 核心数据异常，跳过本次保存');
       return;
     }
-    // 添加版本号用于兼容检测
-    var data={g:G,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
+    
+    // 使用压缩存储（v3版本）
+    var compressedG = compressGameData(G);
+    var data={g:compressedG,heroIdCounter:G.heroIdCounter,saveVersion:CURRENT_SAVE_VERSION,timestamp:Date.now()};
     var jsonStr=JSON.stringify(data);
+    
     // 校验序列化结果
     if(!jsonStr || jsonStr.length<10){
       console.error('存档序列化失败，跳过本次保存');
       return;
     }
+    
+    // 输出压缩效果日志
+    var originalSize = JSON.stringify({g:G,heroIdCounter:G.heroIdCounter}).length;
+    console.log('存档压缩: ' + originalSize + ' -> ' + jsonStr.length + ' (节省' + Math.round((1-jsonStr.length/originalSize)*100) + '%)');
+    
     // 安全写入：先写备份再写主存档，防止写入中途崩溃
     try{
       var safeKey=getSlotKey(slotIdx)+'_safe';
@@ -5496,6 +5688,11 @@ function migrateSaveData(data){
     }
     data.saveVersion=2;
   }
+  if(version < 3){
+    // v2 -> v3: 压缩格式迁移（无需特殊处理，loadGame会自动处理）
+    console.log('迁移存档: v2 -> v3 (压缩格式)');
+    data.saveVersion=3;
+  }
   return data;
 }
 
@@ -5614,7 +5811,25 @@ function loadGame(){
       console.error('存档数据缺少G对象');
       return tryRestoreFromBackup(meta, slotIdx);
     }
+    
+    // 根据版本决定是否解压缩
+    if(data.saveVersion >= 3){
+      // v3+ 使用压缩格式，需要解压
+      console.log('解压缩v3存档...');
+      saved = decompressGameData(saved);
+    }
+    
     Object.keys(saved).forEach(function(k){G[k]=saved[k]});
+    
+    // 重建队伍引用（从ID列表）
+    if(G._teamIds && Array.isArray(G._teamIds)){
+      G.team = G._teamIds.map(function(id){
+        if(!id) return null;
+        return G.heroes.find(function(h){ return h && h.id === id; }) || null;
+      });
+      delete G._teamIds;
+    }
+    
     initGameAfterLoad();
     return true;
   }catch(e){console.error('读档失败',e);return false;}
@@ -5623,6 +5838,18 @@ function loadGame(){
 // 尝试从备份恢复
 function tryRestoreFromBackup(meta, slotIdx){
   console.log('尝试从备份恢复...');
+  
+  // 辅助函数：加载备份数据（支持压缩格式）
+  function loadBackupData(data){
+    if(!data || !data.g) return null;
+    var saved = data.g;
+    // 检查是否为压缩格式
+    if(data.saveVersion >= 3){
+      saved = decompressGameData(saved);
+    }
+    return saved;
+  }
+  
   // 优先尝试自动备份（不限槽位，优先同槽位）
   if(meta.autoBackups && meta.autoBackups.length>0){
     // 先找同槽位的
@@ -5633,10 +5860,11 @@ function tryRestoreFromBackup(meta, slotIdx){
           var raw=localStorage.getItem(bk.key);
           if(raw){
             var data=JSON.parse(raw);
-            if(data&&data.g){
+            var saved=loadBackupData(data);
+            if(saved){
               console.log('从自动备份恢复成功');
               G.heroIdCounter=data.heroIdCounter||0;
-              Object.keys(data.g).forEach(function(k){G[k]=data.g[k]});
+              Object.keys(saved).forEach(function(k){G[k]=saved[k]});
               initGameAfterLoad();
               saveGame();
               showToast('⚠️ 存档已损坏，已从自动备份恢复');
@@ -5654,10 +5882,11 @@ function tryRestoreFromBackup(meta, slotIdx){
           var raw=localStorage.getItem(bk.key);
           if(raw){
             var data=JSON.parse(raw);
-            if(data&&data.g){
+            var saved=loadBackupData(data);
+            if(saved){
               console.log('从其他槽位自动备份恢复成功');
               G.heroIdCounter=data.heroIdCounter||0;
-              Object.keys(data.g).forEach(function(k){G[k]=data.g[k]});
+              Object.keys(saved).forEach(function(k){G[k]=saved[k]});
               initGameAfterLoad();
               meta.currentSlot=bk.slotIdx;
               saveSaveMeta(meta);
@@ -5679,10 +5908,11 @@ function tryRestoreFromBackup(meta, slotIdx){
           var raw=localStorage.getItem(bk.key);
           if(raw){
             var data=JSON.parse(raw);
-            if(data&&data.g){
+            var saved=loadBackupData(data);
+            if(saved){
               console.log('从手动备份恢复成功');
               G.heroIdCounter=data.heroIdCounter||0;
-              Object.keys(data.g).forEach(function(k){G[k]=data.g[k]});
+              Object.keys(saved).forEach(function(k){G[k]=saved[k]});
               initGameAfterLoad();
               saveGame();
               showToast('⚠️ 存档已损坏，已从手动备份恢复');
@@ -5699,10 +5929,11 @@ function tryRestoreFromBackup(meta, slotIdx){
           var raw=localStorage.getItem(bk.key);
           if(raw){
             var data=JSON.parse(raw);
-            if(data&&data.g){
+            var saved=loadBackupData(data);
+            if(saved){
               console.log('从其他槽位手动备份恢复成功');
               G.heroIdCounter=data.heroIdCounter||0;
-              Object.keys(data.g).forEach(function(k){G[k]=data.g[k]});
+              Object.keys(saved).forEach(function(k){G[k]=saved[k]});
               initGameAfterLoad();
               meta.currentSlot=bk.slotIdx;
               saveSaveMeta(meta);
@@ -5722,10 +5953,11 @@ function tryRestoreFromBackup(meta, slotIdx){
         var raw=localStorage.getItem(getSlotKey(i));
         if(raw){
           var data=JSON.parse(raw);
-          if(data&&data.g){
+          var saved=loadBackupData(data);
+          if(saved){
             console.log('从其他槽位'+i+'恢复成功');
             G.heroIdCounter=data.heroIdCounter||0;
-            Object.keys(data.g).forEach(function(k){G[k]=data.g[k]});
+            Object.keys(saved).forEach(function(k){G[k]=saved[k]});
             initGameAfterLoad();
             // 切换到该槽位
             meta.currentSlot=i;
