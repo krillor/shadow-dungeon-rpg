@@ -2830,8 +2830,20 @@ function finishTutorial(){
   G.tutorialDone=true;
   G.tutorialPhase='';
   G.tutorialStep=0;
+  
+  // 引导完成奖励
+  var rewardGold = 1000;
+  var rewardGems = 20;
+  var rewardMaterials = { 'iron_ore': 10, 'magic_dust': 5 };
+  
+  G.gold = (G.gold || 0) + rewardGold;
+  G.gems = (G.gems || 0) + rewardGems;
+  for (var key in rewardMaterials) {
+    G.materials[key] = (G.materials[key] || 0) + rewardMaterials[key];
+  }
+  
   saveGame();
-  showToast('🎉 引导完成！祝你游戏愉快！');
+  showToast('🎉 引导完成！获得: ' + rewardGold + '金币, ' + rewardGems + '宝石, 10铁矿, 5魔法尘');
 }
 
 function onGuideRecruitClick(){
