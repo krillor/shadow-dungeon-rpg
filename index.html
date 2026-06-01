@@ -10862,6 +10862,7 @@ function hashStr(str){
 
 // ==================== 合成结果展示 ====================
 function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
+  var statNames2 = {maxHP:'HP',atk:'ATK',def:'DEF',spd:'SPD',maxMP:'MP'};
   var qualityColors={common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#f59e0b',mythic:'#ef4444',hidden:'#00ffcc',unknown:'#ff00ff'};
   var qualityBg={common:'rgba(136,136,136,.15)',rare:'rgba(74,158,255,.15)',epic:'rgba(168,85,247,.15)',legendary:'rgba(245,158,11,.15)',mythic:'rgba(239,68,68,.15)',hidden:'rgba(0,255,204,.12)',unknown:'rgba(255,0,255,.15)'};
   
@@ -10993,6 +10994,16 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
       (hero.isBalanced?'<div class="merge-result-mutation" style="color:#fbbf24">⚖️ 天平审判 · 属性重新分配</div>':'')+
       (hero.isReincarnated?'<div class="merge-result-mutation" style="color:#a78bfa">🔄 轮回转生 · 从'+(ROLES[hero.reincarnatedFrom]?ROLES[hero.reincarnatedFrom].name:'?')+'转生</div>':'')+
       (hero.isSoulSwap?'<div class="merge-result-mutation" style="color:#e879f9">🎭 灵魂交换 · 外观与属性不匹配</div>':'')+
+      (hero.isPhoenix?'<div class="merge-result-mutation" style="color:#ef4444">🔥 凤凰涅槃 · 死亡复活一次'+(hero.phoenixUsed?'(已使用)':'')+'</div>':'')+
+      (hero.isVampire?'<div class="merge-result-mutation" style="color:#dc2626">🧛 吸血鬼 · 攻击吸血'+Math.floor((hero.vampireLifesteal||0.15)*100)+'% 战后损HP</div>':'')+
+      (hero.isAlchemist?'<div class="merge-result-mutation" style="color:#a3e635">⚗️ 炼金术 · '+(hero.alchemistInfo?statNames2(hero.alchemistInfo.from)+'→'+statNames2(hero.alchemistInfo.to):'属性转化')+'</div>':'')+
+      (hero.isGambler?'<div class="merge-result-mutation" style="color:#f59e0b">🎰 赌徒之魂 · '+(hero.isGamblerWin?'全属性翻倍':'品质降级')+'</div>':'')+
+      (hero.isTimeBomb?'<div class="merge-result-mutation" style="color:#6b7280">💣 定时炸弹 · '+(hero.timeBombCountdown||0)+'场战斗后爆炸</div>':'')+
+      (hero.isParasite?'<div class="merge-result-mutation" style="color:#84cc16">🦠 寄生体 · 战后吸取队友属性</div>':'')+
+      (hero.isChameleon?'<div class="merge-result-mutation" style="color:#06b6d4">🦎 变色龙 · 战斗中随机获得职业被动</div>':'')+
+      (hero.isOracle?'<div class="merge-result-mutation" style="color:#8b5cf6">🔮 先知之眼 · 预知品质加成</div>':'')+
+      (hero.isBerserker?'<div class="merge-result-mutation" style="color:#be123c">🩸 狂战士之血 · HP越低攻击越高(+'+Math.floor((hero.berserkerMaxBonus||0.8)*100)+'%)</div>':'')+
+      (hero.isMimic?'<div class="merge-result-mutation" style="color:#ec4899">🎭 拟态者 · 复制了「'+(hero.mimicSource||'?')+'」</div>':'')+
       '<div class="merge-result-quality" style="color:'+qualityColors[hero.quality]+'">'+QUALITY_NAMES[hero.quality]+'</div>'+
       '<div class="merge-result-name">'+displayName+'</div>'+
       '<div style="font-size:12px;color:var(--text2);margin-bottom:4px">'+(ROLES[hero.role]?ROLES[hero.role].icon+' '+ROLES[hero.role].name:'')+' · Lv.'+hero.level+'</div>'+
@@ -11411,7 +11422,12 @@ function rollMergeAccident(hero, materials) {
       break;
 
     case 'gambler':
-      // 赌徒之魂：50%全属性翻倍，50%品质降一级
+      // 赌徒之魂：50%全属性翻倍，50%品质降一级（每个英雄只能触发一次）
+      if (hero.isGambler) {
+        result.hero = hero;
+        result.message = '🎰 赌徒之魂：该英雄已赌过一次，无法再次触发';
+        break;
+      }
       if (Math.random() < 0.5) {
         hero.maxHP *= 2;
         hero.atk *= 2;
@@ -13565,7 +13581,7 @@ function renderHeroCard(h){
     <div class="hero-info">
       <div class="hero-name"><span class="q-${displayQuality}">${displayName}</span> ${inTeam?'<span class="text-green text-xs">[队伍中]</span>':''} ${h.isMutation?'<span style="color:#a855f7;font-size:10px">☣️异变</span>':''}</div>
       <div class="hero-meta">${role.icon} ${role.name} · ${QUALITY_NAMES[displayQuality]} · Lv.${h.level} ${h.bonusSkills.length>0?'<span class="text-purple">★合成</span>':''} ${h.mutatedSkills&&h.mutatedSkills.length>0?'<span style="color:#d4a0ff;font-size:10px">🧬含变异</span>':''}</div>
-      <div class="text-xs text-dim" style="margin:4px 0;padding:4px;background:rgba(0,0,0,.2);border-radius:4px">💡 ${roleTraits[displayRole]||'未知职业'}${h.isGeneMutation&&h.geneMutatedPassive?' · <span style="color:#22d3ee">🧬突变被动:'+h.geneMutatedPassive.name+'</span>':''}${h.inscription?' · <span style="color:#fb923c">📜'+h.inscription.name+'</span>':''}${h.isShadowCursed?' · <span style="color:#6366f1">🌑暗影侵蚀</span>':''}${h.isFrogCursed?' · <span style="color:#4ade80">🐸青蛙诅咒</span>':''}${h.isBard&&h.bardPoem?' · <span style="color:#c084fc">🎵'+h.bardPoem.name+'</span>':''}${h.isAwakened?' · <span style="color:#facc15">🏆觉醒</span>':''}${h.isBlackHole?' · <span style="color:#7c3aed">🌀黑洞</span>':''}${h.isBalanced?' · <span style="color:#fbbf24">⚖️天平</span>':''}${h.isReincarnated?' · <span style="color:#a78bfa">🔄转生</span>':''}${h.isSoulSwap?' · <span style="color:#e879f9">🎭灵魂交换</span>':''}</div>
+      <div class="text-xs text-dim" style="margin:4px 0;padding:4px;background:rgba(0,0,0,.2);border-radius:4px">💡 ${roleTraits[displayRole]||'未知职业'}${h.isGeneMutation&&h.geneMutatedPassive?' · <span style="color:#22d3ee">🧬突变被动:'+h.geneMutatedPassive.name+'</span>':''}${h.inscription?' · <span style="color:#fb923c">📜'+h.inscription.name+'</span>':''}${h.isShadowCursed?' · <span style="color:#6366f1">🌑暗影侵蚀</span>':''}${h.isFrogCursed?' · <span style="color:#4ade80">🐸青蛙诅咒</span>':''}${h.isBard&&h.bardPoem?' · <span style="color:#c084fc">🎵'+h.bardPoem.name+'</span>':''}${h.isAwakened?' · <span style="color:#facc15">🏆觉醒</span>':''}${h.isBlackHole?' · <span style="color:#7c3aed">🌀黑洞</span>':''}${h.isBalanced?' · <span style="color:#fbbf24">⚖️天平</span>':''}${h.isReincarnated?' · <span style="color:#a78bfa">🔄转生</span>':''}${h.isSoulSwap?' · <span style="color:#e879f9">🎭灵魂交换</span>':''}${h.isPhoenix?' · <span style="color:#ef4444">🔥凤凰涅槃'+(h.phoenixUsed?'(已用)':'')+'</span>':''}${h.isVampire?' · <span style="color:#dc2626">🧛吸血鬼</span>':''}${h.isAlchemist?' · <span style="color:#a3e635">⚗️炼金术</span>':''}${h.isGambler?' · <span style="color:#f59e0b">🎰赌徒'+(h.isGamblerWin?'(赢)':'(输)')+'</span>':''}${h.isTimeBomb?' · <span style="color:#6b7280">💣炸弹('+(h.timeBombCountdown||0)+')</span>':''}${h.isParasite?' · <span style="color:#84cc16">🦠寄生体</span>':''}${h.isChameleon?' · <span style="color:#06b6d4">🦎变色龙</span>':''}${h.isOracle?' · <span style="color:#8b5cf6">🔮先知</span>':''}${h.isBerserker?' · <span style="color:#be123c">🩸狂战士</span>':''}${h.isMimic?' · <span style="color:#ec4899">🎭拟态('+h.mimicSource+')</span>':''}</div>
       <div class="hero-stats">
         <span class="stat-tag" title="${statTips.maxHP}">❤️<b>${stats.maxHP}</b></span>
         <span class="stat-tag" title="${statTips.atk}">⚔️<b>${stats.atk}</b></span>
