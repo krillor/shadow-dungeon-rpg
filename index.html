@@ -16648,17 +16648,50 @@ function showEquipmentGallery(){
   showModal('📋 装备展示 ('+EQUIP_TEMPLATES.length+'件)',html,[{text:'关闭',action:'closeModal()',cls:'btn-primary'}]);
 }
 
-// ==================== 排行榜页面（已禁用） ====================
+// ==================== 排行榜页面 ====================
 function renderLeaderboard(el){
-  // 排行榜功能已禁用
+  // 计算玩家数据
+  var teamPower = 0;
+  for(var i=0;i<G.team.length;i++){
+    if(G.team[i]) teamPower += calcHeroPower(G.team[i]);
+  }
+  var maxStage = G.stageProgress || 1;
+  var arenaWins = (G.arenaState && G.arenaState.totalWins) ? G.arenaState.totalWins : 0;
+  var totalHeroes = G.heroes ? G.heroes.length : 0;
+
+  var playerNameDisplay = G.playerName ? '<span style="color:var(--gold)">' + G.playerName + '</span>' : '<span style="color:var(--text3)">未设置名字</span>';
+  var uploadBtnText = G.playerName ? '📤 上传成绩' : '👤 设置名字';
+  var uploadBtnAction = G.playerName ? 'submitAllLeaderboards()' : 'showPlayerNameInput()';
+
   el.innerHTML = '<div class="panel">' +
-    '<div class="panel-title"><span class="icon">🏆</span> 排行榜</div>' +
-    '<div style="text-align:center;padding:40px 0;color:var(--text3)">' +
-      '<div style="font-size:48px;margin-bottom:16px">🏆</div>' +
-      '<div style="font-size:16px;margin-bottom:8px">排行榜功能已禁用</div>' +
-      '<div style="font-size:12px">当前仅支持本地存储</div>' +
+    '<div class="panel-title"><span class="icon">🏆</span> 全服排行榜</div>' +
+    '<div style="background:linear-gradient(135deg,rgba(201,162,39,.15),rgba(201,162,39,.05));border:1px solid rgba(201,162,39,.3);border-radius:10px;padding:14px;margin-bottom:14px">' +
+      '<div style="display:flex;align-items:center;gap:12px">' +
+        '<div style="font-size:36px">👤</div>' +
+        '<div style="flex:1">' +
+          '<div style="font-weight:bold;color:var(--gold)">我的排名 ' + playerNameDisplay + '</div>' +
+          '<div style="font-size:12px;color:var(--text2);margin-top:4px">' +
+            '战力: <b>' + teamPower + '</b> | 最高关卡: <b>' + maxStage + '</b> | 竞技场胜场: <b>' + arenaWins + '</b>' +
+          '</div>' +
+        '</div>' +
+        '<button class="btn btn-primary btn-sm" onclick="' + uploadBtnAction + '">' + uploadBtnText + '</button>' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">' +
+      '<button class="btn btn-sm" onclick="loadLeaderboardData(\'power\')" style="flex:1;min-width:80px">⚔️ 战力榜</button>' +
+      '<button class="btn btn-sm" onclick="loadLeaderboardData(\'stage\')" style="flex:1;min-width:80px">💀 关卡榜</button>' +
+      '<button class="btn btn-sm" onclick="loadLeaderboardData(\'arena\')" style="flex:1;min-width:80px">🏟️ 竞技榜</button>' +
+      '<button class="btn btn-sm" onclick="loadLeaderboardData(\'heroes\')" style="flex:1;min-width:80px">🧙 英雄榜</button>' +
+    '</div>' +
+    '<div id="leaderboard-list" style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px;min-height:200px">' +
+      '<div style="text-align:center;color:var(--text3);padding:40px 0">' +
+        '<div style="font-size:24px;margin-bottom:8px">🏆</div>' +
+        '<div>点击上方按钮查看排行榜</div>' +
+      '</div>' +
     '</div>' +
   '</div>';
+
+  setTimeout(function(){ loadLeaderboardData('power'); }, 100);
 }
 
 // 加载排行榜数据
@@ -18348,8 +18381,32 @@ function confirmPlayerName() {
 
 // 提交排行榜分数
 function submitLeaderboard(scoreType, scoreValue, extraData) {
-  // 排行榜功能已禁用
-  return Promise.resolve(false);
+  if (!isCloudReady || !deviceId) {
+    return Promise.resolve(false);
+  }
+
+  // 需要玩家名字才能提交
+  if (!G.playerName || G.playerName.trim() === '') {
+    return Promise.resolve(false);
+  }
+
+  extraData = extraData || {};
+
+  return sb.from('leaderboard').upsert({
+    device_id: deviceId,
+    player_name: G.playerName,
+    type: scoreType,
+    score: scoreValue,
+    timestamp: Date.now()
+  }, { onConflict: 'device_id,type' })
+    .then(function() {
+      console.log('Leaderboard submitted:', scoreType, scoreValue);
+      return true;
+    })
+    .catch(function(error) {
+      console.error('Leaderboard submit failed:', error);
+      return false;
+    });
 }
 
 // 获取排行榜
