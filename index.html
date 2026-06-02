@@ -5826,12 +5826,12 @@ async function loadGame() {
     var meta = await dbGet('meta', 'main') || getMeta();
     var slotIdx = meta.currentSlot || 0;
     
-    // 1. 优先从 IndexedDB 读取
-    var data = await dbGet('saves', slotIdx);
+    // 1. 优先从 localStorage 读取（同步，更可靠）
+    var data = lsGet(getSlotKey(slotIdx));
     
-    // 2. 回退到 localStorage
+    // 2. 回退到 IndexedDB
     if (!data) {
-      data = lsGet(getSlotKey(slotIdx));
+      data = await dbGet('saves', slotIdx);
     }
     
     // 3. 回退到旧格式
@@ -19140,20 +19140,17 @@ function confirmCloudRestore() {
       
       if (restoreSaveData(saveObj)) {
         initGameAfterLoad();
-        // 确保存档保存完成后再刷新（dbSet 是异步的）
-        Promise.all([
-          new Promise(function(resolve) {
-            var data = prepareSaveData();
-            dbSet('saves', (getMeta().currentSlot || 0), data).then(resolve).catch(resolve);
-          }),
-          new Promise(function(resolve) {
-            lsSet(getSlotKey((getMeta().currentSlot || 0)), prepareSaveData());
-            resolve();
-          })
-        ]).then(function() {
-          showToast('✅ 已从云端恢复，正在刷新...');
-          setTimeout(function() { location.reload(); }, 500);
-        });
+        // 同步写入 localStorage 和 IndexedDB（确保刷新后能读到）
+        var data = prepareSaveData();
+        var meta = getMeta();
+        var slotIdx = meta.currentSlot || 0;
+        lsSet(getSlotKey(slotIdx), data);
+        dbSet('saves', slotIdx, data); // 同时写入 IndexedDB
+        saveMeta(meta);
+        console.log('[云存档] 已写入 localStorage + IndexedDB，准备刷新');
+        showToast('✅ 已从云端恢复，正在刷新...');
+        // 延迟刷新确保写入完成
+        setTimeout(function() { location.reload(); }, 1000);
       } else {
         showToast('❌ 云端存档格式不兼容');
       }
