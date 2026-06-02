@@ -6319,9 +6319,14 @@ function exportSaveToFile() {
     var a = document.createElement('a');
     a.href = url;
     a.download = fileName;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     
-    URL.revokeObjectURL(url);
+    // 延迟释放URL，确保下载开始
+    setTimeout(function() {
+      URL.revokeObjectURL(url);
+    }, 5000);
     
     // 显示下载成功提示
     showToast('✅ 下载已开始，请查看弹窗提示');
@@ -6332,33 +6337,42 @@ function exportSaveToFile() {
     setTimeout(function() {
       // 根据平台显示保存路径提示
       var savePathTips = '';
+      var platformName = '';
       if (G_isH5Package) {
-        // TapTap H5 环境
-        savePathTips = '<div>📱 TapTap：文件管理 → Download</div><div>⚠️ 部分浏览器可能限制下载</div>';
+        platformName = 'TapTap';
+        savePathTips = '<div>📁 路径：文件管理 → Download</div><div>⚠️ TapTap环境可能限制下载</div>';
       } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        // iOS
-        savePathTips = '<div>📱 iOS：文件 App → 下载</div><div>或 Safari 下载管理器</div>';
+        platformName = 'iOS';
+        savePathTips = '<div>📁 路径：文件 App → 下载</div><div>或 Safari → 下载图标</div>';
       } else if (/Android/i.test(navigator.userAgent)) {
-        // Android
-        savePathTips = '<div>📱 Android：文件管理 → Download</div><div>或 内部存储/Download</div>';
+        platformName = 'Android';
+        savePathTips = '<div>📁 常见路径：</div><div>• 文件管理 → Download</div><div>• 内部存储/Download</div><div>• 浏览器 → 我的下载</div>';
       } else {
-        // 桌面
-        savePathTips = '<div>🖥️ 电脑：浏览器默认下载文件夹</div><div>Chrome：按 Ctrl+J 查看下载</div>';
+        platformName = '电脑';
+        savePathTips = '<div>📁 按 Ctrl+J (Chrome/Edge)</div><div>📁 或 Cmd+J (Mac)</div><div>查看下载记录</div>';
       }
       
       // 弹窗显示保存路径
       var html=`
-        <div style="max-width:360px;text-align:center">
+        <div style="max-width:380px;text-align:center">
           <div style="font-size:40px;margin-bottom:12px">📤</div>
           <div style="font-size:16px;font-weight:bold;color:#2ecc71;margin-bottom:12px">✅ 存档导出成功</div>
           <div style="background:var(--panel2);border-radius:var(--radius-md);padding:14px;margin-bottom:16px;text-align:left;font-size:13px;line-height:1.8">
-            <div style="margin-bottom:8px"><span style="color:var(--text3)">文件名：</span><span style="color:var(--gold);word-break:break-all">${fileName}</span></div>
-            <div style="margin-bottom:8px"><span style="color:var(--text3)">保存位置：</span></div>
-            <div style="color:var(--text2);font-size:12px">
+            <div style="margin-bottom:10px;padding:8px;background:rgba(46,204,113,.1);border-radius:6px">
+              <span style="color:var(--text3)">文件名：</span><br>
+              <span style="color:var(--gold);font-weight:bold;word-break:break-all;font-size:12px">${fileName}</span>
+            </div>
+            <div style="margin-bottom:8px"><span style="color:var(--text3)">平台：</span><span style="color:var(--text)">${platformName}</span></div>
+            <div style="color:var(--text2);font-size:12px;background:rgba(0,0,0,.2);padding:10px;border-radius:6px">
               ${savePathTips}
             </div>
-            <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);color:var(--text3);font-size:11px">
-              💡 如果找不到文件，请检查浏览器下载设置
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);color:#ff6b6b;font-size:12px;font-weight:bold">
+              ⚠️ 找不到文件？
+            </div>
+            <div style="color:var(--text3);font-size:11px;line-height:1.6">
+              1. 检查浏览器是否允许下载<br>
+              2. 查看浏览器下载记录<br>
+              3. 在手机文件管理中搜索文件名
             </div>
           </div>
           <button class="btn" onclick="document.getElementById('modal-root').innerHTML=''">知道了</button>
