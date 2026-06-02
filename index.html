@@ -17723,11 +17723,11 @@ function adminDeletePlayerData(){
     '确定要删除玩家 "'+name+'" 的所有云端数据吗？\n\n这将删除：\n- 云端存档（saves 表）\n- 排行榜成绩（leaderboard 表）\n\n此操作不可恢复！',
     function(){
       Promise.all([
-        sb.from('saves').select('device_id').eq('player_name',name).limit(1),
-        sb.from('leaderboard').select('device_id').eq('player_name',name).limit(1)
+        sb.from('cloud_saves').select('device_id').eq('player_name',name).limit(1).maybeSingle(),
+        sb.from('leaderboard').select('device_id').eq('player_name',name).limit(1).maybeSingle()
       ]).then(function(results){
-        var deviceId1=results[0].data&&results[0].data[0]?results[0].data[0].device_id:null;
-        var deviceId2=results[1].data&&results[1].data[0]?results[1].data[0].device_id:null;
+        var deviceId1=results[0].data?results[0].data.device_id:null;
+        var deviceId2=results[1].data?results[1].data.device_id:null;
         var targetDeviceId=deviceId1||deviceId2;
         if(!targetDeviceId){adminShowResult('❌ 未找到玩家：'+name,'#ff6b6b');return;}
         return Promise.all([
@@ -19431,9 +19431,9 @@ function supabaseCheckAndSync() {
   
   if (localData) {
     if (!G.playerName || G.playerName.trim() === '') return;
-    sb.from('cloud_saves').select('device_id').eq('device_id', deviceId).limit(1)
+    sb.from('cloud_saves').select('device_id').eq('device_id', deviceId).limit(1).maybeSingle()
       .then(function(result) {
-        if (!result.error && (!result.data || result.data.length === 0)) {
+        if (!result.error && !result.data) {
           console.log('云端无存档，正在上传...');
           setTimeout(function() { supabaseSaveToCloud(); }, 2000);
         }
@@ -19551,11 +19551,11 @@ function updateCloudSavePanel() {
     statusEl.textContent = '✅ Supabase 云存档已连接';
     statusEl.style.color = 'var(--success)';
     
-    // 从云端查询真实的更新时间
-    sb.from('cloud_saves').select('updated_at').eq('device_id', deviceId).limit(1)
+    // 从云端查询真实的更新时间（最小化查询字段）
+    sb.from('cloud_saves').select('updated_at').eq('device_id', deviceId).limit(1).maybeSingle()
       .then(function(result) {
-        if (result.data && result.data[0] && result.data[0].updated_at) {
-          var cloudDate = new Date(result.data[0].updated_at);
+        if (result.data && result.data.updated_at) {
+          var cloudDate = new Date(result.data.updated_at);
           infoEl.textContent = '上次云端保存: ' + cloudDate.toLocaleDateString() + ' ' + cloudDate.toLocaleTimeString().slice(0,5);
         } else {
           infoEl.textContent = '云端暂无存档';
@@ -19588,14 +19588,16 @@ function updateCloudSavePanel() {
       btnsEl.innerHTML = '<button class="btn btn-primary" onclick="supabaseSaveToCloud()" ' + saveBtnDisabled + '>' + saveBtnText + '</button>' +
         '<button class="btn" onclick="supabaseLoadCloudSave()" ' + loadBtnDisabled + '>' + loadBtnText + '</button>';
       
-      // 冷却时定时刷新按钮状态
+      // 冷却时定时刷新按钮状态（降低频率到5秒，减少Supabase查询）
       if ((saveCooldown > 0 || loadCooldown > 0) && !btnsEl._cooldownTimer) {
         btnsEl._cooldownTimer = setInterval(function() {
-          updateCloudSavePanel();
-        }, 1000);
+          // 只更新按钮状态，不重新查询云端
+          updateCloudSaveButtonsOnly();
+        }, 5000);
         setTimeout(function() {
           clearInterval(btnsEl._cooldownTimer);
           btnsEl._cooldownTimer = null;
+          updateCloudSavePanel(); // 最后完整刷新一次
         }, Math.max(saveCooldown, loadCooldown) * 1000);
       }
     }
@@ -19621,6 +19623,27 @@ function updateCloudSavePanel() {
     infoEl.textContent = 'Supabase 初始化失败，请刷新页面重试';
     if (btnsEl) btnsEl.innerHTML = '';
   }
+}
+
+// 仅更新云存档按钮状态（不查询Supabase，减少请求）
+function updateCloudSaveButtonsOnly() {
+  var btnsEl = document.getElementById('cloud-save-btns');
+  if (!btnsEl) return;
+  
+  // 检查冷却时间
+  var lastSave = parseInt(lsGet('_last_manual_cloud_save') || '0', 10);
+  var lastLoad = parseInt(lsGet('_last_manual_cloud_load') || '0', 10);
+  var now = Date.now();
+  var saveCooldown = Math.max(0, CLOUD_SAVE_COOLDOWN - (now - lastSave) / 1000);
+  var loadCooldown = Math.max(0, CLOUD_LOAD_COOLDOWN - (now - lastLoad) / 1000);
+  
+  var saveBtnText = saveCooldown > 0 ? '📤 上传 (' + Math.ceil(saveCooldown) + 's)' : '📤 立即上传';
+  var loadBtnText = loadCooldown > 0 ? '📥 下载 (' + Math.ceil(loadCooldown) + 's)' : '📥 从云端恢复';
+  var saveBtnDisabled = saveCooldown > 0 ? 'disabled' : '';
+  var loadBtnDisabled = loadCooldown > 0 ? 'disabled' : '';
+  
+  btnsEl.innerHTML = '<button class="btn btn-primary" onclick="supabaseSaveToCloud()" ' + saveBtnDisabled + '>' + saveBtnText + '</button>' +
+    '<button class="btn" onclick="supabaseLoadCloudSave()" ' + loadBtnDisabled + '>' + loadBtnText + '</button>';
 }
 
 // 显示玩家名字输入弹窗
@@ -19654,14 +19677,14 @@ function showPlayerNameInput() {
 function checkPlayerNameExists(name) {
   if (!isCloudReady) return Promise.resolve(false);
   
-  // 同时检查 cloud_saves 和 leaderboard 两个表
-  var promise1 = sb.from('cloud_saves').select('device_id').eq('player_name', name).limit(1);
-  var promise2 = sb.from('leaderboard').select('device_id').eq('player_name', name).limit(1);
+  // 同时检查 cloud_saves 和 leaderboard 两个表（使用 maybeSingle 优化）
+  var promise1 = sb.from('cloud_saves').select('device_id').eq('player_name', name).limit(1).maybeSingle();
+  var promise2 = sb.from('leaderboard').select('device_id').eq('player_name', name).limit(1).maybeSingle();
   
   return Promise.all([promise1, promise2])
     .then(function(results) {
-      var inSaves = results[0].data && results[0].data.length > 0;
-      var inLeaderboard = results[1].data && results[1].data.length > 0;
+      var inSaves = !!results[0].data;
+      var inLeaderboard = !!results[1].data;
       return inSaves || inLeaderboard;
     })
     .catch(function() {
@@ -19767,13 +19790,14 @@ function submitLeaderboard(scoreType, scoreValue, extraData) {
 
 // 获取排行榜
 function getLeaderboard(scoreType, limit) {
-  limit = limit || 1000;
+  limit = limit || 100; // 限制最多100条，减少数据传输
   
   if (!isCloudReady) {
     return Promise.resolve([]);
   }
   
-  return sb.from('leaderboard').select('*').eq('type', scoreType).order('score', { ascending: false }).limit(limit)
+  // 只查询需要的字段，减少数据量
+  return sb.from('leaderboard').select('device_id,player_name,score,timestamp').eq('type', scoreType).order('score', { ascending: false }).limit(limit)
     .then(function(result) {
       var entries = [];
       if (result.data) {
