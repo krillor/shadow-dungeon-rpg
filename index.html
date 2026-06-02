@@ -14336,7 +14336,21 @@ function _renderHeroDetail(h){
       </div>
     </div>
   </div>`;
-  openModal(html);
+  // 如果 overlay 已存在（切换英雄），只替换面板内容；否则完整创建
+  var existingOverlay = document.getElementById('hero-detail-overlay');
+  if (existingOverlay) {
+    // 只替换面板内容，保持 overlay 不动
+    var panelContainer = existingOverlay;
+    // 找到 modal-overlay 容器
+    var modalOverlay = existingOverlay.closest('.modal-overlay');
+    if (modalOverlay) {
+      modalOverlay.innerHTML = html;
+    } else {
+      existingOverlay.outerHTML = html;
+    }
+  } else {
+    openModal(html);
+  }
   // 绑定触摸滑动事件
   _bindHeroDetailSwipe();
 }
