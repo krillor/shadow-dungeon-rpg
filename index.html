@@ -5602,7 +5602,7 @@ function saveGame() {
       if (now - lastSupabaseCloud >= ONE_DAY && (progressChanged || lastProgress === 0)) {
         lsSet('_last_supabase_cloud', now.toString());
         lsSet('_last_cloud_progress', currentProgress.toString());
-        console.log('[云存档] 智能同步 (进度: ' + lastProgress + ' → ' + currentProgress + ')...);
+        console.log('[云存档] 智能同步 (进度: ' + lastProgress + ' → ' + currentProgress + ')...');
         setTimeout(function() {
           supabaseSaveToCloud(true).catch(function(e) {
             console.error('[云存档] 自动同步失败:', e);
