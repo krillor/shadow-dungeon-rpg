@@ -5592,16 +5592,20 @@ function saveGame() {
     
     saveMeta(meta);
     
-    // Supabase 云端自动同步（每天一次）
+    // Supabase 云端自动同步（智能策略 - 避免超出免费限制）
     if (sb && isCloudReady && G.playerName) {
       var lastSupabaseCloud = parseInt(lsGet('_last_supabase_cloud') || '0', 10);
+      var lastProgress = parseInt(lsGet('_last_cloud_progress') || '0', 10);
+      var currentProgress = G.stageProgress || 1;
+      var progressChanged = currentProgress > lastProgress;
       var ONE_DAY = 24 * 60 * 60 * 1000;
-      if (now - lastSupabaseCloud >= ONE_DAY) {
+      if (now - lastSupabaseCloud >= ONE_DAY && (progressChanged || lastProgress === 0)) {
         lsSet('_last_supabase_cloud', now.toString());
-        console.log('[云存档] 触发 Supabase 每日自动同步...');
+        lsSet('_last_cloud_progress', currentProgress.toString());
+        console.log('[云存档] 智能同步 (进度: ' + lastProgress + ' → ' + currentProgress + ')...);
         setTimeout(function() {
           supabaseSaveToCloud(true).catch(function(e) {
-            console.error('[云存档] Supabase 自动同步失败:', e);
+            console.error('[云存档] 自动同步失败:', e);
           });
         }, 500);
       }
