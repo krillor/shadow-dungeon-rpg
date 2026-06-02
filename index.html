@@ -6361,7 +6361,7 @@ function exportSaveToFile() {
               💡 如果找不到文件，请检查浏览器下载设置
             </div>
           </div>
-          <button class="btn" onclick="closeModal()">知道了</button>
+          <button class="btn" onclick="document.getElementById('modal-root').innerHTML=''">知道了</button>
         </div>
       `;
       openModal(html);
