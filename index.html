@@ -6766,16 +6766,41 @@ function pick(arr){return arr&&arr.length>0?arr[rand(0,arr.length-1)]:null}
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
 function deepClone(obj){return JSON.parse(JSON.stringify(obj))}
 
+// Toast管理，限制最大数量防止性能问题
+var _toastCount = 0;
+var MAX_TOASTS = 3;
+
 function showToast(msg,duration=2000){
   const root=document.getElementById('toast-root');
   if(!root)return;
+  
+  // 限制同时显示的toast数量
+  if(_toastCount >= MAX_TOASTS){
+    var firstToast = root.firstChild;
+    if(firstToast){
+      root.removeChild(firstToast);
+      _toastCount--;
+    }
+  }
+  
   const t=document.createElement('div');
   t.className='toast';
   t.textContent=msg;
   // 中间显示样式
   t.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10000;background:rgba(0,0,0,.85);color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,.5);animation:toastFadeIn .3s ease;text-align:center;max-width:80%;white-space:pre-wrap;';
   root.appendChild(t);
-  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300);},duration);
+  _toastCount++;
+  
+  setTimeout(()=>{
+    t.style.opacity='0';
+    t.style.transition='opacity .3s';
+    setTimeout(()=>{
+      if(t.parentNode){
+        t.parentNode.removeChild(t);
+        _toastCount--;
+      }
+    },300);
+  },duration);
 }
 
 // ==================== 成就系统 ====================
@@ -7779,7 +7804,9 @@ const RESOURCE_LIMITS = {
 function produceResources(){
   var now=Date.now();
   var minutesPassed=(now-G_lastProductionTime)/(1000*60);
-  if(minutesPassed<0.02)return; // 小于1秒不计算
+  if(minutesPassed<0.1)return; // 小于6秒不计算，减少频繁调用
+  
+  var toastMsgs=[];
   
   // 农场产出食物（配置是每小时产量，转换为每分钟）
   var farmLevel=G.buildings.farm||0;
@@ -7792,7 +7819,11 @@ function produceResources(){
       var before=G.resources.food||0;
       G.resources.food=Math.min((G.resources.food||0)+foodProduced, RESOURCE_LIMITS.food);
       var actual=G.resources.food-before;
-      if(actual>0) showToast('🌾 农场产出 '+actual+' 食物'+(G.resources.food>=RESOURCE_LIMITS.food?' (已满)':''));
+      if(actual>0){
+        var msg='🌾 +' + actual + ' 食物';
+        if(G.resources.food>=RESOURCE_LIMITS.food) msg += ' (满)';
+        toastMsgs.push(msg);
+      }
     }
   }
   
@@ -7821,23 +7852,28 @@ function produceResources(){
     var ironActual=(G.resources.iron||0)-ironBefore;
     
     if(stoneActual>0||ironActual>0){
-      var fullMsg='';
-      if(G.resources.stone>=RESOURCE_LIMITS.stone) fullMsg+=' 石材已满';
-      if(G.resources.iron>=RESOURCE_LIMITS.iron) fullMsg+=' 铁矿已满';
-      showToast('⛏️ 矿场产出 '+stoneActual+' 石材 '+ironActual+' 铁矿'+fullMsg);
+      var msg='⛏️ +' + stoneActual + ' 石 +' + ironActual + ' 铁';
+      if(G.resources.stone>=RESOURCE_LIMITS.stone) msg += ' 石满';
+      if(G.resources.iron>=RESOURCE_LIMITS.iron) msg += ' 铁满';
+      toastMsgs.push(msg);
     }
+  }
+  
+  // 合并显示所有产出提示
+  if(toastMsgs.length>0){
+    showToast(toastMsgs.join(' | '), 3000);
   }
   
   G_lastProductionTime=now;
   updateResUI();
 }
 
-// 启动自动资源生产（每15秒检查一次）
+// 启动自动资源生产（每30秒检查一次，降低频率减少性能开销）
 function startAutoProduction(){
   if(G_productionTimer)clearInterval(G_productionTimer);
   G_productionTimer=setInterval(function(){
      produceResources();
-   }, 8000);
+   }, 30000);
 }
 
 // 手动收集资源（点击建筑页面时触发）
@@ -9676,12 +9712,27 @@ async function runBattle(stageId){
     battleInfoEl.innerHTML+='<div style="margin-top:8px" id="battle-bonds-display">'+renderBondsHTML(activeBonds,true)+'</div>';
   }
 
+  // 战斗日志缓存，限制最大数量防止内存泄漏
+  var _logCount = 0;
+  var MAX_LOG_LINES = 100;
+  
   function log(msg,cls){
     cls=cls||'info';
     var line=document.createElement('div');
     line.className='log-line log-'+cls;
     line.textContent=msg;
     logEl.appendChild(line);
+    _logCount++;
+    
+    // 限制日志数量，防止内存泄漏
+    if(_logCount > MAX_LOG_LINES){
+      var firstLine = logEl.firstChild;
+      if(firstLine){
+        logEl.removeChild(firstLine);
+        _logCount--;
+      }
+    }
+    
     logEl.scrollTop=logEl.scrollHeight;
   }
 
