@@ -19076,8 +19076,12 @@ function getTodayKey() {
   return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
 }
 
-// 检查日限制
+// 检查日限制（金手指解锁后无限制）
 function checkCloudDailyLimit(type) {
+  // 金手指解锁后跳过所有限制
+  if (G_cheats && G_cheats.unlocked) {
+    return { allowed: true, count: 999, limit: 999, unlimited: true };
+  }
   var today = getTodayKey();
   var key = '_cloud_' + type + '_count_' + today;
   var count = parseInt(lsGet(key) || '0', 10);
@@ -19160,11 +19164,11 @@ function supabaseSaveToCloud(silent, forceFull) {
     }
   }
   
-  // 检查冷却时间
+  // 检查冷却时间（金手指解锁后跳过）
   var lastSave = parseInt(lsGet('_last_manual_cloud_save') || '0', 10);
   var now = Date.now();
   var elapsed = (now - lastSave) / 1000;
-  if (!silent && elapsed < CLOUD_SAVE_COOLDOWN) {
+  if (!silent && elapsed < CLOUD_SAVE_COOLDOWN && !(G_cheats && G_cheats.unlocked)) {
     showToast('⏳ 上传冷却中，请 ' + Math.ceil(CLOUD_SAVE_COOLDOWN - elapsed) + ' 秒后再试');
     return Promise.resolve(false);
   }
@@ -19314,16 +19318,16 @@ function supabaseLoadCloudSave() {
     return Promise.resolve(false);
   }
   
-  // 检查冷却时间
+  // 检查冷却时间（金手指解锁后跳过）
   var lastLoad = parseInt(lsGet('_last_manual_cloud_load') || '0', 10);
   var now = Date.now();
   var elapsed = (now - lastLoad) / 1000;
-  if (elapsed < CLOUD_LOAD_COOLDOWN) {
+  if (elapsed < CLOUD_LOAD_COOLDOWN && !(G_cheats && G_cheats.unlocked)) {
     showToast('⏳ 下载冷却中，请 ' + Math.ceil(CLOUD_LOAD_COOLDOWN - elapsed) + ' 秒后再试');
     return Promise.resolve(false);
   }
   
-  showToast('⏳ 正在查询云端存档... (今日 ' + limitCheck.count + '/' + limitCheck.limit + ' 次)');
+  showToast('⏳ 正在查询云端存档...' + (limitCheck.unlimited ? '' : ' (今日 ' + limitCheck.count + '/' + limitCheck.limit + ' 次)'));
   
   // 先查询云端存档信息
   return sb.from('cloud_saves').select('player_name,version,game_size,updated_at,created_at').eq('device_id', deviceId).limit(1)
