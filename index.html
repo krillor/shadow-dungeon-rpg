@@ -6315,7 +6315,16 @@ function exportSaveToFile() {
     var blob = new Blob([json], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
     
-    var fileName = 'shadow_dungeon_save_' + slotIdx + '_' + Date.now() + '.json';
+    // 生成文件名：暗影地牢_YYYYMMDD_HHMMSS.json
+    var now = new Date();
+    var dateStr = now.getFullYear() + 
+                  String(now.getMonth()+1).padStart(2,'0') + 
+                  String(now.getDate()).padStart(2,'0');
+    var timeStr = String(now.getHours()).padStart(2,'0') + 
+                  String(now.getMinutes()).padStart(2,'0') + 
+                  String(now.getSeconds()).padStart(2,'0');
+    var fileName = '暗影地牢_' + dateStr + '_' + timeStr + '.json';
+    
     var a = document.createElement('a');
     a.href = url;
     a.download = fileName;
@@ -6328,10 +6337,9 @@ function exportSaveToFile() {
       URL.revokeObjectURL(url);
     }, 5000);
     
-    // 关闭弹窗，用toast显示文件名（简化版）
+    // 关闭弹窗，用toast显示完整文件名
     closeModal();
-    var shortName = fileName.replace('shadow_dungeon_save_', '存档');
-    showToast('✅ 已下载\n' + shortName + '\n请在下载文件夹查找', 5000);
+    showToast('✅ 已下载\n' + fileName, 6000);
     
   } catch(e) {
     console.error('导出失败', e);
