@@ -18323,9 +18323,17 @@ function updateCloudModalContent(){
     content.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3)">⏳ 云端服务连接中...</div>';
     return;
   }
+  // 获取日限制信息
+  var today=getTodayKey();
+  var saveCount=parseInt(lsGet('_cloud_save_count_'+today)||'0',10);
+  var loadCount=parseInt(lsGet('_cloud_load_count_'+today)||'0',10);
   sb.from('cloud_saves').select('updated_at,game_size').eq('device_id',deviceId).limit(1).then(function(result){
     var hasCloud=result.data&&result.data[0];
     var html='';
+    // 显示限制信息
+    html+='<div style="background:rgba(52,152,219,.08);border:1px solid rgba(52,152,219,.2);border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px;color:var(--text2)">'+
+      '📊 今日额度: 上传 '+saveCount+'/'+CLOUD_DAILY_SAVE_LIMIT+' 次 | 下载 '+loadCount+'/'+CLOUD_DAILY_LOAD_LIMIT+' 次'+
+    '</div>';
     if(hasCloud){
       var d=new Date(result.data[0].updated_at);
       var size=(result.data[0].game_size/1024).toFixed(1)+' KB';
@@ -19057,8 +19065,80 @@ function validateSaveData(saveData) {
 // 云存档操作冷却时间（秒）
 var CLOUD_SAVE_COOLDOWN = 30; // 上传冷却30秒
 var CLOUD_LOAD_COOLDOWN = 60; // 下载冷却60秒
+var CLOUD_DAILY_SAVE_LIMIT = 5;  // 每日最多上传5次
+var CLOUD_DAILY_LOAD_LIMIT = 10; // 每日最多下载10次
 
-function supabaseSaveToCloud(silent) {
+// 获取今日日期字符串
+function getTodayKey() {
+  var d = new Date();
+  return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+}
+
+// 检查日限制
+function checkCloudDailyLimit(type) {
+  var today = getTodayKey();
+  var key = '_cloud_' + type + '_count_' + today;
+  var count = parseInt(lsGet(key) || '0', 10);
+  var limit = type === 'save' ? CLOUD_DAILY_SAVE_LIMIT : CLOUD_DAILY_LOAD_LIMIT;
+  if (count >= limit) {
+    return { allowed: false, count: count, limit: limit };
+  }
+  // 增加计数
+  lsSet(key, (count + 1).toString());
+  return { allowed: true, count: count + 1, limit: limit };
+}
+
+// 计算对象差异（只返回变化的字段）
+function diffObject(oldObj, newObj, path) {
+  path = path || '';
+  var diff = {};
+  var hasDiff = false;
+  
+  // 处理新增或修改的字段
+  for (var key in newObj) {
+    if (!newObj.hasOwnProperty(key)) continue;
+    var newVal = newObj[key];
+    var oldVal = oldObj ? oldObj[key] : undefined;
+    var currentPath = path ? path + '.' + key : key;
+    
+    if (typeof newVal === 'object' && newVal !== null && !Array.isArray(newVal)) {
+      // 嵌套对象递归对比
+      var nestedDiff = diffObject(oldVal, newVal, currentPath);
+      if (nestedDiff !== undefined) {
+        diff[key] = nestedDiff;
+        hasDiff = true;
+      }
+    } else if (Array.isArray(newVal)) {
+      // 数组直接比较（英雄数组通常整体变化）
+      if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+        diff[key] = newVal;
+        hasDiff = true;
+      }
+    } else {
+      // 基本类型直接比较
+      if (oldVal !== newVal) {
+        diff[key] = newVal;
+        hasDiff = true;
+      }
+    }
+  }
+  
+  // 处理删除的字段
+  if (oldObj) {
+    for (var oldKey in oldObj) {
+      if (!oldObj.hasOwnProperty(oldKey)) continue;
+      if (!(oldKey in newObj)) {
+        diff[oldKey] = null; // 标记为删除
+        hasDiff = true;
+      }
+    }
+  }
+  
+  return hasDiff ? diff : undefined;
+}
+
+// 增量保存到云端
+function supabaseSaveToCloud(silent, forceFull) {
   if (!isCloudReady || !deviceId) {
     if (!silent) showToast('❌ 云端未连接，请稍后再试');
     return Promise.resolve(false);
@@ -19067,6 +19147,15 @@ function supabaseSaveToCloud(silent) {
   if (!G.playerName || G.playerName.trim() === '') {
     if (!silent) showPlayerNameInput();
     return Promise.resolve(false);
+  }
+  
+  // 检查日限制（手动上传时）
+  if (!silent) {
+    var limitCheck = checkCloudDailyLimit('save');
+    if (!limitCheck.allowed) {
+      showToast('⚠️ 今日上传次数已达上限（' + limitCheck.limit + '次），请明日再试');
+      return Promise.resolve(false);
+    }
   }
   
   // 检查冷却时间
@@ -19086,15 +19175,6 @@ function supabaseSaveToCloud(silent) {
   // 使用无损存档数据
   var saveData = prepareSaveData();
   
-  // 构造 cloud_saves 表的数据结构
-  var cloudData = {
-    device_id: deviceId,
-    player_name: G.playerName,
-    provider: 'supabase',
-    version: saveData.version,
-    game_data: saveData.game  // 完整游戏状态存在 game_data JSONB 字段中
-  };
-  
   // 可靠性检查
   var errors = validateSaveData(saveData);
   if (errors.length > 0) {
@@ -19103,8 +19183,58 @@ function supabaseSaveToCloud(silent) {
     return Promise.resolve(false);
   }
   
+  // 获取上次上传的数据用于增量对比
+  var lastCloudData = null;
+  try {
+    var lastDataStr = lsGet('_last_cloud_data_cache');
+    if (lastDataStr) lastCloudData = lastDataStr.game;
+  } catch(e) {}
+  
+  // 智能选择：增量更新 vs 全量更新
+  var useIncremental = lastCloudData && !forceFull && silent;
+  var gameDataToUpload;
+  var isIncremental = false;
+  
+  if (useIncremental) {
+    // 自动上传时使用增量更新
+    var diff = diffObject(lastCloudData, saveData.game);
+    if (diff !== undefined) {
+      // 只传关键字段 + 变化字段
+      gameDataToUpload = {
+        _partial: true, // 标记为部分更新
+        _timestamp: Date.now(),
+        heroes: saveData.game.heroes, // 英雄数据通常需要完整传
+        stageProgress: saveData.game.stageProgress,
+        resources: saveData.game.resources,
+        playerName: saveData.game.playerName,
+        _diff: diff // 其他变化字段
+      };
+      isIncremental = true;
+    } else {
+      // 无变化，跳过上传
+      console.log('[云存档] 数据无变化，跳过上传');
+      return Promise.resolve(true);
+    }
+  } else {
+    // 手动上传或首次上传使用全量
+    gameDataToUpload = saveData.game;
+  }
+  
+  // 构造 cloud_saves 表的数据结构
+  var cloudData = {
+    device_id: deviceId,
+    player_name: G.playerName,
+    provider: 'supabase',
+    version: saveData.version,
+    game_data: gameDataToUpload,
+    is_incremental: isIncremental
+  };
+  
   var jsonSize = JSON.stringify(cloudData.game_data).length;
-  console.log('[云存档] 上传中... 大小:', (jsonSize / 1024).toFixed(1), 'KB');
+  var originalSize = JSON.stringify(saveData.game).length;
+  var savedPercent = isIncremental ? Math.round((1 - jsonSize/originalSize) * 100) : 0;
+  console.log('[云存档] 上传中... 大小:', (jsonSize / 1024).toFixed(1), 'KB', 
+    isIncremental ? '(增量节省 ' + savedPercent + '%)' : '(全量)');
   
   return sb.from('cloud_saves').upsert(cloudData, { onConflict: 'device_id' })
     .then(function(result) {
@@ -19115,8 +19245,14 @@ function supabaseSaveToCloud(silent) {
       }
       // 记录上传时间
       G._lastCloudSaveTime = Date.now();
-      if (!silent) showToast('☁️ 已保存到云端 (' + (jsonSize / 1024).toFixed(1) + 'KB)');
-      console.log('[云存档] ✅ 上传成功');
+      // 缓存完整数据用于下次增量对比
+      lsSet('_last_cloud_data_cache', { game: saveData.game, time: Date.now() });
+      if (!silent) {
+        var msg = '☁️ 已保存到云端 (' + (jsonSize / 1024).toFixed(1) + 'KB)';
+        if (isIncremental) msg += ' 节省' + savedPercent + '%流量';
+        showToast(msg);
+      }
+      console.log('[云存档] ✅ 上传成功' + (isIncremental ? ' (增量)' : ' (全量)'));
       return true;
     })
     .catch(function(error) {
@@ -19133,6 +19269,13 @@ function supabaseLoadCloudSave() {
     return Promise.resolve(false);
   }
   
+  // 检查日限制
+  var limitCheck = checkCloudDailyLimit('load');
+  if (!limitCheck.allowed) {
+    showToast('⚠️ 今日下载次数已达上限（' + limitCheck.limit + '次），请明日再试');
+    return Promise.resolve(false);
+  }
+  
   // 检查冷却时间
   var lastLoad = parseInt(lsGet('_last_manual_cloud_load') || '0', 10);
   var now = Date.now();
@@ -19142,7 +19285,7 @@ function supabaseLoadCloudSave() {
     return Promise.resolve(false);
   }
   
-  showToast('⏳ 正在查询云端存档...');
+  showToast('⏳ 正在查询云端存档... (今日 ' + limitCheck.count + '/' + limitCheck.limit + ' 次)');
   
   // 先查询云端存档信息
   return sb.from('cloud_saves').select('player_name,version,game_size,updated_at,created_at').eq('device_id', deviceId).limit(1)
