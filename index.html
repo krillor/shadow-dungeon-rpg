@@ -15827,6 +15827,12 @@ function hideBattlePanel(){
   var panel=document.getElementById('battle-panel');
   if(panel)panel.style.display='none';
   document.getElementById('content').style.display='';
+  
+  // 清理战斗缓存，防止内存泄漏
+  _unitElCache = {};
+  _floatPool = [];
+  _currentHighlight = null;
+  _statsDirty = false;
 }
 
 function startAutoBattle(fromStage){
