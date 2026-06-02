@@ -18734,6 +18734,10 @@ function validateSaveData(saveData) {
 }
 
 // Supabase 保存到云端（带可靠性检查）
+// 云存档操作冷却时间（秒）
+var CLOUD_SAVE_COOLDOWN = 30; // 上传冷却30秒
+var CLOUD_LOAD_COOLDOWN = 60; // 下载冷却60秒
+
 function supabaseSaveToCloud(silent) {
   if (!isCloudReady || !deviceId) {
     if (!silent) showToast('❌ 云端未连接，请稍后再试');
@@ -18745,7 +18749,19 @@ function supabaseSaveToCloud(silent) {
     return Promise.resolve(false);
   }
   
+  // 检查冷却时间
+  var lastSave = parseInt(lsGet('_last_manual_cloud_save') || '0', 10);
+  var now = Date.now();
+  var elapsed = (now - lastSave) / 1000;
+  if (!silent && elapsed < CLOUD_SAVE_COOLDOWN) {
+    showToast('⏳ 上传冷却中，请 ' + Math.ceil(CLOUD_SAVE_COOLDOWN - elapsed) + ' 秒后再试');
+    return Promise.resolve(false);
+  }
+  
   if (!silent) showToast('⏳ 正在上传到云端...');
+  
+  // 记录手动上传时间
+  lsSet('_last_manual_cloud_save', now.toString());
   
   // 使用无损存档数据
   var saveData = prepareSaveData();
@@ -18796,6 +18812,28 @@ function supabaseLoadCloudSave() {
     showToast('❌ 云端未连接，请稍后再试');
     return Promise.resolve(false);
   }
+  
+  // 检查冷却时间
+  var lastLoad = parseInt(lsGet('_last_manual_cloud_load') || '0', 10);
+  var now = Date.now();
+  var elapsed = (now - lastLoad) / 1000;
+  if (elapsed < CLOUD_LOAD_COOLDOWN) {
+    showToast('⏳ 下载冷却中，请 ' + Math.ceil(CLOUD_LOAD_COOLDOWN - elapsed) + ' 秒后再试');
+    return Promise.resolve(false);
+  }
+  
+  // 检查本地是否有存档，提示用户
+  var meta = getMeta();
+  var slotIdx = meta.currentSlot || 0;
+  var hasLocalSave = lsGet(getSlotKey(slotIdx)) !== null;
+  if (hasLocalSave) {
+    if (!confirm('⚠️ 本地已有存档，从云端恢复将覆盖本地进度！\n\n确定要继续吗？')) {
+      return Promise.resolve(false);
+    }
+  }
+  
+  // 记录下载时间
+  lsSet('_last_manual_cloud_load', now.toString());
   
   showToast('⏳ 正在从云端下载...');
   
@@ -18989,8 +19027,31 @@ function updateCloudSavePanel() {
     }
     
     if (btnsEl) {
-      btnsEl.innerHTML = '<button class="btn btn-primary" onclick="supabaseSaveToCloud()">📤 立即上传</button>' +
-        '<button class="btn" onclick="supabaseLoadCloudSave()">📥 从云端恢复</button>';
+      // 检查冷却时间，显示按钮状态
+      var lastSave = parseInt(lsGet('_last_manual_cloud_save') || '0', 10);
+      var lastLoad = parseInt(lsGet('_last_manual_cloud_load') || '0', 10);
+      var now = Date.now();
+      var saveCooldown = Math.max(0, CLOUD_SAVE_COOLDOWN - (now - lastSave) / 1000);
+      var loadCooldown = Math.max(0, CLOUD_LOAD_COOLDOWN - (now - lastLoad) / 1000);
+      
+      var saveBtnText = saveCooldown > 0 ? '📤 上传 (' + Math.ceil(saveCooldown) + 's)' : '📤 立即上传';
+      var loadBtnText = loadCooldown > 0 ? '📥 下载 (' + Math.ceil(loadCooldown) + 's)' : '📥 从云端恢复';
+      var saveBtnDisabled = saveCooldown > 0 ? 'disabled' : '';
+      var loadBtnDisabled = loadCooldown > 0 ? 'disabled' : '';
+      
+      btnsEl.innerHTML = '<button class="btn btn-primary" onclick="supabaseSaveToCloud()" ' + saveBtnDisabled + '>' + saveBtnText + '</button>' +
+        '<button class="btn" onclick="supabaseLoadCloudSave()" ' + loadBtnDisabled + '>' + loadBtnText + '</button>';
+      
+      // 冷却时定时刷新按钮状态
+      if ((saveCooldown > 0 || loadCooldown > 0) && !btnsEl._cooldownTimer) {
+        btnsEl._cooldownTimer = setInterval(function() {
+          updateCloudSavePanel();
+        }, 1000);
+        setTimeout(function() {
+          clearInterval(btnsEl._cooldownTimer);
+          btnsEl._cooldownTimer = null;
+        }, Math.max(saveCooldown, loadCooldown) * 1000);
+      }
     }
   } else if (sb && !isCloudReady) {
     // Supabase 初始化中
