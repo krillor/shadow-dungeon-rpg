@@ -14371,31 +14371,49 @@ function _renderHeroDetailAnimated(h, dir){
   var panel = document.getElementById('hero-detail-panel');
   var overlay = document.getElementById('hero-detail-overlay');
   if (!panel || !overlay) {
-    // 面板不存在，直接完整渲染
     _renderHeroDetail(h);
     return;
   }
-  // 添加滑出动画
-  panel.style.transition = 'transform .2s ease, opacity .2s ease';
-  panel.style.transform = dir > 0 ? 'translateX(-30px)' : 'translateX(30px)';
-  panel.style.opacity = '0';
+  
+  // 1. 在面板上覆盖一个同色遮罩（防止内容替换时闪白）
+  var mask = document.createElement('div');
+  mask.id = 'hd-transition-mask';
+  mask.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(180deg,#1a1a3a,#12122a);z-index:10;border-radius:var(--radius-lg);pointer-events:none';
+  panel.style.position = 'relative';
+  panel.appendChild(mask);
+  
+  // 2. 面板滑出
+  panel.style.transition = 'transform .18s ease-in, opacity .18s ease-in';
+  panel.style.transform = dir > 0 ? 'translateX(-25px)' : 'translateX(25px)';
+  panel.style.opacity = '0.6';
   
   setTimeout(function(){
-    // 替换内容
+    // 3. 替换内容（遮罩挡住，看不到闪烁）
     _renderHeroDetail(h);
-    // 重新获取面板（_renderHeroDetail会重建DOM）
     var newPanel = document.getElementById('hero-detail-panel');
     if (newPanel) {
+      // 4. 新面板从反方向准备
+      newPanel.style.position = 'relative';
       newPanel.style.transition = 'none';
-      newPanel.style.transform = dir > 0 ? 'translateX(30px)' : 'translateX(-30px)';
-      newPanel.style.opacity = '0';
-      // 强制重排后启动滑入动画
+      newPanel.style.transform = dir > 0 ? 'translateX(25px)' : 'translateX(-25px)';
+      newPanel.style.opacity = '0.6';
+      // 确保遮罩还在
+      var newMask = document.createElement('div');
+      newMask.id = 'hd-transition-mask';
+      newMask.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(180deg,#1a1a3a,#12122a);z-index:10;border-radius:var(--radius-lg);pointer-events:none';
+      newPanel.appendChild(newMask);
+      // 强制重排
       newPanel.offsetHeight;
-      newPanel.style.transition = 'transform .25s ease-out, opacity .25s ease-out';
+      // 5. 滑入 + 移除遮罩
+      newPanel.style.transition = 'transform .22s ease-out, opacity .22s ease-out';
       newPanel.style.transform = 'translateX(0)';
       newPanel.style.opacity = '1';
+      setTimeout(function(){
+        var m = document.getElementById('hd-transition-mask');
+        if (m) m.remove();
+      }, 250);
     }
-  }, 200);
+  }, 180);
 }
 
 // 绑定详情面板触摸滑动
