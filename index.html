@@ -929,6 +929,31 @@ body{
   padding-bottom:16px;
   border-bottom:1px solid var(--border);
   margin-bottom:16px;
+  position:relative;
+}
+.town-header-actions{
+  position:absolute;
+  right:0;
+  top:0;
+}
+.help-btn{
+  background:rgba(100,100,120,.15);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:50%;
+  width:32px;
+  height:32px;
+  font-size:16px;
+  cursor:pointer;
+  transition:all .2s;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+}
+.help-btn:hover{
+  background:rgba(100,100,120,.3);
+  border-color:rgba(255,255,255,.2);
+  transform:scale(1.1);
 }
 /* 标题行 */
 .town-title-row{
@@ -13511,6 +13536,9 @@ function renderTown(el){
           +'<span class="icon">🏰</span>'
           +'<span class="town-title">暗影地牢</span>'
         +'</div>'
+        +'<div class="town-header-actions">'
+          +'<button class="help-btn" onclick="showHelpModal()" title="帮助">❓</button>'
+        +'</div>'
         +'<div class="town-resources-bar">'
           +'<div class="town-res-item" title="金币"><span class="town-res-icon">💰</span><span class="town-res-val gold" id="res-gold">'+gold+'</span></div>'
           +'<div class="town-res-item" title="宝石"><span class="town-res-icon">💎</span><span class="town-res-val gems" id="res-gems">'+gems+'</span></div>'
@@ -14642,6 +14670,28 @@ function updatePotionUseCost(heroUid){
 function useExpPotionCustom(heroUid){
   const count=parseInt(document.getElementById(`potion-use-count-${heroUid}`)?.value)||1;
   useExpPotion(heroUid,count);
+}
+
+// 显示帮助弹窗
+function showHelpModal(){
+  const html=`
+    <div style="max-width:420px">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:36px;margin-bottom:8px">📖</div>
+        <div style="font-size:16px;font-weight:bold;color:var(--gold)">存档帮助</div>
+      </div>
+      <div style="background:var(--panel2);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;line-height:1.7;font-size:13px">
+        <div style="margin-bottom:12px"><span style="color:var(--gold)">💾</span> <b>存档机制</b>：本地存档 + 云存档双保险</div>
+        <div style="margin-bottom:12px"><span style="color:var(--gold)">☁️</span> <b>手动存档</b>：下滑主界面 → 点击「存档」按钮，可同时本地存档+云存档上传</div>
+        <div style="margin-bottom:12px"><span style="color:var(--gold)">⚠️</span> <b>重要提示</b>：虽然会自动存档，但关键节点（如获得稀有英雄、通关重要关卡）请<strong style="color:#ff6b6b">手动保存</strong></div>
+        <div><span style="color:var(--gold)">📱</span> <b>本地备份</b>：建议定期导出存档到手机本地，恢复最快最稳定</div>
+      </div>
+      <div style="text-align:center">
+        <button class="btn" onclick="closeModal()">知道了</button>
+      </div>
+    </div>
+  `;
+  openModal(html);
 }
 
 // 显示英雄改名弹窗
