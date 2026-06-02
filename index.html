@@ -5592,22 +5592,8 @@ function saveGame() {
     
     saveMeta(meta);
     
-    // TapTap 云端自动同步（每 5 分钟）
-    if (cloudProvider === 'taptap' && isCloudReady) {
-      var lastCloud = parseInt(lsGet('_last_cloud') || '0', 10);
-      if (now - lastCloud >= 5 * 60 * 1000) {
-        lsSet('_last_cloud', now.toString());
-        console.log('[云存档] 触发自动同步...');
-        setTimeout(function() {
-          tapSaveToCloud().catch(function(e) { 
-            console.error('[云存档] 自动同步失败:', e); 
-          });
-        }, 100);
-      }
-    }
-    
     // Supabase 云端自动同步（每天一次）
-    if ((cloudProvider === 'supabase' || (sb && isCloudReady)) && G.playerName) {
+    if (sb && isCloudReady && G.playerName) {
       var lastSupabaseCloud = parseInt(lsGet('_last_supabase_cloud') || '0', 10);
       var ONE_DAY = 24 * 60 * 60 * 1000;
       if (now - lastSupabaseCloud >= ONE_DAY) {
@@ -18900,16 +18886,7 @@ function initLeaderboardService() {
 
 // 初始化云存档服务
 function initCloudSave() {
-  var provider = detectCloudProvider();
-  
-  // 排行榜始终使用 Supabase（已在 initLeaderboardService 中初始化）
-  // 这里只处理云存档
-  if (provider === 'taptap') {
-    console.log('使用 TapTap 云存档');
-    return initTapTapCloud();
-  }
-  
-  // Supabase 云存档（所有平台）
+  // 所有平台统一使用 Supabase 云存档
   if (typeof supabase !== 'undefined' && supabase.createClient && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
     console.log('使用 Supabase 云存档');
     // 延迟检查连接状态并更新UI
@@ -18937,23 +18914,17 @@ function checkAndSyncFromCloud() {
   }
 }
 
-// 统一保存到云端
+// 统一保存到云端（强制使用 Supabase）
 function saveToCloud() {
-  if (cloudProvider === 'taptap') {
-    return tapSaveToCloud();
-  }
-  if (cloudProvider === 'supabase' || (sb && isCloudReady)) {
+  if (sb && isCloudReady) {
     return supabaseSaveToCloud();
   }
   return Promise.resolve(false);
 }
 
-// 统一从云端加载
+// 统一从云端加载（强制使用 Supabase）
 function loadCloudSave() {
-  if (cloudProvider === 'taptap') {
-    return tapLoadCloudSave();
-  }
-  if (cloudProvider === 'supabase' || (sb && isCloudReady)) {
+  if (sb && isCloudReady) {
     return supabaseLoadCloudSave();
   }
   return Promise.resolve(false);
@@ -18992,22 +18963,8 @@ function updateCloudSavePanel() {
   
   if (!statusEl || !panelEl) return;
   
-  if (cloudProvider === 'taptap') {
-    panelEl.style.display = '';
-    statusEl.textContent = isCloudReady ? '✅ TapTap 云存档已连接' : '⏳ 连接中...';
-    statusEl.style.color = isCloudReady ? 'var(--success)' : 'var(--text3)';
-    
-    if (tapSaveId) {
-      infoEl.textContent = '云端存档 ID: ' + tapSaveId.slice(-8);
-    } else {
-      infoEl.textContent = '云端暂无存档';
-    }
-    
-    if (btnsEl) {
-      btnsEl.innerHTML = '<button class="btn btn-primary" onclick="showCloudSaveConfirm(\'upload\')">📤 上传到云端</button>' +
-        (tapSaveId ? '<button class="btn" onclick="showCloudSaveConfirm(\'download\')">📥 从云端下载</button>' : '');
-    }
-  } else if (sb && isCloudReady) {
+  // 强制使用 Supabase 云存档
+  if (sb && isCloudReady) {
     // Supabase 云存档
     panelEl.style.display = '';
     statusEl.textContent = '✅ Supabase 云存档已连接';
