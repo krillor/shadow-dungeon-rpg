@@ -5650,42 +5650,50 @@ function decompressSaveV3V4(compressed) {
 }
 
 function restoreSaveData(data) {
-  if (!data) return false;
+  if (!data) {
+    console.error('[restoreSaveData] data 为空');
+    return false;
+  }
   
   // 检测版本
   var version = data.version || 1;
   var saved = data.game;
   
-  console.log('存档版本: v' + version);
+  console.log('[restoreSaveData] 版本: v' + version + ', saved类型:', typeof saved);
+  console.log('[restoreSaveData] saved keys:', saved ? Object.keys(saved).slice(0,15) : null);
+  showToast('📊 解析: saved=' + (saved ? Object.keys(saved).slice(0,5).join(',') : 'null'));
   
   // 智能检测压缩格式（不依赖版本号）
   if (saved && (saved.h || (saved.heroes && typeof saved.heroes === 'object' && !Array.isArray(saved.heroes)))) {
-    console.log('检测到压缩存档，正在解压...');
+    console.log('[restoreSaveData] 检测到压缩格式，正在解压...');
     var decompressed = decompressSaveV3V4(saved);
     if (decompressed) {
       saved = decompressed;
-      console.log('存档解压成功');
+      console.log('[restoreSaveData] 压缩格式解压成功');
     } else {
-      console.warn('解压失败，尝试直接读取');
+      console.warn('[restoreSaveData] 解压失败，尝试直接读取');
     }
   }
   
   // V1-V2 格式检测（无 version 或 version < 3，且无 game 包装）
   if (!saved && (data.heroes || data.team)) {
-    console.log('检测到 V1-V2 格式（无 game 包装）');
+    console.log('[restoreSaveData] 检测到 V1-V2 格式（无 game 包装）');
     saved = data;
   }
   
   // V3-V4 可能直接是 game 对象
   if (!saved && data.stageProgress !== undefined) {
-    console.log('检测到 V3-V4 格式（直接 game 对象）');
+    console.log('[restoreSaveData] 检测到 V3-V4 格式（直接 game 对象）');
     saved = data;
   }
   
   if (!saved) {
-    console.error('存档数据无效');
+    console.error('[restoreSaveData] saved 为空，存档无效');
+    showToast('❌ 存档无效: saved为空');
     return false;
   }
+  
+  console.log('[restoreSaveData] 最终 saved.heroes:', saved.heroes ? saved.heroes.length : 'null/undefined');
   
   // ===== 全面字段补丁（向前兼容） =====
   // 核心数据
