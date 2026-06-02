@@ -5857,6 +5857,10 @@ async function loadGame() {
       stageProgress: data.game ? data.game.stageProgress : null
     });
     
+    // 显示调试信息
+    showToast('📊 读档: 英雄=' + (data.game && data.game.heroes ? data.game.heroes.length : 0) + 
+              ' 关卡=' + (data.game ? data.game.stageProgress : '?'));
+    
     // 大数值优化：如果存在分片数据，合并到存档中
     var shardedHeroes = HeroDataShard.load();
     if (shardedHeroes && data && data.game) {
@@ -19159,8 +19163,14 @@ function confirmCloudRestore() {
         stageProgress: saveObj.game ? saveObj.game.stageProgress : null
       });
       
+      // 显示调试信息
+      var debugInfo = '云端数据: 英雄=' + (saveObj.game && saveObj.game.heroes ? saveObj.game.heroes.length : 0) + 
+                      ' 关卡=' + (saveObj.game ? saveObj.game.stageProgress : '?');
+      showToast('📊 ' + debugInfo);
+      
       if (restoreSaveData(saveObj)) {
         console.log('[云存档] restoreSaveData 成功，G.heroes.length:', G.heroes.length, 'G.stageProgress:', G.stageProgress);
+        showToast('📊 恢复后: 英雄=' + G.heroes.length + ' 关卡=' + G.stageProgress);
         initGameAfterLoad();
         // 同步写入 localStorage 和 IndexedDB（确保刷新后能读到）
         var data = prepareSaveData();
