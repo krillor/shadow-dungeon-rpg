@@ -19194,7 +19194,7 @@ function supabaseSaveToCloud(silent, forceFull) {
   
   // 智能选择：增量更新 vs 全量更新
   var useIncremental = lastCloudData && !forceFull && silent;
-  var gameDataToUpload;
+  var dataToUpload;
   var isIncremental = false;
   
   if (useIncremental) {
@@ -19202,14 +19202,18 @@ function supabaseSaveToCloud(silent, forceFull) {
     var diff = diffObject(lastCloudData, saveData.game);
     if (diff !== undefined) {
       // 只传关键字段 + 变化字段
-      gameDataToUpload = {
-        _partial: true, // 标记为部分更新
-        _timestamp: Date.now(),
-        heroes: saveData.game.heroes, // 英雄数据通常需要完整传
-        stageProgress: saveData.game.stageProgress,
-        resources: saveData.game.resources,
-        playerName: saveData.game.playerName,
-        _diff: diff // 其他变化字段
+      dataToUpload = {
+        version: saveData.version,
+        heroIdCounter: saveData.heroIdCounter,
+        game: {
+          _partial: true, // 标记为部分更新
+          _timestamp: Date.now(),
+          heroes: saveData.game.heroes, // 英雄数据通常需要完整传
+          stageProgress: saveData.game.stageProgress,
+          resources: saveData.game.resources,
+          playerName: saveData.game.playerName,
+          _diff: diff // 其他变化字段
+        }
       };
       isIncremental = true;
     } else {
@@ -19219,11 +19223,11 @@ function supabaseSaveToCloud(silent, forceFull) {
     }
   } else {
     // 手动上传或首次上传使用全量
-    gameDataToUpload = saveData.game;
+    dataToUpload = saveData;
   }
   
   // 压缩游戏数据（使用 pako gzip）
-  var gameDataJson = JSON.stringify(gameDataToUpload);
+  var gameDataJson = JSON.stringify(dataToUpload);
   var originalSize = gameDataJson.length;
   var usedCompression = false;
   
@@ -19402,7 +19406,7 @@ function confirmCloudRestore() {
       }
       
       // 解压游戏数据（从 game_data 内部检测压缩标记）
-      var gameData;
+      var saveObj;
       var rawData = cloudData.game_data;
       
       try {
@@ -19422,24 +19426,28 @@ function confirmCloudRestore() {
             bytes[i] = binary.charCodeAt(i);
           }
           var decompressed = pako.inflate(bytes, { to: 'string' });
-          gameData = JSON.parse(decompressed);
+          saveObj = JSON.parse(decompressed);
           console.log('[云存档] 解压成功，传输:', rawData.length, 'B, 解压后:', decompressed.length, 'B');
+        } else if (parsed && parsed.game) {
+          // 新格式但未压缩：直接是 saveData 结构
+          saveObj = parsed;
+          console.log('[云存档] 使用未压缩数据（新格式）');
+        } else if (parsed && parsed.heroes !== undefined) {
+          // 旧格式：未压缩的原始 game 数据（兼容）
+          saveObj = {
+            version: cloudData.version || 1,
+            heroIdCounter: 0,
+            game: parsed
+          };
+          console.log('[云存档] 使用未压缩数据（旧格式兼容模式）');
         } else {
-          // 旧格式：未压缩的原始游戏数据（兼容）
-          gameData = parsed;
-          console.log('[云存档] 使用未压缩数据（兼容模式）');
+          throw new Error('无法识别的存档格式');
         }
       } catch (e) {
         console.error('[云存档] 数据解析失败:', e);
         showToast('❌ 存档数据解析失败');
         return;
       }
-      
-      var saveObj = {
-        version: cloudData.version || 1,
-        heroIdCounter: gameData.heroIdCounter || 0,
-        game: gameData
-      };
       
       console.log('[云存档] 准备恢复，云端数据:', {
         version: saveObj.version,
