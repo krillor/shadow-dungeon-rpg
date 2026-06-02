@@ -6323,6 +6323,9 @@ function exportSaveToFile() {
     
     URL.revokeObjectURL(url);
     
+    // 显示下载成功提示
+    showToast('✅ 下载已开始，请查看弹窗提示');
+    
     // 先关闭旧弹窗，延迟后打开新弹窗避免冲突
     closeModal();
     
@@ -6347,7 +6350,7 @@ function exportSaveToFile() {
       var html=`
         <div style="max-width:360px;text-align:center">
           <div style="font-size:40px;margin-bottom:12px">📤</div>
-          <div style="font-size:16px;font-weight:bold;color:#2ecc71;margin-bottom:12px">存档导出成功</div>
+          <div style="font-size:16px;font-weight:bold;color:#2ecc71;margin-bottom:12px">✅ 存档导出成功</div>
           <div style="background:var(--panel2);border-radius:var(--radius-md);padding:14px;margin-bottom:16px;text-align:left;font-size:13px;line-height:1.8">
             <div style="margin-bottom:8px"><span style="color:var(--text3)">文件名：</span><span style="color:var(--gold);word-break:break-all">${fileName}</span></div>
             <div style="margin-bottom:8px"><span style="color:var(--text3)">保存位置：</span></div>
