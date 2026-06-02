@@ -8838,7 +8838,8 @@ function createBattleUnit(hero,isEnemy=false){
   G_battleUnitIdCounter++;
   return{
     hero:hero, isEnemy:isEnemy,
-    name:hero.name, icon:hero.icon,
+    name:hero.name||'未知', icon:hero.icon||'❓',
+    role: hero.role || 'unknown',
     battleId:(isEnemy?'E':'P')+'_'+G_battleUnitIdCounter,
     hp:stats.maxHP, maxHP:stats.maxHP,
     mp:stats.maxMP, maxMP:stats.maxMP,
@@ -8875,12 +8876,14 @@ function calcDamage(attacker,defender,skill=null,skillIdx=-1){
   if(G_cheats.enabled && G_cheats.godMode && !defender.isEnemy){
     return{dmg:0,crit:false,dodged:true};
   }
-  let atk=attacker.atk;
-  let def=defender.def;
+  let atk=Number(attacker.atk)||0;
+  let def=Number(defender.def)||0;
   
-  // 获取职业数据
-  const attackerRole=ROLES[attacker.role];
-  const defenderRole=ROLES[defender.role];
+  // 获取职业数据（防止undefined）
+  var attackerRoleName = attacker.role || 'unknown';
+  var defenderRoleName = defender.role || 'unknown';
+  const attackerRole=ROLES[attackerRoleName]||ROLES.unknown;
+  const defenderRole=ROLES[defenderRoleName]||ROLES.unknown;
   
   // buff/debuff
   attacker.buffs.forEach(b=>{if(b.stat==='atk')atk=Math.floor(atk*b.mult)});
@@ -9174,14 +9177,14 @@ async function executeSkill(user,target,skill,allUnits,logFn){
 
 // ==================== 智能战斗AI ====================
 function smartChooseSkill(unit,allUnits){
-  var role=unit.hero.role;
+  var role=unit.hero.role||'unknown';
   var allies=allUnits.filter(function(u){return u.alive&&u.isEnemy===unit.isEnemy&&u!==unit});
   var enemies=allUnits.filter(function(u){return u.alive&&u.isEnemy!==unit.isEnemy});
   var allAlive=allUnits.filter(function(u){return u.alive});
 
   // 获取可用技能
   var available=[];
-  var allSkillIds=[].concat(unit.hero.skills,unit.bonusSkills);
+  var allSkillIds=[].concat(unit.hero.skills||[],unit.bonusSkills||[]);
   allSkillIds.forEach(function(sid){
     var sk=SKILLS[sid];if(!sk)return;
     if(unit.mp<sk.mpCost)return;
@@ -9792,11 +9795,13 @@ async function runBattle(stageId){
     }).join('');
     var dotsHTML = u.dot.map(function(d) { return '<span class="buff-tag buff-dot">' + d.name + '(' + d.duration + ')</span>'; }).join('');
     var sideClass = isEnemy ? 'enemy-unit' : 'ally-unit';
+    var heroQuality = u.hero ? (u.hero.quality || 'common') : 'common';
+    var heroLevel = u.hero ? (u.hero.level || 1) : 1;
     return '<div class="battle-unit ' + sideClass + ' ' + (u.alive ? '' : 'dead') + '" data-battle-uid="' + (u.battleId || (u.name + '-' + u.icon)) + '">'
       + '<div class="unit-avatar-wrap">'
       + '<div class="unit-role-icon">' + roleIcon + '</div>'
-      + '<div class="unit-avatar quality-' + u.hero.quality + '">' + u.icon + '</div>'
-      + '<div class="unit-level">' + u.hero.level + '</div>'
+      + '<div class="unit-avatar quality-' + heroQuality + '">' + u.icon + '</div>'
+      + '<div class="unit-level">' + heroLevel + '</div>'
       + '</div>'
       + '<div class="unit-name">' + u.name + '</div>'
       + '<div class="unit-bars">'
