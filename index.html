@@ -5776,8 +5776,8 @@ function saveGame() {
     // localStorage 尽力而为（失败不报错）
     lsSet(getSlotKey(slotIdx), data);
     
-    // 大数值优化：英雄数据分片存储（超过100个英雄时启用）
-    if (G.heroes && G.heroes.length > HeroDataShard.SHARD_SIZE) {
+    // 大数值优化：英雄数据分片存储（超过100个英雄时启用，容错处理）
+    if (typeof HeroDataShard !== 'undefined' && HeroDataShard && G.heroes && G.heroes.length > HeroDataShard.SHARD_SIZE) {
       HeroDataShard.save(G.heroes);
     }
     
@@ -5869,10 +5869,12 @@ async function loadGame() {
     debugLog('读档: 英雄=' + (data.game && data.game.heroes ? data.game.heroes.length : 0) + 
               ' 关卡=' + (data.game ? data.game.stageProgress : '?'));
     
-    // 大数值优化：如果存在分片数据，合并到存档中
-    var shardedHeroes = HeroDataShard.load();
-    if (shardedHeroes && data && data.game) {
-      data.game.heroes = shardedHeroes;
+    // 大数值优化：如果存在分片数据，合并到存档中（容错处理）
+    if (typeof HeroDataShard !== 'undefined' && HeroDataShard) {
+      var shardedHeroes = HeroDataShard.load();
+      if (shardedHeroes && data && data.game) {
+        data.game.heroes = shardedHeroes;
+      }
     }
     
     // 恢复数据
