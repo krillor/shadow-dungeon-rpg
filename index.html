@@ -19,8 +19,146 @@
 <title>暗影地牢 - 文字策略RPG</title>
 <!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+// ==================== 大数值处理系统 V3 ====================
+// JavaScript 安全整数上限是 2^53-1 ≈ 9e15，超过会丢失精度
+// 解决方案：1) BigInt处理 2) 对数压缩 3) 分片存储
+
+// BigInt 数值处理工具（用于超大数值计算）
+var BigNumber = {
+  // 将数值转换为 BigInt（支持字符串大数）
+  toBig: function(v) {
+    if (typeof v === 'bigint') return v;
+    if (typeof v === 'string') return BigInt(v);
+    return BigInt(Math.floor(v || 0));
+  },
+  // BigInt 加法
+  add: function(a, b) {
+    return this.toBig(a) + this.toBig(b);
+  },
+  // BigInt 减法
+  sub: function(a, b) {
+    return this.toBig(a) - this.toBig(b);
+  },
+  // BigInt 乘法
+  mul: function(a, b) {
+    return this.toBig(a) * this.toBig(b);
+  },
+  // BigInt 除法（返回整数）
+  div: function(a, b) {
+    if (this.toBig(b) === 0n) return 0n;
+    return this.toBig(a) / this.toBig(b);
+  },
+  // 比较大小
+  gt: function(a, b) {
+    return this.toBig(a) > this.toBig(b);
+  },
+  // 取较小值
+  min: function(a, b) {
+    return this.gt(a, b) ? this.toBig(b) : this.toBig(a);
+  },
+  // 格式化显示（自动转换 K/M/B/T/aa/ab...）
+  format: function(v) {
+    var n = Number(this.toBig(v));
+    if (n < 1000) return n.toString();
+    var units = ['K','M','B','T','aa','ab','ac','ad','ae','af','ag','ah','ai','aj'];
+    var unitIndex = 0;
+    while (n >= 1000 && unitIndex < units.length - 1) {
+      n /= 1000;
+      unitIndex++;
+    }
+    return n.toFixed(1) + units[unitIndex];
+  },
+  // 序列化（用于存档）
+  serialize: function(v) {
+    return this.toBig(v).toString();
+  }
+};
+
+// 对数压缩系统（用于属性显示和计算，支持无限增长）
+var LogScale = {
+  // 压缩：将线性值转为对数值（用于显示）
+  compress: function(v) {
+    if (v <= 0) return 0;
+    if (v < 1000000) return v; // 小于1M不压缩
+    return Math.log10(v) * 1000000; // 对数压缩
+  },
+  // 解压：将对数值转回线性值
+  decompress: function(v) {
+    if (v <= 0) return 0;
+    if (v < 1000000) return v;
+    return Math.pow(10, v / 1000000);
+  },
+  // 压缩后的数值计算（近似）
+  add: function(a, b) {
+    // 对数域加法：log(exp(a) + exp(b))
+    var va = this.decompress(a);
+    var vb = this.decompress(b);
+    return this.compress(va + vb);
+  },
+  // 格式化显示（自动选择合适的单位）
+  format: function(v) {
+    if (v < 1000) return Math.floor(v).toString();
+    if (v < 1000000) return Math.floor(v).toLocaleString();
+    if (v < 1e9) return (v / 1e6).toFixed(2) + 'M';
+    if (v < 1e12) return (v / 1e9).toFixed(2) + 'B';
+    if (v < 1e15) return (v / 1e12).toFixed(2) + 'T';
+    return (v / 1e15).toFixed(2) + 'aa';
+  }
+};
+
+// 英雄数据分片存储管理器
+var HeroDataShard = {
+  // 单片上限制（避免单英雄数据过大）
+  SHARD_SIZE: 100,
+  // 分片键前缀
+  KEY_PREFIX: 'hero_shard_',
+  
+  // 将英雄数组分片存储
+  save: function(heroes) {
+    if (!heroes || !Array.isArray(heroes)) return;
+    var shards = Math.ceil(heroes.length / this.SHARD_SIZE);
+    // 保存分片数量
+    lsSet(this.KEY_PREFIX + 'count', shards.toString());
+    // 保存每个分片
+    for (var i = 0; i < shards; i++) {
+      var start = i * this.SHARD_SIZE;
+      var end = Math.min(start + this.SHARD_SIZE, heroes.length);
+      var shard = heroes.slice(start, end);
+      lsSet(this.KEY_PREFIX + i, JSON.stringify(shard));
+    }
+  },
+  
+  // 加载所有英雄（按需加载）
+  load: function() {
+    var shards = parseInt(lsGet(this.KEY_PREFIX + 'count') || '0', 10);
+    if (shards === 0) return null;
+    var heroes = [];
+    for (var i = 0; i < shards; i++) {
+      var shard = lsGet(this.KEY_PREFIX + i);
+      if (shard) {
+        try {
+          var parsed = JSON.parse(shard);
+          heroes = heroes.concat(parsed);
+        } catch (e) {
+          console.error('加载英雄分片失败:', i, e);
+        }
+      }
+    }
+    return heroes.length > 0 ? heroes : null;
+  },
+  
+  // 清理旧分片
+  clear: function() {
+    var shards = parseInt(lsGet(this.KEY_PREFIX + 'count') || '0', 10);
+    for (var i = 0; i < shards; i++) {
+      localStorage.removeItem(this.KEY_PREFIX + i);
+    }
+    localStorage.removeItem(this.KEY_PREFIX + 'count');
+  }
+};
+
 // ==================== 属性突破系统 V2 ====================
-// 属性上限配置
+// 属性上限配置（扩展支持超大数值，使用对数增长）
 var STAT_QUALITY_CAP={
   common:{maxHP:800,atk:120,def:100,spd:80,maxMP:150},
   rare:{maxHP:2000,atk:280,def:240,spd:180,maxMP:350},
@@ -28,8 +166,72 @@ var STAT_QUALITY_CAP={
   legendary:{maxHP:9000,atk:999,def:999,spd:750,maxMP:999},
   mythic:{maxHP:9999,atk:999,def:999,spd:900,maxMP:999},
   hidden:{maxHP:14999,atk:1499,def:1499,spd:1300,maxMP:1499},
-  unknown:{maxHP:19999,atk:1999,def:1999,spd:1666,maxMP:1999}
+  unknown:{maxHP:19999,atk:1999,def:1999,spd:1666,maxMP:1999},
+  // 新增超大数值等级（使用字符串存储大数）
+  cosmic:{maxHP:'50000',atk:'5000',def:'5000',spd:'3000',maxMP:'5000'},
+  eternal:{maxHP:'100000',atk:'10000',def:'10000',spd:'5000',maxMP:'10000'},
+  infinite:{maxHP:'1000000',atk:'100000',def:'100000',spd:'20000',maxMP:'100000'}
 };
+
+// 超大数值等级顺序
+var QUALITY_ORDER = ['common','rare','epic','legendary','mythic','hidden','unknown','cosmic','eternal','infinite'];
+
+// 获取下一个品质等级
+function getNextQuality(current) {
+  var idx = QUALITY_ORDER.indexOf(current);
+  return idx >= 0 && idx < QUALITY_ORDER.length - 1 ? QUALITY_ORDER[idx + 1] : null;
+}
+
+// 安全数值上限（超过此值使用BigInt）
+var SAFE_NUMBER_MAX = 9007199254740991; // 2^53 - 1
+
+// 检查是否需要使用BigInt
+function needsBigInt(v) {
+  if (typeof v === 'string') {
+    // 检查字符串数值是否超过安全范围
+    var num = parseFloat(v);
+    return num > SAFE_NUMBER_MAX || isNaN(num);
+  }
+  return typeof v === 'number' && v > SAFE_NUMBER_MAX;
+}
+
+// 安全数值加法（自动处理大数）
+function safeAdd(a, b) {
+  if (needsBigInt(a) || needsBigInt(b)) {
+    return BigNumber.add(a, b).toString();
+  }
+  return Math.floor((parseFloat(a) || 0) + (parseFloat(b) || 0));
+}
+
+// 安全数值乘法（自动处理大数）
+function safeMul(a, b) {
+  if (needsBigInt(a) || needsBigInt(b)) {
+    return BigNumber.mul(a, b).toString();
+  }
+  return Math.floor((parseFloat(a) || 0) * (parseFloat(b) || 0));
+}
+
+// 安全数值取最小值
+function safeMin(a, b) {
+  var na = parseFloat(a) || 0;
+  var nb = parseFloat(b) || 0;
+  if (needsBigInt(a) || needsBigInt(b)) {
+    return BigNumber.min(a, b).toString();
+  }
+  return Math.min(na, nb);
+}
+
+// 格式化显示大数值
+function formatBigNumber(v) {
+  if (v === null || v === undefined) return '0';
+  if (typeof v === 'string' && needsBigInt(v)) {
+    return BigNumber.format(v);
+  }
+  var n = parseFloat(v) || 0;
+  if (n < 1000) return Math.floor(n).toString();
+  if (n < 1000000) return Math.floor(n).toLocaleString();
+  return LogScale.format(n);
+}
 
 // 突破材料配置
 var BREAKTHROUGH_MATERIALS={
@@ -96,14 +298,15 @@ function performBreakthrough(hero){
   G.heroBreakthrough[hero.uid].count++;
   var newCap=STAT_QUALITY_CAP[nextQ];
   hero.quality=nextQ;
+  // 大数值优化：使用安全数值计算
   var hpRatio=hero.maxHP>0?hero.hp/hero.maxHP:0;
-  hero.maxHP=Math.min(Math.floor(hero.maxHP*1.2),newCap.maxHP);
-  hero.hp=Math.floor(hero.maxHP*hpRatio);
-  hero.atk=Math.min(Math.floor(hero.atk*1.15),newCap.atk);
-  hero.def=Math.min(Math.floor(hero.def*1.15),newCap.def);
-  hero.spd=Math.min(Math.floor(hero.spd*1.1),newCap.spd);
-  hero.maxMP=Math.min(Math.floor(hero.maxMP*1.1),newCap.maxMP);
-  hero.mp=Math.min(hero.mp,hero.maxMP);
+  hero.maxHP=safeMin(safeMul(hero.maxHP,1.2),newCap.maxHP);
+  hero.hp=Math.floor(parseFloat(hero.maxHP)*hpRatio);
+  hero.atk=safeMin(safeMul(hero.atk,1.15),newCap.atk);
+  hero.def=safeMin(safeMul(hero.def,1.15),newCap.def);
+  hero.spd=safeMin(safeMul(hero.spd,1.1),newCap.spd);
+  hero.maxMP=safeMin(safeMul(hero.maxMP,1.1),newCap.maxMP);
+  hero.mp=Math.min(parseFloat(hero.mp)||0,parseFloat(hero.maxMP)||0);
   if(!hero.bonusSkills)hero.bonusSkills=[];
   if(hero.bonusSkills.length<3){
     var roleTpls=HERO_TEMPLATES.filter(function(t){return t.role===hero.role&&t.quality!=='common'});
@@ -5565,6 +5768,11 @@ function saveGame() {
     // localStorage 尽力而为（失败不报错）
     lsSet(getSlotKey(slotIdx), data);
     
+    // 大数值优化：英雄数据分片存储（超过100个英雄时启用）
+    if (G.heroes && G.heroes.length > HeroDataShard.SHARD_SIZE) {
+      HeroDataShard.save(G.heroes);
+    }
+    
     // 更新元数据
     if (!meta.slots[slotIdx]) meta.slots[slotIdx] = {};
     meta.slots[slotIdx].timestamp = Date.now();
@@ -5638,6 +5846,12 @@ async function loadGame() {
     if (!data) {
       console.warn('当前槽位 ' + (slotIdx+1) + ' 无存档，初始化新游戏');
       return false;
+    }
+    
+    // 大数值优化：如果存在分片数据，合并到存档中
+    var shardedHeroes = HeroDataShard.load();
+    if (shardedHeroes && data && data.game) {
+      data.game.heroes = shardedHeroes;
     }
     
     // 恢复数据
