@@ -5836,25 +5836,14 @@ async function loadGame() {
     
     debugLog('[LG] 开始加载，槽位:', slotIdx);
     
-    // 1. 优先从 localStorage 读取（同步，更可靠）
+    // 强制读取当前槽位数据（不使用回退到其他槽位，每个槽位独立）
     var key = getSlotKey(slotIdx);
     var data = lsGet(key);
-    debugLog('[LG] localStorage 读取:', key, data ? '有数据' : '无数据');
+    debugLog('[LG] 读取槽位' + (slotIdx+1) + ':', key, data ? '有数据' : '无数据');
     
-    // 2. 回退到 IndexedDB
+    // 如果当前槽位没有数据，不再回退到其他槽位
     if (!data) {
-      data = await dbGet('saves', slotIdx);
-      debugLog('[LG] IndexedDB 读取:', data ? '有数据' : '无数据');
-    }
-    
-    // 3. 回退到旧格式
-    if (!data) {
-      data = lsGet('shadow_dungeon_slot_' + slotIdx); // 旧版键名
-      debugLog('[LG] 旧格式读取:', data ? '有数据' : '无数据');
-    }
-    
-    if (!data) {
-      console.warn('[loadGame] 无存档，初始化新游戏');
+      debugLog('[LG] 槽位' + (slotIdx+1) + '无存档，保持空白状态');
       return false;
     }
     
@@ -19657,6 +19646,11 @@ async function initGame(){
   dp.id = 'debug-panel';
   dp.style.cssText = 'position:fixed;top:40px;right:5px;width:180px;max-height:200px;overflow-y:auto;background:rgba(0,0,0,.9);color:#0f0;font-size:10px;padding:6px;border-radius:6px;z-index:99999;font-family:monospace;white-space:pre-wrap;word-break:break-all;line-height:1.4';
   document.body.appendChild(dp);
+  
+  // 获取并显示当前槽位
+  var meta = getMeta();
+  var currentSlot = meta.currentSlot || 0;
+  debugLog('当前槽位: ' + (currentSlot + 1) + '/3');
   debugLog('initGame 开始');
   // 初始化存储系统（IndexedDB + 自动迁移）
   await initStorageSystem();
