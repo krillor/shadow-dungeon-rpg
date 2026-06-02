@@ -18950,7 +18950,10 @@ function validateSaveData(saveData) {
   if (!saveData.version) { errors.push('缺少 version 字段'); }
   if (saveData.game) {
     if (!saveData.game.heroes || !Array.isArray(saveData.game.heroes)) { errors.push('heroes 数据异常'); }
-    if (!saveData.game.gold && saveData.game.gold !== 0) { errors.push('gold 数据异常'); }
+    // gold 可能在 game.gold 或 game.resources.gold
+    var gold = saveData.game.gold !== undefined ? saveData.game.gold : 
+               (saveData.game.resources && saveData.game.resources.gold !== undefined ? saveData.game.resources.gold : null);
+    if (gold === null || gold === undefined) { errors.push('gold 数据异常'); }
     if (typeof saveData.game.stageProgress !== 'number') { errors.push('stageProgress 数据异常'); }
   }
   var jsonStr = JSON.stringify(saveData);
