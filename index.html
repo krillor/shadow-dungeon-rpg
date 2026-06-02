@@ -3492,7 +3492,11 @@ function formatOmenTime(seconds) {
 // 公式: stat = baseStat * qualityMult * (1 + GROWTH_RATE * ln(1 + level))
 const GROWTH_RATE = 0.35;
 function calcStat(base, qualityMult, level){
-  return Math.floor(base * qualityMult * (1 + GROWTH_RATE * Math.log(1 + level)));
+  // 防止NaN的默认值
+  base = Number(base) || 0;
+  qualityMult = Number(qualityMult) || 1;
+  level = Number(level) || 1;
+  return Math.max(1, Math.floor(base * qualityMult * (1 + GROWTH_RATE * Math.log(1 + level))));
 }
 
 const ROLES = {
@@ -7588,7 +7592,15 @@ function recordMonsterCodex(enemies){
 }
 
 function getHeroStats(hero){
-  var s={hp:hero.hp,maxHP:hero.maxHP,atk:hero.atk,def:hero.def,spd:hero.spd,mp:hero.mp,maxMP:hero.maxMP};
+  var s={
+    hp: Number(hero.hp) || 0,
+    maxHP: Number(hero.maxHP) || 1,
+    atk: Number(hero.atk) || 0,
+    def: Number(hero.def) || 0,
+    spd: Number(hero.spd) || 0,
+    mp: Number(hero.mp) || 0,
+    maxMP: Number(hero.maxMP) || 1
+  };
   // 装备加成（含强化加成）
   var slots=['weapon','armor','accessory'];
   for(var si=0;si<slots.length;si++){
@@ -9702,9 +9714,15 @@ async function runBattle(stageId){
   _currentHighlight = null;
   _floatPool = [];
   _statsDirty = false;
-  battleInfoEl.innerHTML=`<div class="log-title">⚔️ 第${stage.id}章：${stage.name}</div><div class="text-dim text-sm">${stage.desc}</div>`;
-  if(stage.modifiers&&stage.modifiers.length>0){
-    battleInfoEl.innerHTML+='<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">'+stage.modifiers.map(function(m){return '<span class="stage-modifier-tag" style="font-size:11px;padding:2px 8px">'+m.name+' '+m.desc+'</span>'}).join('')+'</div>';
+  
+  // 防止stage数据为undefined导致NaN显示
+  var stageId = stage ? (stage.id || 1) : 1;
+  var stageName = stage ? (stage.name || '未知关卡') : '未知关卡';
+  var stageDesc = stage ? (stage.desc || '') : '';
+  
+  battleInfoEl.innerHTML=`<div class="log-title">⚔️ 第${stageId}章：${stageName}</div><div class="text-dim text-sm">${stageDesc}</div>`;
+  if(stage && stage.modifiers && stage.modifiers.length > 0){
+    battleInfoEl.innerHTML+='<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">'+stage.modifiers.map(function(m){return '<span class="stage-modifier-tag" style="font-size:11px;padding:2px 8px">'+(m.name||'')+' '+(m.desc||'')+'</span>'}).join('')+'</div>';
   }
 
   // 显示激活的羁绊
@@ -9757,9 +9775,15 @@ async function runBattle(stageId){
   }
 
   function buildUnitHTML(u, isEnemy) {
-    var hpPct = Math.max(0, (u.hp / u.maxHP) * 100);
-    var mpPct = Math.max(0, (u.mp / u.maxMP) * 100);
-    var shieldPct = u.maxHP > 0 ? Math.min(100, (u.shield / u.maxHP) * 100) : 0;
+    // 防止NaN的默认值
+    var maxHP = u.maxHP || 1;
+    var maxMP = u.maxMP || 1;
+    var hp = u.hp || 0;
+    var mp = u.mp || 0;
+    
+    var hpPct = Math.max(0, Math.min(100, (hp / maxHP) * 100));
+    var mpPct = Math.max(0, Math.min(100, (mp / maxMP) * 100));
+    var shieldPct = maxHP > 0 ? Math.min(100, ((u.shield || 0) / maxHP) * 100) : 0;
     var isLow = hpPct < 30;
     var roleIcon = ROLES[u.hero.role] ? ROLES[u.hero.role].icon : '⚔️';
     var buffsHTML = u.buffs.map(function(b) {
@@ -9776,9 +9800,9 @@ async function runBattle(stageId){
       + '</div>'
       + '<div class="unit-name">' + u.name + '</div>'
       + '<div class="unit-bars">'
-      + '<div class="unit-bar"><span class="unit-bar-label">HP</span><div class="unit-bar-track"><div class="unit-bar-fill hp ' + (isLow ? 'low' : '') + '" style="width:' + hpPct + '%"></div></div><span class="unit-bar-val">' + Math.max(0, u.hp) + '/' + u.maxHP + '</span></div>'
-      + '<div class="unit-bar"><span class="unit-bar-label">MP</span><div class="unit-bar-track"><div class="unit-bar-fill mp" style="width:' + mpPct + '%"></div></div><span class="unit-bar-val">' + u.mp + '/' + u.maxMP + '</span></div>'
-      + (u.shield > 0 ? '<div class="unit-bar unit-shield-bar"><span class="unit-bar-label" style="color:#54a0ff">🛡</span><div class="unit-bar-track"><div class="unit-bar-fill shield-bar" style="width:' + shieldPct + '%"></div></div><span class="unit-bar-val" style="color:#54a0ff">' + u.shield + '</span></div>' : '')
+      + '<div class="unit-bar"><span class="unit-bar-label">HP</span><div class="unit-bar-track"><div class="unit-bar-fill hp ' + (isLow ? 'low' : '') + '" style="width:' + hpPct + '%"></div></div><span class="unit-bar-val">' + Math.floor(Math.max(0, hp)) + '/' + Math.floor(maxHP) + '</span></div>'
+      + '<div class="unit-bar"><span class="unit-bar-label">MP</span><div class="unit-bar-track"><div class="unit-bar-fill mp" style="width:' + mpPct + '%"></div></div><span class="unit-bar-val">' + Math.floor(Math.max(0, mp)) + '/' + Math.floor(maxMP) + '</span></div>'
+      + (u.shield > 0 ? '<div class="unit-bar unit-shield-bar"><span class="unit-bar-label" style="color:#54a0ff">🛡</span><div class="unit-bar-track"><div class="unit-bar-fill shield-bar" style="width:' + shieldPct + '%"></div></div><span class="unit-bar-val" style="color:#54a0ff">' + Math.floor(u.shield) + '</span></div>' : '')
       + '</div>'
       + '<div class="unit-buffs">' + buffsHTML + dotsHTML + '</div>'
       + '</div>';
@@ -9794,12 +9818,18 @@ async function runBattle(stageId){
     }
     if (!el) return;
 
+    // 防止NaN的默认值
+    var maxHP = u.maxHP || 1;
+    var maxMP = u.maxMP || 1;
+    var hp = u.hp || 0;
+    var mp = u.mp || 0;
+
     // 更新存活状态
     if (u.alive) { el.classList.remove('dead'); }
     else { el.classList.add('dead'); }
 
     // 更新 HP 条（第一个 .unit-bar）
-    var hpPct = Math.max(0, (u.hp / u.maxHP) * 100);
+    var hpPct = Math.max(0, Math.min(100, (hp / maxHP) * 100));
     var hpBar = el.querySelector('.unit-bar');
     if (hpBar) {
       var hpFill = hpBar.querySelector('.unit-bar-fill.hp');
@@ -9809,17 +9839,17 @@ async function runBattle(stageId){
         else hpFill.classList.remove('low');
       }
       var hpVal = hpBar.querySelector('.unit-bar-val');
-      if (hpVal) hpVal.textContent = Math.max(0, u.hp) + '/' + u.maxHP;
+      if (hpVal) hpVal.textContent = Math.floor(Math.max(0, hp)) + '/' + Math.floor(maxHP);
     }
 
     // 更新 MP 条（第二个 .unit-bar）
-    var mpPct = Math.max(0, (u.mp / u.maxMP) * 100);
+    var mpPct = Math.max(0, Math.min(100, (mp / maxMP) * 100));
     var mpBars = el.querySelectorAll('.unit-bar');
     if (mpBars.length > 1) {
       var mpFill = mpBars[1].querySelector('.unit-bar-fill.mp');
       if (mpFill) mpFill.style.width = mpPct + '%';
       var mpVal = mpBars[1].querySelector('.unit-bar-val');
-      if (mpVal) mpVal.textContent = u.mp + '/' + u.maxMP;
+      if (mpVal) mpVal.textContent = Math.floor(Math.max(0, mp)) + '/' + Math.floor(maxMP);
     }
 
     // 更新护盾
@@ -15760,18 +15790,22 @@ function renderBattle(el){
       </div>
       <div class="stage-grid">
         ${showStages.map(s=>{
+          // 防止undefined导致的NaN
+          if(!s || !s.id || !s.name) return '';
+          const stageLevel = (s.enemies && s.enemies[0] && s.enemies[0].level) || s.id;
           const unlocked=s.id<=G.stageProgress;
           const cleared=s.id<G.stageProgress;
           const isCurrent=s.id===G.stageProgress;
           const clickAction=isCurrent?'startBattle('+s.id+')':cleared?'stageAction('+s.id+')':'';
+          const nameDisplay = s.name.length > 8 ? s.name.substring(0,8)+'…' : s.name;
           return'<div class="stage-node '+(cleared?'cleared':'')+' '+(isCurrent?'current':'')+' '+(!unlocked?'locked':'')+'"'
             +(clickAction?' onclick="'+clickAction+'"':'')
-            +' title="'+s.desc+'">'
-            +'<span class="stage-icon">'+s.icon+'</span>'
-            +'<span class="stage-name">'+(s.name.length>8?s.name.substring(0,8)+'…':s.name)+'</span>'
+            +' title="'+ (s.desc || '') +'">'
+            +'<span class="stage-icon">'+ (s.icon || '❓') +'</span>'
+            +'<span class="stage-name">'+nameDisplay+'</span>'
             +(s.isBoss?'<span class="stage-boss-tag">★'+(s.bossType==='final'?'★':'')+'Boss</span>':'')
-            +'<span class="stage-level">Lv.'+s.enemies[0].level+'</span>'
-            +(s.modifiers&&s.modifiers.length>0?'<div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;margin-top:2px">'+s.modifiers.map(function(m){return '<span class="stage-modifier-tag">'+m.name+'</span>'}).join('')+'</div>':'')
+            +'<span class="stage-level">Lv.'+stageLevel+'</span>'
+            +(s.modifiers&&s.modifiers.length>0?'<div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;margin-top:2px">'+s.modifiers.map(function(m){return '<span class="stage-modifier-tag">'+(m.name||'')+'</span>'}).join('')+'</div>':'')
             +(cleared?'<span class="stage-cleared-mark">✓ 已通关</span>':'')
             +(isCurrent?'<span class="stage-current-mark">▶ 当前</span>':'')
             +'</div>';
