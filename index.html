@@ -5868,16 +5868,21 @@ async function loadGame() {
     }
     
     // 恢复数据
-    if (!restoreSaveData(data)) {
+    var restoreResult = restoreSaveData(data);
+    console.log('[loadGame] restoreSaveData 返回:', restoreResult);
+    if (!restoreResult) {
       // 迁移失败，尝试从备份恢复
       return await restoreFromBackup(meta, slotIdx);
     }
     
+    console.log('[loadGame] 调用 initGameAfterLoad...');
     initGameAfterLoad();
+    console.log('[loadGame] initGameAfterLoad 完成，准备返回 true');
     return true;
     
   } catch(e) {
-    console.error('loadGame 异常', e);
+    console.error('[loadGame] 异常:', e);
+    showToast('❌ 读档异常: ' + (e.message || '未知错误'));
     return false;
   }
 }
@@ -19667,7 +19672,10 @@ async function initGame(){
   }
   
   // 尝试读档
-  if(await loadGame()){
+  console.log('[initGame] 开始读档...');
+  var loadResult = await loadGame();
+  console.log('[initGame] loadGame 返回:', loadResult);
+  if(loadResult){
     updateResUI();
     startAutoProduction();
     switchTab('town');
@@ -19676,6 +19684,8 @@ async function initGame(){
   }
   
   // 没有本地存档，初始化新游戏
+  console.log('[initGame] 无存档，初始化新游戏');
+  showToast('🆕 初始化新游戏');
   initNewGame();
 }
 
