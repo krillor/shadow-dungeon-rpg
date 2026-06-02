@@ -5468,10 +5468,16 @@ function initDB() {
       return;
     }
     
+    // 重置状态
+    _isDBReady = false;
+    _db = null;
+    
     var request = indexedDB.open(DB_NAME, DB_VERSION);
     
     request.onerror = function() {
       console.error('IndexedDB 打开失败');
+      _isDBReady = false;
+      _db = null;
       resolve(false);
     };
     
@@ -5480,6 +5486,13 @@ function initDB() {
       _isDBReady = true;
       console.log('IndexedDB 初始化成功');
       resolve(true);
+    };
+    
+    request.onblocked = function() {
+      console.warn('IndexedDB 被阻塞，尝试关闭其他连接');
+      _isDBReady = false;
+      _db = null;
+      resolve(false);
     };
     
     request.onupgradeneeded = function(e) {
@@ -6241,6 +6254,10 @@ function clearAllBackups() {
 
 // ===== 重置游戏 =====
 function resetGame() {
+  // 重置云存档状态
+  isCloudReady = false;
+  cloudProvider = 'none';
+  
   // 清除 localStorage
   lsRemove(META_KEY);
   for (var i = 0; i < MAX_SLOTS; i++) {
@@ -6258,16 +6275,17 @@ function resetGame() {
   if (_isDBReady && _db) {
     try {
       _db.close();
-      _isDBReady = false;
-      _db = null;
-    } catch(e) {}
-    try {
-      indexedDB.deleteDatabase(DB_NAME);
     } catch(e) {}
   }
+  _isDBReady = false;
+  _db = null;
+  
+  try {
+    indexedDB.deleteDatabase(DB_NAME);
+  } catch(e) {}
   
   showToast('游戏已重置，正在重新加载...');
-  setTimeout(function() { location.reload(); }, 500);
+  setTimeout(function() { location.reload(); }, 800);
 }
 
 function resetGameAndStartNew() {
@@ -20448,6 +20466,9 @@ function initNewGame(){
   G.stageProgress=1;
   startAutoProduction();
   switchTab('town');
+  
+  // 保存新游戏数据
+  saveGame();
   
   // 检查每日帮助弹窗
   checkDailyHelp();
