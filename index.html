@@ -17948,6 +17948,8 @@ function renderCheats(el){
       '<button class="btn" style="width:100%;color:#ff6b6b;border-color:rgba(255,107,107,.3);background:rgba(255,107,107,.05)" onclick="showConfirm(\'⚠️ 重置游戏\',\'确定要重置所有数据吗？\\n\\n所有槽位进度将丢失！\',resetGame,\'确认重置\',\'取消\')">⚠️ 重置游戏</button>' +
       '<div style="margin-top:8px;font-size:11px;color:var(--text3)">清除所有数据，重新开始</div>' +
     '</div>';
+    // 未解锁时也更新云存档面板状态
+    updateCloudSavePanel();
     return;
   }
   el.innerHTML=`
