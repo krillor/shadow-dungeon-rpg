@@ -14894,7 +14894,7 @@ function unlockCheatFromModal(){
     return;
   }
   // 复用已有的验证逻辑
-  var CHEAT_PASSWORD = 'lxl';
+  var CHEAT_PASSWORD = 'wwe';
   if(pwd === CHEAT_PASSWORD){
     G_cheats.unlocked = true;
     G_cheats.enabled = true;
@@ -18634,7 +18634,7 @@ function unlockCheats(){
   var err=document.getElementById('cheat-error');
   if(!input||!err)return;
   var pwd=input.value.trim();
-  if(pwd==='lxl'){
+  if(pwd==='wwe'){
     G_cheats.unlocked=true;
     G_cheats.enabled=true;
     showToast('🔓 金手指已解锁！');
@@ -20801,7 +20801,7 @@ function unlockCheatFloat(){
   var input = document.getElementById('float-cheat-pwd');
   var err = document.getElementById('float-cheat-error');
   var pwd = input.value.trim();
-  if(pwd === 'lxl'){
+  if(pwd === 'wwe'){
     G_cheats.unlocked = true;
     G_cheats.enabled = true;
     closeModal();
