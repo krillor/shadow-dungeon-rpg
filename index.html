@@ -19014,6 +19014,9 @@ function updateCloudSavePanel() {
   
   if (!statusEl || !panelEl) return;
   
+  // 调试信息
+  var debugInfo = 'sb:' + (sb ? '✓' : '✗') + ' ready:' + isCloudReady + ' provider:' + (cloudProvider || 'none');
+  
   // 强制使用 Supabase 云存档
   if (sb && isCloudReady) {
     // Supabase 云存档
@@ -19059,16 +19062,16 @@ function updateCloudSavePanel() {
   } else if (sb && !isCloudReady) {
     // Supabase 初始化中
     panelEl.style.display = '';
-    statusEl.textContent = '⏳ 连接中...';
+    statusEl.textContent = '⏳ 连接中... (' + debugInfo + ')';
     statusEl.style.color = 'var(--text3)';
     infoEl.textContent = '正在连接 Supabase 云端...';
     if (btnsEl) btnsEl.innerHTML = '';
   } else {
     // 无云存档
     panelEl.style.display = '';
-    statusEl.textContent = '仅本地存储';
-    statusEl.style.color = 'var(--text3)';
-    infoEl.textContent = '云端未连接，存档仅保存在本地';
+    statusEl.textContent = '❌ 未连接 (' + debugInfo + ')';
+    statusEl.style.color = 'var(--danger)';
+    infoEl.textContent = 'Supabase 初始化失败，存档仅保存在本地';
     if (btnsEl) btnsEl.innerHTML = '';
   }
 }
