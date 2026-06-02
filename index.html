@@ -13527,6 +13527,17 @@ function renderTown(el){
         +'<div class="town-module-btn-info">查看榜单</div>'
       +'</div>'
     +'</div>'
+    +'<div class="panel" style="margin-top:12px;background:linear-gradient(135deg,rgba(39,174,96,.08),rgba(39,174,96,.02));border-color:rgba(39,174,96,.25)">'
+      +'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+        +'<div style="flex:1;min-width:140px">'
+          +'<input type="text" id="town-redeem-input" style="width:100%;padding:10px 12px;border:1px solid rgba(39,174,96,.4);background:var(--panel2);color:var(--text);border-radius:8px;font-size:13px;font-family:inherit;outline:none;text-transform:uppercase" placeholder="🎁 输入兑换码" autocomplete="off">'
+        +'</div>'
+        +'<button class="btn btn-primary" onclick="redeemCodeFromTown()" style="padding:10px 20px;font-size:13px">🎁 兑换</button>'
+        +'<button class="btn" onclick="showSaveInfo()" style="padding:10px 16px;font-size:13px;background:rgba(52,152,219,.1);border-color:rgba(52,152,219,.3)">💾 存档</button>'
+        +'<button class="btn" onclick="showCloudSavePanel()" style="padding:10px 16px;font-size:13px;background:rgba(155,89,182,.1);border-color:rgba(155,89,182,.3)">☁️ 云存档</button>'
+      +'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:8px">🎁 礼包码兑换请加群 1076667471 | 💾 本地存档管理 | ☁️ 云端备份恢复</div>'
+    +'</div>'
     // 离线收益和每日登录（已屏蔽）
     // +(G.offlineEarnings?'<div class="daily-bonus-banner" style="cursor:pointer;background:linear-gradient(135deg,rgba(100,200,255,.15),rgba(50,150,255,.05));border-color:rgba(100,200,255,.3)" onclick="claimOfflineEarnings()">'
     //   +'<span style="font-size:16px">💤</span> 离线收益可领取！离线 '+G.offlineEarnings.hours.toFixed(1)+' 小时<br>'
@@ -18248,108 +18259,142 @@ var REDEEM_CODES = {
 };
 
 // 兑换码功能
+// 主界面兑换码入口
+function redeemCodeFromTown(){
+  var input=document.getElementById('town-redeem-input');
+  if(!input)return;
+  var code=input.value.trim().toUpperCase();
+  if(!code){
+    showToast('请输入兑换码');
+    return;
+  }
+  var result = processRedeemCode(code);
+  if(result.success){
+    showToast('🎁 ' + result.name + ' 兑换成功！');
+    input.value='';
+  }else{
+    showToast(result.message);
+  }
+}
+
+// 显示云存档面板弹窗
+function showCloudSavePanel(){
+  var overlay=document.createElement('div');
+  overlay.id='cloud-save-modal';
+  overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)';
+  overlay.innerHTML='<div style="background:linear-gradient(180deg,#1a1a35,#141428);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:360px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.6)">'+
+    '<div style="text-align:center;margin-bottom:20px">'+
+      '<div style="font-size:40px;margin-bottom:8px">☁️</div>'+
+      '<div style="color:var(--gold);font-weight:bold;font-size:18px">云端存档</div>'+
+    '</div>'+
+    '<div id="cloud-modal-content" style="min-height:80px">'+
+      '<div style="text-align:center;color:var(--text3);padding:20px">加载中...</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:10px;margin-top:20px">'+
+      '<button class="btn" style="flex:1" onclick="document.getElementById(\'cloud-save-modal\').remove()">关闭</button>'+
+    '</div>'+
+  '</div>';
+  document.body.appendChild(overlay);
+  // 加载云存档状态
+  updateCloudModalContent();
+}
+
+// 更新云存档弹窗内容
+function updateCloudModalContent(){
+  var content=document.getElementById('cloud-modal-content');
+  if(!content)return;
+  if(!isCloudReady){
+    content.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3)">⏳ 云端服务连接中...</div>';
+    return;
+  }
+  sb.from('cloud_saves').select('updated_at,game_size').eq('device_id',deviceId).limit(1).then(function(result){
+    var hasCloud=result.data&&result.data[0];
+    var html='';
+    if(hasCloud){
+      var d=new Date(result.data[0].updated_at);
+      var size=(result.data[0].game_size/1024).toFixed(1)+' KB';
+      html+='<div style="background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.3);border-radius:10px;padding:16px;margin-bottom:16px">'+
+        '<div style="font-size:12px;color:var(--text3);margin-bottom:4px">✅ 云端存档已连接</div>'+
+        '<div style="font-size:14px;color:var(--text)">上次保存: '+d.toLocaleString()+'</div>'+
+        '<div style="font-size:12px;color:var(--text2)">存档大小: '+size+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:10px">'+
+        '<button class="btn btn-primary" style="flex:1" onclick="supabaseSaveToCloud();showToast(\'⏳ 正在上传...\');setTimeout(function(){updateCloudModalContent()},1000)">⬆️ 上传存档</button>'+
+        '<button class="btn" style="flex:1;background:rgba(155,89,182,.1);border-color:rgba(155,89,182,.3)" onclick="document.getElementById(\'cloud-save-modal\').remove();supabaseLoadCloudSave()">⬇️ 恢复存档</button>'+
+      '</div>';
+    }else{
+      html+='<div style="background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:10px;padding:16px;margin-bottom:16px">'+
+        '<div style="font-size:12px;color:var(--text3);margin-bottom:4px">❌ 云端暂无存档</div>'+
+        '<div style="font-size:13px;color:var(--text2)">点击上传将当前进度保存到云端</div>'+
+      '</div>'+
+      '<button class="btn btn-primary" style="width:100%" onclick="supabaseSaveToCloud();showToast(\'⏳ 正在上传...\');setTimeout(function(){updateCloudModalContent()},1000)">⬆️ 上传当前存档</button>';
+    }
+    content.innerHTML=html;
+  }).catch(function(e){
+    content.innerHTML='<div style="text-align:center;padding:20px;color:#ff6b6b">❌ 查询失败: '+(e.message||'未知错误')+'</div>';
+  });
+}
+
+// 兑换码核心处理函数
+function processRedeemCode(code){
+  var codeData=REDEEM_CODES[code];
+  if(!codeData)return{success:false,message:'❌ 兑换码无效'};
+  if(G.redeemedCodes&&G.redeemedCodes[code])return{success:false,message:'⚠️ 该兑换码已使用过'};
+  var rewardDesc=[];
+  var resNames={gold:'💰金币',gems:'💎宝石',food:'🍞食物',stone:'🪨石材',iron:'⛏️铁矿',fame:'⭐声望'};
+  if(codeData.rewards){
+    for(var key in codeData.rewards){
+      G.resources[key]=(G.resources[key]||0)+codeData.rewards[key];
+      rewardDesc.push(resNames[key]+'+'+codeData.rewards[key]);
+    }
+  }
+  if(codeData.heroes){
+    for(var h=0;h<codeData.heroes.length;h++){
+      var hConf=codeData.heroes[h];
+      var tpl=null;
+      if(hConf.id){tpl=HERO_TEMPLATES.find(function(t){return t.id===hConf.id});}
+      else if(hConf.quality){var pool=HERO_TEMPLATES.filter(function(t){return t.quality===hConf.quality});tpl=pool[Math.floor(Math.random()*pool.length)];}
+      if(tpl){for(var c=0;c<(hConf.count||1);c++){G.heroes.push(createHero(tpl.id));}rewardDesc.push((tpl.icon||'')+QUALITY_NAMES[tpl.quality]+'英雄×'+(hConf.count||1));}
+    }
+  }
+  if(codeData.equipment){
+    for(var e=0;e<codeData.equipment.length;e++){
+      var eConf=codeData.equipment[e];
+      var eTpl=null;
+      if(eConf.id){eTpl=EQUIP_TEMPLATES.find(function(t){return t.id===eConf.id});}
+      else{var ePool=EQUIP_TEMPLATES.filter(function(t){if(eConf.quality&&t.quality!==eConf.quality)return false;if(eConf.type&&t.type!==eConf.type)return false;return true;});eTpl=ePool[Math.floor(Math.random()*ePool.length)];}
+      if(eTpl){for(var ec=0;ec<(eConf.count||1);ec++){var eq=createEquipment(eTpl.id);eq.level=eConf.level||1;G.equipment.push(eq);}rewardDesc.push((eTpl.icon||'')+QUALITY_NAMES[eTpl.quality]+'装备×'+(eConf.count||1)+'(Lv'+(eConf.level||1)+')');}
+    }
+  }
+  if(!G.redeemedCodes)G.redeemedCodes={};
+  G.redeemedCodes[code]=Date.now();
+  saveGame();updateResUI();
+  return{success:true,name:codeData.name,desc:rewardDesc.join('、')};
+}
+
 function redeemCode(){
   var input=document.getElementById('redeem-code-input');
   var resultEl=document.getElementById('redeem-result');
   if(!input||!resultEl)return;
   var code=input.value.trim().toUpperCase();
-  
   if(!code){
     resultEl.textContent='请输入兑换码';
     resultEl.style.display='block';
     resultEl.style.color='var(--red)';
     return;
   }
-  
-  var codeData = REDEEM_CODES[code];
-  
-  if(!codeData){
-    resultEl.textContent='❌ 兑换码无效';
+  var result=processRedeemCode(code);
+  if(result.success){
+    resultEl.innerHTML='<span style="color:#2ecc71">✅ '+result.name+' 兑换成功！</span><br><span style="font-size:12px;color:var(--text2)">'+result.desc+'</span>';
     resultEl.style.display='block';
-    resultEl.style.color='var(--red)';
-    return;
-  }
-  
-  // 检查是否已使用
-  if(G.redeemedCodes && G.redeemedCodes[code]){
-    resultEl.textContent='⚠️ 该兑换码已使用过';
+    resultEl.style.color='#2ecc71';
+    input.value='';
+    showToast('🎁 '+result.name+'兑换成功！');
+  }else{
+    resultEl.textContent=result.message;
     resultEl.style.display='block';
-    resultEl.style.color='var(--yellow)';
-    return;
+    resultEl.style.color=result.message.indexOf('⚠️')>=0?'var(--yellow)':'var(--red)';
   }
-  
-  // 发放资源奖励
-  var rewardDesc = [];
-  var resNames = {gold:'💰金币', gems:'💎宝石', food:'🍞食物', stone:'🪨石材', iron:'⛏️铁矿', fame:'⭐声望'};
-  if(codeData.rewards){
-    for(var key in codeData.rewards){
-      G.resources[key] = (G.resources[key]||0) + codeData.rewards[key];
-      rewardDesc.push(resNames[key] + '+' + codeData.rewards[key]);
-    }
-  }
-  
-  // 发放英雄
-  if(codeData.heroes){
-    for(var h=0;h<codeData.heroes.length;h++){
-      var hConf = codeData.heroes[h];
-      var tpl = null;
-      if(hConf.id){
-        tpl = HERO_TEMPLATES.find(function(t){return t.id===hConf.id});
-      } else if(hConf.quality){
-        var pool = HERO_TEMPLATES.filter(function(t){return t.quality===hConf.quality});
-        tpl = pool[Math.floor(Math.random()*pool.length)];
-      }
-      if(tpl){
-        for(var c=0;c<(hConf.count||1);c++){
-          var hero = createHero(tpl.id);
-          G.heroes.push(hero);
-        }
-        var qName = QUALITY_NAMES[tpl.quality] || tpl.quality;
-        rewardDesc.push((tpl.icon||'') + qName + '英雄×' + (hConf.count||1));
-      }
-    }
-  }
-  
-  // 发放装备
-  if(codeData.equipment){
-    for(var e=0;e<codeData.equipment.length;e++){
-      var eConf = codeData.equipment[e];
-      var eTpl = null;
-      if(eConf.id){
-        eTpl = EQUIP_TEMPLATES.find(function(t){return t.id===eConf.id});
-      } else {
-        var ePool = EQUIP_TEMPLATES.filter(function(t){
-          if(eConf.quality && t.quality !== eConf.quality) return false;
-          if(eConf.type && t.type !== eConf.type) return false;
-          return true;
-        });
-        eTpl = ePool[Math.floor(Math.random()*ePool.length)];
-      }
-      if(eTpl){
-        for(var ec=0;ec<(eConf.count||1);ec++){
-          var equip = createEquipment(eTpl.id);
-          equip.level = eConf.level || 1;
-          G.equipment.push(equip);
-        }
-        var eqName = QUALITY_NAMES[eTpl.quality] || eTpl.quality;
-        rewardDesc.push((eTpl.icon||'') + eqName + '装备×' + (eConf.count||1) + '(Lv' + (eConf.level||1) + ')');
-      }
-    }
-  }
-  
-  // 记录已兑换
-  if(!G.redeemedCodes) G.redeemedCodes = {};
-  G.redeemedCodes[code] = Date.now();
-  
-  saveGame();
-  updateResUI();
-  
-  resultEl.innerHTML = '<span style="color:#2ecc71">✅ ' + codeData.name + ' 兑换成功！</span><br>' +
-    '<span style="font-size:12px;color:var(--text2)">' + rewardDesc.join('<br>') + '</span>';
-  resultEl.style.display = 'block';
-  input.value = '';
-  
-  showToast('🎁 ' + codeData.name + '兑换成功！');
 }
 
 function toggleCheats(){
