@@ -17396,33 +17396,34 @@ function adminQueryPlayerData(){
   if(!isCloudReady){adminShowResult('❌ 云端未连接','#ff6b6b');return;}
   adminShowResult('⏳ 查询中...','var(--text3)');
   Promise.all([
-    sb.from('saves').select('*').eq('player_name',name).limit(1),
+    sb.from('cloud_saves').select('*').eq('player_name',name).limit(1),
     sb.from('leaderboard').select('*').eq('player_name',name)
   ]).then(function(results){
     var saveData=results[0].data&&results[0].data[0]?results[0].data[0]:null;
     var lbData=results[1].data||[];
     if(!saveData&&!lbData.length){adminShowResult('❌ 未找到玩家：'+name,'#ff6b6b');return;}
+    // 从 game_data 中读取存档信息
+    var gameInfo=saveData&&saveData.game_data?saveData.game_data:null;
     var html='<div style="background:rgba(0,0,0,.2);border-radius:8px;padding:10px;margin-top:6px;border:1px solid var(--border)">';
     // 基本信息
     var did=saveData?saveData.device_id:(lbData[0]?lbData[0].device_id:'?');
     html+='<div style="font-size:11px;color:var(--text3);margin-bottom:6px">设备ID: <span style="color:var(--text2);word-break:break-all">'+did+'</span></div>';
     // 存档信息
-    if(saveData){
+    if(saveData&&gameInfo){
       html+='<div style="font-size:12px;font-weight:bold;color:var(--gold);margin-bottom:6px">📦 云端存档</div>';
       html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center;margin-bottom:8px">';
-      html+='<div style="background:rgba(0,0,0,.2);border-radius:6px;padding:6px"><div style="font-size:14px;font-weight:bold;color:var(--text)">'+(saveData.stageProgress||1)+'</div><div style="font-size:9px;color:var(--text3)">关卡</div></div>';
-      var heroCount=saveData.heroes?saveData.heroes.length:0;
+      html+='<div style="background:rgba(0,0,0,.2);border-radius:6px;padding:6px"><div style="font-size:14px;font-weight:bold;color:var(--text)">'+(gameInfo.stageProgress||1)+'</div><div style="font-size:9px;color:var(--text3)">关卡</div></div>';
+      var heroCount=gameInfo.heroes?gameInfo.heroes.length:0;
       html+='<div style="background:rgba(0,0,0,.2);border-radius:6px;padding:6px"><div style="font-size:14px;font-weight:bold;color:var(--text)">'+heroCount+'</div><div style="font-size:9px;color:var(--text3)">英雄</div></div>';
-      var saveTime=saveData.lastSave?formatSaveTime(saveData.lastSave):'未知';
-      html+='<div style="background:rgba(0,0,0,.2);border-radius:6px;padding:6px"><div style="font-size:11px;font-weight:bold;color:var(--text2)">'+saveTime+'</div><div style="font-size:9px;color:var(--text3)">保存时间</div></div>';
+      html+='<div style="background:rgba(0,0,0,.2);border-radius:6px;padding:6px"><div style="font-size:11px;font-weight:bold;color:var(--text2)">'+(saveData.updated_at?new Date(saveData.updated_at).toLocaleString():'未知')+'</div><div style="font-size:9px;color:var(--text3)">保存时间</div></div>';
       html+='</div>';
       // 资源
-      if(saveData.resources){
-        html+='<div style="font-size:10px;color:var(--text3);margin-bottom:4px">💰 资源: '+(saveData.resources.gold||0)+'金 '+(saveData.resources.gems||0)+'💎 '+(saveData.resources.food||0)+'🍞</div>';
+      if(gameInfo.resources){
+        html+='<div style="font-size:10px;color:var(--text3);margin-bottom:4px">💰 资源: '+(gameInfo.resources.gold||0)+'金 '+(gameInfo.resources.gems||0)+'💎 '+(gameInfo.resources.food||0)+'🍞</div>';
       }
       // 建筑
-      if(saveData.buildings){
-        html+='<div style="font-size:10px;color:var(--text3)">🏗️ 酒馆Lv.'+(saveData.buildings.tavern||0)+' 神殿Lv.'+(saveData.buildings.temple||0)+'</div>';
+      if(gameInfo.buildings){
+        html+='<div style="font-size:10px;color:var(--text3)">🏗️ 酒馆Lv.'+(gameInfo.buildings.tavern||0)+' 神殿Lv.'+(gameInfo.buildings.temple||0)+'</div>';
       }
     }
     // 排行榜成绩
@@ -17462,7 +17463,7 @@ function adminDeletePlayerData(){
         var targetDeviceId=deviceId1||deviceId2;
         if(!targetDeviceId){adminShowResult('❌ 未找到玩家：'+name,'#ff6b6b');return;}
         return Promise.all([
-          sb.from('saves').delete().eq('device_id',targetDeviceId),
+          sb.from('cloud_saves').delete().eq('device_id',targetDeviceId),
           sb.from('leaderboard').delete().eq('device_id',targetDeviceId)
         ]).then(function(){
           adminShowResult('✅ 已删除玩家 "'+name+'" 的所有云端数据','#27ae60');
@@ -18744,10 +18745,15 @@ function supabaseSaveToCloud(silent) {
   
   // 使用无损存档数据
   var saveData = prepareSaveData();
-  saveData.device_id = deviceId;
-  saveData.player_name = G.playerName;
-  saveData.provider = 'supabase';
-  saveData.timestamp = Date.now();
+  
+  // 构造 cloud_saves 表的数据结构
+  var cloudData = {
+    device_id: deviceId,
+    player_name: G.playerName,
+    provider: 'supabase',
+    version: saveData.version,
+    game_data: saveData.game  // 完整游戏状态存在 game_data JSONB 字段中
+  };
   
   // 可靠性检查
   var errors = validateSaveData(saveData);
@@ -18757,10 +18763,10 @@ function supabaseSaveToCloud(silent) {
     return Promise.resolve(false);
   }
   
-  var jsonSize = JSON.stringify(saveData).length;
+  var jsonSize = JSON.stringify(cloudData.game_data).length;
   console.log('[云存档] 上传中... 大小:', (jsonSize / 1024).toFixed(1), 'KB');
   
-  return sb.from('saves').upsert(saveData, { onConflict: 'device_id' })
+  return sb.from('cloud_saves').upsert(cloudData, { onConflict: 'device_id' })
     .then(function(result) {
       if (result.error) {
         console.error('[云存档] 保存失败:', result.error);
@@ -18789,7 +18795,7 @@ function supabaseLoadCloudSave() {
   
   showToast('⏳ 正在从云端下载...');
   
-  return sb.from('saves').select('*').eq('device_id', deviceId).limit(1)
+  return sb.from('cloud_saves').select('*').eq('device_id', deviceId).limit(1)
     .then(function(result) {
       if (result.error) {
         console.error('Cloud load error:', result.error);
@@ -18797,16 +18803,16 @@ function supabaseLoadCloudSave() {
         return false;
       }
       var cloudData = result.data && result.data[0] ? result.data[0] : null;
-      if (!cloudData || !cloudData.game) {
+      if (!cloudData || !cloudData.game_data) {
         showToast('❌ 云端没有存档');
         return false;
       }
       
-      // 使用新的恢复函数
+      // 使用新的恢复函数（game_data 存在 JSONB 的 game_data 字段中）
       var saveObj = {
         version: cloudData.version || 1,
-        heroIdCounter: cloudData.heroIdCounter || 0,
-        game: cloudData.game
+        heroIdCounter: cloudData.game_data.heroIdCounter || 0,
+        game: cloudData.game_data
       };
       
       if (restoreSaveData(saveObj)) {
@@ -18837,7 +18843,7 @@ function supabaseCheckAndSync() {
   
   if (localData) {
     if (!G.playerName || G.playerName.trim() === '') return;
-    sb.from('saves').select('device_id').eq('device_id', deviceId).limit(1)
+    sb.from('cloud_saves').select('device_id').eq('device_id', deviceId).limit(1)
       .then(function(result) {
         if (!result.error && (!result.data || result.data.length === 0)) {
           console.log('云端无存档，正在上传...');
@@ -18847,16 +18853,16 @@ function supabaseCheckAndSync() {
     return;
   }
   
-  sb.from('saves').select('*').eq('device_id', deviceId).limit(1)
+  sb.from('cloud_saves').select('*').eq('device_id', deviceId).limit(1)
     .then(function(result) {
       if (result.error) return;
       var cloudData = result.data && result.data[0] ? result.data[0] : null;
-      if (cloudData && cloudData.game) {
+      if (cloudData && cloudData.game_data) {
         console.log('发现云端存档，正在恢复...');
         var saveObj = {
           version: cloudData.version || 1,
-          heroIdCounter: cloudData.heroIdCounter || 0,
-          game: cloudData.game
+          heroIdCounter: cloudData.game_data.heroIdCounter || 0,
+          game: cloudData.game_data
         };
         if (restoreSaveData(saveObj)) {
           initGameAfterLoad();
@@ -19030,8 +19036,8 @@ function showPlayerNameInput() {
 function checkPlayerNameExists(name) {
   if (!isCloudReady) return Promise.resolve(false);
   
-  // 同时检查 saves 和 leaderboard 两个表
-  var promise1 = sb.from('saves').select('device_id').eq('player_name', name).limit(1);
+  // 同时检查 cloud_saves 和 leaderboard 两个表
+  var promise1 = sb.from('cloud_saves').select('device_id').eq('player_name', name).limit(1);
   var promise2 = sb.from('leaderboard').select('device_id').eq('player_name', name).limit(1);
   
   return Promise.all([promise1, promise2])
