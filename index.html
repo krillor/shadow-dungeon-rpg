@@ -13123,7 +13123,6 @@ function generateRandomHeroForRecruit(minQuality){
 // 一键招募所有可招募英雄（支持品质筛选，根据资源持续招募）
 function recruitAllHeroes(minQuality){
   const MAX_RECRUIT_PER_BATCH = 100; // 每次一键招募最多100个
-  const MAX_TOTAL_HEROES = 200;     // 英雄总数上限200个
   
   var recruited = 0;
   var totalCost = {gold: 0, gems: 0};
@@ -13134,15 +13133,15 @@ function recruitAllHeroes(minQuality){
   const tavernLevel = G.buildings.tavern || 1;
   const maxQuality = TAVERN_REFRESH.maxQualityByLevel[tavernLevel] || 'common';
   
-  // 检查当前英雄数量
+  // 检查当前英雄数量（使用统一上限常量）
   var currentHeroCount = G.heroes ? G.heroes.length : 0;
-  if(currentHeroCount >= MAX_TOTAL_HEROES){
-    showToast('英雄数量已达上限（' + MAX_TOTAL_HEROES + '个），无法继续招募');
+  if(currentHeroCount >= MAX_HEROES_TOTAL){
+    showToast('英雄数量已达上限（' + MAX_HEROES_TOTAL + '个），无法继续招募');
     return;
   }
   
   // 计算本次最多可招募数量
-  var maxCanRecruit = Math.min(MAX_RECRUIT_PER_BATCH, MAX_TOTAL_HEROES - currentHeroCount);
+  var maxCanRecruit = Math.min(MAX_RECRUIT_PER_BATCH, MAX_HEROES_TOTAL - currentHeroCount);
   
   // 持续招募，直到资源不足或达到上限
   while(recruited < maxCanRecruit){
@@ -13308,10 +13307,23 @@ function showRecruitAllMenu(){
     html += '</div>';
   });
   
-  html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center">💡 单次最多招募50个，英雄总数上限120个<br>实际招募数量受资源、上限和随机品质影响</div>';
+  html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);text-align:center">💡 单次最多招募50个，英雄总数上限'+MAX_HEROES_TOTAL+'个<br>实际招募数量受资源、上限和随机品质影响</div>';
   html += '</div>';
   
   showModal('⚡ 一键招募', html);
+}
+
+// 全局英雄上限常量
+const MAX_HEROES_TOTAL = 200;
+
+// 检查英雄数量是否已达上限
+function checkHeroLimit(count) {
+  var current = G.heroes ? G.heroes.length : 0;
+  if (current + count > MAX_HEROES_TOTAL) {
+    showToast('⚠️ 英雄数量已达上限（' + MAX_HEROES_TOTAL + '个），无法继续招募');
+    return false;
+  }
+  return true;
 }
 
 function recruitHero(templateId){
@@ -13321,6 +13333,8 @@ function recruitHero(templateId){
   recordCodex('heroes',templateId);
   // 已招募的英雄不能重复招募
   if(G_tavernRecruited.has(templateId)){showToast('该英雄已被招募！');return}
+  // 检查英雄上限
+  if(!checkHeroLimit(1))return;
   
   // 招募成本：降低门槛，让更多玩家能体验到招募乐趣
   const goldCosts={common:30,rare:100,epic:300,legendary:0,mythic:0};
@@ -17739,6 +17753,7 @@ function adminDeletePlayerData(){
 // 指定品质生成英雄
 function cheatSpawnHero(quality){
   if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  if(!checkHeroLimit(1))return;
   var tpl = HERO_TEMPLATES.filter(function(t){return t.quality===(quality||'rare')})[0] || HERO_TEMPLATES[0];
   var hero = createHero(tpl.id);
   hero.quality = quality || 'rare';
@@ -17924,6 +17939,7 @@ function cheatDeleteHero(uid){
 // 复制英雄
 function cheatCloneHero(uid){
   if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  if(!checkHeroLimit(1))return;
   var hero = G.heroes.find(function(h){return h.uid===uid});
   if(!hero){showToast('英雄不存在');return;}
   var clone = JSON.parse(JSON.stringify(hero));
@@ -18349,6 +18365,9 @@ function processRedeemCode(code){
     }
   }
   if(codeData.heroes){
+    // 检查英雄上限
+    var totalHeroCount = codeData.heroes.reduce(function(sum,h){return sum+(h.count||1);},0);
+    if(!checkHeroLimit(totalHeroCount))return{success:false,message:'⚠️ 英雄数量已达上限（'+MAX_HEROES_TOTAL+'个），无法兑换英雄'};
     for(var h=0;h<codeData.heroes.length;h++){
       var hConf=codeData.heroes[h];
       var tpl=null;
