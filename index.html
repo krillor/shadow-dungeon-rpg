@@ -14598,8 +14598,23 @@ function toggleHeroLock(uid){
   h.locked=!h.locked;
   saveGame();
   showToast(`${h.icon} ${h.name} ${h.locked?'已锁定 🔒':'已解锁 🔓'}`);
-  // 刷新详情弹窗
-  showHeroDetail(uid);
+  // 更新卡片上的锁定按钮状态（不跳转详情页）
+  updateHeroLockBtn(uid);
+}
+
+// 更新英雄卡片上的锁定按钮状态
+function updateHeroLockBtn(uid){
+  const h=G.heroes.find(x=>x.uid===uid);
+  if(!h)return;
+  // 查找所有该英雄的卡片（可能有多个筛选视图）
+  var cards=document.querySelectorAll(`.hero-card[data-uid="${uid}"]`);
+  cards.forEach(function(card){
+    var btn=card.querySelector('.hero-lock-btn');
+    if(btn){
+      btn.textContent=h.locked?'🔒':'🔓';
+      btn.title=h.locked?'解锁':'锁定';
+    }
+  });
 }
 
 // 遣散英雄（先显示确认，返回资源）
