@@ -14674,6 +14674,8 @@ function useExpPotionCustom(heroUid){
 
 // 显示帮助弹窗
 function showHelpModal(){
+  // 记录今天已显示
+  lsSet('_help_shown_today', getTodayKey());
   const html=`
     <div style="max-width:420px">
       <div style="text-align:center;margin-bottom:16px">
@@ -14684,7 +14686,10 @@ function showHelpModal(){
         <div style="margin-bottom:12px"><span style="color:var(--gold)">💾</span> <b>存档机制</b>：本地存档 + 云存档双保险</div>
         <div style="margin-bottom:12px"><span style="color:var(--gold)">☁️</span> <b>手动存档</b>：下滑主界面 → 点击「存档」按钮，可同时本地存档+云存档上传</div>
         <div style="margin-bottom:12px"><span style="color:var(--gold)">⚠️</span> <b>重要提示</b>：虽然会自动存档，但关键节点（如获得稀有英雄、通关重要关卡）请<strong style="color:#ff6b6b">手动保存</strong></div>
-        <div><span style="color:var(--gold)">📱</span> <b>本地备份</b>：建议定期导出存档到手机本地，恢复最快最稳定</div>
+        <div style="margin-bottom:12px"><span style="color:var(--gold)">📱</span> <b>本地备份</b>：建议定期导出存档到手机本地，恢复最快最稳定</div>
+        <div style="padding-top:12px;border-top:1px solid var(--border);color:var(--text2);font-size:12px">
+          💬 有问题请联系 QQ：<b>741929749</b> 或论坛发言
+        </div>
       </div>
       <div style="text-align:center">
         <button class="btn" onclick="closeModal()">知道了</button>
@@ -14692,6 +14697,18 @@ function showHelpModal(){
     </div>
   `;
   openModal(html);
+}
+
+// 检查是否需要显示每日帮助（首次登录时）
+function checkDailyHelp(){
+  var lastShown = lsGet('_help_shown_today');
+  var today = getTodayKey();
+  if (lastShown !== today) {
+    // 延迟一点显示，等主界面加载完成
+    setTimeout(function(){
+      showHelpModal();
+    }, 800);
+  }
 }
 
 // 显示英雄改名弹窗
@@ -20273,6 +20290,8 @@ async function initGame(){
     startAutoProduction();
     switchTab('town');
     showToast('📂 已读取存档');
+    // 检查每日帮助弹窗
+    checkDailyHelp();
     return;
   }
   
@@ -20308,6 +20327,9 @@ function initNewGame(){
   G.stageProgress=1;
   startAutoProduction();
   switchTab('town');
+  
+  // 检查每日帮助弹窗
+  checkDailyHelp();
   
   // 启动新手引导
   setTimeout(startTutorial,1000);
