@@ -6315,17 +6315,38 @@ function exportSaveToFile() {
     var blob = new Blob([json], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
     
+    var fileName = 'shadow_dungeon_save_' + slotIdx + '_' + Date.now() + '.json';
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'shadow_dungeon_save_' + slotIdx + '_' + Date.now() + '.json';
+    a.download = fileName;
     a.click();
     
     URL.revokeObjectURL(url);
-    showToast('📥 存档已导出');
+    
+    // 弹窗显示保存路径
+    var html=`
+      <div style="max-width:360px;text-align:center">
+        <div style="font-size:40px;margin-bottom:12px">📤</div>
+        <div style="font-size:16px;font-weight:bold;color:#2ecc71;margin-bottom:12px">存档导出成功</div>
+        <div style="background:var(--panel2);border-radius:var(--radius-md);padding:14px;margin-bottom:16px;text-align:left;font-size:13px;line-height:1.8">
+          <div style="margin-bottom:8px"><span style="color:var(--text3)">文件名：</span><span style="color:var(--gold);word-break:break-all">${fileName}</span></div>
+          <div style="margin-bottom:8px"><span style="color:var(--text3)">保存位置：</span></div>
+          <div style="color:var(--text2);font-size:12px">
+            <div>📱 手机：文件管理 → 下载/Download</div>
+            <div>🖥️ 电脑：浏览器默认下载文件夹</div>
+          </div>
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);color:var(--text3);font-size:11px">
+            💡 如果没看到下载，请检查浏览器是否允许下载文件
+          </div>
+        </div>
+        <button class="btn" onclick="closeModal()">知道了</button>
+      </div>
+    `;
+    openModal(html);
     
   } catch(e) {
     console.error('导出失败', e);
-    showToast('❌ 导出失败');
+    showToast('❌ 导出失败：' + e.message);
   }
 }
 
