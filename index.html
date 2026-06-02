@@ -14348,7 +14348,40 @@ function _navHeroDetail(dir){
   _heroDetailIdx = newIdx;
   var h = _heroDetailList[newIdx];
   if (!h) return;
-  _renderHeroDetail(h);
+  // 使用平滑过渡动画
+  _renderHeroDetailAnimated(h, dir);
+}
+
+// 平滑过渡渲染英雄详情（避免闪动）
+function _renderHeroDetailAnimated(h, dir){
+  var panel = document.getElementById('hero-detail-panel');
+  var overlay = document.getElementById('hero-detail-overlay');
+  if (!panel || !overlay) {
+    // 面板不存在，直接完整渲染
+    _renderHeroDetail(h);
+    return;
+  }
+  // 添加滑出动画
+  panel.style.transition = 'transform .2s ease, opacity .2s ease';
+  panel.style.transform = dir > 0 ? 'translateX(-30px)' : 'translateX(30px)';
+  panel.style.opacity = '0';
+  
+  setTimeout(function(){
+    // 替换内容
+    _renderHeroDetail(h);
+    // 重新获取面板（_renderHeroDetail会重建DOM）
+    var newPanel = document.getElementById('hero-detail-panel');
+    if (newPanel) {
+      newPanel.style.transition = 'none';
+      newPanel.style.transform = dir > 0 ? 'translateX(30px)' : 'translateX(-30px)';
+      newPanel.style.opacity = '0';
+      // 强制重排后启动滑入动画
+      newPanel.offsetHeight;
+      newPanel.style.transition = 'transform .25s ease-out, opacity .25s ease-out';
+      newPanel.style.transform = 'translateX(0)';
+      newPanel.style.opacity = '1';
+    }
+  }, 200);
 }
 
 // 绑定详情面板触摸滑动
