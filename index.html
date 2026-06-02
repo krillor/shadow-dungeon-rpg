@@ -18705,6 +18705,13 @@ function initSupabase() {
         isCloudReady = true;
         cloudProvider = 'supabase';
         console.log('Supabase ready, Device ID:', deviceId);
+        // 更新云存档面板
+        updateCloudSavePanel();
+        updateCloudStatusUI();
+        // 如果当前是排行榜页面，刷新排行榜
+        if (document.getElementById('leaderboard-list')) {
+          renderLeaderboard(document.getElementById('leaderboard-type')?.value || 'power');
+        }
         checkAndSyncFromCloud();
       }
     }).catch(function(error) {
@@ -18900,12 +18907,25 @@ function initCloudSave() {
   if (provider === 'taptap') {
     console.log('使用 TapTap 云存档');
     return initTapTapCloud();
-  } else {
-    console.log('无可用云存档服务，仅使用本地存储');
-    // 更新面板显示仅本地存储
-    setTimeout(updateCloudSavePanel, 100);
-    return false;
   }
+  
+  // Supabase 云存档（所有平台）
+  if (typeof supabase !== 'undefined' && supabase.createClient && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+    console.log('使用 Supabase 云存档');
+    // 延迟检查连接状态并更新UI
+    setTimeout(function checkSupabaseReady() {
+      if (isCloudReady && cloudProvider === 'supabase') {
+        updateCloudSavePanel();
+      } else {
+        setTimeout(checkSupabaseReady, 500);
+      }
+    }, 500);
+    return true;
+  }
+  
+  console.log('无可用云存档服务，仅使用本地存储');
+  setTimeout(updateCloudSavePanel, 100);
+  return false;
 }
 
 // 统一自动同步
