@@ -6328,9 +6328,10 @@ function exportSaveToFile() {
       URL.revokeObjectURL(url);
     }, 5000);
     
-    // 关闭弹窗，用toast显示文件名
+    // 关闭弹窗，用toast显示文件名（简化版）
     closeModal();
-    showToast('✅ 已下载: ' + fileName, 5000);
+    var shortName = fileName.replace('shadow_dungeon_save_', '存档');
+    showToast('✅ 已下载\n' + shortName + '\n请在下载文件夹查找', 5000);
     
   } catch(e) {
     console.error('导出失败', e);
