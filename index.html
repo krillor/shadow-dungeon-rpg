@@ -929,31 +929,6 @@ body{
   padding-bottom:16px;
   border-bottom:1px solid var(--border);
   margin-bottom:16px;
-  position:relative;
-}
-.town-header-actions{
-  position:absolute;
-  right:0;
-  top:0;
-}
-.help-btn{
-  background:rgba(100,100,120,.15);
-  border:1px solid rgba(255,255,255,.1);
-  border-radius:50%;
-  width:32px;
-  height:32px;
-  font-size:16px;
-  cursor:pointer;
-  transition:all .2s;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:0;
-}
-.help-btn:hover{
-  background:rgba(100,100,120,.3);
-  border-color:rgba(255,255,255,.2);
-  transform:scale(1.1);
 }
 /* 标题行 */
 .town-title-row{
@@ -13536,9 +13511,6 @@ function renderTown(el){
           +'<span class="icon">🏰</span>'
           +'<span class="town-title">暗影地牢</span>'
         +'</div>'
-        +'<div class="town-header-actions">'
-          +'<button class="help-btn" onclick="showHelpModal()" title="帮助">❓</button>'
-        +'</div>'
         +'<div class="town-resources-bar">'
           +'<div class="town-res-item" title="金币"><span class="town-res-icon">💰</span><span class="town-res-val gold" id="res-gold">'+gold+'</span></div>'
           +'<div class="town-res-item" title="宝石"><span class="town-res-icon">💎</span><span class="town-res-val gems" id="res-gems">'+gems+'</span></div>'
@@ -13610,6 +13582,11 @@ function renderTown(el){
         +'<div class="town-module-btn-icon">💾</div>'
         +'<div class="town-module-btn-name">存档管理</div>'
         +'<div class="town-module-btn-info">本地+云端</div>'
+      +'</div>'
+      +'<div class="town-module-btn" onclick="showCheatEntryModal()">'
+        +'<div class="town-module-btn-icon">🔓</div>'
+        +'<div class="town-module-btn-name">金手指</div>'
+        +'<div class="town-module-btn-info">'+(G_cheats&&G_cheats.unlocked?'已解锁':'未解锁')+'</div>'
       +'</div>'
     +'</div>'
     // 离线收益和每日登录（已屏蔽）
@@ -14781,6 +14758,66 @@ function showSaveManageModal(){
     </div>
   `;
   openModal(html);
+}
+
+// 金手指入口弹窗
+function showCheatEntryModal(){
+  if(G_cheats && G_cheats.unlocked){
+    // 已解锁，直接跳转到金手指页面
+    closeModal();
+    switchTab('cheats');
+  } else {
+    // 未解锁，弹窗提示
+    const html=`
+      <div style="max-width:360px">
+        <div style="text-align:center;margin-bottom:16px">
+          <div style="font-size:40px;margin-bottom:8px">🔒</div>
+          <div style="font-size:16px;font-weight:bold;color:var(--gold)">金手指系统</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">请输入解锁密码</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input type="password" id="modal-cheat-input" style="flex:1;padding:12px 14px;border:1px solid rgba(212,175,55,.5);background:var(--panel2);color:var(--text);border-radius:8px;font-size:14px;font-family:inherit;outline:none" placeholder="输入密码" autocomplete="off">
+          <button class="btn" onclick="unlockCheatFromModal()" style="padding:12px 24px;font-size:14px;background:rgba(212,175,55,.15);border-color:rgba(212,175,55,.4);color:var(--gold)">解锁</button>
+        </div>
+        <div id="modal-cheat-result" style="font-size:13px;text-align:center;min-height:20px"></div>
+        <div style="text-align:center;margin-top:16px">
+          <button class="btn" onclick="closeModal()">关闭</button>
+        </div>
+      </div>
+    `;
+    openModal(html);
+    setTimeout(function(){
+      var input = document.getElementById('modal-cheat-input');
+      if(input) input.focus();
+    }, 100);
+  }
+}
+
+// 金手指弹窗解锁逻辑
+function unlockCheatFromModal(){
+  var input = document.getElementById('modal-cheat-input');
+  var resultEl = document.getElementById('modal-cheat-result');
+  if(!input || !resultEl) return;
+  var pwd = input.value.trim();
+  if(!pwd){
+    resultEl.innerHTML = '<span style="color:#ff6b6b">请输入密码</span>';
+    return;
+  }
+  // 复用已有的验证逻辑
+  var CHEAT_PASSWORD = 'lxl';
+  if(pwd === CHEAT_PASSWORD){
+    G_cheats.unlocked = true;
+    G_cheats.enabled = true;
+    resultEl.innerHTML = '<span style="color:#2ecc71">✅ 金手指已解锁！</span>';
+    showToast('🔓 金手指已解锁！');
+    saveGame();
+    setTimeout(function(){
+      closeModal();
+      switchTab('cheats');
+    }, 800);
+  } else {
+    resultEl.innerHTML = '<span style="color:#ff6b6b">❌ 密码错误</span>';
+  }
 }
 
 // 检查是否需要显示每日帮助（首次登录时）
