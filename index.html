@@ -19286,14 +19286,21 @@ function updateCloudSavePanel() {
     panelEl.style.display = '';
     statusEl.textContent = '⏳ 连接中... (' + debugInfo + ')';
     statusEl.style.color = 'var(--text3)';
-    infoEl.textContent = '正在连接 Supabase 云端...';
+    infoEl.textContent = '正在连接 Supabase 云端（约需3-5秒）...';
     if (btnsEl) btnsEl.innerHTML = '';
+    
+    // 10秒后如果还没连接好，提示用户刷新
+    setTimeout(function() {
+      if (!isCloudReady && statusEl) {
+        infoEl.textContent = '连接较慢，请检查网络或刷新页面重试';
+      }
+    }, 10000);
   } else {
     // 无云存档
     panelEl.style.display = '';
     statusEl.textContent = '❌ 未连接 (' + debugInfo + ')';
     statusEl.style.color = 'var(--danger)';
-    infoEl.textContent = 'Supabase 初始化失败，存档仅保存在本地';
+    infoEl.textContent = 'Supabase 初始化失败，请刷新页面重试';
     if (btnsEl) btnsEl.innerHTML = '';
   }
 }
@@ -19356,6 +19363,18 @@ function confirmPlayerName() {
   
   if (name.length > 12) {
     showToast('名字最多12个字符');
+    return;
+  }
+  
+  // 检查云端是否已连接
+  if (!isCloudReady) {
+    showToast('⏳ 云端服务连接中，请稍后再试');
+    // 3秒后自动重试
+    setTimeout(function() {
+      if (isCloudReady) {
+        showToast('✅ 云端已连接，请再次点击确认');
+      }
+    }, 3000);
     return;
   }
   
