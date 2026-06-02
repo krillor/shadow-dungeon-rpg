@@ -18678,18 +18678,21 @@ function getOrCreateDeviceId() {
 // 初始化 Supabase
 function initSupabase() {
   try {
+    console.log('[Supabase] 开始初始化...');
     if (typeof supabase === 'undefined' || !supabase.createClient) {
-      console.log('Supabase SDK not loaded');
+      console.log('[Supabase] SDK not loaded');
       return false;
     }
     
     if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
-      console.log('Supabase not configured yet');
+      console.log('[Supabase] URL not configured');
       return false;
     }
     
+    console.log('[Supabase] 创建客户端...');
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     deviceId = getOrCreateDeviceId();
+    console.log('[Supabase] 设备ID:', deviceId);
     
     sb.auth.signInAnonymously().then(function(result) {
       if (result.data && result.data.user) {
