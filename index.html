@@ -5826,23 +5826,36 @@ async function loadGame() {
     var meta = await dbGet('meta', 'main') || getMeta();
     var slotIdx = meta.currentSlot || 0;
     
+    console.log('[loadGame] 开始加载，槽位:', slotIdx);
+    
     // 1. 优先从 localStorage 读取（同步，更可靠）
-    var data = lsGet(getSlotKey(slotIdx));
+    var key = getSlotKey(slotIdx);
+    var data = lsGet(key);
+    console.log('[loadGame] localStorage 读取:', key, data ? '有数据' : '无数据');
     
     // 2. 回退到 IndexedDB
     if (!data) {
       data = await dbGet('saves', slotIdx);
+      console.log('[loadGame] IndexedDB 读取:', data ? '有数据' : '无数据');
     }
     
     // 3. 回退到旧格式
     if (!data) {
       data = lsGet('shadow_dungeon_slot_' + slotIdx); // 旧版键名
+      console.log('[loadGame] 旧格式读取:', data ? '有数据' : '无数据');
     }
     
     if (!data) {
-      console.warn('当前槽位 ' + (slotIdx+1) + ' 无存档，初始化新游戏');
+      console.warn('[loadGame] 无存档，初始化新游戏');
       return false;
     }
+    
+    console.log('[loadGame] 读取到数据:', {
+      version: data.version,
+      hasGame: !!data.game,
+      heroesCount: data.game && data.game.heroes ? data.game.heroes.length : 0,
+      stageProgress: data.game ? data.game.stageProgress : null
+    });
     
     // 大数值优化：如果存在分片数据，合并到存档中
     var shardedHeroes = HeroDataShard.load();
@@ -19138,16 +19151,35 @@ function confirmCloudRestore() {
         game: cloudData.game_data
       };
       
+      console.log('[云存档] 准备恢复，云端数据:', {
+        version: saveObj.version,
+        heroIdCounter: saveObj.heroIdCounter,
+        gameKeys: saveObj.game ? Object.keys(saveObj.game).slice(0,10) : null,
+        heroesCount: saveObj.game && saveObj.game.heroes ? saveObj.game.heroes.length : 0,
+        stageProgress: saveObj.game ? saveObj.game.stageProgress : null
+      });
+      
       if (restoreSaveData(saveObj)) {
+        console.log('[云存档] restoreSaveData 成功，G.heroes.length:', G.heroes.length, 'G.stageProgress:', G.stageProgress);
         initGameAfterLoad();
         // 同步写入 localStorage 和 IndexedDB（确保刷新后能读到）
         var data = prepareSaveData();
         var meta = getMeta();
         var slotIdx = meta.currentSlot || 0;
-        lsSet(getSlotKey(slotIdx), data);
+        var key = getSlotKey(slotIdx);
+        lsSet(key, data);
         dbSet('saves', slotIdx, data); // 同时写入 IndexedDB
         saveMeta(meta);
-        console.log('[云存档] 已写入 localStorage + IndexedDB，准备刷新');
+        
+        // 验证写入
+        var verify = lsGet(key);
+        console.log('[云存档] 写入完成，验证:', {
+          key: key,
+          written: verify ? 'OK' : 'FAIL',
+          heroesCount: verify && verify.game && verify.game.heroes ? verify.game.heroes.length : 0,
+          stageProgress: verify && verify.game ? verify.game.stageProgress : null
+        });
+        
         showToast('✅ 已从云端恢复，正在刷新...');
         // 延迟刷新确保写入完成
         setTimeout(function() { location.reload(); }, 1000);
