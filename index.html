@@ -1370,12 +1370,18 @@ body{
   font-size:14px;
   cursor:pointer;
   z-index:2;
-  opacity:.5;
-  transition:opacity .2s,transform .2s;
+  opacity:.35;
+  transition:opacity .2s,transform .2s,background .2s,border-color .2s;
   line-height:1;
 }
 .hero-lock-btn:hover{opacity:1;transform:scale(1.15)}
 .hero-lock-btn:active{transform:scale(.95)}
+.hero-lock-btn-locked{
+  opacity:1;
+  background:rgba(212,175,55,.2);
+  border-color:rgba(212,175,55,.5);
+  box-shadow:0 0 6px rgba(212,175,55,.25);
+}
 .quality-common::before{background:linear-gradient(90deg,#888,#666)}
 .quality-rare::before{background:linear-gradient(90deg,#4a9eff,#2980b9)}
 .quality-epic::before{background:linear-gradient(90deg,#a855f7,#8e44ad)}
@@ -13868,7 +13874,7 @@ function renderHeroCard(h){
   return`<div class="hero-card quality-${displayQuality}" data-role="${displayRole}" data-quality="${displayQuality}" data-uid="${h.uid}" onclick="showHeroDetail(${h.uid})" style="cursor:pointer">
     ${inTeam?'<div class="hero-team-badge">🛡️ 队伍中</div>':''}
     ${isUnknown?'<div class="hero-team-badge" style="background:linear-gradient(90deg,#ff00ff,#ff00cc)">🔒 未解锁</div>':''}
-    <button class="hero-lock-btn" onclick="event.stopPropagation();toggleHeroLock(${h.uid})" title="${h.locked?'解锁':'锁定'}">${h.locked?'🔒':'🔓'}</button>
+    <button class="hero-lock-btn${h.locked?' hero-lock-btn-locked':''}" onclick="event.stopPropagation();toggleHeroLock(${h.uid})" title="${h.locked?'解锁':'锁定'}">${h.locked?'🔒':'🔓'}</button>
     <div class="hero-avatar" style="background:rgba(${isUnknown?'255,0,255':h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':'220,50,50'},.2)">
       ${displayIcon}
     </div>
@@ -14606,13 +14612,17 @@ function toggleHeroLock(uid){
 function updateHeroLockBtn(uid){
   const h=G.heroes.find(x=>x.uid===uid);
   if(!h)return;
-  // 查找所有该英雄的卡片（可能有多个筛选视图）
   var cards=document.querySelectorAll(`.hero-card[data-uid="${uid}"]`);
   cards.forEach(function(card){
     var btn=card.querySelector('.hero-lock-btn');
     if(btn){
       btn.textContent=h.locked?'🔒':'🔓';
       btn.title=h.locked?'解锁':'锁定';
+      if(h.locked){
+        btn.classList.add('hero-lock-btn-locked');
+      }else{
+        btn.classList.remove('hero-lock-btn-locked');
+      }
     }
   });
 }
