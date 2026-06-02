@@ -4140,6 +4140,203 @@ const STAGES = [
   ],rewards:{gold:2000,exp:1000,stone:300,herbs:150,gems:20}},
 ];
 
+// ==================== 每周Boss系统 - 地牢Boss配置 ====================
+// 12个Boss对应12时辰，每个Boss有独特的背景故事、技能和职业特性
+const DUNGEON_BOSSES = [
+  {
+    id: 'warden_sub',
+    name: '典狱长·夜枭',
+    icon: '🦉',
+    hour: 23,
+    hourEnd: 1,
+    role: 'warrior',
+    quality: 'mythic',
+    level: 50,
+    lore: '曾是王国最忠诚的典狱长，在一场叛乱中被自己的部下背叛，连同整座地牢一起被封印。千年的孤独扭曲了他的灵魂，他化身为暗影地牢的永恒守护者，以夜枭之名巡视每一个角落。他的双刃斧"月蚀"能劈开一切防御，被他盯上的猎物，从未有人活着离开。',
+    skills: ['cleave', 'whirlwind', 'war_cry'],
+    bonusSkills: ['shadow_strike'],
+    passive: { name: '暗夜支配', desc: '夜间（子时）攻击力提升40%，每回合恢复3%最大生命值' },
+    statBonus: { atkMult: 1.4, regenPct: 0.03 },
+    bossMechanic: '每5回合释放一次"暗夜审判"，对全体造成大量伤害并降低防御'
+  },
+  {
+    id: 'warden_chou',
+    name: '典狱长·铁壁',
+    icon: '🐂',
+    hour: 1,
+    hourEnd: 3,
+    role: 'guardian',
+    quality: 'mythic',
+    level: 51,
+    lore: '铁壁曾是皇家禁卫军的统领，身高九尺，臂力惊人。叛乱之夜，他以一己之力守住地牢大门整整三天三夜，直到叛军动用禁术将他封入墙壁之中。百年之后，他挣脱封印，但身体已与地牢的岩石融为一体。他的皮肤坚硬如铁，任何刀剑都无法伤其分毫，唯有魔法能在他的铠甲上留下痕迹。',
+    skills: ['shield_bash', 'taunt', 'whirlwind'],
+    bonusSkills: ['frost_nova'],
+    passive: { name: '不朽堡垒', desc: '受到的所有物理伤害降低50%，生命值低于30%时触发铁壁护盾，持续3回合' },
+    statBonus: { defMult: 1.5, physResist: 0.5 },
+    bossMechanic: '每4回合释放"大地之盾"，为自身叠加不可驱散的护盾，护盾值为最大生命值的20%'
+  },
+  {
+    id: 'warden_yin',
+    name: '典狱长·黎明',
+    icon: '🌅',
+    hour: 3,
+    hourEnd: 5,
+    role: 'paladin',
+    quality: 'mythic',
+    level: 52,
+    lore: '黎明骑士团的最后一任团长，在平定叛乱时以身殉职。然而她对正义的执念太过强烈，灵魂无法安息，反而被地牢的暗能量所侵蚀，化身为黎明与黑暗交织的存在。她的圣剑"破晓"依然散发着微弱的光芒，但那光芒中已混入了不祥的紫色。她既是守护者，也是审判者，在地牢的最深处等待着新的挑战者。',
+    skills: ['holy_strike', 'shield_bash', 'heal'],
+    bonusSkills: ['war_cry'],
+    passive: { name: '黎明审判', desc: '攻击时有30%概率附加"审判"标记，被标记的目标受到的伤害增加25%，持续2回合' },
+    statBonus: { atkMult: 1.2, healMult: 1.3 },
+    bossMechanic: '每6回合释放"破晓之光"，对全体造成神圣伤害，并清除自身所有负面状态'
+  },
+  {
+    id: 'warden_mao',
+    name: '典狱长·毒蛇',
+    icon: '🐍',
+    hour: 5,
+    hourEnd: 7,
+    role: 'assassin',
+    quality: 'mythic',
+    level: 53,
+    lore: '毒蛇曾是宫廷中最出色的暗探，代号"午夜的微笑"。她精通百毒，能在一杯酒中下七种不同的毒药而不被察觉。叛乱中她被诬陷为叛徒，在逃亡途中坠入地牢深处。地牢中的剧毒生物成了她的新伙伴，她的血液已与蛇毒融为一体，每一次呼吸都散发着致命的毒雾。被她的毒刃划伤的人，会在极度的痛苦中慢慢死去。',
+    skills: ['backstab', 'poison_blade', 'shadow_strike'],
+    bonusSkills: ['curse'],
+    passive: { name: '毒蛇之牙', desc: '所有攻击附加中毒效果，每回合造成攻击力15%的毒伤，可叠加最多5层' },
+    statBonus: { atkMult: 1.3, spdMult: 1.2 },
+    bossMechanic: '每3回合释放"万蛇噬心"，召唤毒蛇群攻击随机目标3次，每次造成中等伤害并附加1层中毒'
+  },
+  {
+    id: 'warden_chen',
+    name: '典狱长·石像',
+    icon: '🗿',
+    hour: 7,
+    hourEnd: 9,
+    role: 'guardian',
+    quality: 'mythic',
+    level: 54,
+    lore: '石像原本是地牢入口处的装饰雕像，由远古文明的石匠以天外陨石雕刻而成。千年的岁月中，地牢中弥漫的魔力逐渐赋予了它生命。它没有思想，没有感情，只有守护地牢的本能。它的凝视能将一切生物化为石头，被石化的勇者成为了地牢走廊中永恒的装饰品。没有人知道它究竟已经石化了多少挑战者。',
+    skills: ['petrify_gaze', 'shield_bash', 'taunt'],
+    bonusSkills: ['whirlwind'],
+    passive: { name: '石化凝视', desc: '每次攻击有20%概率使目标石化1回合（无法行动），石化目标受到的伤害增加30%' },
+    statBonus: { defMult: 1.6, hpMult: 1.3 },
+    bossMechanic: '每5回合释放"石化领域"，全体有40%概率被石化1回合，已石化的目标受到额外伤害'
+  },
+  {
+    id: 'warden_si',
+    name: '典狱长·焰魔',
+    icon: '🔥',
+    hour: 9,
+    hourEnd: 11,
+    role: 'mage',
+    quality: 'mythic',
+    level: 55,
+    lore: '焰魔曾是王国最伟大的火系法师，他的魔法能熔化城墙、蒸发河流。在叛乱中，他为了阻止叛军攻入王宫，释放了禁忌的"永恒之火"，却失控烧毁了半个都城。愧疚与疯狂吞噬了他，他逃入地牢深处，将自己献祭给了地底的火焰之心。如今他的身体已由纯粹的火焰构成，每一次呼吸都是一场小型的火山爆发。',
+    skills: ['fireball', 'chain_lightning', 'whirlwind'],
+    bonusSkills: ['frost_nova'],
+    passive: { name: '炼狱之火', desc: '所有攻击附带灼烧效果，每回合造成攻击力10%的火焰伤害，灼烧目标的治疗效果降低50%' },
+    statBonus: { atkMult: 1.5, magicPen: 0.3 },
+    bossMechanic: '每4回合释放"炼狱风暴"，对全体造成巨额火焰伤害，场上所有灼烧层数翻倍'
+  },
+  {
+    id: 'warden_wu',
+    name: '典狱长·雷神',
+    icon: '⚡',
+    hour: 11,
+    hourEnd: 13,
+    role: 'warrior',
+    quality: 'mythic',
+    level: 56,
+    lore: '雷神是远古时期一位被神灵选中的战士，他的战锤"天罚"蕴含着雷电之力。他曾以一己之力击退了北方的蛮族入侵，被百姓奉为雷神转世。然而权力的腐蚀让他变得残暴，最终被自己的徒弟联合朝臣推翻。他带着无尽的愤怒坠入地牢，雷电之力在地牢的魔力场中变得更加狂暴。如今他每一次挥锤，都伴随着震耳欲聋的雷鸣。',
+    skills: ['chain_lightning', 'cleave', 'war_cry'],
+    bonusSkills: ['whirlwind'],
+    passive: { name: '雷霆万钧', desc: '攻击时有25%概率触发连锁闪电，跳跃攻击2个额外目标，造成60%的伤害' },
+    statBonus: { atkMult: 1.45, spdMult: 1.15 },
+    bossMechanic: '每5回合释放"天罚之雷"，对全体造成大量雷电伤害，并使所有目标眩晕1回合（可被抵抗）'
+  },
+  {
+    id: 'warden_wei',
+    name: '典狱长·幻影',
+    icon: '👁️',
+    hour: 13,
+    hourEnd: 15,
+    role: 'warlock',
+    quality: 'mythic',
+    level: 57,
+    lore: '幻影曾是宫廷中最神秘的存在，没有人知道他的真实身份，甚至没有人确定他是否真实存在。他操纵幻术与心灵魔法，能让敌人看到最恐惧的景象，也能让盟友在不知不觉中背叛。叛乱中，正是他的幻术让守军自相残杀。事后他带着从宫廷窃取的禁忌魔法典逃入地牢，在那里他发现了连接虚空的裂缝，获得了超越凡人的力量。',
+    skills: ['phantom_mist', 'curse', 'shadow_strike'],
+    bonusSkills: ['void_rift'],
+    passive: { name: '幻影迷雾', desc: '战斗开始时释放幻影迷雾，所有敌方单位的命中率和暴击率降低20%' },
+    statBonus: { atkMult: 1.3, dodgeMult: 1.4 },
+    bossMechanic: '每4回合释放"心灵侵蚀"，随机控制1个敌方单位2回合（被控制单位攻击自己的队友）'
+  },
+  {
+    id: 'warden_shen',
+    name: '典狱长·猎手',
+    icon: '🏹',
+    hour: 15,
+    hourEnd: 17,
+    role: 'ranger',
+    quality: 'mythic',
+    level: 58,
+    lore: '猎手是精灵族最伟大的弓箭手，他的箭术出神入化，能在百步之外射穿一片飘落的树叶。他曾是皇家猎场的守护者，与森林中的万物和谐共处。然而当叛军焚烧了他的家园森林后，他心中的善意被仇恨取代。他带着诅咒之弓"月影"进入地牢，在地牢的黑暗中，他的箭矢变得更加致命，每一箭都带着复仇的意志。',
+    skills: ['aimed_shot', 'backstab', 'shadow_strike'],
+    bonusSkills: ['poison_blade'],
+    passive: { name: '百步穿杨', desc: '普通攻击有30%概率变为精准射击，造成200%伤害且必定暴击，对生命值低于30%的目标伤害翻倍' },
+    statBonus: { atkMult: 1.5, critMult: 1.4 },
+    bossMechanic: '每3回合释放"箭雨"，对全体造成中等伤害，并随机选择1个目标施加"标记"（下次受到精准射击时伤害翻倍）'
+  },
+  {
+    id: 'warden_you',
+    name: '典狱长·血月',
+    icon: '🩸',
+    hour: 17,
+    hourEnd: 19,
+    role: 'healer',
+    quality: 'mythic',
+    level: 59,
+    lore: '血月曾是圣殿最高祭司，掌握着生死之间的奥秘。她能治愈任何伤势，甚至能让死者复生。然而当她试图用禁术复活在叛乱中死去的国王时，仪式失控，她被死亡之力反噬。她的治愈之力变成了可怕的吸血诅咒，她不再治愈伤口，而是汲取生命。她的每一次治疗都是对另一个生命的掠夺，在地牢中，她用无尽的鲜血维持着自己的"永生"。',
+    skills: ['blood_drain', 'heal', 'curse'],
+    bonusSkills: ['phantom_mist'],
+    passive: { name: '生命汲取', desc: '所有攻击回复造成伤害30%的生命值，每当有单位死亡时，回复自身10%最大生命值' },
+    statBonus: { atkMult: 1.2, healMult: 1.5, lifesteal: 0.3 },
+    bossMechanic: '每4回合释放"血月祭典"，对全体造成伤害并将伤害的50%转化为自身治疗，同时召唤2个血影仆从'
+  },
+  {
+    id: 'warden_xu',
+    name: '典狱长·霜狼',
+    icon: '🐺',
+    hour: 19,
+    hourEnd: 21,
+    role: 'warrior',
+    quality: 'mythic',
+    level: 60,
+    lore: '霜狼是北方蛮族最强大的战士首领，他的战力足以与整个王国军队抗衡。在与王国的战争中，他被俘后关押在地牢最深处。千年的囚禁没有磨灭他的斗志，反而让他在地底的极寒中觉醒了冰霜之力。他的身体与地牢中的远古冰狼之魂融合，获得了野兽的本能与冰霜的掌控。他的咆哮能冻结一切，他的利爪能撕裂空间。',
+    skills: ['frost_nova', 'cleave', 'whirlwind'],
+    bonusSkills: ['chain_lightning'],
+    passive: { name: '霜寒冰刃', desc: '所有攻击附带冰霜效果，降低目标30%速度和20%攻击力，叠加3层后冻结目标1回合' },
+    statBonus: { atkMult: 1.4, spdMult: 1.1 },
+    bossMechanic: '每5回合释放"极寒风暴"，对全体造成大量冰霜伤害并冻结所有目标1回合，被冻结目标受到的第一次攻击伤害翻倍'
+  },
+  {
+    id: 'warden_hai',
+    name: '典狱长·虚空',
+    icon: '🌀',
+    hour: 21,
+    hourEnd: 23,
+    role: 'mage',
+    quality: 'mythic',
+    level: 61,
+    lore: '虚空是所有典狱长中最强大也最危险的存在。他并非被封印的守护者，而是地牢本身意志的化身。当地牢被建造时，远古的虚空能量渗透进了每一块砖石之中，经过千年的积累，这些能量凝聚成了一个有自我意识的存在。他能操控空间与时间，能在瞬间将挑战者传送到地牢的任何角落。他的存在本身就是对现实法则的挑战，没有人能理解他的真正目的。',
+    skills: ['void_rift', 'phantom_mist', 'chain_lightning'],
+    bonusSkills: ['curse'],
+    passive: { name: '虚空裂隙', desc: '每次攻击有20%概率撕裂空间，额外造成一次虚空伤害（攻击力的80%），并降低目标30%防御力' },
+    statBonus: { atkMult: 1.5, magicPen: 0.35 },
+    bossMechanic: '每5回合释放"虚空崩塌"，随机将2个敌方单位吸入虚空1回合（无法行动且无法被选中），回合结束后返回并受到虚空伤害'
+  }
+];
+
 // 无限关卡生成
 var ENEMY_NAMES=[
   {names:['矿坑骷髅','腐化蝙蝠','暗影矿工'],icon:['💀','🦇','⛏️'],roles:['warrior','assassin','warrior']},
@@ -9622,6 +9819,172 @@ function setBattleSpeed(spd){
   });
 }
 
+// ==================== 每周Boss系统 ====================
+
+// 获取当前时辰对应的Boss
+function getCurrentHourBoss() {
+  var hour = new Date().getHours();
+  for (var i = 0; i < DUNGEON_BOSSES.length; i++) {
+    var boss = DUNGEON_BOSSES[i];
+    if (boss.hour === 0 && hour === 0) return boss;
+    if (boss.hour < boss.hourEnd) {
+      if (hour >= boss.hour || hour < boss.hourEnd) return boss;
+    } else {
+      if (hour >= boss.hour && hour < boss.hourEnd) return boss;
+    }
+  }
+  return DUNGEON_BOSSES[0];
+}
+
+// 获取本周起始时间（周一0点）
+function getWeekStart() {
+  var now = new Date();
+  var day = now.getDay();
+  var diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  var monday = new Date(now.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  return monday.getTime();
+}
+
+// 计算玩家队伍战力（用于动态难度）
+function calcTeamPower() {
+  var team = G.team.filter(function(h) { return h !== null; });
+  if (team.length === 0) return 100;
+  var totalPower = 0;
+  team.forEach(function(h) {
+    var stats = getHeroStats(h);
+    totalPower += stats.maxHP + stats.atk * 3 + stats.def * 2 + stats.spd;
+  });
+  return Math.floor(totalPower / team.length);
+}
+
+// 动态缩放Boss属性（根据玩家战力）
+function scaleBossForPlayer(bossTemplate, playerPower) {
+  var role = ROLES[bossTemplate.role] || ROLES.warrior;
+  var qm = QUALITY_MULT[bossTemplate.quality] || QUALITY_MULT.mythic;
+  var basePower = role.baseHP * qm * (1 + 0.35 * Math.log(1 + bossTemplate.level)) +
+                  role.baseATK * qm * (1 + 0.35 * Math.log(1 + bossTemplate.level)) * 3 +
+                  role.baseDEF * qm * (1 + 0.35 * Math.log(1 + bossTemplate.level)) * 2;
+  
+  var scaleFactor = (playerPower * 1.2) / Math.max(basePower, 1);
+  scaleFactor = Math.max(0.5, Math.min(scaleFactor, 3.0));
+  
+  return scaleFactor;
+}
+
+// Boss战统计
+function initBossBattleStats() {
+  return {
+    totalDamage: 0,
+    totalHealing: 0,
+    totalDodgeCount: 0,
+    totalControlCount: 0,
+    rounds: 0,
+    bossId: '',
+    weekStart: getWeekStart(),
+    timestamp: Date.now()
+  };
+}
+
+// 计算评分（考虑动态难度的评分系数）
+function calcBossScore(stats, scaleFactor) {
+  var diffMult = 1 / Math.pow(Math.max(scaleFactor, 0.5), 0.5);
+  return {
+    damage: Math.floor(stats.totalDamage * diffMult),
+    healing: Math.floor(stats.totalHealing * diffMult),
+    dodge: stats.totalDodgeCount,
+    control: stats.totalControlCount
+  };
+}
+
+// 上传Boss战数据到Supabase
+async function uploadBossBattleData(bossStats, score) {
+  if (typeof supabase === 'undefined') return;
+  try {
+    var sb = getSupabaseClient();
+    if (!sb) return;
+    
+    var playerName = G.playerName || '匿名勇者';
+    
+    var record = {
+      player_name: playerName,
+      boss_id: bossStats.bossId,
+      week_start: bossStats.weekStart,
+      damage_score: score.damage,
+      healing_score: score.healing,
+      dodge_count: score.dodge,
+      control_count: score.control,
+      total_damage: bossStats.totalDamage,
+      total_healing: bossStats.totalHealing,
+      total_dodge: bossStats.totalDodgeCount,
+      total_control: bossStats.totalControlCount,
+      rounds: bossStats.rounds,
+      team_power: calcTeamPower(),
+      timestamp: bossStats.timestamp
+    };
+    
+    await sb.from('boss_battle_records').insert(record);
+  } catch(e) {
+    console.error('上传Boss战数据失败', e);
+  }
+}
+
+// 获取排行榜数据
+async function fetchBossLeaderboard(category) {
+  if (typeof supabase === 'undefined') return [];
+  try {
+    var sb = getSupabaseClient();
+    if (!sb) return [];
+    
+    var weekStart = getWeekStart();
+    var column = category + '_score';
+    if (category === 'dodge' || category === 'control') column = 'total_' + category;
+    
+    var result = await sb.from('boss_battle_records')
+      .select('player_name, ' + column + ', boss_id, rounds, team_power, timestamp')
+      .eq('week_start', weekStart)
+      .order(column, { ascending: false })
+      .limit(50);
+    
+    var data = result.data;
+    var error = result.error;
+    
+    if (error) throw error;
+    return data || [];
+  } catch(e) {
+    console.error('获取排行榜失败', e);
+    return [];
+  }
+}
+
+// 获取玩家自己的最佳记录
+async function fetchMyBossRecords() {
+  if (typeof supabase === 'undefined') return null;
+  try {
+    var sb = getSupabaseClient();
+    if (!sb) return null;
+    
+    var weekStart = getWeekStart();
+    var playerName = G.playerName || '匿名勇者';
+    
+    var result = await sb.from('boss_battle_records')
+      .select('*')
+      .eq('week_start', weekStart)
+      .eq('player_name', playerName)
+      .order('damage_score', { ascending: false })
+      .limit(1);
+    
+    var data = result.data;
+    var error = result.error;
+    
+    if (error) throw error;
+    return data && data.length > 0 ? data[0] : null;
+  } catch(e) {
+    console.error('获取个人记录失败', e);
+    return null;
+  }
+}
+
 async function runBattle(stageId){
   // 如果战斗已在运行，不重复启动
   if(G_battleRunning){return;}
@@ -13547,6 +13910,7 @@ function renderCurrentTab(){
     case 'leaderboard': renderLeaderboard(contentEl);break;
     case 'breakthrough': contentEl.innerHTML=renderBreakthroughUI();break;
     case 'cheats': renderCheats(contentEl);break;
+    case 'boss':        renderDungeonBoss(contentEl);break;
   }
 }
 
@@ -13659,6 +14023,11 @@ function renderTown(el){
         +'<div class="town-module-btn-icon">🏆</div>'
         +'<div class="town-module-btn-name">排行</div>'
         +'<div class="town-module-btn-info">查看榜单</div>'
+      +'</div>'
+      +'<div class="town-module-btn" onclick="switchTab(\'boss\')">'
+        +'<div class="town-module-btn-icon">🏰</div>'
+        +'<div class="town-module-btn-name">地牢Boss</div>'
+        +'<div class="town-module-btn-info">每周挑战</div>'
       +'</div>'
     +'</div>'
     // 兑换码和存档管理入口（卡片式按钮）
@@ -18629,6 +18998,433 @@ function renderCheats(el){
   updateCloudSavePanel();
 }
 
+function renderDungeonBoss(el){
+  var currentBoss = getCurrentHourBoss();
+  var weekStart = getWeekStart();
+  var weekNum = Math.floor((Date.now() - weekStart) / (7*24*60*60*1000)) + 1;
+  var now = new Date();
+  var currentHour = now.getHours();
+  
+  var html = '<div class="panel">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">';
+  html += '<h2 style="margin:0">🏰 地牢Boss</h2>';
+  html += '<div style="font-size:12px;color:var(--text3)">第' + weekNum + '周</div>';
+  html += '</div>';
+  
+  // 当前时辰Boss大卡片
+  html += '<div style="background:linear-gradient(135deg,rgba(212,175,55,.15),rgba(139,0,0,.15));border:1px solid rgba(212,175,55,.3);border-radius:12px;padding:20px;margin-bottom:16px">';
+  html += '<div style="display:flex;gap:16px;align-items:flex-start">';
+  html += '<div style="font-size:64px;flex-shrink:0">' + currentBoss.icon + '</div>';
+  html += '<div style="flex:1;min-width:0">';
+  html += '<div style="font-size:18px;font-weight:bold;color:var(--gold)">' + currentBoss.name + '</div>';
+  html += '<div style="font-size:12px;color:var(--text3);margin-top:4px">' + ROLES[currentBoss.role].icon + ' ' + ROLES[currentBoss.role].name + ' | Lv.' + currentBoss.level + '</div>';
+  html += '<div style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6;max-height:60px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">' + currentBoss.lore + '</div>';
+  html += '<div style="margin-top:8px;padding:8px;background:rgba(0,0,0,.2);border-radius:6px;font-size:11px">';
+  html += '<div style="color:var(--gold)">✦ ' + currentBoss.passive.name + '：' + currentBoss.passive.desc + '</div>';
+  html += '<div style="color:#ff6b6b;margin-top:4px">⚠️ ' + currentBoss.bossMechanic + '</div>';
+  html += '</div>';
+  html += '</div></div>';
+  html += '<button class="btn btn-primary" style="width:100%;margin-top:12px;padding:14px;font-size:16px" onclick="startBossBattle()">⚔️ 挑战Boss</button>';
+  html += '</div>';
+  
+  // 12时辰Boss网格
+  html += '<div style="margin-bottom:16px">';
+  html += '<div style="font-size:14px;font-weight:bold;margin-bottom:8px">🕐 十二时辰</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">';
+  
+  for(var i = 0; i < DUNGEON_BOSSES.length; i++){
+    var boss = DUNGEON_BOSSES[i];
+    var isCurrent = boss.id === currentBoss.id;
+    var hourText = boss.hour + ':00';
+    
+    html += '<div style="padding:10px 6px;border-radius:8px;text-align:center;border:1px solid ' + (isCurrent ? 'rgba(212,175,55,.5)' : 'var(--border)') + ';background:' + (isCurrent ? 'rgba(212,175,55,.1)' : 'var(--panel2)') + ';opacity:' + (isCurrent ? '1' : '0.5') + '">';
+    html += '<div style="font-size:24px">' + boss.icon + '</div>';
+    html += '<div style="font-size:10px;color:' + (isCurrent ? 'var(--gold)' : 'var(--text3)') + ';margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + boss.name.replace('典狱长·','') + '</div>';
+    html += '<div style="font-size:9px;color:var(--text3)">' + hourText + '</div>';
+    if(isCurrent) html += '<div style="font-size:8px;color:var(--gold);margin-top:2px">当前</div>';
+    html += '</div>';
+  }
+  
+  html += '</div></div>';
+  
+  // 排行榜入口
+  html += '<button class="btn" style="width:100%;background:rgba(212,175,55,.1);border-color:rgba(212,175,55,.3);color:var(--gold)" onclick="showBossLeaderboard()">🏆 Boss排行榜</button>';
+  
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+async function startBossBattle(){
+  var teamHeroes = G.team.filter(h => h !== null);
+  if(teamHeroes.length === 0){ showToast('请先编队！'); return; }
+  
+  var bossTemplate = getCurrentHourBoss();
+  var playerPower = calcTeamPower();
+  var scaleFactor = scaleBossForPlayer(bossTemplate, playerPower);
+  
+  // 创建Boss战斗单位
+  var role = ROLES[bossTemplate.role] || ROLES.warrior;
+  var qm = QUALITY_MULT[bossTemplate.quality] || QUALITY_MULT.mythic;
+  
+  var bossHero = {
+    name: bossTemplate.name,
+    icon: bossTemplate.icon,
+    role: bossTemplate.role,
+    quality: bossTemplate.quality,
+    level: bossTemplate.level,
+    skills: bossTemplate.skills,
+    bonusSkills: bossTemplate.bonusSkills || [],
+    maxHP: Math.floor(role.baseHP * qm * scaleFactor * (1 + 0.35 * Math.log(1 + bossTemplate.level))),
+    atk: Math.floor(role.baseATK * qm * scaleFactor * (1 + 0.35 * Math.log(1 + bossTemplate.level))),
+    def: Math.floor(role.baseDEF * qm * scaleFactor * (1 + 0.35 * Math.log(1 + bossTemplate.level))),
+    spd: Math.floor(role.baseSPD * qm * scaleFactor * (1 + 0.35 * Math.log(1 + bossTemplate.level))),
+    maxMP: Math.floor(role.baseMP * qm * scaleFactor * (1 + 0.35 * Math.log(1 + bossTemplate.level))),
+    equipment: {weapon:null,armor:null,accessory:null}
+  };
+  bossHero.hp = bossHero.maxHP;
+  bossHero.mp = bossHero.maxMP;
+  
+  var bossUnit = createBattleUnit(bossHero, true);
+  // Boss血量大幅提升（30回合不死）
+  bossUnit.hp = bossUnit.maxHP * 10;
+  bossUnit.maxHP = bossUnit.maxHP * 10;
+  // Boss不会死亡标记
+  bossUnit._isInvincible = true;
+  
+  var playerUnits = teamHeroes.map(h => createBattleUnit(h, false));
+  var allUnits = [...playerUnits, bossUnit];
+  
+  // 初始化统计
+  var bossStats = initBossBattleStats();
+  bossStats.bossId = bossTemplate.id;
+  
+  // 切换到战斗界面
+  switchTab('battle');
+  
+  var contentEl = document.getElementById('content');
+  var battleScene = document.createElement('div');
+  battleScene.className = 'battle-scene';
+  battleScene.style.cssText = 'max-width:600px;margin:0 auto;padding:12px';
+  
+  var battleHTML = '<div class="battle-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+  battleHTML += '<div class="battle-info" id="boss-battle-info"></div>';
+  battleHTML += '<div style="display:flex;gap:8px">';
+  battleHTML += '<div id="boss-round-badge" style="background:rgba(212,175,55,.2);color:var(--gold);padding:4px 12px;border-radius:20px;font-size:13px;font-weight:bold">回合 0/30</div>';
+  battleHTML += '<button class="btn" style="padding:4px 12px;font-size:12px" onclick="G_battlePaused=true;updateBossPauseBtn()">⏸</button>';
+  battleHTML += '</div></div>';
+  battleHTML += '<div class="battle-teams" style="display:grid;grid-template-columns:1fr 40px 1fr;gap:8px;align-items:start">';
+  battleHTML += '<div id="boss-player-team" class="team-panel"></div>';
+  battleHTML += '<div style="text-align:center;font-size:20px;padding-top:40px">⚔️</div>';
+  battleHTML += '<div id="boss-enemy-team" class="team-panel"></div>';
+  battleHTML += '</div>';
+  battleHTML += '<div id="boss-battle-log" class="battle-log" style="max-height:200px;overflow-y:auto;margin-top:12px;padding:8px;background:var(--panel2);border-radius:8px;font-size:12px"></div>';
+  battleHTML += '<div id="boss-stats-display" style="margin-top:8px;padding:8px;background:rgba(212,175,55,.1);border:1px solid rgba(212,175,55,.2);border-radius:8px;font-size:12px;text-align:center;color:var(--gold)"></div>';
+  
+  battleScene.innerHTML = battleHTML;
+  contentEl.innerHTML = '';
+  contentEl.appendChild(battleScene);
+  
+  var playerTeamEl = document.getElementById('boss-player-team');
+  var enemyTeamEl = document.getElementById('boss-enemy-team');
+  var logEl = document.getElementById('boss-battle-log');
+  var roundBadge = document.getElementById('boss-round-badge');
+  var statsDisplay = document.getElementById('boss-stats-display');
+  var battleInfoEl = document.getElementById('boss-battle-info');
+  
+  battleInfoEl.innerHTML = '<div style="font-weight:bold;color:var(--gold)">' + bossTemplate.icon + ' ' + bossTemplate.name + '</div><div style="font-size:11px;color:var(--text3)">' + bossTemplate.passive.name + '</div>';
+  
+  function log(msg, cls){
+    cls = cls || 'info';
+    var line = document.createElement('div');
+    line.className = 'log-line log-' + cls;
+    line.textContent = msg;
+    logEl.appendChild(line);
+    if(logEl.children.length > 80){
+      logEl.removeChild(logEl.firstChild);
+    }
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  
+  function updateStats(){
+    statsDisplay.innerHTML = '💥伤害:' + formatResource(bossStats.totalDamage) + ' | 💚治疗:' + formatResource(bossStats.totalHealing) + ' | 🌀闪避:' + bossStats.totalDodgeCount + ' | ⛓控制:' + bossStats.totalControlCount;
+  }
+  
+  // 渲染队伍
+  function buildUnitHTML(unit){
+    var hpPct = Math.max(0, unit.hp / unit.maxHP * 100);
+    var mpPct = Math.max(0, unit.mp / unit.maxMP * 100);
+    var deadStyle = unit.alive ? '' : 'opacity:0.4;';
+    return '<div class="battle-unit" id="boss-unit-' + unit.battleId + '" style="padding:8px;margin-bottom:6px;background:var(--panel2);border-radius:8px;border:1px solid var(--border);' + deadStyle + '">' +
+      '<div style="display:flex;align-items:center;gap:6px">' +
+      '<span style="font-size:20px">' + unit.icon + '</span>' +
+      '<div style="flex:1;min-width:0">' +
+      '<div style="font-size:11px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + unit.name + '</div>' +
+      '<div style="height:4px;background:rgba(255,0,0,.2);border-radius:2px;margin-top:3px;overflow:hidden"><div style="height:100%;width:' + hpPct + '%;background:' + (hpPct > 50 ? '#2ecc71' : hpPct > 25 ? '#f39c12' : '#e74c3c') + ';border-radius:2px;transition:width .3s"></div></div>' +
+      '<div style="height:3px;background:rgba(0,100,255,.2);border-radius:2px;margin-top:2px;overflow:hidden"><div style="height:100%;width:' + mpPct + '%;background:#3498db;border-radius:2px;transition:width .3s"></div></div>' +
+      '<div style="font-size:9px;color:var(--text3);margin-top:2px">HP:' + Math.floor(unit.hp) + '/' + Math.floor(unit.maxHP) + '</div>' +
+      '</div></div></div>';
+  }
+  
+  function renderTeams(){
+    playerTeamEl.innerHTML = playerUnits.map(buildUnitHTML).join('');
+    enemyTeamEl.innerHTML = buildUnitHTML(bossUnit);
+  }
+  
+  renderTeams();
+  log('⚔️ Boss战开始！' + bossTemplate.name + ' 出现了！');
+  log('💡 Boss是无敌的，坚持30回合！', 'warn');
+  
+  // 简化的Boss战斗循环
+  G_battleRunning = true;
+  G_battlePaused = false;
+  
+  var round = 0;
+  var maxRounds = 30;
+  
+  window.updateBossPauseBtn = function(){
+    var btns = battleScene.querySelectorAll('.btn');
+    // 简单处理
+  };
+  
+  while(round < maxRounds && G_battleRunning){
+    if(G_battlePaused){ await sleep(200); continue; }
+    
+    round++;
+    roundBadge.textContent = '回合 ' + round + '/30';
+    bossStats.rounds = round;
+    
+    // 按速度排序
+    var aliveUnits = allUnits.filter(u => u.alive);
+    aliveUnits.sort((a,b) => b.spd - a.spd);
+    
+    for(var idx = 0; idx < aliveUnits.length; idx++){
+      var unit = aliveUnits[idx];
+      if(!unit.alive) continue;
+      
+      if(unit.isEnemy){
+        // Boss攻击随机玩家
+        var targets = playerUnits.filter(u => u.alive);
+        if(targets.length === 0) break;
+        var target = targets[Math.floor(Math.random() * targets.length)];
+        
+        var dmg = Math.max(1, unit.atk - target.def * 0.5);
+        var isCrit = Math.random() < 0.15;
+        if(isCrit) dmg = Math.floor(dmg * 1.5);
+        
+        // 闪避判定
+        var dodgeChance = (ROLES[target.hero.role] || {}).dodgeRate || 0;
+        if(Math.random() < dodgeChance){
+          log('🌀 ' + target.name + ' 闪避了 ' + unit.name + ' 的攻击！');
+          bossStats.totalDodgeCount++;
+          continue;
+        }
+        
+        target.hp -= dmg;
+        log((isCrit ? '💥暴击！' : '') + unit.name + ' 攻击 ' + target.name + ' 造成 ' + Math.floor(dmg) + ' 伤害');
+        
+        if(target.hp <= 0){
+          target.hp = 0;
+          target.alive = false;
+          log('💀 ' + target.name + ' 被击败了！');
+        }
+      } else {
+        // 玩家单位攻击Boss
+        var baseDmg = Math.max(1, unit.atk - bossUnit.def * 0.4);
+        var isCrit = Math.random() < (ROLES[unit.hero.role] || {}).critRate || 0.1;
+        if(isCrit) baseDmg = Math.floor(baseDmg * ((ROLES[unit.hero.role] || {}).critDmg || 1.5));
+        
+        bossUnit.hp -= baseDmg;
+        bossStats.totalDamage += baseDmg;
+        
+        log((isCrit ? '💥暴击！' : '') + unit.name + ' 攻击 ' + bossUnit.name + ' 造成 ' + Math.floor(baseDmg) + ' 伤害');
+        
+        // Boss不会死
+        if(bossUnit.hp <= 0){
+          bossUnit.hp = 1;
+          log('💪 ' + bossUnit.name + ' 展现了无敌的力量！');
+        }
+        
+        // 治愈者治疗
+        if(unit.hero.role === 'healer' && unit.mp >= 20){
+          var healTargets = playerUnits.filter(u => u.alive && u.hp < u.maxHP);
+          if(healTargets.length > 0){
+            var healTarget = healTargets[Math.floor(Math.random() * healTargets.length)];
+            var healAmt = Math.floor(unit.atk * 1.5 * ((ROLES.healer || {}).healBoost || 1));
+            healTarget.hp = Math.min(healTarget.hp + healAmt, healTarget.maxHP);
+            unit.mp -= 20;
+            bossStats.totalHealing += healAmt;
+            log('💚 ' + unit.name + ' 治疗 ' + healTarget.name + ' ' + healAmt + ' 生命');
+          }
+        }
+        
+        // 术士DOT（算控制）
+        if(unit.hero.role === 'warlock' && Math.random() < 0.3){
+          bossStats.totalControlCount++;
+          log('👁️ ' + unit.name + ' 的诅咒削弱了 ' + bossUnit.name);
+        }
+        
+        // 守护者嘲讽（算控制）
+        if(unit.hero.role === 'guardian' && Math.random() < 0.2){
+          bossStats.totalControlCount++;
+        }
+      }
+      
+      renderTeams();
+      updateStats();
+      await sleep(300 / (G_battleSpeed || 1));
+    }
+    
+    // Boss每5回合特殊攻击
+    if(round % 5 === 0 && round < maxRounds){
+      log('⚠️ ' + bossUnit.name + ' 释放了特殊技能！', 'warn');
+      playerUnits.forEach(function(pu){
+        if(pu.alive){
+          var specialDmg = bossUnit.atk * 0.8;
+          pu.hp -= specialDmg;
+          if(pu.hp <= 0){ pu.hp = 0; pu.alive = false; }
+          log('🔥 ' + bossUnit.name + ' 对 ' + pu.name + ' 造成 ' + Math.floor(specialDmg) + ' 特殊伤害');
+        }
+      });
+      renderTeams();
+      await sleep(500);
+    }
+    
+    // 检查是否全灭
+    var alivePlayers = playerUnits.filter(u => u.alive);
+    if(alivePlayers.length === 0){
+      log('💀 全军覆没！Boss战结束', 'error');
+      break;
+    }
+    
+    // 回合间恢复MP
+    allUnits.forEach(function(u){
+      if(u.alive) u.mp = Math.min(u.mp + 5, u.maxMP);
+    });
+    
+    await sleep(200);
+  }
+  
+  G_battleRunning = false;
+  
+  // 战斗结束，计算评分
+  var score = calcBossScore(bossStats, scaleFactor);
+  
+  log('');
+  log('═══ Boss战结束 ═══', 'warn');
+  log('📊 最终评分：', 'warn');
+  log('  💥 伤害得分：' + formatResource(score.damage));
+  log('  💚 治疗得分：' + formatResource(score.healing));
+  log('  🌀 闪避次数：' + score.dodge);
+  log('  ⛓ 控制次数：' + score.control);
+  log('  📐 难度系数：' + scaleFactor.toFixed(2));
+  
+  // 显示结果面板
+  var resultHTML = '<div style="text-align:center;padding:16px;background:var(--panel2);border-radius:12px;margin-top:12px;border:1px solid rgba(212,175,55,.3)">';
+  resultHTML += '<div style="font-size:24px;font-weight:bold;color:var(--gold);margin-bottom:12px">📊 战斗报告</div>';
+  resultHTML += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
+  resultHTML += '<div style="padding:8px;background:rgba(231,76,60,.1);border-radius:8px"><div style="font-size:20px">💥</div><div style="font-size:11px;color:var(--text3)">伤害得分</div><div style="font-size:16px;font-weight:bold;color:#e74c3c">' + formatResource(score.damage) + '</div></div>';
+  resultHTML += '<div style="padding:8px;background:rgba(46,204,113,.1);border-radius:8px"><div style="font-size:20px">💚</div><div style="font-size:11px;color:var(--text3)">治疗得分</div><div style="font-size:16px;font-weight:bold;color:#2ecc71">' + formatResource(score.healing) + '</div></div>';
+  resultHTML += '<div style="padding:8px;background:rgba(52,152,219,.1);border-radius:8px"><div style="font-size:20px">🌀</div><div style="font-size:11px;color:var(--text3)">闪避次数</div><div style="font-size:16px;font-weight:bold;color:#3498db">' + score.dodge + '</div></div>';
+  resultHTML += '<div style="padding:8px;background:rgba(155,89,182,.1);border-radius:8px"><div style="font-size:20px">⛓</div><div style="font-size:11px;color:var(--text3)">控制次数</div><div style="font-size:16px;font-weight:bold;color:#9b59b6">' + score.control + '</div></div>';
+  resultHTML += '</div>';
+  resultHTML += '<div style="font-size:11px;color:var(--text3);margin-bottom:12px">难度系数: ' + scaleFactor.toFixed(2) + ' | 存活回合: ' + bossStats.rounds + '/30</div>';
+  resultHTML += '<div style="display:flex;gap:8px">';
+  resultHTML += '<button class="btn btn-primary" style="flex:1" onclick="startBossBattle()">再战一次</button>';
+  resultHTML += '<button class="btn" style="flex:1" onclick="switchTab(\'boss\')">返回</button>';
+  resultHTML += '</div></div>';
+  
+  battleScene.innerHTML += resultHTML;
+  
+  // 上传数据
+  uploadBossBattleData(bossStats, score).then(function(){
+    console.log('Boss战数据已上传');
+  });
+}
+
+async function showBossLeaderboard(){
+  var categories = [
+    {key:'damage', name:'伤害榜', icon:'💥', color:'#e74c3c'},
+    {key:'healing', name:'治疗榜', icon:'💚', color:'#2ecc71'},
+    {key:'dodge', name:'闪避榜', icon:'🌀', color:'#3498db'},
+    {key:'control', name:'控制榜', icon:'⛓', color:'#9b59b6'}
+  ];
+  
+  var html = '<div style="max-width:420px">';
+  html += '<div style="text-align:center;margin-bottom:16px">';
+  html += '<div style="font-size:24px">🏆</div>';
+  html += '<div style="font-size:16px;font-weight:bold;color:var(--gold)">Boss排行榜</div>';
+  html += '<div style="font-size:12px;color:var(--text3)">每周一重置</div>';
+  html += '</div>';
+  
+  // 分类标签
+  html += '<div id="boss-lb-tabs" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:12px">';
+  categories.forEach(function(cat, idx){
+    html += '<button class="btn boss-lb-tab" data-cat="' + cat.key + '" onclick="switchBossLBTab(\'' + cat.key + '\')" style="padding:8px;font-size:12px;background:' + (idx===0 ? 'rgba(212,175,55,.2)' : 'var(--panel2)') + ';border-color:' + (idx===0 ? 'rgba(212,175,55,.4)' : 'var(--border)') + ';color:' + (idx===0 ? 'var(--gold)' : 'var(--text2)') + '">' + cat.icon + ' ' + cat.name + '</button>';
+  });
+  html += '</div>';
+  
+  // 排行内容
+  html += '<div id="boss-lb-content" style="min-height:200px;text-align:center;color:var(--text3);font-size:13px">加载中...</div>';
+  
+  html += '<div style="text-align:center;margin-top:12px">';
+  html += '<button class="btn" onclick="closeModal()">关闭</button>';
+  html += '</div></div>';
+  
+  openModal(html);
+  
+  // 加载默认排行榜
+  switchBossLBTab('damage');
+}
+
+window.switchBossLBTab = async function(category){
+  // 更新标签样式
+  var tabs = document.querySelectorAll('.boss-lb-tab');
+  tabs.forEach(function(tab){
+    if(tab.getAttribute('data-cat') === category){
+      tab.style.background = 'rgba(212,175,55,.2)';
+      tab.style.borderColor = 'rgba(212,175,55,.4)';
+      tab.style.color = 'var(--gold)';
+    } else {
+      tab.style.background = 'var(--panel2)';
+      tab.style.borderColor = 'var(--border)';
+      tab.style.color = 'var(--text2)';
+    }
+  });
+  
+  var contentEl = document.getElementById('boss-lb-content');
+  contentEl.innerHTML = '<div style="padding:40px;color:var(--text3)">⏳ 加载中...</div>';
+  
+  var data = await fetchBossLeaderboard(category);
+  
+  if(!data || data.length === 0){
+    contentEl.innerHTML = '<div style="padding:40px;color:var(--text3)">暂无数据，快去挑战Boss吧！</div>';
+    return;
+  }
+  
+  var column = category + '_score';
+  if(category === 'dodge' || category === 'control') column = 'total_' + category;
+  
+  var listHTML = '<div style="max-height:300px;overflow-y:auto">';
+  data.forEach(function(row, idx){
+    var rank = idx + 1;
+    var medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '#' + rank;
+    var value = row[column] || 0;
+    var isMe = row.player_name === (G.playerName || '匿名勇者');
+    
+    listHTML += '<div style="display:flex;align-items:center;gap:8px;padding:8px;margin-bottom:4px;border-radius:6px;background:' + (isMe ? 'rgba(212,175,55,.1)' : 'var(--panel2)') + ';border:1px solid ' + (isMe ? 'rgba(212,175,55,.3)' : 'transparent') + '">';
+    listHTML += '<div style="width:32px;text-align:center;font-size:' + (rank <= 3 ? '20' : '13') + 'px;flex-shrink:0">' + medal + '</div>';
+    listHTML += '<div style="flex:1;min-width:0">';
+    listHTML += '<div style="font-size:13px;font-weight:' + (isMe ? 'bold' : 'normal') + ';color:' + (isMe ? 'var(--gold)' : 'var(--text)') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + row.player_name + (isMe ? ' (我)' : '') + '</div>';
+    listHTML += '<div style="font-size:10px;color:var(--text3)">Boss: ' + (row.boss_id || '?') + ' | 回合: ' + (row.rounds || '?') + '</div>';
+    listHTML += '</div>';
+    listHTML += '<div style="font-size:14px;font-weight:bold;color:var(--gold);flex-shrink:0">' + formatResource(value) + '</div>';
+    listHTML += '</div>';
+  });
+  listHTML += '</div>';
+  
+  contentEl.innerHTML = listHTML;
+};
+
 function unlockCheats(){
   var input=document.getElementById('cheat-password-input');
   var err=document.getElementById('cheat-error');
@@ -19247,6 +20043,17 @@ function updateCheatPanel(){
 // 云存档配置
 var SUPABASE_URL = 'https://aqdcelvwfsutqwuqnptu.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxZGNlbHZ3ZnN1dHF3dXFucHR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NjUzMDIsImV4cCI6MjA5NTM0MTMwMn0.8UBQ02S9w5gl3KbNExbGgkCrnAAiu_0gOJPyuef72ys';
+
+// 获取Supabase客户端实例（用于Boss排行榜等）
+function getSupabaseClient() {
+  if (typeof supabase === 'undefined' || !supabase.createClient) return null;
+  if (SUPABASE_URL === 'YOUR_SUPABASE_URL') return null;
+  try {
+    return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch(e) {
+    return null;
+  }
+}
 
 // 云存档客户端
 var sb = null;
