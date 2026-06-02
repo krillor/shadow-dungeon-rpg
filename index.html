@@ -18,7 +18,9 @@
 <link rel="manifest" href="manifest.json">
 <title>暗影地牢 - 文字策略RPG</title>
 <!-- Supabase SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Pako 压缩库（云存档压缩） -->
+<script src="https://cdn.jsdelivr.net/npm/pako@2/dist/pako.min.js">
 // ==================== 大数值处理系统 V3 ====================
 // JavaScript 安全整数上限是 2^53-1 ≈ 9e15，超过会丢失精度
 // 解决方案：1) BigInt处理 2) 对数压缩 3) 分片存储
@@ -19220,21 +19222,51 @@ function supabaseSaveToCloud(silent, forceFull) {
     gameDataToUpload = saveData.game;
   }
   
-  // 构造 cloud_saves 表的数据结构
+  // 压缩游戏数据（使用 pako gzip）
+  var gameDataJson = JSON.stringify(gameDataToUpload);
+  var originalSize = gameDataJson.length;
+  var usedCompression = false;
+  
+  try {
+    if (typeof pako !== 'undefined') {
+      // 使用 pako 压缩
+      var compressed = pako.deflate(gameDataJson);
+      var compressedBase64 = btoa(String.fromCharCode.apply(null, compressed));
+      // 将压缩数据和元信息打包到 game_data 字段内
+      var wrapper = {
+        _c: true,                    // 压缩标记
+        _v: saveData.version,        // 存档版本
+        _s: originalSize,            // 原始大小
+        _i: isIncremental,           // 是否增量
+        _d: compressedBase64         // 压缩数据
+      };
+      gameDataJson = JSON.stringify(wrapper);
+      usedCompression = true;
+    } else {
+      // 降级：不压缩，直接存原始 JSON
+      console.warn('[云存档] pako 库未加载，使用未压缩数据');
+    }
+  } catch (e) {
+    console.error('[云存档] 压缩失败，使用未压缩数据:', e);
+  }
+  
+  var finalSize = gameDataJson.length;
+  var compressRatio = usedCompression ? Math.round((1 - finalSize / originalSize) * 100) : 0;
+  
+  // 构造 cloud_saves 表的数据结构（只使用表中已有的列）
   var cloudData = {
     device_id: deviceId,
     player_name: G.playerName,
     provider: 'supabase',
     version: saveData.version,
-    game_data: gameDataToUpload,
-    is_incremental: isIncremental
+    game_data: gameDataJson,
+    game_size: finalSize
   };
   
-  var jsonSize = JSON.stringify(cloudData.game_data).length;
-  var originalSize = JSON.stringify(saveData.game).length;
-  var savedPercent = isIncremental ? Math.round((1 - jsonSize/originalSize) * 100) : 0;
-  console.log('[云存档] 上传中... 大小:', (jsonSize / 1024).toFixed(1), 'KB', 
-    isIncremental ? '(增量节省 ' + savedPercent + '%)' : '(全量)');
+  console.log('[云存档] 上传中... 原始:', (originalSize / 1024).toFixed(1), 'KB, ',
+    '最终:', (finalSize / 1024).toFixed(1), 'KB, ',
+    usedCompression ? '压缩节省:' + compressRatio + '%' : '未压缩', 
+    isIncremental ? '(增量模式)' : '(全量模式)');
   
   return sb.from('cloud_saves').upsert(cloudData, { onConflict: 'device_id' })
     .then(function(result) {
@@ -19248,11 +19280,13 @@ function supabaseSaveToCloud(silent, forceFull) {
       // 缓存完整数据用于下次增量对比
       lsSet('_last_cloud_data_cache', { game: saveData.game, time: Date.now() });
       if (!silent) {
-        var msg = '☁️ 已保存到云端 (' + (jsonSize / 1024).toFixed(1) + 'KB)';
-        if (isIncremental) msg += ' 节省' + savedPercent + '%流量';
+        var msg = '☁️ 已保存到云端 (' + (finalSize / 1024).toFixed(1) + 'KB';
+        if (usedCompression && compressRatio > 0) msg += ' 压缩' + compressRatio + '%';
+        msg += ')';
         showToast(msg);
       }
-      console.log('[云存档] ✅ 上传成功' + (isIncremental ? ' (增量)' : ' (全量)'));
+      console.log('[云存档] ✅ 上传成功' + (isIncremental ? ' (增量)' : ' (全量)') + 
+        (usedCompression ? ' 压缩率:' + compressRatio + '%' : ''));
       return true;
     })
     .catch(function(error) {
@@ -19367,10 +19401,44 @@ function confirmCloudRestore() {
         return;
       }
       
+      // 解压游戏数据（从 game_data 内部检测压缩标记）
+      var gameData;
+      var rawData = cloudData.game_data;
+      
+      try {
+        // game_data 可能是字符串或已解析的对象
+        var parsed = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+        
+        if (parsed && parsed._c === true && parsed._d) {
+          // 新格式：压缩数据 {_c:true, _v:version, _s:originalSize, _d:base64Data}
+          if (typeof pako === 'undefined') {
+            showToast('❌ 压缩库未加载，无法恢复存档');
+            console.error('[云存档] pako 库未加载，无法解压');
+            return;
+          }
+          var binary = atob(parsed._d);
+          var bytes = new Uint8Array(binary.length);
+          for (var i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          var decompressed = pako.inflate(bytes, { to: 'string' });
+          gameData = JSON.parse(decompressed);
+          console.log('[云存档] 解压成功，传输:', rawData.length, 'B, 解压后:', decompressed.length, 'B');
+        } else {
+          // 旧格式：未压缩的原始游戏数据（兼容）
+          gameData = parsed;
+          console.log('[云存档] 使用未压缩数据（兼容模式）');
+        }
+      } catch (e) {
+        console.error('[云存档] 数据解析失败:', e);
+        showToast('❌ 存档数据解析失败');
+        return;
+      }
+      
       var saveObj = {
         version: cloudData.version || 1,
-        heroIdCounter: cloudData.game_data.heroIdCounter || 0,
-        game: cloudData.game_data
+        heroIdCounter: gameData.heroIdCounter || 0,
+        game: gameData
       };
       
       console.log('[云存档] 准备恢复，云端数据:', {
