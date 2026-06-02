@@ -6323,41 +6323,46 @@ function exportSaveToFile() {
     
     URL.revokeObjectURL(url);
     
-    // 根据平台显示保存路径提示
-    var savePathTips = '';
-    if (G_isH5Package) {
-      // TapTap H5 环境
-      savePathTips = '<div>📱 TapTap：文件管理 → Download</div><div>⚠️ 部分浏览器可能限制下载</div>';
-    } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-      // iOS
-      savePathTips = '<div>📱 iOS：文件 App → 下载</div><div>或 Safari 下载管理器</div>';
-    } else if (/Android/i.test(navigator.userAgent)) {
-      // Android
-      savePathTips = '<div>📱 Android：文件管理 → Download</div><div>或 内部存储/Download</div>';
-    } else {
-      // 桌面
-      savePathTips = '<div>🖥️ 电脑：浏览器默认下载文件夹</div><div>Chrome：按 Ctrl+J 查看下载</div>';
-    }
+    // 先关闭旧弹窗，延迟后打开新弹窗避免冲突
+    closeModal();
     
-    // 弹窗显示保存路径
-    var html=`
-      <div style="max-width:360px;text-align:center">
-        <div style="font-size:40px;margin-bottom:12px">📤</div>
-        <div style="font-size:16px;font-weight:bold;color:#2ecc71;margin-bottom:12px">存档导出成功</div>
-        <div style="background:var(--panel2);border-radius:var(--radius-md);padding:14px;margin-bottom:16px;text-align:left;font-size:13px;line-height:1.8">
-          <div style="margin-bottom:8px"><span style="color:var(--text3)">文件名：</span><span style="color:var(--gold);word-break:break-all">${fileName}</span></div>
-          <div style="margin-bottom:8px"><span style="color:var(--text3)">保存位置：</span></div>
-          <div style="color:var(--text2);font-size:12px">
-            ${savePathTips}
+    setTimeout(function() {
+      // 根据平台显示保存路径提示
+      var savePathTips = '';
+      if (G_isH5Package) {
+        // TapTap H5 环境
+        savePathTips = '<div>📱 TapTap：文件管理 → Download</div><div>⚠️ 部分浏览器可能限制下载</div>';
+      } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        // iOS
+        savePathTips = '<div>📱 iOS：文件 App → 下载</div><div>或 Safari 下载管理器</div>';
+      } else if (/Android/i.test(navigator.userAgent)) {
+        // Android
+        savePathTips = '<div>📱 Android：文件管理 → Download</div><div>或 内部存储/Download</div>';
+      } else {
+        // 桌面
+        savePathTips = '<div>🖥️ 电脑：浏览器默认下载文件夹</div><div>Chrome：按 Ctrl+J 查看下载</div>';
+      }
+      
+      // 弹窗显示保存路径
+      var html=`
+        <div style="max-width:360px;text-align:center">
+          <div style="font-size:40px;margin-bottom:12px">📤</div>
+          <div style="font-size:16px;font-weight:bold;color:#2ecc71;margin-bottom:12px">存档导出成功</div>
+          <div style="background:var(--panel2);border-radius:var(--radius-md);padding:14px;margin-bottom:16px;text-align:left;font-size:13px;line-height:1.8">
+            <div style="margin-bottom:8px"><span style="color:var(--text3)">文件名：</span><span style="color:var(--gold);word-break:break-all">${fileName}</span></div>
+            <div style="margin-bottom:8px"><span style="color:var(--text3)">保存位置：</span></div>
+            <div style="color:var(--text2);font-size:12px">
+              ${savePathTips}
+            </div>
+            <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);color:var(--text3);font-size:11px">
+              💡 如果找不到文件，请检查浏览器下载设置
+            </div>
           </div>
-          <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);color:var(--text3);font-size:11px">
-            💡 如果找不到文件，请检查浏览器下载设置
-          </div>
+          <button class="btn" onclick="closeModal()">知道了</button>
         </div>
-        <button class="btn" onclick="closeModal()">知道了</button>
-      </div>
-    `;
-    openModal(html);
+      `;
+      openModal(html);
+    }, 100);
     
   } catch(e) {
     console.error('导出失败', e);
