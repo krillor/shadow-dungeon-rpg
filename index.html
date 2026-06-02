@@ -13599,28 +13599,17 @@ function renderTown(el){
         +'<div class="town-module-btn-info">查看榜单</div>'
       +'</div>'
     +'</div>'
-    // 兑换码区域
-    +'<div class="panel" style="margin-top:12px;background:linear-gradient(135deg,rgba(39,174,96,.08),rgba(39,174,96,.02));border-color:rgba(39,174,96,.25)">'
-      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
-        +'<span style="font-size:14px;font-weight:bold;color:#27ae60">🎁 兑换码</span>'
-        +'<span style="font-size:11px;color:var(--text3);flex:1">加群 1076667471 获取礼包码</span>'
+    // 兑换码和存档管理入口（卡片式按钮）
+    +'<div class="town-modules-grid" style="margin-top:12px">'
+      +'<div class="town-module-btn" onclick="showRedeemModal()">'
+        +'<div class="town-module-btn-icon">🎁</div>'
+        +'<div class="town-module-btn-name">兑换码</div>'
+        +'<div class="town-module-btn-info">加群领礼包</div>'
       +'</div>'
-      +'<div style="display:flex;gap:8px">'
-        +'<input type="text" id="town-redeem-input" style="flex:1;padding:10px 12px;border:1px solid rgba(39,174,96,.4);background:var(--panel2);color:var(--text);border-radius:8px;font-size:13px;font-family:inherit;outline:none;text-transform:uppercase" placeholder="输入兑换码" autocomplete="off">'
-        +'<button class="btn btn-primary" onclick="redeemCodeFromTown()" style="padding:10px 24px;font-size:13px;white-space:nowrap">兑换</button>'
-      +'</div>'
-    +'</div>'
-    // 存档管理区域
-    +'<div class="panel" style="margin-top:12px;background:linear-gradient(135deg,rgba(52,152,219,.08),rgba(52,152,219,.02));border-color:rgba(52,152,219,.25)">'
-      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
-        +'<span style="font-size:14px;font-weight:bold;color:#3498db">💾 存档管理</span>'
-        +'<span style="font-size:11px;color:var(--text3);flex:1">本地存档 + 云端备份双保险</span>'
-      +'</div>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-        +'<button class="btn" onclick="showSaveInfo()" style="flex:1;min-width:80px;padding:10px;font-size:12px;background:rgba(52,152,219,.1);border-color:rgba(52,152,219,.3)">💾 本地存档</button>'
-        +'<button class="btn" onclick="showCloudSavePanel()" style="flex:1;min-width:80px;padding:10px;font-size:12px;background:rgba(155,89,182,.1);border-color:rgba(155,89,182,.3)">☁️ 云存档</button>'
-        +'<button class="btn" onclick="exportSaveToFile()" style="flex:1;min-width:80px;padding:10px;font-size:12px;background:rgba(46,204,113,.1);border-color:rgba(46,204,113,.3)">📤 导出</button>'
-        +'<button class="btn" onclick="importSaveFromFile()" style="flex:1;min-width:80px;padding:10px;font-size:12px;background:rgba(241,196,15,.1);border-color:rgba(241,196,15,.3)">📥 导入</button>'
+      +'<div class="town-module-btn" onclick="showSaveManageModal()">'
+        +'<div class="town-module-btn-icon">💾</div>'
+        +'<div class="town-module-btn-name">存档管理</div>'
+        +'<div class="town-module-btn-info">本地+云端</div>'
       +'</div>'
     +'</div>'
     // 离线收益和每日登录（已屏蔽）
@@ -14706,6 +14695,88 @@ function showHelpModal(){
       </div>
       <div style="text-align:center">
         <button class="btn" onclick="closeModal()">知道了</button>
+      </div>
+    </div>
+  `;
+  openModal(html);
+}
+
+// 兑换码弹窗
+function showRedeemModal(){
+  const html=`
+    <div style="max-width:360px">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:40px;margin-bottom:8px">🎁</div>
+        <div style="font-size:16px;font-weight:bold;color:#27ae60">兑换码</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">加群 1076667471 获取礼包码</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input type="text" id="modal-redeem-input" style="flex:1;padding:12px 14px;border:1px solid rgba(39,174,96,.5);background:var(--panel2);color:var(--text);border-radius:8px;font-size:14px;font-family:inherit;outline:none;text-transform:uppercase" placeholder="输入兑换码" autocomplete="off">
+        <button class="btn btn-primary" onclick="redeemCodeFromModal()" style="padding:12px 24px;font-size:14px">兑换</button>
+      </div>
+      <div id="modal-redeem-result" style="font-size:13px;text-align:center;min-height:20px"></div>
+      <div style="text-align:center;margin-top:16px">
+        <button class="btn" onclick="closeModal()">关闭</button>
+      </div>
+    </div>
+  `;
+  openModal(html);
+  // 自动聚焦输入框
+  setTimeout(function(){
+    var input = document.getElementById('modal-redeem-input');
+    if(input) input.focus();
+  }, 100);
+}
+
+// 兑换码弹窗内的兑换逻辑
+function redeemCodeFromModal(){
+  var input = document.getElementById('modal-redeem-input');
+  var resultEl = document.getElementById('modal-redeem-result');
+  if(!input || !resultEl) return;
+  var code = input.value.trim().toUpperCase();
+  if(!code){
+    resultEl.innerHTML = '<span style="color:#ff6b6b">请输入兑换码</span>';
+    return;
+  }
+  var result = processRedeemCode(code);
+  if(result.success){
+    resultEl.innerHTML = '<span style="color:#2ecc71">✅ ' + result.name + ' 兑换成功！</span>';
+    input.value = '';
+    showToast('🎁 ' + result.name + ' 兑换成功！');
+  } else {
+    resultEl.innerHTML = '<span style="color:#ff6b6b">❌ ' + result.message + '</span>';
+  }
+}
+
+// 存档管理弹窗
+function showSaveManageModal(){
+  const html=`
+    <div style="max-width:360px">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:40px;margin-bottom:8px">💾</div>
+        <div style="font-size:16px;font-weight:bold;color:#3498db">存档管理</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">本地存档 + 云端备份双保险</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <button class="btn" onclick="closeModal();showSaveInfo()" style="padding:14px;font-size:13px;background:rgba(52,152,219,.1);border-color:rgba(52,152,219,.3)">
+          <div style="font-size:20px;margin-bottom:4px">💾</div>
+          <div>本地存档</div>
+        </button>
+        <button class="btn" onclick="closeModal();showCloudSavePanel()" style="padding:14px;font-size:13px;background:rgba(155,89,182,.1);border-color:rgba(155,89,182,.3)">
+          <div style="font-size:20px;margin-bottom:4px">☁️</div>
+          <div>云存档</div>
+        </button>
+        <button class="btn" onclick="closeModal();exportSaveToFile()" style="padding:14px;font-size:13px;background:rgba(46,204,113,.1);border-color:rgba(46,204,113,.3)">
+          <div style="font-size:20px;margin-bottom:4px">📤</div>
+          <div>导出</div>
+        </button>
+        <button class="btn" onclick="closeModal();importSaveFromFile()" style="padding:14px;font-size:13px;background:rgba(241,196,15,.1);border-color:rgba(241,196,15,.3)">
+          <div style="font-size:20px;margin-bottom:4px">📥</div>
+          <div>导入</div>
+        </button>
+      </div>
+      <div style="text-align:center">
+        <button class="btn" onclick="closeModal()">关闭</button>
       </div>
     </div>
   `;
