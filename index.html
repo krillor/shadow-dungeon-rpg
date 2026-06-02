@@ -19140,9 +19140,20 @@ function confirmCloudRestore() {
       
       if (restoreSaveData(saveObj)) {
         initGameAfterLoad();
-        saveGame();
-        showToast('✅ 已从云端恢复，正在刷新...');
-        setTimeout(function() { location.reload(); }, 800);
+        // 确保存档保存完成后再刷新（dbSet 是异步的）
+        Promise.all([
+          new Promise(function(resolve) {
+            var data = prepareSaveData();
+            dbSet('saves', (getMeta().currentSlot || 0), data).then(resolve).catch(resolve);
+          }),
+          new Promise(function(resolve) {
+            lsSet(getSlotKey((getMeta().currentSlot || 0)), prepareSaveData());
+            resolve();
+          })
+        ]).then(function() {
+          showToast('✅ 已从云端恢复，正在刷新...');
+          setTimeout(function() { location.reload(); }, 500);
+        });
       } else {
         showToast('❌ 云端存档格式不兼容');
       }
@@ -19299,13 +19310,26 @@ function updateCloudSavePanel() {
     statusEl.textContent = '✅ Supabase 云存档已连接';
     statusEl.style.color = 'var(--success)';
     
-    var lastSave = parseInt(lsGet('_last_supabase_cloud') || '0', 10);
-    if (lastSave > 0) {
-      var lastDate = new Date(lastSave);
-      infoEl.textContent = '上次云端保存: ' + lastDate.toLocaleDateString() + ' ' + lastDate.toLocaleTimeString().slice(0,5);
-    } else {
-      infoEl.textContent = '尚未上传到云端（每天自动上传一次）';
-    }
+    // 从云端查询真实的更新时间
+    sb.from('cloud_saves').select('updated_at').eq('device_id', deviceId).limit(1)
+      .then(function(result) {
+        if (result.data && result.data[0] && result.data[0].updated_at) {
+          var cloudDate = new Date(result.data[0].updated_at);
+          infoEl.textContent = '上次云端保存: ' + cloudDate.toLocaleDateString() + ' ' + cloudDate.toLocaleTimeString().slice(0,5);
+        } else {
+          infoEl.textContent = '云端暂无存档';
+        }
+      })
+      .catch(function() {
+        // 查询失败时回退到本地记录
+        var lastSave = parseInt(lsGet('_last_supabase_cloud') || '0', 10);
+        if (lastSave > 0) {
+          var lastDate = new Date(lastSave);
+          infoEl.textContent = '上次本地保存: ' + lastDate.toLocaleDateString() + ' ' + lastDate.toLocaleTimeString().slice(0,5);
+        } else {
+          infoEl.textContent = '尚未上传到云端';
+        }
+      });
     
     if (btnsEl) {
       // 检查冷却时间，显示按钮状态
