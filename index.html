@@ -1360,6 +1360,22 @@ body{
   box-shadow:0 0 24px rgba(212,175,55,0.25),0 4px 16px rgba(0,0,0,0.3);
   animation:pulse-glow 2s ease-in-out infinite;
 }
+.hero-lock-btn{
+  position:absolute;
+  top:6px;right:6px;
+  background:rgba(0,0,0,.45);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:6px;
+  padding:2px 6px;
+  font-size:14px;
+  cursor:pointer;
+  z-index:2;
+  opacity:.5;
+  transition:opacity .2s,transform .2s;
+  line-height:1;
+}
+.hero-lock-btn:hover{opacity:1;transform:scale(1.15)}
+.hero-lock-btn:active{transform:scale(.95)}
 .quality-common::before{background:linear-gradient(90deg,#888,#666)}
 .quality-rare::before{background:linear-gradient(90deg,#4a9eff,#2980b9)}
 .quality-epic::before{background:linear-gradient(90deg,#a855f7,#8e44ad)}
@@ -2521,6 +2537,12 @@ body{
 .hero-detail-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.3}
 .hero-detail-panel::-webkit-scrollbar{width:4px}
 .hero-detail-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.hd-nav-btn{position:absolute;top:50%;transform:translateY(-50%);z-index:5;width:36px;height:60px;border:1px solid var(--border);border-radius:8px;background:rgba(0,0,0,.6);color:var(--text);font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s,opacity .2s;opacity:.6;backdrop-filter:blur(4px);line-height:1;padding:0}
+.hd-nav-btn:hover{opacity:1;background:rgba(0,0,0,.8)}
+.hd-nav-btn:active{transform:translateY(-50%) scale(.92)}
+.hd-nav-btn:disabled{opacity:.15;cursor:default;pointer-events:none}
+.hd-nav-prev{left:4px}
+.hd-nav-next{right:4px}
 .hd-header{display:flex;align-items:center;gap:14px;padding:16px;border-bottom:1px solid var(--border);position:relative}
 .hd-close{position:absolute;top:8px;right:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--text2);font-size:18px;cursor:pointer;padding:8px 12px;line-height:1;transition:all .2s;border-radius:6px;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center}
 .hd-close:hover{color:var(--gold)}
@@ -13846,6 +13868,7 @@ function renderHeroCard(h){
   return`<div class="hero-card quality-${displayQuality}" data-role="${displayRole}" data-quality="${displayQuality}" data-uid="${h.uid}" onclick="showHeroDetail(${h.uid})" style="cursor:pointer">
     ${inTeam?'<div class="hero-team-badge">🛡️ 队伍中</div>':''}
     ${isUnknown?'<div class="hero-team-badge" style="background:linear-gradient(90deg,#ff00ff,#ff00cc)">🔒 未解锁</div>':''}
+    <button class="hero-lock-btn" onclick="event.stopPropagation();toggleHeroLock(${h.uid})" title="${h.locked?'解锁':'锁定'}">${h.locked?'🔒':'🔓'}</button>
     <div class="hero-avatar" style="background:rgba(${isUnknown?'255,0,255':h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':'220,50,50'},.2)">
       ${displayIcon}
     </div>
@@ -13871,9 +13894,30 @@ function renderHeroCard(h){
 }
 
 // 英雄详情弹窗（增强版）
+// 记录当前详情页英雄列表和索引，用于左右滑动切换
+var _heroDetailList = [];
+var _heroDetailIdx = -1;
+
 function showHeroDetail(uid){
   const h=G.heroes.find(x=>x.uid===uid);
   if(!h)return;
+  
+  // 构建当前过滤后的英雄列表
+  var activeFilter = document.querySelector('#hero-list');
+  var cards = activeFilter ? activeFilter.querySelectorAll('.hero-card') : [];
+  _heroDetailList = [];
+  cards.forEach(function(card) {
+    var cardUid = parseInt(card.getAttribute('data-uid'));
+    var hero = G.heroes.find(x => x.uid === cardUid);
+    if (hero) _heroDetailList.push(hero);
+  });
+  _heroDetailIdx = _heroDetailList.findIndex(x => x.uid === uid);
+  if (_heroDetailIdx < 0) _heroDetailIdx = 0;
+
+  _renderHeroDetail(h);
+}
+
+function _renderHeroDetail(h){
   
   // 未知英雄特殊处理
   const isLockedUnknown = h.isUnknown && !h.isUnlocked;
@@ -14075,8 +14119,11 @@ function showHeroDetail(uid){
   const displayHeroName = isLockedUnknown ? (h.displayName || '???') : h.name;
 
   const html=`
-  <div class="hero-detail-overlay" onclick="if(event.target===this)closeModal()">
-    <div class="hero-detail-panel">
+  <div class="hero-detail-overlay" id="hero-detail-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="hero-detail-panel" id="hero-detail-panel">
+      <!-- 左右切换按钮 -->
+      <button class="hd-nav-btn hd-nav-prev" onclick="event.stopPropagation();_navHeroDetail(-1)" ${_heroDetailIdx<=0?'disabled':''}>‹</button>
+      <button class="hd-nav-btn hd-nav-next" onclick="event.stopPropagation();_navHeroDetail(1)" ${_heroDetailIdx>=_heroDetailList.length-1?'disabled':''}>›</button>
       <!-- 头部：英雄基本信息 -->
       <div class="hd-header" style="background:linear-gradient(135deg,rgba(${h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':h.quality==='mythic'?'220,50,50':h.quality==='hidden'?'0,255,204':'255,0,255'},.12),transparent)">
         <button class="hd-close" onclick="closeModal()">✕</button>
@@ -14284,6 +14331,40 @@ function showHeroDetail(uid){
     </div>
   </div>`;
   openModal(html);
+  // 绑定触摸滑动事件
+  _bindHeroDetailSwipe();
+}
+
+// 左右切换英雄详情
+function _navHeroDetail(dir){
+  var newIdx = _heroDetailIdx + dir;
+  if (newIdx < 0 || newIdx >= _heroDetailList.length) return;
+  _heroDetailIdx = newIdx;
+  var h = _heroDetailList[newIdx];
+  if (!h) return;
+  _renderHeroDetail(h);
+}
+
+// 绑定详情面板触摸滑动
+function _bindHeroDetailSwipe(){
+  var panel = document.getElementById('hero-detail-panel');
+  if (!panel) return;
+  var startX = 0, startY = 0, swiping = false;
+  panel.addEventListener('touchstart', function(e){
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    swiping = true;
+  }, {passive: true});
+  panel.addEventListener('touchend', function(e){
+    if (!swiping) return;
+    swiping = false;
+    var dx = e.changedTouches[0].clientX - startX;
+    var dy = e.changedTouches[0].clientY - startY;
+    // 水平滑动距离大于50px且大于垂直距离
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      _navHeroDetail(dx < 0 ? 1 : -1);
+    }
+  }, {passive: true});
 }
 
 // 使用经验药水
