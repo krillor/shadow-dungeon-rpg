@@ -19207,7 +19207,7 @@ function confirmCloudRestore() {
     });
 }
 
-// Supabase 自动同步检查
+// Supabase 自动同步检查（仅上传，不自动恢复）
 function supabaseCheckAndSync() {
   if (!isCloudReady || !deviceId) return;
   
@@ -19227,25 +19227,9 @@ function supabaseCheckAndSync() {
     return;
   }
   
-  sb.from('cloud_saves').select('*').eq('device_id', deviceId).limit(1)
-    .then(function(result) {
-      if (result.error) return;
-      var cloudData = result.data && result.data[0] ? result.data[0] : null;
-      if (cloudData && cloudData.game_data) {
-        console.log('发现云端存档，正在恢复...');
-        var saveObj = {
-          version: cloudData.version || 1,
-          heroIdCounter: cloudData.game_data.heroIdCounter || 0,
-          game: cloudData.game_data
-        };
-        if (restoreSaveData(saveObj)) {
-          initGameAfterLoad();
-          saveGame();
-          showToast('☁️ 已从云端恢复存档');
-          setTimeout(function() { location.reload(); }, 500);
-        }
-      }
-    }).catch(function(e) { console.error('云端恢复失败', e); });
+  // 本地无存档时，不再自动从云端恢复
+  // 玩家需要手动点击恢复按钮
+  console.log('[云存档] 本地无存档，等待玩家手动恢复');
 }
 
 // ===== 统一云存档接口 =====
