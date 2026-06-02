@@ -18982,6 +18982,13 @@ function updateCloudSavePanel() {
       btnsEl.innerHTML = '<button class="btn btn-primary" onclick="supabaseSaveToCloud()">📤 立即上传</button>' +
         '<button class="btn" onclick="supabaseLoadCloudSave()">📥 从云端恢复</button>';
     }
+  } else if (sb && !isCloudReady) {
+    // Supabase 初始化中
+    panelEl.style.display = '';
+    statusEl.textContent = '⏳ 连接中...';
+    statusEl.style.color = 'var(--text3)';
+    infoEl.textContent = '正在连接 Supabase 云端...';
+    if (btnsEl) btnsEl.innerHTML = '';
   } else {
     // 无云存档
     panelEl.style.display = '';
@@ -19196,6 +19203,27 @@ async function initGame(){
   
   // 延迟更新云存档 UI 状态（等待初始化完成）
   setTimeout(updateCloudStatusUI, 3000);
+  
+  // 轮询检查云存档连接状态，直到连接成功
+  var cloudCheckInterval = setInterval(function() {
+    if (isCloudReady && cloudProvider === 'supabase') {
+      updateCloudSavePanel();
+      updateCloudStatusUI();
+      clearInterval(cloudCheckInterval);
+    }
+  }, 1000);
+  // 30秒后停止轮询
+  setTimeout(function() {
+    clearInterval(cloudCheckInterval);
+    // 如果仍未连接，显示失败状态
+    if (!isCloudReady) {
+      var statusEl = document.getElementById('cloud-save-status');
+      if (statusEl && statusEl.textContent === '检测中...') {
+        statusEl.textContent = '❌ 连接失败';
+        statusEl.style.color = 'var(--danger)';
+      }
+    }
+  }, 30000);
   
   // 确保引导遮罩初始状态是隐藏的
   var overlay=document.getElementById('tutorial-overlay');
