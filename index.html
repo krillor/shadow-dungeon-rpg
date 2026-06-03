@@ -9991,20 +9991,19 @@ function recordBattleStat(unit,stat,value){
 
 function forceEndBattle(){
   if(!G_battleRunning){
-    // 不在战斗中，直接返回关卡选择
+    // 不在战斗中，直接返回关卡选择（结算后关闭结果面板）
     hideBattlePanel();
     switchTab('battle');
     return;
   }
-  // 战斗中，需要确认
+  // 战斗中：仅设置标志，让战斗循环的下一次 while 检查自然退出，由正常结算代码显示结果
   var confirmed=confirm('确定要结束战斗吗？\n这将视为战斗失败。');
   if(confirmed){
     G_battleRunning=false;
     G_battlePaused=false;
     G_autoBattle=false;
-    showToast('战斗已结束');
-    hideBattlePanel();
-    switchTab('battle');
+    showToast('即将结束，正在结算...');
+    // 不再立即隐藏面板，由结算代码自动显示 "返回" 按钮
   }
   // 点击取消时不做任何操作
 }
@@ -10799,7 +10798,10 @@ async function runBattle(stageOrId){
   let round=0;
   const maxRounds=30;
 
-  while(round<maxRounds){
+  // ===== 修复：检查 G_battleRunning 支持强制结束，检查 G_battlePaused 支持暂停（对齐竞技场逻辑）=====
+  while(G_battleRunning&&round<maxRounds){
+    // 暂停支持（点击 ⏸ 暂停按钮时生效）
+    if(G_battlePaused){await sleep(200);continue;}
     round++;
     pbbRound=round;
     roundBadge.textContent='回合 '+round;
@@ -10931,6 +10933,8 @@ async function runBattle(stageOrId){
     const acting=[...allUnits.filter(u=>u.alive)].sort((a,b)=>b.spd-a.spd);
 
     for(const unit of acting){
+      // 提前退出：用户已强制结束战斗
+      if(!G_battleRunning)break;
       if(!unit.alive)continue;
       highlightUnit(unit);
       await sleep(200);
