@@ -9930,6 +9930,31 @@ async function runZodiacBoss(bossIndex){
   let round=0;
   const maxRounds=80;
 
+  // ===== 战斗开始：应用天赋和特殊机制 =====
+  // 1. 汇总 team 天赋：teamDamage / teamDamageReduce / teamCrit
+  var teamDmgBonus=0, teamDmgReduceBonus=0, teamCritBonus=0;
+  playerUnits.forEach(function(u){
+    if(u.talentEffects){
+      if(u.talentEffects.teamDamage) teamDmgBonus += u.talentEffects.teamDamage;
+      if(u.talentEffects.teamDamageReduce) teamDmgReduceBonus += u.talentEffects.teamDamageReduce;
+      if(u.talentEffects.teamCrit) teamCritBonus += u.talentEffects.teamCrit;
+    }
+  });
+  if(teamDmgBonus>0) playerUnits.forEach(function(u){ u._teamDamageBonus = teamDmgBonus; });
+  if(teamDmgReduceBonus>0) playerUnits.forEach(function(u){ u._teamDamageReduceBonus = teamDmgReduceBonus; });
+  if(teamCritBonus>0) playerUnits.forEach(function(u){ u._teamCritBonus = teamCritBonus; });
+
+  // 2. 战斗开始 buff（battleStartBuffs）
+  playerUnits.forEach(function(u){
+    if(u.talentEffects && u.talentEffects.battleStartBuffs){
+      u.talentEffects.battleStartBuffs.forEach(function(bf){
+        playerUnits.forEach(function(ally){
+          if(ally.alive) ally.buffs.push({stat:bf.stat, mult:1+(bf.value||0), duration:bf.duration, name:'战吼'});
+        });
+      });
+    }
+  });
+
   // 重置战斗统计
   if(typeof resetBattleStats === 'function') resetBattleStats();
 
@@ -9940,10 +9965,8 @@ async function runZodiacBoss(bossIndex){
   var battlePanel=document.getElementById('battle-panel');
   if(contentEl) contentEl.style.display='none';
   if(battlePanel) battlePanel.style.display='';
-  // 清空底部按钮区
   var btnAreaInit=document.getElementById('battle-buttons');
   if(btnAreaInit) btnAreaInit.innerHTML='';
-  // 初始渲染队伍
   if(typeof renderTeams === 'function') renderTeams();
   var infoEl=document.getElementById('battle-info');
   if(infoEl){
@@ -9954,10 +9977,8 @@ async function runZodiacBoss(bossIndex){
 
   // 回合循环
   var enemyUnit = enemyUnits[0];
-  var playerAlive = function(){return playerUnits.some(u=>u.alive);};
-  var bossAlive = function(){return enemyUnit.alive;};
 
-  while(G_battleRunning && round < maxRounds && playerAlive() && bossAlive()){
+  while(G_battleRunning && round < maxRounds && playerUnits.some(u=>u.alive) && enemyUnit.alive){
     if(G_battlePaused){await sleep(200); continue;}
     round++;
     var roundEl=document.getElementById('battle-round');
@@ -9972,14 +9993,22 @@ async function runZodiacBoss(bossIndex){
       // 眩晕检查
       if(u.buffs.some(x=>x.stat==='stun')){continue;}
 
-      // 回合开始：hpRegen（天赋） + regen（关卡修饰符）
+      // ===== 回合开始效果 =====
+      // hpRegen（天赋） + regen（关卡修饰符）
       if(u.talentEffects && u.talentEffects.hpRegen){
         u.hp = Math.min(u.maxHP, u.hp + Math.floor(u.maxHP*u.talentEffects.hpRegen));
       }
       if(u._regenPct && u.hp < u.maxHP){
         u.hp = Math.min(u.maxHP, u.hp + Math.floor(u.maxHP*u._regenPct));
       }
-      // 扣 buff 持续时间
+      // MP 恢复：基础5% + 天赋mpRegen
+      var mpRecover = Math.floor(u.maxMP * 0.05);
+      if(u.talentEffects && u.talentEffects.mpRegen){
+        mpRecover += Math.floor(u.maxMP * u.talentEffects.mpRegen);
+      }
+      u.mp = Math.min(u.maxMP, u.mp + mpRecover);
+
+      // buff 持续时间衰减
       u.buffs = u.buffs.filter(function(bf){bf.duration--; return bf.duration>0;});
       // DOT 结算
       u.dot = u.dot.filter(function(df){
@@ -9990,8 +10019,9 @@ async function runZodiacBoss(bossIndex){
       });
       if(!u.alive) continue;
 
-      // 简单 AI：有技能放技能，否则普攻
+      // ===== 技能选择：按冷却和MP选一个 =====
       var chosenSkill = null;
+      var chosenSkillId = null;
       var allSkillIds = [];
       if(u.hero && u.hero.skills) allSkillIds = allSkillIds.concat(u.hero.skills);
       if(u.bonusSkills) allSkillIds = allSkillIds.concat(u.bonusSkills);
@@ -9999,14 +10029,13 @@ async function runZodiacBoss(bossIndex){
         var sid = allSkillIds[si];
         var sk = SKILLS[sid];
         if(sk && (!u.cooldowns[sid] || u.cooldowns[sid]<=0) && u.mp>=sk.mpCost){
-          chosenSkill = sk; break;
+          chosenSkill = sk; chosenSkillId = sid; break;
         }
       }
       // 选目标
       var target = null;
-      var isEnemy = u.isEnemy;
-      var enemies = isEnemy ? playerUnits : enemyUnits;
-      var allies = isEnemy ? enemyUnits : playerUnits;
+      var enemies = u.isEnemy ? playerUnits : enemyUnits;
+      var allies = u.isEnemy ? enemyUnits : playerUnits;
       if(chosenSkill){
         if(chosenSkill.target==='self') target = u;
         else if(chosenSkill.target==='all_allies') target = allies.filter(a=>a.alive);
@@ -10019,16 +10048,17 @@ async function runZodiacBoss(bossIndex){
 
       if(chosenSkill && typeof executeSkillV2 === 'function'){
         u.mp -= chosenSkill.mpCost;
-        u.cooldowns[chosenSkill.id] = chosenSkill.cooldown;
+        u.cooldowns[chosenSkillId] = chosenSkill.cooldown;  // 用技能ID字符串而不是skill.id
         await executeSkillV2(u, target, chosenSkill, allUnits, function(txt, type){});
       }else if(target){
+        // 普攻
         var r = calcDamage(u, target, null);
         if(!r.dodged){
           var finalDmg = r.dmg;
           if(target.shield>0){ var absorbed = Math.min(target.shield, finalDmg); target.shield-=absorbed; finalDmg-=absorbed; }
           target.hp = Math.max(0, target.hp-finalDmg);
           if(target.hp<=0) target.alive=false;
-          // 关卡反击机制
+          // 关卡反击
           if(target.alive && target._counterPct && finalDmg>0){
             var reflectDmg = Math.floor(finalDmg*target._counterPct);
             u.hp = Math.max(0, u.hp-reflectDmg);
@@ -10040,19 +10070,21 @@ async function runZodiacBoss(bossIndex){
       await sleep(150);
     }
 
-    // 回合结束：cooldown 衰减
+    // ===== 回合结束：cooldown 衰减 + cdReduce 天赋 =====
     allUnits.forEach(function(u){
-      for(var cds in u.cooldowns){ u.cooldowns[cds]--; }
+      var cdReduce = (u.talentEffects && u.talentEffects.cdReduce) ? u.talentEffects.cdReduce : 0;
+      for(var cds in u.cooldowns){
+        u.cooldowns[cds] = Math.max(0, u.cooldowns[cds] - 1 - Math.floor(cdReduce));
+      }
     });
   }
 
   // 结算
   var won = enemyUnit.hp<=0 || !enemyUnit.alive;
+  var hpLeft = Math.max(0, enemyUnit.hp);
 
-  // 更新挑战记录
   if(!G.zodiacChallenges[bossIndex]) G.zodiacChallenges[bossIndex] = {attempts:0, bestHp:enemyUnit.maxHP, defeated:false};
   G.zodiacChallenges[bossIndex].attempts += 1;
-  var hpLeft = Math.max(0, enemyUnit.hp);
   if(hpLeft < G.zodiacChallenges[bossIndex].bestHp) G.zodiacChallenges[bossIndex].bestHp = hpLeft;
 
   if(won){
@@ -11043,6 +11075,15 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
           user.hp=Math.min(user.maxHP,user.hp+healAmt);
           logFn(user.icon+' '+user.name+' 恢复了 '+healAmt+' 生命','heal');
           showFloat(user,'+'+healAmt,'heal');
+        }
+        // lifeSteal：吸取造成伤害的百分比生命（如 soul_drain 吸血）
+        if(skill.lifeSteal && dmg>0){
+          var lsHeal=Math.floor(dmg*skill.lifeSteal);
+          if(lsHeal>0){
+            user.hp=Math.min(user.maxHP,user.hp+lsHeal);
+            logFn(user.icon+' '+user.name+' 吸取了 '+lsHeal+' 生命','heal');
+            showFloat(user,'💚+'+lsHeal,'heal');
+          }
         }
         if(t.hp<=0){
           t.alive=false;
