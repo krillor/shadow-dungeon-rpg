@@ -2783,6 +2783,183 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 .guide-skip:hover{color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.06)}
 @keyframes guideFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
+/* ========== 生肖 Boss · 黑暗神秘风格 ========== */
+@keyframes zodiacAuraRotate{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+@keyframes zodiacAuraPulse{0%,100%{opacity:.25;transform:scale(1)}50%{opacity:.55;transform:scale(1.08)}}
+@keyframes zodiacFlare{0%{opacity:0;transform:translate(-50%,-50%) scale(.5) rotate(0deg)}30%{opacity:.7}100%{opacity:0;transform:translate(-50%,-50%) scale(1.8) rotate(180deg)}}
+@keyframes zodiacTitleShimmer{0%,100%{text-shadow:0 0 8px rgba(120,30,180,.6),0 0 16px rgba(200,20,120,.4)}50%{text-shadow:0 0 14px rgba(180,30,200,.9),0 0 28px rgba(220,40,140,.6)}}
+@keyframes zodiacFogDrift{0%{background-position:0% 50%,0% 0%,100% 100%}100%{background-position:200% 50%,-200% 0%,100% -100%}}
+@keyframes zodiacBorderPulse{0%,100%{box-shadow:0 0 20px rgba(140,20,120,.5),inset 0 0 15px rgba(80,0,60,.3),0 0 40px rgba(180,20,160,.15)}50%{box-shadow:0 0 30px rgba(180,30,160,.7),inset 0 0 25px rgba(120,10,100,.5),0 0 60px rgba(220,40,180,.25)}}
+@keyframes zodiacTitleFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes zodiacSkillFlash{0%{opacity:0;transform:translate(-50%,-50%) scale(.2) rotate(-30deg)}20%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(0deg)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.5) rotate(45deg)}}
+@keyframes zodiacBossBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
+
+/* 整页面板：深色氛围 */
+.battle-panel.zodiac-panel, .zodiac-panel{
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(80,0,100,.15) 0%, transparent 60%),
+    radial-gradient(ellipse at 20% 80%, rgba(120,20,80,.12) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 70%, rgba(60,0,80,.18) 0%, transparent 60%),
+    linear-gradient(160deg,#0a0515 0%,#150824 40%,#1a0a30 70%,#0f0518 100%) !important;
+  border:1px solid rgba(140,20,160,.4) !important;
+  box-shadow:0 0 30px rgba(120,20,140,.2),inset 0 0 40px rgba(50,0,60,.3) !important;
+}
+
+/* 战斗场景：黑暗迷雾背景 */
+.zodiac-scene{
+  background:
+    radial-gradient(circle at 50% 40%, rgba(100,10,120,.25) 0%, transparent 50%),
+    linear-gradient(180deg,#0a0515 0%,#140a24 50%,#08030f 100%) !important;
+  position:relative;
+  overflow:hidden;
+}
+.zodiac-scene::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(circle at 15% 30%, rgba(180,20,160,.08) 1px, transparent 2px),
+    radial-gradient(circle at 85% 60%, rgba(140,30,200,.08) 1px, transparent 2px),
+    radial-gradient(circle at 40% 80%, rgba(200,20,140,.08) 1px, transparent 2px),
+    radial-gradient(circle at 70% 20%, rgba(160,40,180,.08) 1px, transparent 2px);
+  background-size:200px 200px,180px 180px,220px 220px,160px 160px;
+  animation:zodiacFogDrift 30s linear infinite;
+  opacity:.6;
+}
+.zodiac-scene::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.4) 0%,transparent 15%,transparent 85%,rgba(0,0,0,.5) 100%);
+}
+
+/* 战斗顶部标题区域：神秘风 */
+.zodiac-header{
+  display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 16px;
+  background:linear-gradient(90deg,transparent 0%,rgba(80,10,100,.3) 50%,transparent 100%);
+  border-top:1px solid rgba(140,20,160,.5);
+  border-bottom:1px solid rgba(140,20,160,.5);
+  position:relative;overflow:hidden;
+}
+.zodiac-header::before,.zodiac-header::after{
+  content:'';position:absolute;top:0;bottom:0;width:80px;pointer-events:none;
+}
+.zodiac-header::before{left:0;background:linear-gradient(90deg,rgba(20,5,30,.9),transparent)}
+.zodiac-header::after{right:0;background:linear-gradient(-90deg,rgba(20,5,30,.9),transparent)}
+.zodiac-ornament{
+  font-size:20px;color:rgba(180,60,180,.7);text-shadow:0 0 8px rgba(180,30,180,.6);
+  position:absolute;top:50%;transform:translateY(-50%);
+}
+.zodiac-header .zodiac-ornament:first-child{left:20px}
+.zodiac-header .zodiac-ornament:last-child{right:20px}
+.zodiac-title{
+  font-size:20px;font-weight:bold;letter-spacing:3px;color:#e8b8ff;
+  text-shadow:0 0 10px rgba(180,30,200,.8),0 0 20px rgba(140,20,160,.6),0 0 30px rgba(100,10,120,.4);
+  animation:zodiacTitleShimmer 2.5s ease-in-out infinite,zodiacTitleFloat 4s ease-in-out infinite;
+}
+.zodiac-desc{
+  font-size:11px;color:rgba(200,160,220,.7);letter-spacing:1px;margin-top:2px;
+}
+
+/* Boss 单位卡：黑暗强大 */
+.battle-unit.zodiac-boss{
+  background:
+    radial-gradient(circle at 50% 30%, rgba(140,20,180,.25) 0%, transparent 60%),
+    linear-gradient(160deg,#1a0524 0%,#2a0a3a 50%,#15031f 100%) !important;
+  border:2px solid rgba(180,30,200,.7) !important;
+  box-shadow:
+    0 0 20px rgba(140,20,160,.5),
+    0 0 40px rgba(100,10,140,.3),
+    inset 0 0 15px rgba(80,0,100,.4) !important;
+  animation:zodiacBorderPulse 3s ease-in-out infinite;
+  position:relative;overflow:visible;min-width:130px !important;
+}
+.battle-unit.zodiac-boss::before{
+  content:'';position:absolute;top:50%;left:50%;width:150%;height:150%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle,rgba(180,30,200,.15) 0%,transparent 60%);
+  pointer-events:none;animation:zodiacAuraPulse 4s ease-in-out infinite;
+}
+.battle-unit.zodiac-boss .unit-name{
+  color:#ffb8f5 !important;font-weight:bold;
+  text-shadow:0 0 8px rgba(220,40,200,.8),0 0 14px rgba(180,20,180,.6) !important;
+  letter-spacing:1px;
+}
+.battle-unit.zodiac-boss .unit-avatar{
+  background:radial-gradient(circle at 50% 50%, rgba(200,40,220,.4) 0%, #1a0524 70%) !important;
+  box-shadow:0 0 15px rgba(180,30,200,.7),inset 0 0 10px rgba(120,20,140,.5) !important;
+  animation:zodiacBossBreath 3s ease-in-out infinite;
+}
+.battle-unit.zodiac-boss .unit-level{
+  color:#ffd700 !important;background:rgba(80,0,100,.7) !important;border:1px solid rgba(200,100,220,.6) !important;
+  text-shadow:0 0 6px rgba(255,215,0,.8) !important;
+}
+
+/* Boss 光环元素 */
+.zodiac-aura{
+  position:absolute;top:50%;left:50%;width:120px;height:120px;pointer-events:none;z-index:0;
+  background:
+    conic-gradient(from 0deg, transparent 0deg, rgba(180,30,200,.35) 60deg, transparent 120deg,
+      rgba(220,40,180,.25) 180deg, transparent 240deg, rgba(150,20,180,.35) 300deg, transparent 360deg);
+  border-radius:50%;filter:blur(4px);
+  animation:zodiacAuraRotate 8s linear infinite;
+  opacity:.5;
+}
+.zodiac-flare{
+  position:absolute;top:30%;left:50%;width:60px;height:60px;pointer-events:none;z-index:0;
+  background:radial-gradient(circle,rgba(255,220,255,.4) 0%,transparent 70%);
+  animation:zodiacFlare 5s ease-in-out infinite;
+  border-radius:50%;
+}
+.zodiac-boss-title{
+  color:#ff7fd0;margin-right:4px;font-size:12px;
+  text-shadow:0 0 8px rgba(255,80,200,.8);
+}
+
+/* 随从：较弱但也有黑暗风格 */
+.battle-unit.zodiac-minion{
+  background:
+    linear-gradient(160deg,#140a1e 0%,#1a0f28 100%) !important;
+  border:1px solid rgba(120,20,140,.45) !important;
+  box-shadow:0 0 10px rgba(80,10,100,.3),inset 0 0 8px rgba(60,5,80,.4) !important;
+  position:relative;overflow:visible;
+}
+.battle-unit.zodiac-minion .unit-avatar{
+  background:radial-gradient(circle at 50% 50%, rgba(120,30,140,.3) 0%, #120720 70%) !important;
+  box-shadow:0 0 8px rgba(120,20,140,.4) !important;
+}
+.battle-unit.zodiac-minion .unit-name{
+  color:#d8a8f5 !important;
+}
+
+/* Boss 行动时额外的爆发效果 */
+.battle-unit.zodiac-boss.acting{
+  background:
+    radial-gradient(circle at 50% 30%, rgba(220,40,200,.45) 0%, transparent 60%),
+    linear-gradient(160deg,#2a0a3a 0%,#3a0f5a 50%,#200730 100%) !important;
+  border-color:#ff5fd0 !important;
+  box-shadow:
+    0 0 30px rgba(255,80,220,.8),
+    0 0 60px rgba(220,40,180,.5),
+    inset 0 0 25px rgba(140,20,160,.6) !important;
+}
+.battle-unit.zodiac-boss.acting .unit-avatar{
+  background:radial-gradient(circle at 50% 50%, rgba(255,100,255,.5) 0%, #2a0a3a 70%) !important;
+  box-shadow:0 0 25px rgba(255,100,255,.9),inset 0 0 15px rgba(200,50,200,.6) !important;
+}
+
+/* Boss 受击闪光 */
+.battle-unit.zodiac-boss.hit{
+  animation:hitShake .3s ease,zodiacBorderPulse 3s ease-in-out infinite !important;
+}
+
+/* Boss 死亡效果（更震撼） */
+.battle-unit.zodiac-boss.dying{
+  animation:deathFade 1s ease forwards,zodiacBorderPulse 3s ease-in-out infinite !important;
+}
+
+/* Boss 暴击额外效果 */
+.battle-unit.zodiac-boss .unit-bar-fill.hp{
+  background:linear-gradient(90deg,#ff3377,#ff66cc) !important;
+  box-shadow:0 0 8px rgba(255,100,200,.7) !important;
+}
+
 </style>
 </head>
 <body>
@@ -4399,6 +4576,43 @@ const STAGE_CONFIG = {
   skillCount: function(cycle, posInCycle, isBoss) {
     if (isBoss) return 4;
     return Math.min(4, 2 + Math.floor(cycle / 2) + Math.floor(posInCycle / 10));
+  },
+  // 装备解锁阶段: 返回装备可用品质上限的 quality 数组
+  equipTiers: function(stageId) {
+    if (stageId < 11) return null;
+    if (stageId < 21) return ['common','rare'];
+    if (stageId < 41) return ['common','rare','epic'];
+    if (stageId < 61) return ['rare','epic','legendary'];
+    if (stageId < 81) return ['epic','legendary','mythic'];
+    return ['legendary','mythic'];
+  },
+  // 装备数量: 随关卡增加
+  equipCount: function(stageId) {
+    if (stageId < 11) return 0;
+    if (stageId < 21) return 1;
+    if (stageId < 41) return 2;
+    return 3;
+  },
+  // 天赋总点数: 随关卡增加
+  talentPoints: function(stageId) {
+    if (stageId < 21) return 0;
+    if (stageId < 41) return Math.min(3, Math.floor((stageId - 20) / 7) + 1);
+    if (stageId < 61) return Math.min(8, Math.floor((stageId - 40) / 4) + 3);
+    if (stageId < 81) return Math.min(15, Math.floor((stageId - 60) / 3) + 8);
+    return Math.min(22, stageId - 66);
+  },
+  // 羁绊是否启用
+  bondsEnabled: function(stageId) {
+    return stageId >= 40;
+  },
+  // 敌人属性随关卡的乘算倍率（在等级+品质+动态难度之外的额外增幅）
+  // 前期平缓、中期线性、后期超线性增长，弥补 calcStat 对数曲线的衰减
+  enemyStatMult: function(stageId) {
+    if (stageId <= 1) return 1.0;
+    // 1.0 起，每关 +1.5% 的线性基础 + (stageId/100)^1.35 的幂次增长
+    var linear = 1.0 + (stageId - 1) * 0.015;
+    var power = 1.0 + Math.pow(stageId / 100.0, 1.35);
+    return Math.max(1.0, (linear + power - 1.0));
   }
 };
 
@@ -4542,6 +4756,29 @@ function generateStage(id){
     }
   }
 
+  // 关卡属性倍率：基于关卡id的线性+幂次增幅（弥补等级对数曲线的衰减）
+  var statMult = STAGE_CONFIG.enemyStatMult(id);
+  if (statMult > 1.001) {
+    for (var emi = 0; emi < enemies.length; emi++) {
+      var enemyUnit = enemies[emi];
+      enemyUnit.maxHP = Math.floor(enemyUnit.maxHP * statMult);
+      enemyUnit.atk = Math.floor(enemyUnit.atk * statMult);
+      enemyUnit.def = Math.floor(enemyUnit.def * statMult);
+      enemyUnit.spd = Math.floor(enemyUnit.spd * statMult);
+      enemyUnit.maxMP = Math.floor((enemyUnit.maxMP || 0) * statMult);
+      enemyUnit.hp = enemyUnit.maxHP;
+      enemyUnit.mp = enemyUnit.maxMP;
+    }
+  }
+
+  // 为每个敌人附加装备与天赋（随关卡递增）
+  for (var ei = 0; ei < enemies.length; ei++) {
+    var enem = enemies[ei];
+    enem._equipment = buildEnemyEquipment(enem.role, enem.quality, id);
+    enem._talents = buildEnemyTalents(enem.role, id);
+    enem._bondsEnabled = STAGE_CONFIG.bondsEnabled(id);
+  }
+
   // 关卡特性
   var modifiers=getStageModifiers(id,posInCycle);
   if(modifiers.length>0){
@@ -4571,6 +4808,84 @@ function pickRandomSkills(role,count){
   var result=[];
   var shuffled=pool.slice().sort(function(){return Math.random()-0.5});
   for(var i=0;i<Math.min(count,shuffled.length);i++)result.push(shuffled[i]);
+  return result;
+}
+
+// ==================== 敌人装备生成 ====================
+// 按角色建议的装备槽位顺序
+var ENEMY_EQUIP_SLOT_PRIORITY = {
+  warrior:   ['weapon','armor','accessory'],
+  guardian: ['armor','weapon','accessory'],
+  mage:    ['weapon','armor','accessory'],
+  healer:  ['weapon','armor','accessory'],
+  assassin:['weapon','armor','accessory'],
+  ranger:  ['weapon','accessory','armor'],
+  warlock: ['weapon','armor','accessory'],
+  paladin: ['armor','weapon','accessory']
+};
+
+// 为敌人按关卡生成装备列表，返回 [{id,type,stats,quality,icon} 的数组
+function buildEnemyEquipment(role, quality, stageId){
+  if (!stageId) stageId = 1;
+  var tiers = STAGE_CONFIG.equipTiers(stageId);
+  var count = STAGE_CONFIG.equipCount(stageId);
+  if (!tiers || count <= 0) return [];
+  var priority = ENEMY_EQUIP_SLOT_PRIORITY[role] || ENEMY_EQUIP_SLOT_PRIORITY.warrior;
+  var result = [];
+  var usedTypes = {};
+  for (var i = 0; i < count && i < priority.length; i++) {
+    var slotType = priority[i];
+    if (usedTypes[slotType]) continue;
+    // 从 EQUIP_TEMPLATES 中选择匹配 (id 中选择匹配 type 中选择匹配 type 和 quality 的装备
+    var candidates = EQUIP_TEMPLATES.filter(function(e){
+      return e.type === slotType && tiers.indexOf(e.quality) >= 0;
+    });
+    if (candidates.length === 0) {
+      // fallback: 任意 quality
+      candidates = EQUIP_TEMPLATES.filter(function(e){return e.type === slotType;});
+    }
+    if (candidates.length === 0) continue;
+    var pick = candidates[Math.floor(Math.random() * candidates.length)];
+    result.push(pick);
+    usedTypes[slotType] = true;
+  }
+  return result;
+}
+
+// ==================== 敌人才赋生成 ====================
+// 按关卡数生成 talent 对象 {talentId: points}
+function buildEnemyTalents(role, stageId){
+  var points = STAGE_CONFIG.talentPoints(stageId);
+  if (!points) return {};
+  var tree = TALENT_TREES[role];
+  if (!tree) return {};
+  var result = {};
+  // 扁平化所有分支的 talent，按分支顺序依次分配点数
+  var allTalents = [];
+  for (var branchId in tree.branches) {
+    if (tree.branches.hasOwnProperty(branchId)) {
+      var branch = tree.branches[branchId];
+      if (branch && branch.talents) {
+        for (var i = 0; i < branch.talents.length; i++) {
+          allTalents.push(branch.talents[i]);
+        }
+      }
+    }
+  }
+  // 轮询分配点数，优先给前面的（基础分支）talent
+  var idx = 0;
+  while (points > 0 && allTalents.length > 0) {
+    var t = allTalents[idx % allTalents.length];
+    var cur = result[t.id] || 0;
+    var max = t.maxPoints ? t.maxPoints : 3;
+    if (cur < max) {
+      result[t.id] = cur + 1;
+      points--;
+    }
+    idx++;
+    // 避免死循环
+    if (idx > 200) break;
+  }
   return result;
 }
 
@@ -9947,6 +10262,9 @@ function buildZodiacEnemyUnit(enemyDef, bossIndex, isBoss){
       if(mod && mod.apply){ mod.apply([unit]); }
     });
   }
+  // ===== 黑暗标识：供渲染时识别为生肖 Boss / 随从
+  if(isBoss){ unit._isZodiacBoss = true; } else { unit._isZodiacMinion = true; }
+  unit._zodiacBossIndex = bossIndex;
   return unit;
 }
 
@@ -10005,8 +10323,19 @@ function startZodiacBoss(bossIndex){
   runBattle(fakeStage);
 }
 
-function closeZodiacBattle(){ G_battleRunning=false; G_battlePaused=false; if(typeof hideBattlePanel==='function') hideBattlePanel(); switchTab('zodiac'); }
-function retryZodiac(bossIndex){ G_battleRunning=false; G_battlePaused=false; startZodiacBoss(bossIndex); }
+function closeZodiacBattle(){
+  G_battleRunning=false; G_battlePaused=false;
+  var bp=document.getElementById('battle-panel'); if(bp) bp.classList.remove('zodiac-panel');
+  var bs=document.getElementById('battle-scene'); if(bs) bs.classList.remove('zodiac-scene');
+  if(typeof hideBattlePanel==='function') hideBattlePanel();
+  switchTab('zodiac');
+}
+function retryZodiac(bossIndex){
+  G_battleRunning=false; G_battlePaused=false;
+  var bp=document.getElementById('battle-panel'); if(bp) bp.classList.remove('zodiac-panel');
+  var bs=document.getElementById('battle-scene'); if(bs) bs.classList.remove('zodiac-scene');
+  startZodiacBoss(bossIndex);
+}
 
 // 生肖试炼页渲染
 function renderZodiac(el){
@@ -10103,6 +10432,24 @@ async function runBattle(stageOrId){
           maxMP:calcStat(ROLES[e.role]?ROLES[e.role].baseMP:40,QUALITY_MULT[e.quality]||1,e.level),
           hp:0,mp:0,equipment:{weapon:null,armor:null,accessory:null}};
       fakeHero.hp=fakeHero.maxHP;fakeHero.mp=fakeHero.maxMP;
+      // ===== 装备加成：把装备 stats 累加到 fakeHero 的基础属性上
+      if(e._equipment && e._equipment.length>0){
+        for(var qq=0;qq<e._equipment.length;qq++){
+          var eqp=e._equipment[qq];
+          if(!eqp || !eqp.stats) continue;
+          var stats=eqp.stats;
+          if(stats.hp)fakeHero.maxHP+=stats.hp;
+          if(stats.atk)fakeHero.atk+=stats.atk;
+          if(stats.def)fakeHero.def+=stats.def;
+          if(stats.spd)fakeHero.spd+=stats.spd;
+          if(stats.mp)fakeHero.maxMP+=stats.mp;
+        }
+        fakeHero.hp=fakeHero.maxHP;fakeHero.mp=fakeHero.maxMP;
+      }
+      // ===== 天赋：把生成的 talents 对象挂到 fakeHero 上，createBattleUnit 会调用 getTalentEffects 读取
+      if(e._talents && Object.keys(e._talents).length>0){
+        fakeHero.talents=e._talents;
+      }
       var unit=createBattleUnit(fakeHero,true);
       if(e._physResist)unit._physResist=e._physResist;
       if(e._magicResist)unit._magicResist=e._magicResist;
@@ -10115,8 +10462,44 @@ async function runBattle(stageOrId){
       if(e._dotImmune)unit._dotImmune=e._dotImmune;
       if(e._counterPct)unit._counterPct=e._counterPct;
       if(e.shield>0)unit.shield=e.shield;
+      unit._enemyBondsEnabled=!!e._bondsEnabled;
       return unit;
     });
+    // ===== 普通关卡：若敌人启用了羁绊（通关 40 关后），检测并应用敌方团队羁绊
+    var anyBonds = enemyUnits.some(function(u){return u._enemyBondsEnabled;});
+    if(anyBonds){
+      var enemyHeroes = enemyUnits.map(function(u){return u.hero;});
+      var enemyActiveBonds = detectActiveBonds(enemyHeroes);
+      if(enemyActiveBonds && enemyActiveBonds.length>0){
+        // 敌方羁绊也使用 applyBondEffects 的团队加成逻辑
+        applyBondEffects(enemyUnits, enemyActiveBonds);
+      }
+      // 对敌方也做 team 天赋聚合（与生肖战一致）
+      (function aggregateEnemyTalents(units){
+        var dmg=0, dmgReduce=0, crit=0;
+        units.forEach(function(u){
+          if(u.talentEffects){
+            if(u.talentEffects.teamDamage) dmg+=u.talentEffects.teamDamage;
+            if(u.talentEffects.teamDamageReduce) dmgReduce+=u.talentEffects.teamDamageReduce;
+            if(u.talentEffects.teamCrit) crit+=u.talentEffects.teamCrit;
+          }
+        });
+        units.forEach(function(u){
+          if(dmg>0) u._teamDamageBonus=dmg;
+          if(dmgReduce>0) u._teamDamageReduceBonus=dmgReduce;
+          if(crit>0) u._teamCritBonus=crit;
+        });
+        units.forEach(function(u){
+          if(u.talentEffects && u.talentEffects.battleStartBuffs){
+            u.talentEffects.battleStartBuffs.forEach(function(bf){
+              units.forEach(function(ally){
+                if(ally.alive) ally.buffs.push({stat:bf.stat,mult:1+(bf.value||0),duration:bf.duration,name:'战吼'});
+              });
+            });
+          }
+        });
+      })(enemyUnits);
+    }
   }
   // 生肖战：对敌方单位也进行 team 天赋聚合（与玩家侧处理一致）
   if(isZodiac){
@@ -10191,6 +10574,9 @@ async function runBattle(stageOrId){
   }
   var battlePanel=document.getElementById('battle-panel');
   if(!battlePanel){showToast('战斗面板加载失败');G_battleRunning=false;return;}
+  // 重置生肖战斗视觉样式（避免从上一场战斗遗留）
+  battlePanel.classList.remove('zodiac-panel');
+  var bs2=document.getElementById('battle-scene'); if(bs2) bs2.classList.remove('zodiac-scene');
   if(!G_autoBattle){
     battlePanel.style.display='';
     document.getElementById('content').style.display='none';
@@ -10217,8 +10603,16 @@ async function runBattle(stageOrId){
   var stageDesc = stage ? (stage.desc || '') : '';
 
   if(isZodiac){
-    battleInfoEl.innerHTML='<div style="font-size:18px;font-weight:bold;color:#ffd700;margin-bottom:4px">'
-      +stageName+'</div><div style="font-size:12px;color:#bbb">'+stageDesc+'</div>';
+    battleInfoEl.innerHTML='<div class="zodiac-header">'
+      +'<div class="zodiac-ornament">☠</div>'
+      +'<div class="zodiac-title">'+stageName+'</div>'
+      +'<div class="zodiac-desc">'+stageDesc+'</div>'
+      +'<div class="zodiac-ornament">☠</div></div>';
+    // 战斗场景叠加黑暗迷雾效果
+    if(battleScene){
+      battleScene.classList.add('zodiac-scene');
+      battlePanel.classList.add('zodiac-panel');
+    }
   }else{
     battleInfoEl.innerHTML=`<div class="log-title">⚔️ 第${stageId}章：${stageName}</div><div class="text-dim text-sm">${stageDesc}</div>`;
   }
@@ -10295,13 +10689,27 @@ async function runBattle(stageOrId){
     var sideClass = isEnemy ? 'enemy-unit' : 'ally-unit';
     var heroQuality = u.hero ? (u.hero.quality || 'common') : 'common';
     var heroLevel = u.hero ? (u.hero.level || 1) : 1;
-    return '<div class="battle-unit ' + sideClass + ' ' + (u.alive ? '' : 'dead') + '" data-battle-uid="' + (u.battleId || (u.name + '-' + u.icon)) + '">'
+    // ===== 生肖 Boss / 随从 黑暗风格
+    var isZBoss = u._isZodiacBoss ? true : false;
+    var isZMinion = u._isZodiacMinion ? true : false;
+    var zClass = '';
+    var zAura = '';
+    var zNameDecor = '';
+    if(isZBoss){
+      zClass = ' zodiac-boss';
+      zAura = '<div class="zodiac-aura"></div><div class="zodiac-flare"></div>';
+      zNameDecor = '<span class="zodiac-boss-title">☠</span> ';
+    } else if(isZMinion){
+      zClass = ' zodiac-minion';
+    }
+    return '<div class="battle-unit ' + sideClass + zClass + ' ' + (u.alive ? '' : 'dead') + '" data-battle-uid="' + (u.battleId || (u.name + '-' + u.icon)) + '">'
+      + zAura
       + '<div class="unit-avatar-wrap">'
       + '<div class="unit-role-icon">' + roleIcon + '</div>'
       + '<div class="unit-avatar quality-' + heroQuality + '">' + u.icon + '</div>'
       + '<div class="unit-level">' + heroLevel + '</div>'
       + '</div>'
-      + '<div class="unit-name">' + u.name + '</div>'
+      + '<div class="unit-name">' + zNameDecor + u.name + '</div>'
       + '<div class="unit-bars">'
       + '<div class="unit-bar"><span class="unit-bar-label">HP</span><div class="unit-bar-track"><div class="unit-bar-fill hp ' + (isLow ? 'low' : '') + '" style="width:' + hpPct + '%"></div></div><span class="unit-bar-val">' + Math.floor(Math.max(0, hp)) + '/' + Math.floor(maxHP) + '</span></div>'
       + '<div class="unit-bar"><span class="unit-bar-label">MP</span><div class="unit-bar-track"><div class="unit-bar-fill mp" style="width:' + mpPct + '%"></div></div><span class="unit-bar-val">' + Math.floor(Math.max(0, mp)) + '/' + Math.floor(maxMP) + '</span></div>'
