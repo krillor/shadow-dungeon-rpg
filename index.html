@@ -4170,113 +4170,149 @@ var AREA_THEMES=[
 
 // ==================== 12 生肖 Boss 系统 ====================
 const ZODIAC_BOSSES = [
-  { id:'rat',      name:'生肖·子鼠', icon:'🐭', role:'assassin', quality:'mythic',
-    unlockStage: 5,
-    desc:'机敏迅捷，攻击速度极快，擅长多段连击',
-    bias:{spd:2.2, atk:1.5, hpMax:0.8, def:0.6},
-    skills:['backstab','poison_blade'],
-    bonusSkills:null,
-    modifiers:['rage','speed_boost'],
-    phase:null,
+  { id:'rat',   name:'生肖·子鼠', icon:'🐭', unlockStage:5,
+    desc:'机敏迅捷的鼠群军团，以速度和毒刃收割敌人',
+    boss:{name:'鼠王',icon:'👑',role:'assassin',quality:'mythic',
+         skills:['backstab','poison_blade'],
+         bias:{hpMax:1.2, atk:2.0, def:0.7, spd:2.3},
+         talentConfig:{critChance:5, critDmg:3, hpRegen:2, counterEnhance:2, damageAtkStack:2},
+         modifiers:['rage','speed_boost']},
+    minions:[
+      {name:'狂鼠',icon:'🐀',role:'warrior',quality:'epic',skills:['cleave'],bias:{hpMax:1.0,atk:1.2,def:0.9,spd:1.5},talentConfig:{atk:3,critChance:3},modifiers:['rage']},
+      {name:'暗影鼠',icon:'🐁',role:'assassin',quality:'epic',skills:['backstab'],bias:{hpMax:0.8,atk:1.5,def:0.6,spd:1.8},talentConfig:{critChance:4,critDmg:2},modifiers:['speed_boost']},
+    ]
   },
-  { id:'ox',       name:'生肖·丑牛', icon:'🐂', role:'guardian', quality:'mythic',
-    unlockStage: 10,
-    desc:'防御高，生命厚实，擅长反伤铁壁',
-    bias:{hpMax:2.5, def:2.0, atk:0.8, spd:0.7},
-    skills:['shield_bash','iron_wall','taunt'],
-    bonusSkills:null,
-    modifiers:['high_def','counter'],
-    phase:null,
+  { id:'ox',    name:'生肖·丑牛', icon:'🐂', unlockStage:10,
+    desc:'厚重的牛群，以铁壁与反伤构成不死防线',
+    boss:{name:'牛王',icon:'🐃',role:'guardian',quality:'mythic',
+         skills:['shield_bash','iron_wall','taunt'],
+         bias:{hpMax:2.8, def:2.2, atk:0.8, spd:0.7},
+         talentConfig:{hpMax:5, def:5, damageReduce:3, deathShield:1, counter:2, damageCap:1},
+         modifiers:['high_def','counter']},
+    minions:[
+      {name:'铁牛',icon:'🐂',role:'guardian',quality:'epic',skills:['shield_bash','iron_wall'],bias:{hpMax:2.0,def:1.8,atk:0.7,spd:0.8},talentConfig:{def:4,damageReduce:2},modifiers:['high_def']},
+      {name:'壮牛',icon:'🐄',role:'warrior',quality:'epic',skills:['cleave'],bias:{hpMax:1.5,def:1.2,atk:1.0,spd:0.9},talentConfig:{hpMax:3,atk:2},modifiers:['rage']},
+    ]
   },
-  { id:'tiger',    name:'生肖·寅虎', icon:'🐅', role:'warrior', quality:'mythic',
-    unlockStage: 15,
-    desc:'高攻高暴击，流血撕裂',
-    bias:{atk:1.8, hpMax:1.2, spd:1.2, def:1.0},
-    skills:['cleave','execute','berserker'],
-    bonusSkills:null,
-    modifiers:['rage'],
-    phase:null,
+  { id:'tiger', name:'生肖·寅虎', icon:'🐅', unlockStage:15,
+    desc:'狂暴虎群，高攻高暴击，流血撕裂敌人',
+    boss:{name:'虎王',icon:'🐯',role:'warrior',quality:'mythic',
+         skills:['cleave','execute','berserker'],
+         bias:{atk:1.9, hpMax:1.3, spd:1.3, def:0.9},
+         talentConfig:{atk:5, critChance:5, critDmg:3, damageAtkStack:3, defPen:2},
+         modifiers:['rage']},
+    minions:[
+      {name:'狂暴虎',icon:'🐅',role:'warrior',quality:'epic',skills:['cleave','berserker'],bias:{atk:1.5,hpMax:1.2,spd:1.2,def:0.8},talentConfig:{atk:3,critChance:3},modifiers:['rage']},
+      {name:'迅捷虎',icon:'🐆',role:'assassin',quality:'epic',skills:['backstab'],bias:{atk:1.3,spd:1.6,hpMax:0.9,def:0.6},talentConfig:{critChance:4,critDmg:2},modifiers:['speed_boost']},
+    ]
   },
-  { id:'rabbit',   name:'生肖·卯兔', icon:'🐇', role:'ranger', quality:'mythic',
-    unlockStage: 20,
-    desc:'速度极快，控制与爆发兼备',
-    bias:{spd:2.5, atk:1.2, def:0.5, hpMax:0.7},
-    skills:['aimed_shot','poison_arrow'],
-    bonusSkills:null,
-    modifiers:['speed_boost','high_dodge'],
-    phase:null,
+  { id:'rabbit',name:'生肖·卯兔', icon:'🐇', unlockStage:20,
+    desc:'迅捷兔群，控制与爆发兼备',
+    boss:{name:'兔王',icon:'🐰',role:'ranger',quality:'mythic',
+         skills:['aimed_shot','poison_arrow'],
+         bias:{spd:2.6, atk:1.3, def:0.5, hpMax:0.8},
+         talentConfig:{critChance:5, defPen:3, cdReduce:3, ccReduce:2, counterEnhance:2},
+         modifiers:['speed_boost','high_dodge']},
+    minions:[
+      {name:'疾兔',icon:'🐇',role:'ranger',quality:'epic',skills:['aimed_shot'],bias:{spd:1.8,atk:1.2,def:0.6,hpMax:0.8},talentConfig:{critChance:3,spd:2},modifiers:['speed_boost']},
+      {name:'狡兔',icon:'🐰',role:'assassin',quality:'epic',skills:['backstab'],bias:{spd:2.0,atk:1.2,def:0.5,hpMax:0.7},talentConfig:{critChance:4},modifiers:['high_dodge']},
+    ]
   },
-  { id:'dragon',   name:'生肖·辰龙', icon:'🐉', role:'mage', quality:'mythic',
-    unlockStage: 25,
-    desc:'全能属性，群攻魔法',
-    bias:{atk:1.5, hpMax:1.5, def:1.2, spd:1.2},
-    skills:['fireball','blizzard','thunder'],
-    bonusSkills:null,
-    modifiers:['magic_resist'],
-    phase:null,
+  { id:'dragon',name:'生肖·辰龙', icon:'🐉', unlockStage:25,
+    desc:'龙族军团，以群攻魔法与烈焰焚天',
+    boss:{name:'龙王',icon:'🐲',role:'mage',quality:'mythic',
+         skills:['fireball','blizzard','thunder'],
+         bias:{atk:1.6, hpMax:1.6, def:1.3, spd:1.3},
+         talentConfig:{atk:5, critChance:4, defPen:3, teamDamage:2, damageAtkStack:2},
+         modifiers:['magic_resist']},
+    minions:[
+      {name:'火龙',icon:'🐉',role:'mage',quality:'epic',skills:['fireball'],bias:{atk:1.4,hpMax:1.2,def:1.0,spd:1.2},talentConfig:{atk:3,critChance:3},modifiers:['magic_resist']},
+      {name:'冰龙',icon:'🐲',role:'mage',quality:'epic',skills:['blizzard'],bias:{atk:1.3,hpMax:1.2,def:1.1,spd:1.1},talentConfig:{atk:2,def:2},modifiers:['magic_resist']},
+    ]
   },
-  { id:'snake',    name:'生肖·巳蛇', icon:'🐍', role:'warlock', quality:'mythic',
-    unlockStage: 30,
-    desc:'DOT 大师，剧毒侵蚀',
-    bias:{atk:1.3, hpMax:1.2, def:0.8, spd:1.1},
-    skills:['soul_drain','curse','dark_pact'],
-    bonusSkills:null,
-    modifiers:['dot_immune'],
-    phase:null,
+  { id:'snake', name:'生肖·巳蛇', icon:'🐍', unlockStage:30,
+    desc:'剧毒蛇群，DOT 大师，持续侵蚀敌人',
+    boss:{name:'蛇王',icon:'🐍',role:'warlock',quality:'mythic',
+         skills:['soul_drain','curse','dark_pact'],
+         bias:{atk:1.4, hpMax:1.3, def:0.9, spd:1.2},
+         talentConfig:{atk:4, damageReduce:2, hpRegen:3, defPen:2, deathShield:1, ccReduce:2},
+         modifiers:['dot_immune']},
+    minions:[
+      {name:'毒蛇',icon:'🐍',role:'warlock',quality:'epic',skills:['soul_drain','curse'],bias:{atk:1.2,hpMax:1.1,def:0.8,spd:1.1},talentConfig:{atk:2,defPen:2},modifiers:['dot_immune']},
+      {name:'青蛇',icon:'🐉',role:'healer',quality:'epic',skills:['heal'],bias:{hpMax:1.2,def:1.2,atk:0.8,spd:1.0},talentConfig:{hpMax:3,hpRegen:2},modifiers:['regen']},
+    ]
   },
-  { id:'horse',    name:'生肖·午马', icon:'🐎', role:'warrior', quality:'mythic',
-    unlockStage: 35,
-    desc:'冲锋机制，高暴击输出',
-    bias:{spd:1.8, atk:1.4, hpMax:1.0, def:0.8},
-    skills:['ground_slam','cleave','execute'],
-    bonusSkills:null,
-    modifiers:['rage','speed_boost'],
-    phase:null,
+  { id:'horse', name:'生肖·午马', icon:'🐎', unlockStage:35,
+    desc:'冲锋的马群，高暴击高速度',
+    boss:{name:'马王',icon:'🐴',role:'warrior',quality:'mythic',
+         skills:['ground_slam','cleave','execute'],
+         bias:{spd:1.9, atk:1.5, hpMax:1.0, def:0.8},
+         talentConfig:{atk:4, critChance:5, critDmg:3, cdReduce:2, damageAtkStack:2},
+         modifiers:['rage','speed_boost']},
+    minions:[
+      {name:'骏马',icon:'🐎',role:'warrior',quality:'epic',skills:['cleave','execute'],bias:{atk:1.3,spd:1.5,hpMax:1.0,def:0.8},talentConfig:{atk:3,critChance:3},modifiers:['rage']},
+      {name:'铁骑',icon:'🏇',role:'ranger',quality:'epic',skills:['aimed_shot'],bias:{atk:1.2,spd:1.6,hpMax:0.9,def:0.7},talentConfig:{critChance:4,critDmg:2},modifiers:['speed_boost']},
+    ]
   },
-  { id:'goat',     name:'生肖·未羊', icon:'🐐', role:'healer', quality:'mythic',
-    unlockStage: 40,
-    desc:'治疗反伤，高防御续航',
-    bias:{hpMax:2.0, def:1.5, atk:0.7, spd:0.8},
-    skills:['heal','group_heal','holy_light'],
-    bonusSkills:null,
-    modifiers:['high_def','regen'],
-    phase:null,
+  { id:'goat',  name:'生肖·未羊', icon:'🐐', unlockStage:40,
+    desc:'治疗反伤的羊群，高防御续航',
+    boss:{name:'羊王',icon:'🐑',role:'healer',quality:'mythic',
+         skills:['heal','group_heal','holy_light'],
+         bias:{hpMax:2.2, def:1.6, atk:0.7, spd:0.9},
+         talentConfig:{hpMax:5, def:4, hpRegen:3, damageReduce:3, shieldBoost:2, counter:2},
+         modifiers:['high_def','regen']},
+    minions:[
+      {name:'护卫羊',icon:'🐏',role:'guardian',quality:'epic',skills:['shield_bash','iron_wall'],bias:{hpMax:1.8,def:1.5,atk:0.7,spd:0.8},talentConfig:{def:3,damageReduce:2},modifiers:['high_def']},
+      {name:'治愈羊',icon:'🐑',role:'healer',quality:'epic',skills:['heal','group_heal'],bias:{hpMax:1.5,def:1.2,atk:0.8,spd:0.9},talentConfig:{hpMax:2,hpRegen:2},modifiers:['regen']},
+    ]
   },
-  { id:'monkey',   name:'生肖·申猴', icon:'🐵', role:'assassin', quality:'mythic',
-    unlockStage: 45,
-    desc:'高闪避，连击随机技能',
-    bias:{spd:1.8, atk:1.3, hpMax:0.9, def:0.7},
-    skills:['backstab','shadow_step','poison_blade'],
-    bonusSkills:null,
-    modifiers:['high_dodge','rage'],
-    phase:null,
+  { id:'monkey',name:'生肖·申猴', icon:'🐵', unlockStage:45,
+    desc:'灵巧的猴群，高闪避连击',
+    boss:{name:'猴王',icon:'🐒',role:'assassin',quality:'mythic',
+         skills:['backstab','shadow_step','poison_blade'],
+         bias:{spd:2.0, atk:1.4, hpMax:0.9, def:0.7},
+         talentConfig:{critChance:5, defPen:3, counterEnhance:3, damageAtkStack:3, cdReduce:2},
+         modifiers:['high_dodge','rage']},
+    minions:[
+      {name:'灵巧猴',icon:'🐵',role:'assassin',quality:'epic',skills:['backstab','shadow_step'],bias:{spd:1.8,atk:1.3,hpMax:0.8,def:0.6},talentConfig:{critChance:4,critDmg:2},modifiers:['high_dodge']},
+      {name:'狂暴猴',icon:'🐒',role:'warrior',quality:'epic',skills:['cleave'],bias:{atk:1.3,spd:1.5,hpMax:1.0,def:0.7},talentConfig:{atk:3,critChance:3},modifiers:['rage']},
+    ]
   },
-  { id:'rooster',  name:'生肖·酉鸡', icon:'🐓', role:'paladin', quality:'mythic',
-    unlockStage: 50,
-    desc:'先手暴击，神圣护盾',
-    bias:{atk:1.4, spd:1.6, hpMax:1.0, def:0.9},
-    skills:['shield_bash','divine_shield','holy_light'],
-    bonusSkills:null,
-    modifiers:['speed_boost','stun_immune'],
-    phase:null,
+  { id:'rooster',name:'生肖·酉鸡',icon:'🐓', unlockStage:50,
+    desc:'先手鸡群，暴击圣盾',
+    boss:{name:'鸡王',icon:'🐔',role:'paladin',quality:'mythic',
+         skills:['shield_bash','divine_shield','holy_light'],
+         bias:{atk:1.5, spd:1.7, hpMax:1.1, def:1.0},
+         talentConfig:{atk:4, critChance:5, deathShield:1, shieldBoost:2, cdReduce:2, ccReduce:2},
+         modifiers:['speed_boost','stun_immune']},
+    minions:[
+      {name:'战鸡',icon:'🐓',role:'paladin',quality:'epic',skills:['shield_bash','divine_shield'],bias:{atk:1.2,spd:1.5,hpMax:1.2,def:0.9},talentConfig:{atk:2,deathShield:1},modifiers:['stun_immune']},
+      {name:'怒鸡',icon:'🐣',role:'warrior',quality:'epic',skills:['cleave'],bias:{atk:1.3,spd:1.4,hpMax:1.0,def:0.8},talentConfig:{atk:3,critChance:3},modifiers:['rage']},
+    ]
   },
-  { id:'dog',      name:'生肖·戌狗', icon:'🐕', role:'guardian', quality:'mythic',
-    unlockStage: 55,
-    desc:'嘲讽反伤，坚固防线',
-    bias:{def:1.8, hpMax:1.6, atk:1.0, spd:0.9},
-    skills:['taunt','iron_wall','shield_bash'],
-    bonusSkills:null,
-    modifiers:['high_def','counter'],
-    phase:null,
+  { id:'dog',   name:'生肖·戌狗', icon:'🐕', unlockStage:55,
+    desc:'忠实的犬群，嘲讽反伤防线',
+    boss:{name:'犬王',icon:'🐶',role:'guardian',quality:'mythic',
+         skills:['taunt','iron_wall','shield_bash'],
+         bias:{def:1.9, hpMax:1.8, atk:1.0, spd:1.0},
+         talentConfig:{def:5, hpMax:4, damageReduce:3, counter:3, deathDefy:1, deathShield:1},
+         modifiers:['high_def','counter']},
+    minions:[
+      {name:'守卫犬',icon:'🐕',role:'guardian',quality:'epic',skills:['taunt','iron_wall'],bias:{def:1.6,hpMax:1.6,atk:0.8,spd:0.9},talentConfig:{def:3,counter:2},modifiers:['high_def','counter']},
+      {name:'攻击犬',icon:'🐩',role:'assassin',quality:'epic',skills:['backstab'],bias:{atk:1.3,spd:1.5,hpMax:0.9,def:0.6},talentConfig:{atk:3,critChance:3},modifiers:['rage']},
+    ]
   },
-  { id:'pig',      name:'生肖·亥猪', icon:'🐖', role:'guardian', quality:'mythic',
-    unlockStage: 60,
-    desc:'超高生命，自愈减伤',
-    bias:{hpMax:3.0, def:1.5, atk:0.8, spd:0.5},
-    skills:['shield_bash','iron_wall','fortify'],
-    bonusSkills:null,
-    modifiers:['regen','high_def'],
-    phase:null,
+  { id:'pig',   name:'生肖·亥猪', icon:'🐖', unlockStage:60,
+    desc:'憨厚的猪群，超高生命自愈减伤',
+    boss:{name:'猪王',icon:'🐗',role:'guardian',quality:'mythic',
+         skills:['shield_bash','iron_wall','fortify'],
+         bias:{hpMax:3.2, def:1.6, atk:0.8, spd:0.5},
+         talentConfig:{hpMax:6, def:4, hpRegen:3, damageReduce:3, deathDefy:1, deathShield:1, damageCap:1},
+         modifiers:['regen','high_def']},
+    minions:[
+      {name:'铁甲猪',icon:'🐖',role:'guardian',quality:'epic',skills:['shield_bash','iron_wall'],bias:{hpMax:2.5,def:1.4,atk:0.7,spd:0.6},talentConfig:{hpMax:4,def:3,damageReduce:2},modifiers:['high_def','regen']},
+      {name:'壮猪',icon:'🐷',role:'warrior',quality:'epic',skills:['cleave'],bias:{hpMax:1.8,atk:1.0,def:1.0,spd:0.7},talentConfig:{hpMax:3,atk:2},modifiers:['rage']},
+    ]
   },
 ];
 
@@ -9123,8 +9159,8 @@ function calcDamage(attacker,defender,skill=null,skillIdx=-1){
   if(G_cheats.enabled) critRate+=0.1;
   // 天赋：critChance 加成
   if(atkTe.critChance) critRate+=atkTe.critChance;
-  // 天赋：teamCrit 全队暴击率加成（只对我方单位生效）
-  if(!attacker.isEnemy && attacker._teamCritBonus) critRate+=attacker._teamCritBonus;
+  // 天赋：teamCrit 全队暴击率加成
+  if(attacker._teamCritBonus) critRate+=attacker._teamCritBonus;
 
   // 刺客：暗影步 - 暴击伤害+50%
   let critDmg=attackerRole&&attackerRole.critDmg?attackerRole.critDmg:1.8;
@@ -9166,12 +9202,12 @@ function calcDamage(attacker,defender,skill=null,skillIdx=-1){
       if(hpRatioA>=teHD.threshold) dmg=Math.floor(dmg*(1+teHD.value));
     }
   }
-  // 天赋 teamDamage：全队伤害加成（仅我方）
-  if(!attacker.isEnemy && attacker._teamDamageBonus) dmg=Math.floor(dmg*(1+attacker._teamDamageBonus));
-  // 天赋 teamDamageReduce：全队伤害减免（仅我方）
-  if(!defender.isEnemy && defender._teamDamageReduceBonus) dmg=Math.floor(dmg*(1-defender._teamDamageReduceBonus));
+  // 天赋 teamDamage：全队伤害加成
+  if(attacker._teamDamageBonus) dmg=Math.floor(dmg*(1+attacker._teamDamageBonus));
+  // 天赋 teamDamageReduce：全队伤害减免
+  if(defender._teamDamageReduceBonus) dmg=Math.floor(dmg*(1-defender._teamDamageReduceBonus));
   // 天赋 allyKillBoost：队友击杀后下次攻击伤害提升（一次性消耗）
-  if(!attacker.isEnemy && attacker._allyKillBoostReady && atkTe.allyKillBoost){
+  if(attacker._allyKillBoostReady && atkTe.allyKillBoost){
     dmg=Math.floor(dmg*(1+atkTe.allyKillBoost));
     attacker._allyKillBoostReady = false;
   }
@@ -9852,45 +9888,84 @@ function getTeamAverageStats(){
   return { maxHP: Math.floor(sum.maxHP/n), atk: Math.floor(sum.atk/n), def: Math.floor(sum.def/n), spd: Math.floor(sum.spd/n) };
 }
 
-// 根据玩家属性和 Boss 索引动态构造敌方单位
-function buildZodiacBossUnit(bossIndex){
-  var boss = ZODIAC_BOSSES[bossIndex];
+// 构造单个敌方单位（从 boss 或 minion 的配置中生成）
+function buildZodiacEnemyUnit(enemyDef, bossIndex, isBoss){
   var avg = getTeamAverageStats();
-  // 难度因子：随 Boss 序号逐步提高（+20%/个），并根据玩家挑战次数逐步增加"可通过"概率
-  var diffMult = 1.5 + bossIndex * 0.3;
-  // 挑战次数越多，Boss 稍微降低，给玩家几十次通过的体验（每次 -2%，最低不低于80%）
-  var attempts = (G.zodiacChallenges[bossIndex] && G.zodiacChallenges[bossIndex].attempts) || 0;
-  var mercy = Math.max(0.8, 1.0 - Math.min(attempts, 40) * 0.02);
-  var b = boss.bias || {};
+  var diffMult = 1.3 + bossIndex * 0.25; // 基础1.3倍，每个Boss+0.25
+  var attempts = (G.zodiacChallenges && G.zodiacChallenges[bossIndex] && G.zodiacChallenges[bossIndex].attempts) || 0;
+  var mercy = Math.max(0.85, 1.0 - Math.min(attempts, 30) * 0.015);
+  var b = enemyDef.bias || {};
   var stats = {
-    maxHP: Math.floor(avg.maxHP * diffMult * (b.hpMax||1.0) * mercy),
+    maxHP: Math.floor(avg.maxHP * diffMult * (b.hpMax||1.0) * mercy * (isBoss?1.5:1.0)),
     atk:   Math.floor(avg.atk   * diffMult * (b.atk  ||1.0) * mercy),
     def:   Math.floor(avg.def   * diffMult * (b.def  ||1.0) * mercy),
     spd:   Math.floor(avg.spd   * diffMult * (b.spd  ||1.0) * mercy),
   };
-  // 构造一个 fakeHero，然后 createBattleUnit 包装
   var fakeHero = {
-    name: boss.name, icon: boss.icon, role: boss.role, quality: boss.quality,
+    name: enemyDef.name, icon: enemyDef.icon, role: enemyDef.role, quality: enemyDef.quality || 'epic',
     level: 80 + bossIndex*5,
-    skills: boss.skills,
-    bonusSkills: boss.bonusSkills || [],
+    skills: enemyDef.skills || [],
+    bonusSkills: enemyDef.bonusSkills || [],
     maxHP: stats.maxHP, hp: stats.maxHP,
     atk: stats.atk, def: stats.def, spd: stats.spd,
     maxMP: 100, mp: 100,
     equipment: {weapon:null, armor:null, accessory:null},
-    traits: [{id:'berserker'}],  // 略微增强
+    traits: enemyDef.traits || [{id:'berserker'}],
   };
   var unit = createBattleUnit(fakeHero, true);
-  // 应用修饰符（相当于 STAGE_MODIFIERS[modifier].apply(enemies)）
-  if(boss.modifiers && boss.modifiers.length>0){
-    boss.modifiers.forEach(function(mKey){
+
+  // ===== 天赋效果：从 talentConfig 手动构造 talentEffects =====
+  var tc = enemyDef.talentConfig || {};
+  var eff = {};
+  // 基础数值型：每点天赋=2%对应属性
+  var numeric = ['atk','def','hpMax','spd','maxMP','critChance','critDmg','hpRegen','killHeal',
+    'teamDamage','teamDamageReduce','teamCrit','defPen','damageReduce','damageAtkStack',
+    'counterEnhance','allyKillBoost','cdReduce','ccReduce','shieldBoost','mpRegen'];
+  numeric.forEach(function(k){
+    if(tc[k]) eff[k] = tc[k] * 0.02;
+  });
+  // deathDefy（1点=启用）
+  if(tc.deathDefy) eff.deathDefy = true;
+  // deathShield（1点=5%最大生命护盾）
+  if(tc.deathShield) eff.deathShield = Math.min(0.3, tc.deathShield * 0.05);
+  // damageCap（1点=伤害不超过最大生命20%）
+  if(tc.damageCap) eff.damageCap = Math.max(0.05, 0.25 - tc.damageCap * 0.03);
+  // counter（几率+伤害比例）
+  if(tc.counter){
+    eff.counter = { chance: Math.min(0.8, tc.counter*0.1), value: 0.5 + tc.counter*0.1 };
+  }
+  // hpThresholdAtk（生命低于30%攻击力加成）
+  if(tc.hpThresholdAtk) eff.hpThresholdAtk = [{threshold:0.3, value: tc.hpThresholdAtk*0.08}];
+  // hpAboveDamage（生命高于70%伤害加成）
+  if(tc.hpAboveDamage) eff.hpAboveDamage = [{threshold:0.7, value: tc.hpAboveDamage*0.05}];
+  unit.talentEffects = eff;
+
+  // 关卡修饰符
+  if(enemyDef.modifiers && enemyDef.modifiers.length>0){
+    enemyDef.modifiers.forEach(function(mKey){
       var mod = STAGE_MODIFIERS[mKey];
-      if(mod && mod.apply){
-        mod.apply([unit]);
-      }
+      if(mod && mod.apply){ mod.apply([unit]); }
     });
   }
   return unit;
+}
+
+// 构造整个敌方队伍（敌方数量=玩家队伍数量，Boss + 循环填充的随从）
+function buildZodiacEnemyUnits(bossIndex){
+  var boss = ZODIAC_BOSSES[bossIndex];
+  var teamCount = Math.max(1, (G.team||[]).filter(h=>h!==null).length);
+  var units = [];
+  // 领头 Boss
+  units.push(buildZodiacEnemyUnit(boss.boss, bossIndex, true));
+  // 随从：循环 minions 填充到与玩家队伍同数
+  var pool = boss.minions || [];
+  var mi = 0;
+  while(units.length < teamCount && pool.length>0){
+    var mDef = pool[mi % pool.length];
+    units.push(buildZodiacEnemyUnit(mDef, bossIndex, false));
+    mi++;
+  }
+  return units;
 }
 
 // 启动生肖 Boss 战斗
@@ -9918,44 +9993,46 @@ async function runZodiacBoss(bossIndex){
   if(G_battleRunning){return;}
   G_battleRunning = true;
   G_battlePaused = false;
-
   var boss = ZODIAC_BOSSES[bossIndex];
   var teamHeroes = (G.team||[]).filter(h=>h!==null);
-
-  // ===== 构造战斗单位 =====
-  let playerUnits = teamHeroes.map(h=>createBattleUnit(h,false));
-  let enemyUnits = [buildZodiacBossUnit(bossIndex)];
-  let allUnits=[...playerUnits,...enemyUnits];
+  var playerUnits = teamHeroes.map(h=>createBattleUnit(h,false));
+  var enemyUnits = buildZodiacEnemyUnits(bossIndex);
+  var allUnits=[...playerUnits,...enemyUnits];
   let round=0;
-  const maxRounds=80;
+  const maxRounds=100;
 
-  // ===== 天赋：team 加成 =====
-  var teamDmgBonus=0, teamDmgReduceBonus=0, teamCritBonus=0;
-  playerUnits.forEach(function(u){
-    if(u.talentEffects){
-      if(u.talentEffects.teamDamage) teamDmgBonus += u.talentEffects.teamDamage;
-      if(u.talentEffects.teamDamageReduce) teamDmgReduceBonus += u.talentEffects.teamDamageReduce;
-      if(u.talentEffects.teamCrit) teamCritBonus += u.talentEffects.teamCrit;
-    }
-  });
-  if(teamDmgBonus>0) playerUnits.forEach(function(u){ u._teamDamageBonus = teamDmgBonus; });
-  if(teamDmgReduceBonus>0) playerUnits.forEach(function(u){ u._teamDamageReduceBonus = teamDmgReduceBonus; });
-  if(teamCritBonus>0) playerUnits.forEach(function(u){ u._teamCritBonus = teamCritBonus; });
-
-  // 战斗开始 buff
-  playerUnits.forEach(function(u){
-    if(u.talentEffects && u.talentEffects.battleStartBuffs){
-      u.talentEffects.battleStartBuffs.forEach(function(bf){
-        playerUnits.forEach(function(ally){
-          if(ally.alive) ally.buffs.push({stat:bf.stat, mult:1+(bf.value||0), duration:bf.duration, name:'战吼'});
+  // ===== 战斗开始：汇总 team 天赋 =====
+  function aggregateTeamTalents(units){
+    var dmg=0, dmgReduce=0, crit=0;
+    units.forEach(function(u){
+      if(u.talentEffects){
+        if(u.talentEffects.teamDamage) dmg+=u.talentEffects.teamDamage;
+        if(u.talentEffects.teamDamageReduce) dmgReduce+=u.talentEffects.teamDamageReduce;
+        if(u.talentEffects.teamCrit) crit+=u.talentEffects.teamCrit;
+      }
+    });
+    units.forEach(function(u){
+      if(dmg>0) u._teamDamageBonus=dmg;
+      if(dmgReduce>0) u._teamDamageReduceBonus=dmgReduce;
+      if(crit>0) u._teamCritBonus=crit;
+    });
+    // battleStartBuffs
+    units.forEach(function(u){
+      if(u.talentEffects && u.talentEffects.battleStartBuffs){
+        u.talentEffects.battleStartBuffs.forEach(function(bf){
+          units.forEach(function(ally){
+            if(ally.alive) ally.buffs.push({stat:bf.stat,mult:1+(bf.value||0),duration:bf.duration,name:'战吼'});
+          });
         });
-      });
-    }
-  });
+      }
+    });
+  }
+  aggregateTeamTalents(playerUnits);
+  aggregateTeamTalents(enemyUnits);
 
-  resetBattleStats();
+  if(typeof resetBattleStats === 'function') resetBattleStats();
 
-  // ===== UI 准备：获取 DOM 元素引用 =====
+  // ===== UI 初始化 =====
   currentTab='battle';
   document.querySelectorAll('.nav-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.tab==='battle')});
   var contentEl=document.getElementById('content');
@@ -9965,107 +10042,68 @@ async function runZodiacBoss(bossIndex){
 
   var pEl=document.getElementById('player-team');
   var eEl=document.getElementById('enemy-team');
-  var roundBadgeEl=document.getElementById('battle-round-badge');
   var infoEl=document.getElementById('battle-info');
   var btnArea=document.getElementById('battle-buttons');
   var logEl=document.getElementById('battle-log');
-  _battleScene=document.getElementById('battle-scene');
-
-  if(!pEl||!eEl||!infoEl){
-    showToast('战斗元素加载失败');
-    G_battleRunning=false; return;
-  }
-
   if(btnArea) btnArea.innerHTML='';
   if(logEl) logEl.innerHTML='';
   clearUnitElCache();
 
-  // Boss 信息
-  infoEl.innerHTML = '<div style="font-size:18px;font-weight:bold;color:#ffd700;margin-bottom:4px">'
-    + boss.icon + ' ' + boss.name + '</div>'
-    + '<div style="font-size:12px;color:#bbb">' + boss.desc + '</div>';
+  if(infoEl){
+    infoEl.innerHTML = '<div style="font-size:18px;font-weight:bold;color:#ffd700;margin-bottom:4px">'
+      +boss.icon+' '+boss.name+'</div>'
+      +'<div style="font-size:12px;color:#bbb">'+boss.desc+'</div>';
+  }
 
-  // ===== 本地工具函数 =====
+  // ===== 本地渲染与日志 =====
   var _teamsRendered = false;
   function buildUnitHTMLZ(u, isEnemy){
-    var mHP = u.maxHP || 1;
-    var mMP = u.maxMP || 1;
-    var hh = u.hp || 0;
-    var mm = u.mp || 0;
-    var hpPct = Math.max(0, Math.min(100, (hh/mHP)*100));
-    var mpPct = Math.max(0, Math.min(100, (mm/mMP)*100));
-    var shieldPct = mHP>0 ? Math.min(100, ((u.shield||0)/mHP)*100) : 0;
     var roleIcon = (u.hero && u.hero.role && ROLES[u.hero.role]) ? ROLES[u.hero.role].icon : '⚔️';
-    var heroQuality = (u.hero && u.hero.quality) || 'common';
-    var heroLevel = (u.hero && u.hero.level) || 1;
-    var buffsHTML = u.buffs.map(function(b){
-      var isPos = b.mult>1 || b.stat==='taunt' || b.stat==='dodge' || b.stat==='reflect' || b.stat==='stun';
-      return '<span class="buff-tag '+(isPos?'buff-positive':'buff-negative')+'">'+(b.name||b.stat)+(b.duration>0?'('+b.duration+')':'')+'</span>';
-    }).join('');
-    var dotsHTML = u.dot.map(function(d){return '<span class="buff-tag buff-dot">'+d.name+'('+d.duration+')</span>'}).join('');
-    var uid = u.battleId || (u.name+'-'+u.icon);
-    var sideClass = isEnemy ? 'enemy-unit' : 'ally-unit';
-    return '<div class="battle-unit '+sideClass+' '+(u.alive?'':'dead')+'" data-battle-uid="'+uid+'">'
+    var quality = (u.hero && u.hero.quality) || 'common';
+    var lvl = (u.hero && u.hero.level) || 1;
+    var buffsHTML = u.buffs.map(function(b){return '<span class="buff-tag">'+(b.name||b.stat)+'</span>'}).join('');
+    return '<div class="battle-unit '+(isEnemy?'enemy-unit':'ally-unit')+' '+(u.alive?'':'dead')+'">'
       +'<div class="unit-avatar-wrap">'
       +'<div class="unit-role-icon">'+roleIcon+'</div>'
-      +'<div class="unit-avatar quality-'+heroQuality+'">'+u.icon+'</div>'
-      +'<div class="unit-level">'+heroLevel+'</div>'
+      +'<div class="unit-avatar quality-'+quality+'">'+u.icon+'</div>'
+      +'<div class="unit-level">'+lvl+'</div>'
       +'</div>'
       +'<div class="unit-name">'+u.name+'</div>'
       +'<div class="unit-bars">'
-      +'<div class="unit-bar"><span class="unit-bar-label">HP</span><div class="unit-bar-track"><div class="unit-bar-fill hp '+(hpPct<30?'low':'')+'" style="width:'+hpPct+'%"></div></div><span class="unit-bar-val">'+Math.floor(Math.max(0,hh))+'/'+Math.floor(mHP)+'</span></div>'
-      +'<div class="unit-bar"><span class="unit-bar-label">MP</span><div class="unit-bar-track"><div class="unit-bar-fill mp" style="width:'+mpPct+'%"></div></div><span class="unit-bar-val">'+Math.floor(Math.max(0,mm))+'/'+Math.floor(mMP)+'</span></div>'
-      +(u.shield>0?'<div class="unit-bar unit-shield-bar"><span class="unit-bar-label" style="color:#54a0ff">🛡</span><div class="unit-bar-track"><div class="unit-bar-fill shield-bar" style="width:'+shieldPct+'%"></div></div><span class="unit-bar-val" style="color:#54a0ff">'+Math.floor(u.shield)+'</span></div>':'')
+      +'<div class="unit-bar"><span class="unit-bar-label">HP</span><div class="unit-bar-track"><div class="unit-bar-fill hp" style="width:'+Math.floor((u.hp||0)/u.maxHP*100)+'%"></div></div><span class="unit-bar-val">'+Math.max(0,u.hp||0)+'/'+u.maxHP+'</span></div>'
+      +'<div class="unit-bar"><span class="unit-bar-label">MP</span><div class="unit-bar-track"><div class="unit-bar-fill mp" style="width:'+Math.floor((u.mp||0)/u.maxMP*100)+'%"></div></div><span class="unit-bar-val">'+Math.max(0,u.mp||0)+'/'+u.maxMP+'</span></div>'
       +'</div>'
-      +'<div class="unit-buffs">'+buffsHTML+dotsHTML+'</div>'
+      +'<div class="unit-buffs">'+buffsHTML+'</div>'
       +'</div>';
   }
   function renderTeamsZ(){
+    if(!pEl || !eEl) return;
     if(!_teamsRendered){
       _teamsRendered = true;
       pEl.innerHTML = playerUnits.map(u=>buildUnitHTMLZ(u,false)).join('');
       eEl.innerHTML = enemyUnits.map(u=>buildUnitHTMLZ(u,true)).join('');
-      playerUnits.forEach(function(u){ getUnitEl(u); });
-      enemyUnits.forEach(function(u){ getUnitEl(u); });
-    }else{
-      // 增量更新
-      function updateUnit(u){
-        var uid = u.battleId || (u.name+'-'+u.icon);
-        var el = _unitElCache[uid];
-        if(!el || !el.isConnected){
-          el = document.querySelector('[data-battle-uid="'+uid+'"]');
-          if(el) _unitElCache[uid]=el; else return;
-        }
-        if(u.alive) el.classList.remove('dead'); else el.classList.add('dead');
-        var bars = el.querySelectorAll('.unit-bar');
-        if(bars && bars.length>=1){
-          var fill = bars[0].querySelector('.unit-bar-fill.hp');
-          var val = bars[0].querySelector('.unit-bar-val');
-          var mHP = u.maxHP||1;
-          var hpPct = Math.max(0,Math.min(100,((u.hp||0)/mHP)*100));
-          if(fill) fill.style.width = hpPct+'%';
-          if(val) val.textContent = Math.floor(Math.max(0,u.hp||0))+'/'+Math.floor(mHP);
-        }
-        if(bars && bars.length>=2){
-          var fill2 = bars[1].querySelector('.unit-bar-fill.mp');
-          var val2 = bars[1].querySelector('.unit-bar-val');
-          var mMp = u.maxMP||1;
-          var mpPct = Math.max(0,Math.min(100,((u.mp||0)/mMp)*100));
-          if(fill2) fill2.style.width = mpPct+'%';
-          if(val2) val2.textContent = Math.floor(Math.max(0,u.mp||0))+'/'+Math.floor(mMp);
+    } else {
+      // 增量更新 HP/MP bar 和 alive 状态
+      function update(units, container){
+        var nodes = container.querySelectorAll('.battle-unit');
+        for(var i=0;i<units.length;i++){
+          var u = units[i];
+          var node = nodes[i];
+          if(!node) continue;
+          if(u.alive) node.classList.remove('dead'); else node.classList.add('dead');
+          var bars = node.querySelectorAll('.unit-bar');
+          if(bars.length>=1){ bars[0].querySelector('.unit-bar-fill').style.width = Math.floor((u.hp||0)/u.maxHP*100)+'%'; bars[0].querySelector('.unit-bar-val').textContent=Math.max(0,u.hp||0)+'/'+u.maxHP; }
+          if(bars.length>=2){ bars[1].querySelector('.unit-bar-fill').style.width = Math.floor((u.mp||0)/u.maxMP*100)+'%'; bars[1].querySelector('.unit-bar-val').textContent=Math.max(0,u.mp||0)+'/'+u.maxMP; }
         }
       }
-      playerUnits.forEach(updateUnit);
-      enemyUnits.forEach(updateUnit);
+      update(playerUnits, pEl); update(enemyUnits, eEl);
     }
+    if(typeof updateBattleStatsBoard === 'function') updateBattleStatsBoard();
   }
   function logZ(msg,cls){
     if(!logEl) return;
-    _logCount++;
-    if(_logCount>MAX_LOG_LINES){
-      logEl.removeChild(logEl.firstChild);
-      _logCount--;
-    }
+    var maxLines=100;
+    if(logEl.childElementCount>=maxLines) logEl.removeChild(logEl.firstChild);
     var line=document.createElement('div');
     line.className='log-line log-'+(cls||'info');
     line.textContent=msg;
@@ -10073,15 +10111,13 @@ async function runZodiacBoss(bossIndex){
     logEl.scrollTop = logEl.scrollHeight;
   }
 
-  // 首次渲染
   renderTeamsZ();
 
   // ===== 回合循环 =====
-  var enemyUnit = enemyUnits[0];
-
-  while(G_battleRunning && round < maxRounds && playerUnits.some(u=>u.alive) && enemyUnit.alive){
+  while(G_battleRunning && round < maxRounds && playerUnits.some(u=>u.alive) && enemyUnits.some(u=>u.alive)){
     if(G_battlePaused){await sleep(200); continue;}
     round++;
+    var roundBadgeEl = document.getElementById('battle-round-badge');
     if(roundBadgeEl) roundBadgeEl.textContent = '回合 '+round;
 
     var order = allUnits.filter(u=>u.alive).sort(function(a,b){return b.spd-a.spd;});
@@ -10091,22 +10127,23 @@ async function runZodiacBoss(bossIndex){
       if(!G_battleRunning) break;
       if(u.buffs.some(x=>x.stat==='stun')){continue;}
 
-      // 回合开始：HP/MP 恢复
+      // 回合开始：hpRegen(天赋) + regen(关卡修饰符)
       if(u.talentEffects && u.talentEffects.hpRegen){
         u.hp = Math.min(u.maxHP, u.hp + Math.floor(u.maxHP*u.talentEffects.hpRegen));
       }
       if(u._regenPct && u.hp < u.maxHP){
         u.hp = Math.min(u.maxHP, u.hp + Math.floor(u.maxHP*u._regenPct));
       }
-      var mpRecover = Math.floor(u.maxMP*0.05);
+      // MP 恢复：基础5% + 天赋mpRegen
+      var mpRec = Math.floor(u.maxMP*0.05);
       if(u.talentEffects && u.talentEffects.mpRegen){
-        mpRecover += Math.floor(u.maxMP*u.talentEffects.mpRegen);
+        mpRec += Math.floor(u.maxMP*u.talentEffects.mpRegen);
       }
-      u.mp = Math.min(u.maxMP, u.mp + mpRecover);
+      u.mp = Math.min(u.maxMP, u.mp + mpRec);
 
-      // buff 持续时间衰减
+      // buff 衰减
       u.buffs = u.buffs.filter(function(bf){bf.duration--; return bf.duration>0;});
-      // DOT
+      // DOT 处理
       u.dot = u.dot.filter(function(df){
         u.hp = Math.max(0, u.hp - df.dmg);
         df.duration--;
@@ -10115,7 +10152,7 @@ async function runZodiacBoss(bossIndex){
       });
       if(!u.alive){ renderTeamsZ(); continue; }
 
-      // 技能选择
+      // 技能选择：按冷却和MP
       var chosenSkill = null;
       var chosenSkillId = null;
       var allSkillIds = [];
@@ -10129,15 +10166,15 @@ async function runZodiacBoss(bossIndex){
         }
       }
       var target = null;
-      var enemies = u.isEnemy ? playerUnits : enemyUnits;
-      var allies = u.isEnemy ? enemyUnits : playerUnits;
+      var isEnemySide = u.isEnemy;
+      var enemiesOfU = isEnemySide ? playerUnits : enemyUnits;
       if(chosenSkill){
         if(chosenSkill.target==='self') target = u;
-        else if(chosenSkill.target==='all_allies') target = allies.filter(a=>a.alive);
-        else if(chosenSkill.target==='all_enemies') target = enemies.filter(a=>a.alive);
-        else target = enemies.filter(a=>a.alive)[0];
+        else if(chosenSkill.target==='all_allies') target = (isEnemySide?enemyUnits:playerUnits).filter(a=>a.alive);
+        else if(chosenSkill.target==='all_enemies') target = enemiesOfU.filter(a=>a.alive);
+        else target = enemiesOfU.filter(a=>a.alive)[0];
       }else{
-        target = enemies.filter(a=>a.alive)[0];
+        target = enemiesOfU.filter(a=>a.alive)[0];
       }
       if(!target) continue;
 
@@ -10145,16 +10182,16 @@ async function runZodiacBoss(bossIndex){
         u.mp -= chosenSkill.mpCost;
         u.cooldowns[chosenSkillId] = chosenSkill.cooldown;
         await executeSkillV2(u, target, chosenSkill, allUnits, logZ);
-      }else{
-        // 普攻
-        var rr = calcDamage(u, target, null);
-        if(!rr.dodged){
-          var finalDmg = rr.dmg;
+      }else if(target){
+        var r = calcDamage(u, target, null);
+        if(!r.dodged){
+          var finalDmg = r.dmg;
           if(target.shield>0){ var absorbed = Math.min(target.shield, finalDmg); target.shield-=absorbed; finalDmg-=absorbed; }
           target.hp = Math.max(0, target.hp-finalDmg);
           if(target.hp<=0) target.alive=false;
           recordBattleStat(u,'damage',finalDmg);
           recordBattleStat(target,'damageTaken',finalDmg);
+          // 关卡反击
           if(target.alive && target._counterPct && finalDmg>0){
             var reflectDmg = Math.floor(finalDmg*target._counterPct);
             u.hp = Math.max(0, u.hp-reflectDmg);
@@ -10163,11 +10200,10 @@ async function runZodiacBoss(bossIndex){
         }
       }
       renderTeamsZ();
-      updateBattleStatsBoard();
-      await sleep(150);
+      await sleep(120);
     }
 
-    // 回合结束：cooldown 衰减 + cdReduce 天赋
+    // 回合结束 cooldown 衰减
     allUnits.forEach(function(u){
       var cdReduce = (u.talentEffects && u.talentEffects.cdReduce) ? u.talentEffects.cdReduce : 0;
       for(var cds in u.cooldowns){
@@ -10177,10 +10213,11 @@ async function runZodiacBoss(bossIndex){
   }
 
   // ===== 结算 =====
-  var won = enemyUnit.hp<=0 || !enemyUnit.alive;
-  var hpLeft = Math.max(0, enemyUnit.hp);
+  var won = enemyUnits.every(u=>!u.alive);
+  var totalMaxHp = enemyUnits.reduce((s,u)=>s+u.maxHP,0);
+  var hpLeft = enemyUnits.reduce((s,u)=>s+Math.max(0,u.hp||0),0);
 
-  if(!G.zodiacChallenges[bossIndex]) G.zodiacChallenges[bossIndex] = {attempts:0, bestHp:enemyUnit.maxHP, defeated:false};
+  if(!G.zodiacChallenges[bossIndex]) G.zodiacChallenges[bossIndex] = {attempts:0,bestHp:totalMaxHp,defeated:false};
   G.zodiacChallenges[bossIndex].attempts += 1;
   if(hpLeft < G.zodiacChallenges[bossIndex].bestHp) G.zodiacChallenges[bossIndex].bestHp = hpLeft;
 
@@ -10194,38 +10231,27 @@ async function runZodiacBoss(bossIndex){
 
   if(btnArea){
     btnArea.innerHTML = '<div style="text-align:center;padding:16px">'
-      + '<div style="font-size:18px;font-weight:bold;margin-bottom:8px;color:'+(won?'#ffd700':'#e74c3c')+'">'
-      + (won ? '🎉 Boss 击败！' : '💀 挑战失败...') + '</div>'
-      + '<div style="font-size:12px;color:#bbb;margin-bottom:8px">Boss 剩余 HP: ' + hpLeft + ' / ' + enemyUnit.maxHP
-      + ' | 本次挑战次数: ' + G.zodiacChallenges[bossIndex].attempts + '</div>'
-      + '<button class="btn btn-primary" onclick="closeZodiacBattle()">返回 Boss 列表</button> '
-      + '<button class="btn" onclick="retryZodiac('+bossIndex+')">再战一次</button>'
-      + '</div>';
+      +'<div style="font-size:18px;font-weight:bold;margin-bottom:8px;color:'+(won?'#ffd700':'#e74c3c')+'">'
+      +(won?'🎉 Boss击败！':'💀 挑战失败...')+'</div>'
+      +'<div style="font-size:12px;color:#bbb;margin-bottom:8px">敌方剩余 HP: '+hpLeft+'/'+totalMaxHp
+      +' | 本次挑战次数: '+G.zodiacChallenges[bossIndex].attempts+'</div>'
+      +'<button class="btn btn-primary" onclick="closeZodiacBattle()">返回Boss列表</button> '
+      +'<button class="btn" onclick="retryZodiac('+bossIndex+')">再战一次</button>'
+      +'</div>';
   }
-
-  G_battleRunning=false;
-  G_battlePaused=false;
+  G_battleRunning=false; G_battlePaused=false;
 }
 
-function closeZodiacBattle(){
-  G_battleRunning=false;
-  G_battlePaused=false;
-  if(typeof hideBattlePanel === 'function') hideBattlePanel();
-  switchTab('zodiac');
-}
-function retryZodiac(bossIndex){
-  G_battleRunning=false;
-  G_battlePaused=false;
-  startZodiacBoss(bossIndex);
-}
+function closeZodiacBattle(){ G_battleRunning=false; G_battlePaused=false; if(typeof hideBattlePanel==='function') hideBattlePanel(); switchTab('zodiac'); }
+function retryZodiac(bossIndex){ G_battleRunning=false; G_battlePaused=false; startZodiacBoss(bossIndex); }
 
 // 生肖试炼页渲染
 function renderZodiac(el){
   if(!el) return;
-  var html = '<div style="max-width:960px;margin:0 auto;padding:16px">'
-    + '<div style="font-size:22px;font-weight:bold;color:#ffd700;margin-bottom:4px">🐉 十二地支 · 生肖试炼</div>'
-    + '<div style="font-size:12px;color:#bbb;margin-bottom:16px">挑战十二位生肖守护者，击败他们以证明实力。Boss 强度根据你的队伍属性动态调整。</div>'
-    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">';
+  var html='<div style="max-width:1200px;margin:0 auto;padding:16px">'
+    +'<div style="font-size:22px;font-weight:bold;color:#ffd700;margin-bottom:4px">🐉 十二地支 · 生肖试炼</div>'
+    +'<div style="font-size:12px;color:#bbb;margin-bottom:16px">挑战十二位生肖守护者。敌方阵容规模与玩家编队同步，每个 Boss 与随从都拥有独立天赋/技能/修饰符。</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">';
 
   ZODIAC_BOSSES.forEach(function(b, idx){
     var unlocked = G.stageProgress >= b.unlockStage;
@@ -10236,26 +10262,32 @@ function renderZodiac(el){
     var clearCount = G.zodiacClearCount[idx] || 0;
 
     var borderColor = canFight ? '#ffa500' : '#333';
-    var bgColor = canFight ? 'rgba(255,165,0,0.08)' : 'rgba(50,50,50,0.3)';
-    var label = '';
-    if(defeated) label = '<span style="color:#2ed573;font-weight:bold">✓ 已征服</span>';
-    else if(!unlocked) label = '<span style="color:#999">🔒 通关第'+b.unlockStage+'关解锁</span>';
-    else if(!sequential) label = '<span style="color:#999">🔒 先击败上一位 Boss</span>';
-    else label = '<span style="color:#ffa500;font-weight:bold">▶ 可挑战</span>';
+    var statusLabel = defeated?'<span style="color:#2ed573;font-weight:bold">✓ 已征服</span>'
+                   : (!unlocked?'<span style="color:#999">🔒 通关第'+b.unlockStage+'关解锁</span>'
+                   : (!sequential?'<span style="color:#999">🔒 先击败上一位Boss</span>'
+                   : '<span style="color:#ffa500;font-weight:bold">▶ 可挑战</span>'));
 
-    html += '<div style="border:1px solid '+borderColor+';background:'+bgColor+';border-radius:8px;padding:12px">'
-      + '<div style="font-size:24px;text-align:center">'+b.icon+'</div>'
-      + '<div style="font-size:14px;font-weight:bold;text-align:center;margin:4px 0">'+b.name+'</div>'
-      + '<div style="font-size:11px;color:#bbb;text-align:center;margin-bottom:8px">'+b.desc+'</div>'
-      + '<div style="font-size:11px;color:#999;text-align:center">职业: '+(b.role||'?')
-      + ' | 难度: ★' + (1 + Math.floor(idx/2)) + '</div>'
-      + '<div style="font-size:11px;color:#999;text-align:center;margin:4px 0">挑战: '+attempts+' 次 | 通关: '+clearCount+' 次</div>'
-      + '<div style="text-align:center;margin-top:8px">' + label + '</div>'
-      + (canFight ? '<div style="margin-top:8px"><button class="btn btn-primary" style="width:100%" onclick="startZodiacBoss('+idx+')">⚔️ 挑战</button></div>' : '')
-      + '</div>';
+    // 敌方队伍预览
+    var unitsHtml = '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:8px 0">'
+      +'<div style="font-size:12px;color:#ffd700;font-weight:bold">👑</div>'
+      +'<div style="font-size:12px;color:#fff">'+b.boss.icon+b.boss.name+'('+(ROLES[b.boss.role]||{}).name+')</div>';
+    (b.minions||[]).forEach(function(m){
+      unitsHtml += '<div style="font-size:12px;color:#ccc"> | '+m.icon+m.name+'('+(ROLES[m.role]||{}).name+')</div>';
+    });
+    unitsHtml += '</div>';
+
+    html+='<div style="border:1px solid '+borderColor+';background:rgba('+(canFight?'255,165,0,0.08':'50,50,50,0.3')+');border-radius:8px;padding:14px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+      +'<div style="font-size:18px;font-weight:bold;color:#ffd700">'+b.icon+' '+b.name+'</div>'
+      +'<div style="font-size:11px;color:#999">第'+idx+'关</div></div>'
+      +'<div style="font-size:11px;color:#bbb;margin-bottom:8px">'+b.desc+'</div>'
+      +unitsHtml
+      +'<div style="font-size:11px;color:#999;text-align:center;margin:4px 0">挑战:'+attempts+' 次 | 通关:'+clearCount+' 次</div>'
+      +'<div style="text-align:center;margin-top:6px">'+statusLabel+'</div>'
+      +(canFight?'<div style="margin-top:10px"><button class="btn btn-primary" style="width:100%" onclick="startZodiacBoss('+idx+')">⚔️ 挑战</button></div>':'')
+      +'</div>';
   });
-
-  html += '</div></div>';
+  html+='</div></div>';
   el.innerHTML = html;
 }
 
@@ -10782,7 +10814,7 @@ async function runBattle(stageId){
               target._talentAtkStackCount = Math.min(5, (target._talentAtkStackCount || 0) + 1);
             }
             // 天赋 deathShield：致命伤害保留1HP并获得护盾（放在凤凰涅槃之前）
-            if(target.hp<=0 && target.talentEffects && target.talentEffects.deathShield && !target._talentDeathShieldUsed && !target.isEnemy){
+            if(target.hp<=0 && target.talentEffects && target.talentEffects.deathShield && !target._talentDeathShieldUsed){
               target._talentDeathShieldUsed = true;
               target.hp = 1;
               target.shield += Math.floor(target.maxHP * target.talentEffects.deathShield);
@@ -10790,7 +10822,7 @@ async function runBattle(stageId){
               showFloat(target,'不朽堡垒!','buff-text');
             }
             // 天赋 deathDefy：致命伤害保留1HP
-            if(target.hp<=0 && target.talentEffects && target.talentEffects.deathDefy && !target._talentDeathDefyUsed && !target.isEnemy){
+            if(target.hp<=0 && target.talentEffects && target.talentEffects.deathDefy && !target._talentDeathDefyUsed){
               target._talentDeathDefyUsed = true;
               target.hp = 1;
               log(target.icon+target.name+' 触发不屈战魂！保留1点生命！','buff');
@@ -10826,7 +10858,7 @@ async function runBattle(stageId){
               } else {
                 target.alive=false;log(target.icon+' '+target.name+' 倒下了...','death');animUnit(target,'dying',700);
                 // 天赋 killHeal：击杀敌人后恢复生命
-                if(!target.alive && unit.talentEffects && unit.talentEffects.killHeal && !unit.isEnemy){
+                if(unit.talentEffects && unit.talentEffects.killHeal){
                   var baKhAmt = Math.floor(unit.maxHP * unit.talentEffects.killHeal);
                   if(baKhAmt>0){
                     unit.hp = Math.min(unit.maxHP, unit.hp + baKhAmt);
@@ -10835,9 +10867,9 @@ async function runBattle(stageId){
                   }
                 }
                 // 天赋 allyKillBoost：队友击杀后其他队友下次攻击伤害提升
-                if(!target.alive && !unit.isEnemy && allUnits){
+                if(allUnits){
                   allUnits.forEach(function(ally){
-                    if(ally===unit || !ally.alive || ally.isEnemy) return;
+                    if(ally===unit || !ally.alive || ally.isEnemy !== unit.isEnemy) return;
                     if(ally.talentEffects && ally.talentEffects.allyKillBoost){
                       ally._allyKillBoostReady = true;
                     }
@@ -11112,7 +11144,7 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
           t._talentAtkStackCount = Math.min(5, (t._talentAtkStackCount || 0) + 1);
         }
         // 天赋 deathShield：致命伤害保留1HP并获得护盾
-        if(t.hp<=0 && t.talentEffects && t.talentEffects.deathShield && !t._talentDeathShieldUsed && !t.isEnemy){
+        if(t.hp<=0 && t.talentEffects && t.talentEffects.deathShield && !t._talentDeathShieldUsed){
           t._talentDeathShieldUsed = true;
           t.hp = 1;
           t.shield += Math.floor(t.maxHP * t.talentEffects.deathShield);
@@ -11120,7 +11152,7 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
           showFloat(t,'不朽堡垒!','buff-text');
         }
         // 天赋 deathDefy（不屈战魂）：致命伤害保留1HP
-        if(t.hp<=0 && t.talentEffects && t.talentEffects.deathDefy && !t._talentDeathDefyUsed && !t.isEnemy){
+        if(t.hp<=0 && t.talentEffects && t.talentEffects.deathDefy && !t._talentDeathDefyUsed){
           t._talentDeathDefyUsed = true;
           t.hp = 1;
           logFn(t.icon+t.name+' 触发不屈战魂！保留1点生命！','buff');
@@ -11185,7 +11217,7 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
           logFn(t.icon+' '+t.name+' 倒下了...','death');
           animUnit(t,'dying',700);
           // 天赋 killHeal：击杀敌人后恢复生命
-          if(user.talentEffects && user.talentEffects.killHeal && !user.isEnemy){
+          if(user.talentEffects && user.talentEffects.killHeal){
             var khAmt = Math.floor(user.maxHP * user.talentEffects.killHeal);
             if(khAmt>0){
               user.hp = Math.min(user.maxHP, user.hp + khAmt);
@@ -11194,9 +11226,9 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
             }
           }
           // 天赋 allyKillBoost：队友击杀后其他队友下次攻击伤害提升
-          if(!user.isEnemy && allUnits){
+          if(allUnits){
             allUnits.forEach(function(ally){
-              if(ally===user || !ally.alive || ally.isEnemy) return;
+              if(ally===user || !ally.alive || ally.isEnemy !== user.isEnemy) return;
               if(ally.talentEffects && ally.talentEffects.allyKillBoost){
                 ally._allyKillBoostReady = true;
               }
@@ -11204,7 +11236,7 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
           }
         }
         // 天赋 counter：被攻击时有几率反击（+ counterEnhance 提升伤害）
-        if(t.alive && !t.isEnemy && t.talentEffects && t.talentEffects.counter && dmg>0){
+        if(t.alive && t.talentEffects && t.talentEffects.counter && dmg>0){
           var tcChance = t.talentEffects.counter.chance || 0.2;
           var tcVal = t.talentEffects.counter.value || 0.5;
           if(t.talentEffects.counterEnhance) tcVal += t.talentEffects.counterEnhance;
