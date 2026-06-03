@@ -8785,6 +8785,12 @@ function getExpToLevel(level){return Math.floor(50*Math.pow(1.25,level-1))}
 
 function addHeroExp(hero,amount){
   var levelCap=getHeroLevelCap();
+  // 防御性修复：如果英雄等级已超过天赋解锁等级但天赋点未到位
+  // （例如通过觉醒/其他逻辑被直接设置到高等级，跳过了升级循环）
+  var expectedTalent = Math.min(Math.max(0, hero.level - TALENT_CONFIG.unlockLevel), TALENT_CONFIG.maxPoints);
+  if(hero.level > TALENT_CONFIG.unlockLevel && (hero.talentPoints||0) < expectedTalent){
+    hero.talentPoints = expectedTalent;
+  }
   if(hero.level>=levelCap)return false;
   hero.exp+=amount;
   var leveled=false;
@@ -11704,9 +11710,14 @@ function rollMergeAccident(hero, materials) {
       hero.hp = hero.maxHP;
       hero.mp = hero.maxMP;
       hero.isAwakened = true;
-      hero.awakeningBonusTalent = 1;
+      // 正确授予天赋点：51~65级共15点 + 觉醒额外1点 = 16点
+      // （因直接 set level=levelCap 跳过了 addHeroExp 循环，必须在此处手工补齐）
+      var retroTalent = Math.min(Math.max(0, levelCap - TALENT_CONFIG.unlockLevel), TALENT_CONFIG.maxPoints);
+      var bonusTalent = 1;
+      hero.talentPoints = (hero.talentPoints || 0) + retroTalent + bonusTalent;
+      hero.awakeningBonusTalent = bonusTalent;
       result.hero = hero;
-      result.message = '🏆 英雄觉醒！直接升到满级Lv.' + levelCap + '，并获得1个额外天赋点！';
+      result.message = '🏆 英雄觉醒！直接升到满级Lv.' + levelCap + '，并获得 ' + (retroTalent + bonusTalent) + ' 点天赋点！';
       break;
     case 'frogcurse':
       // 属性降低70%，3天后解除并+20%
