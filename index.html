@@ -9968,7 +9968,7 @@ function buildZodiacEnemyUnits(bossIndex){
   return units;
 }
 
-// 启动生肖 Boss 战斗
+// 启动生肖 Boss 战斗：构造 stage 对象并复用 runBattle 渲染/结算逻辑
 function startZodiacBoss(bossIndex){
   if(bossIndex < 0 || bossIndex >= ZODIAC_BOSSES.length){
     showToast('不存在的 Boss'); return;
@@ -9986,260 +9986,23 @@ function startZodiacBoss(bossIndex){
   var team = (G.team||[]).filter(function(h){return h!==null});
   if(team.length===0){ showToast('请先编队'); return; }
 
-  runZodiacBoss(bossIndex);
-}
-
-async function runZodiacBoss(bossIndex){
-  if(G_battleRunning){return;}
-  G_battleRunning = true;
-  G_battlePaused = false;
-  var boss = ZODIAC_BOSSES[bossIndex];
-  var teamHeroes = (G.team||[]).filter(h=>h!==null);
-  var playerUnits = teamHeroes.map(h=>createBattleUnit(h,false));
+  // 预构造敌方单位（包含动态难度+天赋聚合+modifiers）
   var enemyUnits = buildZodiacEnemyUnits(bossIndex);
-  var allUnits=[...playerUnits,...enemyUnits];
-  let round=0;
-  const maxRounds=100;
 
-  // ===== 战斗开始：汇总 team 天赋 =====
-  function aggregateTeamTalents(units){
-    var dmg=0, dmgReduce=0, crit=0;
-    units.forEach(function(u){
-      if(u.talentEffects){
-        if(u.talentEffects.teamDamage) dmg+=u.talentEffects.teamDamage;
-        if(u.talentEffects.teamDamageReduce) dmgReduce+=u.talentEffects.teamDamageReduce;
-        if(u.talentEffects.teamCrit) crit+=u.talentEffects.teamCrit;
-      }
-    });
-    units.forEach(function(u){
-      if(dmg>0) u._teamDamageBonus=dmg;
-      if(dmgReduce>0) u._teamDamageReduceBonus=dmgReduce;
-      if(crit>0) u._teamCritBonus=crit;
-    });
-    // battleStartBuffs
-    units.forEach(function(u){
-      if(u.talentEffects && u.talentEffects.battleStartBuffs){
-        u.talentEffects.battleStartBuffs.forEach(function(bf){
-          units.forEach(function(ally){
-            if(ally.alive) ally.buffs.push({stat:bf.stat,mult:1+(bf.value||0),duration:bf.duration,name:'战吼'});
-          });
-        });
-      }
-    });
-  }
-  aggregateTeamTalents(playerUnits);
-  aggregateTeamTalents(enemyUnits);
+  // 构造 stage 对象交给 runBattle 复用渲染与回合逻辑
+  var fakeStage = {
+    id: 10000 + bossIndex,
+    name: boss.icon + ' ' + boss.name,
+    desc: boss.desc,
+    enemies: enemyUnits.map(function(u){return {name:u.name,icon:u.icon,role:u.hero&&u.hero.role,quality:(u.hero&&u.hero.quality)||'epic',level:(u.hero&&u.hero.level)||80,skills:(u.hero&&u.hero.skills)||[]};}),
+    modifiers: (boss.modifiers || []).map(function(m){return STAGE_MODIFIERS[m] || {name:m,desc:''};}).filter(function(m){return m;}),
+    rewards: {gold: 1000 + bossIndex*500, food: 500 + bossIndex*300, stone: 500 + bossIndex*300, iron: 500 + bossIndex*300, gems: 10, exp: 500 + bossIndex*200},
+    isBoss: true,
+    _zodiacBossIndex: bossIndex,
+    _enemyUnits: enemyUnits
+  };
 
-  if(typeof resetBattleStats === 'function') resetBattleStats();
-
-  // ===== UI 初始化 =====
-  currentTab='battle';
-  document.querySelectorAll('.nav-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.tab==='battle')});
-  var contentEl=document.getElementById('content');
-  var battlePanel=document.getElementById('battle-panel');
-  if(contentEl) contentEl.style.display='none';
-  if(battlePanel) battlePanel.style.display='';
-
-  var pEl=document.getElementById('player-team');
-  var eEl=document.getElementById('enemy-team');
-  var infoEl=document.getElementById('battle-info');
-  var btnArea=document.getElementById('battle-buttons');
-  var logEl=document.getElementById('battle-log');
-  if(btnArea) btnArea.innerHTML='';
-  if(logEl) logEl.innerHTML='';
-  clearUnitElCache();
-
-  if(infoEl){
-    infoEl.innerHTML = '<div style="font-size:18px;font-weight:bold;color:#ffd700;margin-bottom:4px">'
-      +boss.icon+' '+boss.name+'</div>'
-      +'<div style="font-size:12px;color:#bbb">'+boss.desc+'</div>';
-  }
-
-  // ===== 本地渲染与日志 =====
-  var _teamsRendered = false;
-  function buildUnitHTMLZ(u, isEnemy){
-    var roleIcon = (u.hero && u.hero.role && ROLES[u.hero.role]) ? ROLES[u.hero.role].icon : '⚔️';
-    var quality = (u.hero && u.hero.quality) || 'common';
-    var lvl = (u.hero && u.hero.level) || 1;
-    var buffsHTML = u.buffs.map(function(b){return '<span class="buff-tag">'+(b.name||b.stat)+'</span>'}).join('');
-    return '<div class="battle-unit '+(isEnemy?'enemy-unit':'ally-unit')+' '+(u.alive?'':'dead')+'">'
-      +'<div class="unit-avatar-wrap">'
-      +'<div class="unit-role-icon">'+roleIcon+'</div>'
-      +'<div class="unit-avatar quality-'+quality+'">'+u.icon+'</div>'
-      +'<div class="unit-level">'+lvl+'</div>'
-      +'</div>'
-      +'<div class="unit-name">'+u.name+'</div>'
-      +'<div class="unit-bars">'
-      +'<div class="unit-bar"><span class="unit-bar-label">HP</span><div class="unit-bar-track"><div class="unit-bar-fill hp" style="width:'+Math.floor((u.hp||0)/u.maxHP*100)+'%"></div></div><span class="unit-bar-val">'+Math.max(0,u.hp||0)+'/'+u.maxHP+'</span></div>'
-      +'<div class="unit-bar"><span class="unit-bar-label">MP</span><div class="unit-bar-track"><div class="unit-bar-fill mp" style="width:'+Math.floor((u.mp||0)/u.maxMP*100)+'%"></div></div><span class="unit-bar-val">'+Math.max(0,u.mp||0)+'/'+u.maxMP+'</span></div>'
-      +'</div>'
-      +'<div class="unit-buffs">'+buffsHTML+'</div>'
-      +'</div>';
-  }
-  function renderTeamsZ(){
-    if(!pEl || !eEl) return;
-    if(!_teamsRendered){
-      _teamsRendered = true;
-      pEl.innerHTML = playerUnits.map(u=>buildUnitHTMLZ(u,false)).join('');
-      eEl.innerHTML = enemyUnits.map(u=>buildUnitHTMLZ(u,true)).join('');
-    } else {
-      // 增量更新 HP/MP bar 和 alive 状态
-      function update(units, container){
-        var nodes = container.querySelectorAll('.battle-unit');
-        for(var i=0;i<units.length;i++){
-          var u = units[i];
-          var node = nodes[i];
-          if(!node) continue;
-          if(u.alive) node.classList.remove('dead'); else node.classList.add('dead');
-          var bars = node.querySelectorAll('.unit-bar');
-          if(bars.length>=1){ bars[0].querySelector('.unit-bar-fill').style.width = Math.floor((u.hp||0)/u.maxHP*100)+'%'; bars[0].querySelector('.unit-bar-val').textContent=Math.max(0,u.hp||0)+'/'+u.maxHP; }
-          if(bars.length>=2){ bars[1].querySelector('.unit-bar-fill').style.width = Math.floor((u.mp||0)/u.maxMP*100)+'%'; bars[1].querySelector('.unit-bar-val').textContent=Math.max(0,u.mp||0)+'/'+u.maxMP; }
-        }
-      }
-      update(playerUnits, pEl); update(enemyUnits, eEl);
-    }
-    if(typeof updateBattleStatsBoard === 'function') updateBattleStatsBoard();
-  }
-  function logZ(msg,cls){
-    if(!logEl) return;
-    var maxLines=100;
-    if(logEl.childElementCount>=maxLines) logEl.removeChild(logEl.firstChild);
-    var line=document.createElement('div');
-    line.className='log-line log-'+(cls||'info');
-    line.textContent=msg;
-    logEl.appendChild(line);
-    logEl.scrollTop = logEl.scrollHeight;
-  }
-
-  renderTeamsZ();
-
-  // ===== 回合循环 =====
-  while(G_battleRunning && round < maxRounds && playerUnits.some(u=>u.alive) && enemyUnits.some(u=>u.alive)){
-    if(G_battlePaused){await sleep(200); continue;}
-    round++;
-    var roundBadgeEl = document.getElementById('battle-round-badge');
-    if(roundBadgeEl) roundBadgeEl.textContent = '回合 '+round;
-
-    var order = allUnits.filter(u=>u.alive).sort(function(a,b){return b.spd-a.spd;});
-    for(var i=0;i<order.length;i++){
-      var u = order[i];
-      if(!u.alive) continue;
-      if(!G_battleRunning) break;
-      if(u.buffs.some(x=>x.stat==='stun')){continue;}
-
-      // 回合开始：hpRegen(天赋) + regen(关卡修饰符)
-      if(u.talentEffects && u.talentEffects.hpRegen){
-        u.hp = Math.min(u.maxHP, u.hp + Math.floor(u.maxHP*u.talentEffects.hpRegen));
-      }
-      if(u._regenPct && u.hp < u.maxHP){
-        u.hp = Math.min(u.maxHP, u.hp + Math.floor(u.maxHP*u._regenPct));
-      }
-      // MP 恢复：基础5% + 天赋mpRegen
-      var mpRec = Math.floor(u.maxMP*0.05);
-      if(u.talentEffects && u.talentEffects.mpRegen){
-        mpRec += Math.floor(u.maxMP*u.talentEffects.mpRegen);
-      }
-      u.mp = Math.min(u.maxMP, u.mp + mpRec);
-
-      // buff 衰减
-      u.buffs = u.buffs.filter(function(bf){bf.duration--; return bf.duration>0;});
-      // DOT 处理
-      u.dot = u.dot.filter(function(df){
-        u.hp = Math.max(0, u.hp - df.dmg);
-        df.duration--;
-        if(u.hp<=0) u.alive=false;
-        return df.duration>0;
-      });
-      if(!u.alive){ renderTeamsZ(); continue; }
-
-      // 技能选择：按冷却和MP
-      var chosenSkill = null;
-      var chosenSkillId = null;
-      var allSkillIds = [];
-      if(u.hero && u.hero.skills) allSkillIds = allSkillIds.concat(u.hero.skills);
-      if(u.bonusSkills) allSkillIds = allSkillIds.concat(u.bonusSkills);
-      for(var si=0; si<allSkillIds.length; si++){
-        var sid = allSkillIds[si];
-        var sk = SKILLS[sid];
-        if(sk && (!u.cooldowns[sid] || u.cooldowns[sid]<=0) && u.mp>=sk.mpCost){
-          chosenSkill = sk; chosenSkillId = sid; break;
-        }
-      }
-      var target = null;
-      var isEnemySide = u.isEnemy;
-      var enemiesOfU = isEnemySide ? playerUnits : enemyUnits;
-      if(chosenSkill){
-        if(chosenSkill.target==='self') target = u;
-        else if(chosenSkill.target==='all_allies') target = (isEnemySide?enemyUnits:playerUnits).filter(a=>a.alive);
-        else if(chosenSkill.target==='all_enemies') target = enemiesOfU.filter(a=>a.alive);
-        else target = enemiesOfU.filter(a=>a.alive)[0];
-      }else{
-        target = enemiesOfU.filter(a=>a.alive)[0];
-      }
-      if(!target) continue;
-
-      if(chosenSkill){
-        u.mp -= chosenSkill.mpCost;
-        u.cooldowns[chosenSkillId] = chosenSkill.cooldown;
-        await executeSkillV2(u, target, chosenSkill, allUnits, logZ);
-      }else if(target){
-        var r = calcDamage(u, target, null);
-        if(!r.dodged){
-          var finalDmg = r.dmg;
-          if(target.shield>0){ var absorbed = Math.min(target.shield, finalDmg); target.shield-=absorbed; finalDmg-=absorbed; }
-          target.hp = Math.max(0, target.hp-finalDmg);
-          if(target.hp<=0) target.alive=false;
-          recordBattleStat(u,'damage',finalDmg);
-          recordBattleStat(target,'damageTaken',finalDmg);
-          // 关卡反击
-          if(target.alive && target._counterPct && finalDmg>0){
-            var reflectDmg = Math.floor(finalDmg*target._counterPct);
-            u.hp = Math.max(0, u.hp-reflectDmg);
-            if(u.hp<=0) u.alive=false;
-          }
-        }
-      }
-      renderTeamsZ();
-      await sleep(120);
-    }
-
-    // 回合结束 cooldown 衰减
-    allUnits.forEach(function(u){
-      var cdReduce = (u.talentEffects && u.talentEffects.cdReduce) ? u.talentEffects.cdReduce : 0;
-      for(var cds in u.cooldowns){
-        u.cooldowns[cds] = Math.max(0, u.cooldowns[cds] - 1 - Math.floor(cdReduce));
-      }
-    });
-  }
-
-  // ===== 结算 =====
-  var won = enemyUnits.every(u=>!u.alive);
-  var totalMaxHp = enemyUnits.reduce((s,u)=>s+u.maxHP,0);
-  var hpLeft = enemyUnits.reduce((s,u)=>s+Math.max(0,u.hp||0),0);
-
-  if(!G.zodiacChallenges[bossIndex]) G.zodiacChallenges[bossIndex] = {attempts:0,bestHp:totalMaxHp,defeated:false};
-  G.zodiacChallenges[bossIndex].attempts += 1;
-  if(hpLeft < G.zodiacChallenges[bossIndex].bestHp) G.zodiacChallenges[bossIndex].bestHp = hpLeft;
-
-  if(won){
-    G.zodiacChallenges[bossIndex].defeated = true;
-    if(bossIndex+1 > G.zodiacProgress) G.zodiacProgress = bossIndex+1;
-    if(!G.zodiacClearCount[bossIndex]) G.zodiacClearCount[bossIndex]=0;
-    G.zodiacClearCount[bossIndex] += 1;
-  }
-  saveGame();
-
-  if(btnArea){
-    btnArea.innerHTML = '<div style="text-align:center;padding:16px">'
-      +'<div style="font-size:18px;font-weight:bold;margin-bottom:8px;color:'+(won?'#ffd700':'#e74c3c')+'">'
-      +(won?'🎉 Boss击败！':'💀 挑战失败...')+'</div>'
-      +'<div style="font-size:12px;color:#bbb;margin-bottom:8px">敌方剩余 HP: '+hpLeft+'/'+totalMaxHp
-      +' | 本次挑战次数: '+G.zodiacChallenges[bossIndex].attempts+'</div>'
-      +'<button class="btn btn-primary" onclick="closeZodiacBattle()">返回Boss列表</button> '
-      +'<button class="btn" onclick="retryZodiac('+bossIndex+')">再战一次</button>'
-      +'</div>';
-  }
-  G_battleRunning=false; G_battlePaused=false;
+  runBattle(fakeStage);
 }
 
 function closeZodiacBattle(){ G_battleRunning=false; G_battlePaused=false; if(typeof hideBattlePanel==='function') hideBattlePanel(); switchTab('zodiac'); }
@@ -10291,15 +10054,26 @@ function renderZodiac(el){
   el.innerHTML = html;
 }
 
-async function runBattle(stageId){
+async function runBattle(stageOrId){
   // 如果战斗已在运行，不重复启动
   if(G_battleRunning){return;}
   G_battleRunning=true;
   G_battlePaused=false;
   updatePauseButton();
-  
-  const stage=getStage(stageId);
+
+  // 支持两种调用方式：(1) 传入关卡ID；(2) 传入预先构造好的 stage 对象
+  var stage;
+  var isPreBuilt = typeof stageOrId==='object' && stageOrId!==null;
+  if(isPreBuilt){
+    stage = stageOrId;
+  }else{
+    stage=getStage(stageOrId);
+  }
   if(!stage){G_battleRunning=false;return;}
+  var isZodiac = !!stage._zodiacBossIndex;
+  var zodiacBossIndex = isZodiac ? stage._zodiacBossIndex : -1;
+  var preBuiltEnemies = isZodiac ? (stage._enemyUnits || null) : null;
+
   const teamHeroes=G.team.filter(h=>h!==null);
   if(teamHeroes.length===0){showToast('请先编队！');G_battleRunning=false;return;}
 
@@ -10313,31 +10087,65 @@ async function runBattle(stageId){
     applyBondEffects(playerUnits,activeBonds);
   }
 
-  let enemyUnits=stage.enemies.map(e=>{
-    const tpl=HERO_TEMPLATES.find(t=>t.name===e.name)||HERO_TEMPLATES.find(t=>t.role===e.role&&t.quality===e.quality);
-    const fakeHero=tpl?{...createHero(tpl.id,e.level),name:e.name,icon:e.icon,skills:e.skills,bonusSkills:[]}
-      :{name:e.name,icon:e.icon,role:e.role,quality:e.quality,level:e.level,skills:e.skills,bonusSkills:[],
-        maxHP:calcStat(ROLES[e.role]?ROLES[e.role].baseHP:100,QUALITY_MULT[e.quality]||1,e.level),
-        atk:calcStat(ROLES[e.role]?ROLES[e.role].baseATK:15,QUALITY_MULT[e.quality]||1,e.level),
-        def:calcStat(ROLES[e.role]?ROLES[e.role].baseDEF:10,QUALITY_MULT[e.quality]||1,e.level),
-        spd:calcStat(ROLES[e.role]?ROLES[e.role].baseSPD:10,QUALITY_MULT[e.quality]||1,e.level),
-        maxMP:calcStat(ROLES[e.role]?ROLES[e.role].baseMP:40,QUALITY_MULT[e.quality]||1,e.level),
-        hp:0,mp:0,equipment:{weapon:null,armor:null,accessory:null}};
-    fakeHero.hp=fakeHero.maxHP;fakeHero.mp=fakeHero.maxMP;
-    var unit=createBattleUnit(fakeHero,true);
-    if(e._physResist)unit._physResist=e._physResist;
-    if(e._magicResist)unit._magicResist=e._magicResist;
-    if(e._dodgeBonus)unit._dodgeBonus=e._dodgeBonus;
-    if(e._defBonus)unit._defBonus=e._defBonus;
-    if(e._regenPct)unit._regenPct=e._regenPct;
-    if(e._atkBonus)unit._atkBonus=e._atkBonus;
-    if(e._stunImmune)unit._stunImmune=e._stunImmune;
-    if(e._antiHeal)unit._antiHeal=e._antiHeal;
-    if(e._dotImmune)unit._dotImmune=e._dotImmune;
-    if(e._counterPct)unit._counterPct=e._counterPct;
-    if(e.shield>0)unit.shield=e.shield;
-    return unit;
-  });
+  // 敌方单位：若为生肖 Boss 战则使用预构造的 units，否则按 stage.enemies 构造
+  let enemyUnits;
+  if(preBuiltEnemies){
+    enemyUnits = preBuiltEnemies;
+  }else{
+    enemyUnits=stage.enemies.map(e=>{
+      const tpl=HERO_TEMPLATES.find(t=>t.name===e.name)||HERO_TEMPLATES.find(t=>t.role===e.role&&t.quality===e.quality);
+      const fakeHero=tpl?{...createHero(tpl.id,e.level),name:e.name,icon:e.icon,skills:e.skills,bonusSkills:[]}
+        :{name:e.name,icon:e.icon,role:e.role,quality:e.quality,level:e.level,skills:e.skills,bonusSkills:[],
+          maxHP:calcStat(ROLES[e.role]?ROLES[e.role].baseHP:100,QUALITY_MULT[e.quality]||1,e.level),
+          atk:calcStat(ROLES[e.role]?ROLES[e.role].baseATK:15,QUALITY_MULT[e.quality]||1,e.level),
+          def:calcStat(ROLES[e.role]?ROLES[e.role].baseDEF:10,QUALITY_MULT[e.quality]||1,e.level),
+          spd:calcStat(ROLES[e.role]?ROLES[e.role].baseSPD:10,QUALITY_MULT[e.quality]||1,e.level),
+          maxMP:calcStat(ROLES[e.role]?ROLES[e.role].baseMP:40,QUALITY_MULT[e.quality]||1,e.level),
+          hp:0,mp:0,equipment:{weapon:null,armor:null,accessory:null}};
+      fakeHero.hp=fakeHero.maxHP;fakeHero.mp=fakeHero.maxMP;
+      var unit=createBattleUnit(fakeHero,true);
+      if(e._physResist)unit._physResist=e._physResist;
+      if(e._magicResist)unit._magicResist=e._magicResist;
+      if(e._dodgeBonus)unit._dodgeBonus=e._dodgeBonus;
+      if(e._defBonus)unit._defBonus=e._defBonus;
+      if(e._regenPct)unit._regenPct=e._regenPct;
+      if(e._atkBonus)unit._atkBonus=e._atkBonus;
+      if(e._stunImmune)unit._stunImmune=e._stunImmune;
+      if(e._antiHeal)unit._antiHeal=e._antiHeal;
+      if(e._dotImmune)unit._dotImmune=e._dotImmune;
+      if(e._counterPct)unit._counterPct=e._counterPct;
+      if(e.shield>0)unit.shield=e.shield;
+      return unit;
+    });
+  }
+  // 生肖战：对敌方单位也进行 team 天赋聚合（与玩家侧处理一致）
+  if(isZodiac){
+    (function aggregateZodiacTalents(units){
+      var dmg=0, dmgReduce=0, crit=0;
+      units.forEach(function(u){
+        if(u.talentEffects){
+          if(u.talentEffects.teamDamage) dmg+=u.talentEffects.teamDamage;
+          if(u.talentEffects.teamDamageReduce) dmgReduce+=u.talentEffects.teamDamageReduce;
+          if(u.talentEffects.teamCrit) crit+=u.talentEffects.teamCrit;
+        }
+      });
+      units.forEach(function(u){
+        if(dmg>0) u._teamDamageBonus=dmg;
+        if(dmgReduce>0) u._teamDamageReduceBonus=dmgReduce;
+        if(crit>0) u._teamCritBonus=crit;
+      });
+      units.forEach(function(u){
+        if(u.talentEffects && u.talentEffects.battleStartBuffs){
+          u.talentEffects.battleStartBuffs.forEach(function(bf){
+            units.forEach(function(ally){
+              if(ally.alive) ally.buffs.push({stat:bf.stat,mult:1+(bf.value||0),duration:bf.duration,name:'战吼'});
+            });
+          });
+        }
+      });
+    })(enemyUnits);
+  }
+
   let allUnits=[...playerUnits,...enemyUnits];
 
   // ===== 战斗开始：天赋初始化 =====
@@ -10407,8 +10215,13 @@ async function runBattle(stageId){
   var stageId = stage ? (stage.id || 1) : 1;
   var stageName = stage ? (stage.name || '未知关卡') : '未知关卡';
   var stageDesc = stage ? (stage.desc || '') : '';
-  
-  battleInfoEl.innerHTML=`<div class="log-title">⚔️ 第${stageId}章：${stageName}</div><div class="text-dim text-sm">${stageDesc}</div>`;
+
+  if(isZodiac){
+    battleInfoEl.innerHTML='<div style="font-size:18px;font-weight:bold;color:#ffd700;margin-bottom:4px">'
+      +stageName+'</div><div style="font-size:12px;color:#bbb">'+stageDesc+'</div>';
+  }else{
+    battleInfoEl.innerHTML=`<div class="log-title">⚔️ 第${stageId}章：${stageName}</div><div class="text-dim text-sm">${stageDesc}</div>`;
+  }
   if(stage && stage.modifiers && stage.modifiers.length > 0){
     battleInfoEl.innerHTML+='<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">'+stage.modifiers.map(function(m){return '<span class="stage-modifier-tag" style="font-size:11px;padding:2px 8px">'+(m.name||'')+' '+(m.desc||'')+'</span>'}).join('')+'</div>';
   }
@@ -10955,6 +10768,51 @@ async function runBattle(stageId){
   });
 
   const won=enemyUnits.every(u=>!u.alive);
+
+  // ===== 生肖 Boss 战结算（独立结算逻辑，避免影响关卡进度）=====
+  if(isZodiac){
+    var totalMaxHp = enemyUnits.reduce((s,u)=>s+u.maxHP,0);
+    var hpLeft = enemyUnits.reduce((s,u)=>s+Math.max(0,u.hp||0),0);
+    if(!G.zodiacChallenges) G.zodiacChallenges = [];
+    if(!G.zodiacChallenges[zodiacBossIndex]) G.zodiacChallenges[zodiacBossIndex] = {attempts:0,bestHp:totalMaxHp,defeated:false};
+    G.zodiacChallenges[zodiacBossIndex].attempts += 1;
+    if(hpLeft < G.zodiacChallenges[zodiacBossIndex].bestHp) G.zodiacChallenges[zodiacBossIndex].bestHp = hpLeft;
+    if(won){
+      G.zodiacChallenges[zodiacBossIndex].defeated = true;
+      if(zodiacBossIndex+1 > G.zodiacProgress) G.zodiacProgress = zodiacBossIndex+1;
+      if(!G.zodiacClearCount) G.zodiacClearCount = [];
+      if(!G.zodiacClearCount[zodiacBossIndex]) G.zodiacClearCount[zodiacBossIndex]=0;
+      G.zodiacClearCount[zodiacBossIndex] += 1;
+      // Boss 战胜奖励：额外金币+宝石
+      var bossBaseReward = Math.floor((stage.id||1) * 500 + 1000);
+      G.resources.gold = Math.min((G.resources.gold||0) + bossBaseReward, RESOURCE_LIMITS.gold);
+      G.resources.gems = Math.min((G.resources.gems||0) + 10, RESOURCE_LIMITS.gems);
+      log('🏆 生肖 Boss 奖励：💰+'+bossBaseReward+' 💎+10','title');
+      showToast('🎉 Boss 击败！');
+    }else{
+      showToast('挑战失败...');
+    }
+    log('敌方剩余 HP: '+hpLeft+'/'+totalMaxHp+' | 本次挑战次数: '+G.zodiacChallenges[zodiacBossIndex].attempts,'info');
+    saveGame();
+    updateResUI();
+    renderTeams();
+    G_battlePaused=false;
+    updatePauseButton();
+    var btnArea=document.getElementById('battle-buttons');
+    if(btnArea){
+      btnArea.innerHTML='<div style="text-align:center;padding:16px 0">'
+        +'<div style="font-size:16px;font-weight:bold;margin-bottom:8px;color:'+(won?'#ffd700':'#e74c3c')+'">'
+        +(won?'🎉 Boss 击败！':'💀 挑战失败...')+'</div>'
+        +'<div style="font-size:12px;color:#bbb;margin-bottom:12px">敌方剩余 HP: '+hpLeft+'/'+totalMaxHp+' | 挑战次数: '+G.zodiacChallenges[zodiacBossIndex].attempts+'</div>'
+        +'<button class="btn btn-primary" onclick="closeZodiacBattle()" style="font-size:14px;padding:8px 24px;margin-right:8px">返回 Boss 列表</button>'
+        +'<button class="btn" onclick="retryZodiac('+zodiacBossIndex+')" style="font-size:14px;padding:8px 24px">再战一次</button>'
+        +'</div>';
+    }
+    clearUnitElCache();
+    G_battleRunning=false;
+    return;
+  }
+
   if(won){
     // 战斗胜利：清空敌方显示区域
     enemyTeamEl.innerHTML='';
