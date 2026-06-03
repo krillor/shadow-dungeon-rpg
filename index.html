@@ -9051,6 +9051,11 @@ function calcDamage(attacker,defender,skill=null,skillIdx=-1){
   if(!attacker.isEnemy && attacker._teamDamageBonus) dmg=Math.floor(dmg*(1+attacker._teamDamageBonus));
   // 天赋 teamDamageReduce：全队伤害减免（仅我方）
   if(!defender.isEnemy && defender._teamDamageReduceBonus) dmg=Math.floor(dmg*(1-defender._teamDamageReduceBonus));
+  // 天赋 allyKillBoost：队友击杀后下次攻击伤害提升（一次性消耗）
+  if(!attacker.isEnemy && attacker._allyKillBoostReady && atkTe.allyKillBoost){
+    dmg=Math.floor(dmg*(1+atkTe.allyKillBoost));
+    attacker._allyKillBoostReady = false;
+  }
   // 天赋 damageCap：单次伤害不超过最大生命值的比例
   if(defTe.damageCap && defTe.damageCap>0){
     var maxDmg=Math.floor(defender.maxHP*defTe.damageCap);
@@ -10250,10 +10255,12 @@ async function runBattle(stageId){
             addCombo(unit);
             // 装备特殊技能触发 - 攻击者 onAttack
             checkEquipSpecialSkill(unit,'onAttack',target,allUnits);
-            // 反击机制：防御者有10%概率反击（守护者20%）
+            // 反击机制：防御者有10%概率反击（守护者20%）+ 天赋 counterEnhance 提升反击伤害
             if(target.alive && Math.random()<(target.role==='guardian'?0.2:0.1)){
               var counterResult=calcDamage(target,unit,null);
-              var counterDmg=counterResult&&counterResult.dmg?Math.floor(counterResult.dmg*0.5):0;
+              var cEnhance = 0.5; // 基础反击伤害倍率
+              if(target.talentEffects && target.talentEffects.counterEnhance) cEnhance += target.talentEffects.counterEnhance;
+              var counterDmg=counterResult&&counterResult.dmg?Math.floor(counterResult.dmg*cEnhance):0;
               unit.hp=Math.max(0,unit.hp-counterDmg);
               log(getBattleDesc('counter',unit,target)+' 造成 '+counterDmg+' 点伤害！','skill');
               showFloat(unit,'⚡反击-'+counterDmg,'damage');
@@ -10280,6 +10287,15 @@ async function runBattle(stageId){
                     log(unit.icon+' '+unit.name+' 嗜血：回复 '+baKhAmt+' 生命！','heal');
                     showFloat(unit,'+'+baKhAmt+' 嗜血','heal');
                   }
+                }
+                // 天赋 allyKillBoost：队友击杀后其他队友下次攻击伤害提升
+                if(!target.alive && !unit.isEnemy && allUnits){
+                  allUnits.forEach(function(ally){
+                    if(ally===unit || !ally.alive || ally.isEnemy) return;
+                    if(ally.talentEffects && ally.talentEffects.allyKillBoost){
+                      ally._allyKillBoostReady = true;
+                    }
+                  });
                 }
               }
               // 装备特殊技能触发 - 击杀 onKill
@@ -10568,7 +10584,9 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
         if(r.crit)recordBattleStat(user,'crit',1);
         if(skill.stunChance&&Math.random()<skill.stunChance){
           if(!t._stunImmune){
-            t.buffs.push({stat:'stun',duration:1,name:'眩晕'});
+            var ccReduceDur = 1;
+            if(t.talentEffects && t.talentEffects.ccReduce) ccReduceDur = Math.max(1, Math.floor(1 * (1 - t.talentEffects.ccReduce)));
+            t.buffs.push({stat:'stun',duration:ccReduceDur,name:'眩晕'});
             logFn(t.icon+t.name+' 被眩晕了！','debuff');
             showFloat(t,'眩晕!','debuff-text');
             recordBattleStat(user,'control',1);
@@ -10579,14 +10597,28 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
         }
         if(skill.dot){
           if(!t._dotImmune){
-            t.dot.push({dmg:Math.floor(user.atk*skill.dot.dmgPct),duration:skill.dot.duration,name:skill.dot.name,sourceRole:user.role});
+            var dotDur = skill.dot.duration;
+            if(t.talentEffects && t.talentEffects.ccReduce) dotDur = Math.max(1, Math.floor(dotDur * (1 - t.talentEffects.ccReduce)));
+            t.dot.push({dmg:Math.floor(user.atk*skill.dot.dmgPct),duration:dotDur,name:skill.dot.name,sourceRole:user.role});
             logFn(t.icon+t.name+' 被施加了 '+skill.dot.name+'！','debuff');
             showFloat(t,'☠'+skill.dot.name,'debuff-text');
           }else{
             logFn(t.icon+t.name+' 免疫DOT！','info');
           }
         }
-        if(skill.debuff){const db=skill.debuff;if(db.stat==='all'){t.buffs.push({stat:'atk',mult:db.mult,duration:db.duration,name:'诅咒-攻'});t.buffs.push({stat:'def',mult:db.mult,duration:db.duration,name:'诅咒-防'})}else{t.buffs.push({stat:db.stat,mult:db.mult,duration:db.duration,name:'削弱'})}logFn(t.icon+t.name+' 被削弱了！','debuff');showFloat(t,'▼削弱','debuff-text')}
+        if(skill.debuff){
+          const db=skill.debuff;
+          var debuffDur = db.duration;
+          if(t.talentEffects && t.talentEffects.ccReduce) debuffDur = Math.max(1, Math.floor(debuffDur * (1 - t.talentEffects.ccReduce)));
+          if(db.stat==='all'){
+            t.buffs.push({stat:'atk',mult:db.mult,duration:debuffDur,name:'诅咒-攻'});
+            t.buffs.push({stat:'def',mult:db.mult,duration:debuffDur,name:'诅咒-防'});
+          }else{
+            t.buffs.push({stat:db.stat,mult:db.mult,duration:debuffDur,name:'削弱'});
+          }
+          logFn(t.icon+t.name+' 被削弱了！','debuff');
+          showFloat(t,'▼削弱','debuff-text');
+        }
         if(skill.healPct){
           var healAmt=Math.floor(user.maxHP*skill.healPct);
           user.hp=Math.min(user.maxHP,user.hp+healAmt);
@@ -10606,11 +10638,21 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
               showFloat(user,'+'+khAmt+' 嗜血','heal');
             }
           }
+          // 天赋 allyKillBoost：队友击杀后其他队友下次攻击伤害提升
+          if(!user.isEnemy && allUnits){
+            allUnits.forEach(function(ally){
+              if(ally===user || !ally.alive || ally.isEnemy) return;
+              if(ally.talentEffects && ally.talentEffects.allyKillBoost){
+                ally._allyKillBoostReady = true;
+              }
+            });
+          }
         }
-        // 天赋 counter：被攻击时有几率反击
+        // 天赋 counter：被攻击时有几率反击（+ counterEnhance 提升伤害）
         if(t.alive && !t.isEnemy && t.talentEffects && t.talentEffects.counter && dmg>0){
           var tcChance = t.talentEffects.counter.chance || 0.2;
           var tcVal = t.talentEffects.counter.value || 0.5;
+          if(t.talentEffects.counterEnhance) tcVal += t.talentEffects.counterEnhance;
           if(Math.random() < tcChance){
             var tcDmg = Math.floor(t.atk * tcVal);
             user.hp = Math.max(0, user.hp - tcDmg);
@@ -10658,7 +10700,9 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
       var shieldMult=isMutated?1.4:1.0;
       targets.forEach(t=>{
         if(!t.alive)return;
-        const amt=Math.floor(t.maxHP*skill.shieldPct*shieldMult);
+        var sBoost = 1.0;
+        if(t.talentEffects && t.talentEffects.shieldBoost) sBoost += t.talentEffects.shieldBoost;
+        const amt=Math.floor(t.maxHP*skill.shieldPct*shieldMult*sBoost);
         t.shield+=amt;
         if(skill.buff){t.buffs.push({...skill.buff,name:skill.name})}
         logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+(isMutated?' 🧬':'')+'，为 '+t.icon+t.name+' 添加 '+amt+' 点护盾'+(isMutated?' ✨变异+40%':''),'buff');
@@ -10685,7 +10729,14 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
       targets.forEach(t=>{
         if(!t.alive)return;
         const db=skill.debuff;
-        if(db.stat==='all'){t.buffs.push({stat:'atk',mult:db.mult,duration:db.duration,name:'诅咒-攻'});t.buffs.push({stat:'def',mult:db.mult,duration:db.duration,name:'诅咒-防'})}else{t.buffs.push({stat:db.stat,mult:db.mult,duration:db.duration,name:'诅咒'})}
+        var debuffDur2 = db.duration;
+        if(t.talentEffects && t.talentEffects.ccReduce) debuffDur2 = Math.max(1, Math.floor(debuffDur2 * (1 - t.talentEffects.ccReduce)));
+        if(db.stat==='all'){
+          t.buffs.push({stat:'atk',mult:db.mult,duration:debuffDur2,name:'诅咒-攻'});
+          t.buffs.push({stat:'def',mult:db.mult,duration:debuffDur2,name:'诅咒-防'});
+        }else{
+          t.buffs.push({stat:db.stat,mult:db.mult,duration:debuffDur2,name:'诅咒'});
+        }
         logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+'，'+t.icon+t.name+' 被诅咒了！','debuff');
         showFloat(t,'▼'+skill.name,'debuff-text');
       });break;
@@ -15694,10 +15745,10 @@ function getTalentEffects(hero){
           if(!effects.deathShield)effects.deathShield=0;
           effects.deathShield+=eff.value*points;
         }
-        // damageCap：伤害上限
+        // damageCap：伤害上限（value 为单次伤害占最大生命的百分比上限，越小越严格，取最严格）
         if(type==='damageCap'){
-          if(!effects.damageCap)effects.damageCap=0;
-          effects.damageCap=Math.max(effects.damageCap,eff.value); // 取最低上限
+          if(!effects.damageCap)effects.damageCap=eff.value;
+          else effects.damageCap=Math.min(effects.damageCap,eff.value);
         }
         // counter：反击（带几率和伤害比例）
         if(type==='counter'){
