@@ -8842,6 +8842,8 @@ function addHeroExp(hero,amount){
 function createBattleUnit(hero,isEnemy=false){
   const stats=getHeroStats(hero);
   G_battleUnitIdCounter++;
+  // 预计算该英雄的所有天赋效果，缓存在 battleUnit 上供战斗中使用
+  const talentEffects = getTalentEffects(hero);
   return{
     hero:hero, isEnemy:isEnemy,
     name:hero.name||'未知', icon:hero.icon||'❓',
@@ -8854,6 +8856,10 @@ function createBattleUnit(hero,isEnemy=false){
     buffs:[], cooldowns:{},
     dot:[], // 持续伤害
     bonusSkills: hero.bonusSkills||[],
+    talentEffects: talentEffects, // 天赋效果缓存
+    _talentDeathDefyUsed:false,   // 天赋 deathDefy 是否已使用
+    _talentDeathShieldUsed:false,  // 天赋 deathShield 是否已使用
+    _talentAtkStackCount:0,        // damageAtkStack 叠加次数
   };
 }
 
@@ -8946,14 +8952,49 @@ function calcDamage(attacker,defender,skill=null,skillIdx=-1){
     var gp2 = defender.hero.geneMutatedPassive;
     if(gp2.name === '铁壁') def=Math.floor(def*1.2);
   }
-  
+
+  // ===== 天赋效果 =====
+  var atkTe = attacker.talentEffects || {};
+  var defTe = defender.talentEffects || {};
+  var hpRatioA = attacker.maxHP>0 ? attacker.hp/attacker.maxHP : 0;
+  var hpRatioD = defender.maxHP>0 ? defender.hp/defender.maxHP : 0;
+
+  // 攻击者：hpThresholdAtk（生命值低于阈值时攻击力加成）
+  if(Array.isArray(atkTe.hpThresholdAtk)){
+    for(var i=0;i<atkTe.hpThresholdAtk.length;i++){
+      var te=atkTe.hpThresholdAtk[i];
+      if(hpRatioA<te.threshold) atk=Math.floor(atk*(1+te.value));
+    }
+  }
+  // 攻击者：hpThresholdAtk2（生命值低于更低阈值时额外攻击力加成）
+  if(Array.isArray(atkTe.hpThresholdAtk2)){
+    for(var i2=0;i2<atkTe.hpThresholdAtk2.length;i2++){
+      var te2=atkTe.hpThresholdAtk2[i2];
+      if(hpRatioA<te2.threshold) atk=Math.floor(atk*(1+te2.value));
+    }
+  }
+  // 防御者：hpThresholdDef（生命值低于阈值时防御加成）
+  if(Array.isArray(defTe.hpThresholdDef)){
+    for(var i3=0;i3<defTe.hpThresholdDef.length;i3++){
+      var te3=defTe.hpThresholdDef[i3];
+      if(hpRatioD<te3.threshold) def=Math.floor(def*(1+te3.value));
+    }
+  }
+  // 攻击者：defPen - 无视目标百分比防御
+  if(atkTe.defPen) def=Math.floor(def*(1-atkTe.defPen));
+  // 攻击者：damageAtkStack - 受击后攻击叠加
+  if(atkTe.damageAtkStack && attacker._talentAtkStackCount>0){
+    var stackBonus = atkTe.damageAtkStack*Math.min(attacker._talentAtkStackCount,5);
+    atk=Math.floor(atk*(1+stackBonus));
+  }
+
   // 基础伤害计算
   let mult=skill?skill.mult:1.0;
   // 变异技能伤害增幅 +50%
   if(isMutatedSkill) mult*=1.5;
   let dmg=Math.max(1,Math.floor((atk*mult-def*0.5)*(0.9+Math.random()*0.2)));
   
-  // 暴击计算（考虑职业暴击率 + 英雄特质暴击率）
+  // 暴击计算（考虑职业暴击率 + 英雄特质暴击率 + 天赋暴击率 + 全队暴击率）
   let crit=false;
   let critRate=attackerRole&&attackerRole.critRate?attackerRole.critRate:0.1;
   if(skill&&skill.critBonus)critRate+=skill.critBonus;
@@ -8961,15 +9002,19 @@ function calcDamage(attacker,defender,skill=null,skillIdx=-1){
   if(attacker.traits) attacker.traits.forEach(t=>{if(t.id==='berserker')critRate+=0.08});
   // 金手指模式下暴击率提升
   if(G_cheats.enabled) critRate+=0.1;
-  
+  // 天赋：critChance 加成
+  if(atkTe.critChance) critRate+=atkTe.critChance;
+  // 天赋：teamCrit 全队暴击率加成（只对我方单位生效）
+  if(!attacker.isEnemy && attacker._teamCritBonus) critRate+=attacker._teamCritBonus;
+
   // 刺客：暗影步 - 暴击伤害+50%
   let critDmg=attackerRole&&attackerRole.critDmg?attackerRole.critDmg:1.8;
-  
+
   // 羁绊暴击加成（上限95%）
   if(attacker._bondCritRate) critRate+=attacker._bondCritRate;
   critRate=Math.min(0.95,Math.max(0,critRate)); // 限制在0-95%
   if(attacker._bondCritDmg) critDmg+=attacker._bondCritDmg;
-  
+
   if(Math.random()<critRate){dmg=Math.floor(dmg*critDmg);crit=true}
   
   // 闪避计算（考虑职业闪避率 + 英雄特质闪避率，上限80%）
@@ -8991,7 +9036,27 @@ function calcDamage(attacker,defender,skill=null,skillIdx=-1){
   if(defender._magicResist&&(attacker.role==='mage'||attacker.role==='warlock'||attacker.role==='healer')){
     dmg=Math.floor(dmg*(1-defender._magicResist));
   }
-  
+
+  // ===== 天赋：伤害后处理 =====
+  // 天赋 damageReduce（格挡类）：受到伤害减少
+  if(defTe.damageReduce) dmg=Math.floor(dmg*(1-defTe.damageReduce));
+  // 天赋 hpAboveDamage：高血量时伤害加成
+  if(Array.isArray(atkTe.hpAboveDamage)){
+    for(var ihd=0;ihd<atkTe.hpAboveDamage.length;ihd++){
+      var teHD=atkTe.hpAboveDamage[ihd];
+      if(hpRatioA>=teHD.threshold) dmg=Math.floor(dmg*(1+teHD.value));
+    }
+  }
+  // 天赋 teamDamage：全队伤害加成（仅我方）
+  if(!attacker.isEnemy && attacker._teamDamageBonus) dmg=Math.floor(dmg*(1+attacker._teamDamageBonus));
+  // 天赋 teamDamageReduce：全队伤害减免（仅我方）
+  if(!defender.isEnemy && defender._teamDamageReduceBonus) dmg=Math.floor(dmg*(1-defender._teamDamageReduceBonus));
+  // 天赋 damageCap：单次伤害不超过最大生命值的比例
+  if(defTe.damageCap && defTe.damageCap>0){
+    var maxDmg=Math.floor(defender.maxHP*defTe.damageCap);
+    if(dmg>maxDmg) dmg=maxDmg;
+  }
+
   // 术士：灵魂虹吸 - 造成伤害的15%转化为生命恢复
   if(attacker.role==='warlock' && !attacker.isEnemy){
     const heal=Math.floor(dmg*0.15);
@@ -9691,7 +9756,38 @@ async function runBattle(stageId){
     return unit;
   });
   let allUnits=[...playerUnits,...enemyUnits];
-  
+
+  // ===== 战斗开始：天赋初始化 =====
+  // 1. 收集所有我方单位的团队天赋加成（teamCrit, teamDamage, teamDamageReduce）
+  var teamCritTotal = 0;
+  var teamDamageTotal = 0;
+  var teamDamageReduceTotal = 0;
+  playerUnits.forEach(function(u){
+    var te = u.talentEffects || {};
+    if(te.teamCrit) teamCritTotal += te.teamCrit;
+    if(te.teamDamage) teamDamageTotal += te.teamDamage;
+    if(te.teamDamageReduce) teamDamageReduceTotal += te.teamDamageReduce;
+  });
+  // 2. 把团队加成作为每单位级的标记附加到每个我方单位
+  if(teamCritTotal>0 || teamDamageTotal>0 || teamDamageReduceTotal>0){
+    playerUnits.forEach(function(u){
+      if(teamCritTotal>0) u._teamCritBonus = teamCritTotal;
+      if(teamDamageTotal>0) u._teamDamageBonus = teamDamageTotal;
+      if(teamDamageReduceTotal>0) u._teamDamageReduceBonus = teamDamageReduceTotal;
+    });
+  }
+  // 3. 战斗开始时全队buff（battleStartBuff）
+  playerUnits.forEach(function(u){
+    var te = u.talentEffects || {};
+    if(te.battleStartBuffs && te.battleStartBuffs.length>0){
+      te.battleStartBuffs.forEach(function(buff){
+        playerUnits.forEach(function(ally){
+          ally.buffs.push({stat:buff.stat,mult:1+buff.value,duration:buff.duration,name:'战吼·' + (buff.stat==='atk'?'攻击':buff.stat)});
+        });
+      });
+    }
+  });
+
   // 初始化战斗统计数据
   resetBattleStats();
 
@@ -9926,6 +10022,15 @@ async function runBattle(stageId){
         showFloat(u,'+'+regenAmt,'heal');
       }
 
+      // 天赋 hpRegen：每回合恢复百分比最大生命
+      if(u.talentEffects && u.talentEffects.hpRegen){
+        var talentRegen = Math.floor(u.maxHP*u.talentEffects.hpRegen);
+        if(talentRegen>0){
+          u.hp=Math.min(u.maxHP,u.hp+talentRegen);
+          showFloat(u,'+'+talentRegen+' 复苏','heal');
+        }
+      }
+
       // 装备特殊技能触发 - 回合开始 turnStart
       checkEquipSpecialSkill(u,'turnStart',null,allUnits);
 
@@ -10120,6 +10225,27 @@ async function runBattle(stageId){
             recordBattleStat(unit,'damage',dmg);
             recordBattleStat(target,'damageTaken',dmg);
             if(r.crit)recordBattleStat(unit,'crit',1);
+
+            // 天赋 damageAtkStack：被攻击时攻击叠加
+            if(dmg>0 && target.talentEffects && target.talentEffects.damageAtkStack){
+              target._talentAtkStackCount = Math.min(5, (target._talentAtkStackCount || 0) + 1);
+            }
+            // 天赋 deathShield：致命伤害保留1HP并获得护盾（放在凤凰涅槃之前）
+            if(target.hp<=0 && target.talentEffects && target.talentEffects.deathShield && !target._talentDeathShieldUsed && !target.isEnemy){
+              target._talentDeathShieldUsed = true;
+              target.hp = 1;
+              target.shield += Math.floor(target.maxHP * target.talentEffects.deathShield);
+              log(target.icon+target.name+' 触发不朽堡垒！保留生命并获得护盾！','buff');
+              showFloat(target,'不朽堡垒!','buff-text');
+            }
+            // 天赋 deathDefy：致命伤害保留1HP
+            if(target.hp<=0 && target.talentEffects && target.talentEffects.deathDefy && !target._talentDeathDefyUsed && !target.isEnemy){
+              target._talentDeathDefyUsed = true;
+              target.hp = 1;
+              log(target.icon+target.name+' 触发不屈战魂！保留1点生命！','buff');
+              showFloat(target,'不屈战魂!','buff-text');
+            }
+
             // 连击计数
             addCombo(unit);
             // 装备特殊技能触发 - 攻击者 onAttack
@@ -10146,6 +10272,15 @@ async function runBattle(stageId){
                 animUnit(target,'heal',500);
               } else {
                 target.alive=false;log(target.icon+' '+target.name+' 倒下了...','death');animUnit(target,'dying',700);
+                // 天赋 killHeal：击杀敌人后恢复生命
+                if(!target.alive && unit.talentEffects && unit.talentEffects.killHeal && !unit.isEnemy){
+                  var baKhAmt = Math.floor(unit.maxHP * unit.talentEffects.killHeal);
+                  if(baKhAmt>0){
+                    unit.hp = Math.min(unit.maxHP, unit.hp + baKhAmt);
+                    log(unit.icon+' '+unit.name+' 嗜血：回复 '+baKhAmt+' 生命！','heal');
+                    showFloat(unit,'+'+baKhAmt+' 嗜血','heal');
+                  }
+                }
               }
               // 装备特殊技能触发 - 击杀 onKill
               if(!target.alive) checkEquipSpecialSkill(unit,'onKill',target,allUnits);
@@ -10158,7 +10293,9 @@ async function runBattle(stageId){
         }
       }
 
-      for(let sid in unit.cooldowns){unit.cooldowns[sid]--}
+      // 天赋 cdReduce：技能冷却额外减少
+      let cdReduceExtra = (unit.talentEffects && unit.talentEffects.cdReduce) ? unit.talentEffects.cdReduce : 0;
+      for(let sid in unit.cooldowns){unit.cooldowns[sid] -= (1 + cdReduceExtra);}
       clearHighlight();
       renderTeams();
       await sleep(250);
@@ -10407,6 +10544,27 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
         animUnit(t,'hit',300);
         recordBattleStat(user,'damage',dmg);
         recordBattleStat(t,'damageTaken',dmg);
+
+        // 天赋 damageAtkStack：被攻击时攻击叠加
+        if(dmg>0 && t.talentEffects && t.talentEffects.damageAtkStack){
+          t._talentAtkStackCount = Math.min(5, (t._talentAtkStackCount || 0) + 1);
+        }
+        // 天赋 deathShield：致命伤害保留1HP并获得护盾
+        if(t.hp<=0 && t.talentEffects && t.talentEffects.deathShield && !t._talentDeathShieldUsed && !t.isEnemy){
+          t._talentDeathShieldUsed = true;
+          t.hp = 1;
+          t.shield += Math.floor(t.maxHP * t.talentEffects.deathShield);
+          logFn(t.icon+t.name+' 触发不朽堡垒！保留生命并获得护盾！','buff');
+          showFloat(t,'不朽堡垒!','buff-text');
+        }
+        // 天赋 deathDefy（不屈战魂）：致命伤害保留1HP
+        if(t.hp<=0 && t.talentEffects && t.talentEffects.deathDefy && !t._talentDeathDefyUsed && !t.isEnemy){
+          t._talentDeathDefyUsed = true;
+          t.hp = 1;
+          logFn(t.icon+t.name+' 触发不屈战魂！保留1点生命！','buff');
+          showFloat(t,'不屈战魂!','buff-text');
+        }
+
         if(r.crit)recordBattleStat(user,'crit',1);
         if(skill.stunChance&&Math.random()<skill.stunChance){
           if(!t._stunImmune){
@@ -10435,7 +10593,32 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
           logFn(user.icon+' '+user.name+' 恢复了 '+healAmt+' 生命','heal');
           showFloat(user,'+'+healAmt,'heal');
         }
-        if(t.hp<=0){t.alive=false;logFn(t.icon+' '+t.name+' 倒下了...','death');animUnit(t,'dying',700)}
+        if(t.hp<=0){
+          t.alive=false;
+          logFn(t.icon+' '+t.name+' 倒下了...','death');
+          animUnit(t,'dying',700);
+          // 天赋 killHeal：击杀敌人后恢复生命
+          if(user.talentEffects && user.talentEffects.killHeal && !user.isEnemy){
+            var khAmt = Math.floor(user.maxHP * user.talentEffects.killHeal);
+            if(khAmt>0){
+              user.hp = Math.min(user.maxHP, user.hp + khAmt);
+              logFn(user.icon+' '+user.name+' 嗜血：回复 '+khAmt+' 生命！','heal');
+              showFloat(user,'+'+khAmt+' 嗜血','heal');
+            }
+          }
+        }
+        // 天赋 counter：被攻击时有几率反击
+        if(t.alive && !t.isEnemy && t.talentEffects && t.talentEffects.counter && dmg>0){
+          var tcChance = t.talentEffects.counter.chance || 0.2;
+          var tcVal = t.talentEffects.counter.value || 0.5;
+          if(Math.random() < tcChance){
+            var tcDmg = Math.floor(t.atk * tcVal);
+            user.hp = Math.max(0, user.hp - tcDmg);
+            logFn(t.icon+t.name+' 天赋反击！造成 '+tcDmg+' 伤害','damage');
+            showFloat(user,'-'+tcDmg+' 反击','damage');
+            if(user.hp<=0){user.alive=false;logFn(user.icon+' '+user.name+' 倒下了...','death');animUnit(user,'dying',700);}
+          }
+        }
         // 关卡特性：反击
         if(t.alive&&t._counterPct&&dmg>0){
           var counterDmg=Math.floor(dmg*t._counterPct);
@@ -15477,24 +15660,60 @@ function confirmResetTalents(heroUid){
 
 // 获取英雄天赋效果汇总
 function getTalentEffects(hero){
+  // 返回英雄所有天赋的战斗效果（包括基础属性加成和战斗内效果）
   const effects={};
   if(!hero||!hero.talents)return effects;
-  
+
   const tree=TALENT_TREES[hero.role];
   if(!tree)return effects;
-  
+
   for(const[branchId,branch]of Object.entries(tree.branches)){
     for(const talent of branch.talents){
       const points=hero.talents[talent.id]||0;
       if(points>0){
-        const effectType=talent.effect.type;
-        const effectValue=talent.effect.value*points;
-        if(!effects[effectType])effects[effectType]=0;
-        effects[effectType]+=effectValue;
+        const eff=talent.effect;
+        const type=eff.type;
+        // 基础数值型效果（如 hpMax, atk, def, spd, mpMax, critChance, damageReduce,
+        // hpRegen, killHeal, teamDamage, teamCrit, defPen, teamDamageReduce,
+        // ccReduce, shieldBoost, damageAtkStack, counterEnhance, allyKillBoost, cdReduce）
+        if(eff.value!==undefined && typeof eff.value==='number'){
+          if(!effects[type])effects[type]=0;
+          effects[type]+=eff.value*points;
+        }
+        // 带阈值的效果（如 hpThresholdAtk, hpThresholdAtk2, hpThresholdDef, hpAboveDamage）
+        if(type==='hpThresholdAtk'||type==='hpThresholdAtk2'||type==='hpThresholdDef'||type==='hpAboveDamage'){
+          if(!effects[type])effects[type]=[];
+          effects[type].push({threshold:eff.threshold,value:eff.value*points});
+        }
+        // 触发型（布尔）效果（如 deathDefy）
+        if(type==='deathDefy'){
+          effects.deathDefy=true;
+        }
+        // deathShield：带数值的触发型效果
+        if(type==='deathShield'){
+          if(!effects.deathShield)effects.deathShield=0;
+          effects.deathShield+=eff.value*points;
+        }
+        // damageCap：伤害上限
+        if(type==='damageCap'){
+          if(!effects.damageCap)effects.damageCap=0;
+          effects.damageCap=Math.max(effects.damageCap,eff.value); // 取最低上限
+        }
+        // counter：反击（带几率和伤害比例）
+        if(type==='counter'){
+          if(!effects.counter)effects.counter={chance:0,value:0};
+          effects.counter.chance=Math.min(1,effects.counter.chance+(eff.chance||0.2)*points);
+          effects.counter.value+=(eff.value||0.5)*points;
+        }
+        // battleStartBuff：战斗开始时全队buff
+        if(type==='battleStartBuff'){
+          if(!effects.battleStartBuffs)effects.battleStartBuffs=[];
+          effects.battleStartBuffs.push({stat:eff.stat,value:eff.value*points,duration:eff.duration||3});
+        }
       }
     }
   }
-  
+
   return effects;
 }
 
