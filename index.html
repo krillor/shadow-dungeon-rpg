@@ -2806,6 +2806,7 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
     <!-- <div class="nav-btn" data-tab="achievements" title="成就">🏅<div class="nav-label">成就</div></div> -->
     <div class="nav-btn" data-tab="leaderboard" title="排行">🏆<div class="nav-label">排行</div></div>
     <div class="nav-btn" data-tab="cheats" id="nav-cheats-btn" title="金手指" style="color:#c0392b">🔓<div class="nav-label">金手指</div></div>
+    <div class="nav-btn" data-tab="zodiac" title="生肖Boss">🐉<div class="nav-label">生肖</div></div>
   </div>
   <div id="main">
     <div id="content"></div>
@@ -4167,6 +4168,118 @@ var AREA_THEMES=[
   {prefix:'混沌',suffix:'深渊',icon:'😈'},{prefix:'远古',suffix:'遗迹',icon:'🏛️'},
 ];
 
+// ==================== 12 生肖 Boss 系统 ====================
+const ZODIAC_BOSSES = [
+  { id:'rat',      name:'生肖·子鼠', icon:'🐭', role:'assassin', quality:'mythic',
+    unlockStage: 5,
+    desc:'机敏迅捷，攻击速度极快，擅长多段连击',
+    bias:{spd:2.2, atk:1.5, hpMax:0.8, def:0.6},
+    skills:['backstab','poison_blade'],
+    bonusSkills:null,
+    modifiers:['rage','speed_boost'],
+    phase:null,
+  },
+  { id:'ox',       name:'生肖·丑牛', icon:'🐂', role:'guardian', quality:'mythic',
+    unlockStage: 10,
+    desc:'防御高，生命厚实，擅长反伤铁壁',
+    bias:{hpMax:2.5, def:2.0, atk:0.8, spd:0.7},
+    skills:['shield_bash','iron_wall','taunt'],
+    bonusSkills:null,
+    modifiers:['high_def','counter'],
+    phase:null,
+  },
+  { id:'tiger',    name:'生肖·寅虎', icon:'🐅', role:'warrior', quality:'mythic',
+    unlockStage: 15,
+    desc:'高攻高暴击，流血撕裂',
+    bias:{atk:1.8, hpMax:1.2, spd:1.2, def:1.0},
+    skills:['cleave','execute','berserker'],
+    bonusSkills:null,
+    modifiers:['rage'],
+    phase:null,
+  },
+  { id:'rabbit',   name:'生肖·卯兔', icon:'🐇', role:'ranger', quality:'mythic',
+    unlockStage: 20,
+    desc:'速度极快，控制与爆发兼备',
+    bias:{spd:2.5, atk:1.2, def:0.5, hpMax:0.7},
+    skills:['aimed_shot','poison_arrow'],
+    bonusSkills:null,
+    modifiers:['speed_boost','high_dodge'],
+    phase:null,
+  },
+  { id:'dragon',   name:'生肖·辰龙', icon:'🐉', role:'mage', quality:'mythic',
+    unlockStage: 25,
+    desc:'全能属性，群攻魔法',
+    bias:{atk:1.5, hpMax:1.5, def:1.2, spd:1.2},
+    skills:['fireball','blizzard','thunder'],
+    bonusSkills:null,
+    modifiers:['magic_resist'],
+    phase:null,
+  },
+  { id:'snake',    name:'生肖·巳蛇', icon:'🐍', role:'warlock', quality:'mythic',
+    unlockStage: 30,
+    desc:'DOT 大师，剧毒侵蚀',
+    bias:{atk:1.3, hpMax:1.2, def:0.8, spd:1.1},
+    skills:['soul_drain','curse','dark_pact'],
+    bonusSkills:null,
+    modifiers:['dot_immune'],
+    phase:null,
+  },
+  { id:'horse',    name:'生肖·午马', icon:'🐎', role:'warrior', quality:'mythic',
+    unlockStage: 35,
+    desc:'冲锋机制，高暴击输出',
+    bias:{spd:1.8, atk:1.4, hpMax:1.0, def:0.8},
+    skills:['ground_slam','cleave','execute'],
+    bonusSkills:null,
+    modifiers:['rage','speed_boost'],
+    phase:null,
+  },
+  { id:'goat',     name:'生肖·未羊', icon:'🐐', role:'healer', quality:'mythic',
+    unlockStage: 40,
+    desc:'治疗反伤，高防御续航',
+    bias:{hpMax:2.0, def:1.5, atk:0.7, spd:0.8},
+    skills:['heal','group_heal','holy_light'],
+    bonusSkills:null,
+    modifiers:['high_def','regen'],
+    phase:null,
+  },
+  { id:'monkey',   name:'生肖·申猴', icon:'🐵', role:'assassin', quality:'mythic',
+    unlockStage: 45,
+    desc:'高闪避，连击随机技能',
+    bias:{spd:1.8, atk:1.3, hpMax:0.9, def:0.7},
+    skills:['backstab','shadow_step','poison_blade'],
+    bonusSkills:null,
+    modifiers:['high_dodge','rage'],
+    phase:null,
+  },
+  { id:'rooster',  name:'生肖·酉鸡', icon:'🐓', role:'paladin', quality:'mythic',
+    unlockStage: 50,
+    desc:'先手暴击，神圣护盾',
+    bias:{atk:1.4, spd:1.6, hpMax:1.0, def:0.9},
+    skills:['shield_bash','divine_shield','holy_light'],
+    bonusSkills:null,
+    modifiers:['speed_boost','stun_immune'],
+    phase:null,
+  },
+  { id:'dog',      name:'生肖·戌狗', icon:'🐕', role:'guardian', quality:'mythic',
+    unlockStage: 55,
+    desc:'嘲讽反伤，坚固防线',
+    bias:{def:1.8, hpMax:1.6, atk:1.0, spd:0.9},
+    skills:['taunt','iron_wall','shield_bash'],
+    bonusSkills:null,
+    modifiers:['high_def','counter'],
+    phase:null,
+  },
+  { id:'pig',      name:'生肖·亥猪', icon:'🐖', role:'guardian', quality:'mythic',
+    unlockStage: 60,
+    desc:'超高生命，自愈减伤',
+    bias:{hpMax:3.0, def:1.5, atk:0.8, spd:0.5},
+    skills:['shield_bash','iron_wall','fortify'],
+    bonusSkills:null,
+    modifiers:['regen','high_def'],
+    phase:null,
+  },
+];
+
 function getStage(id){
   if(id<=STAGES.length){
     var s=STAGES[id-1];
@@ -5389,6 +5502,9 @@ let G = {
   equipment: [],
   buildings: {tavern:1, farm:1, mine:0, blacksmith:0, temple:0, arena:0},
   stageProgress: 1,
+  zodiacProgress: 0,         // 已通关的最高 Boss 索引(0-11)，0表示尚未开始，通关第1个后为1
+  zodiacChallenges: {},         // { bossIndex: { attempts: n, bestHp: m, defeated: boolean } }
+  zodiacClearCount: {},       // { bossIndex: count } — 各 Boss 的已通关次数（用于刷材料）
   battleState: null,
   heroIdCounter: 0,
   // PVE连胜系统
@@ -5681,6 +5797,9 @@ function decompressSaveV3V4(compressed) {
       team: team,
       equipment: equipment,
       stageProgress: compressed.sp || 1,
+      zodiacProgress: compressed.zp || 0,
+      zodiacChallenges: compressed.zc || {},
+      zodiacClearCount: compressed.zcc || {},
       gold: compressed.g || 0,
       gems: compressed.gm || 0,
       materials: compressed.m || {},
@@ -9711,6 +9830,306 @@ function setBattleSpeed(spd){
       }
     }
   });
+}
+
+// ===== 生肖 Boss 战斗系统 =====
+
+// 计算玩家队伍的平均属性（用于动态缩放 Boss）
+function getTeamAverageStats(){
+  var team = (G.team||[]).filter(h=>h!==null);
+  if(team.length===0){
+    return { maxHP: 800, atk: 100, def: 50, spd: 60 };
+  }
+  var sum={maxHP:0, atk:0, def:0, spd:0};
+  team.forEach(function(h){
+    var s = getHeroStats(h);
+    sum.maxHP += s.maxHP;
+    sum.atk += s.atk;
+    sum.def += s.def;
+    sum.spd += s.spd;
+  });
+  var n = team.length;
+  return { maxHP: Math.floor(sum.maxHP/n), atk: Math.floor(sum.atk/n), def: Math.floor(sum.def/n), spd: Math.floor(sum.spd/n) };
+}
+
+// 根据玩家属性和 Boss 索引动态构造敌方单位
+function buildZodiacBossUnit(bossIndex){
+  var boss = ZODIAC_BOSSES[bossIndex];
+  var avg = getTeamAverageStats();
+  // 难度因子：随 Boss 序号逐步提高（+20%/个），并根据玩家挑战次数逐步增加"可通过"概率
+  var diffMult = 1.5 + bossIndex * 0.3;
+  // 挑战次数越多，Boss 稍微降低，给玩家几十次通过的体验（每次 -2%，最低不低于80%）
+  var attempts = (G.zodiacChallenges[bossIndex] && G.zodiacChallenges[bossIndex].attempts) || 0;
+  var mercy = Math.max(0.8, 1.0 - Math.min(attempts, 40) * 0.02);
+  var b = boss.bias || {};
+  var stats = {
+    maxHP: Math.floor(avg.maxHP * diffMult * (b.hpMax||1.0) * mercy),
+    atk:   Math.floor(avg.atk   * diffMult * (b.atk  ||1.0) * mercy),
+    def:   Math.floor(avg.def   * diffMult * (b.def  ||1.0) * mercy),
+    spd:   Math.floor(avg.spd   * diffMult * (b.spd  ||1.0) * mercy),
+  };
+  // 构造一个 fakeHero，然后 createBattleUnit 包装
+  var fakeHero = {
+    name: boss.name, icon: boss.icon, role: boss.role, quality: boss.quality,
+    level: 80 + bossIndex*5,
+    skills: boss.skills,
+    bonusSkills: boss.bonusSkills || [],
+    maxHP: stats.maxHP, hp: stats.maxHP,
+    atk: stats.atk, def: stats.def, spd: stats.spd,
+    maxMP: 100, mp: 100,
+    equipment: {weapon:null, armor:null, accessory:null},
+    traits: [{id:'berserker'}],  // 略微增强
+  };
+  var unit = createBattleUnit(fakeHero, true);
+  // 应用修饰符（相当于 STAGE_MODIFIERS[modifier].apply(enemies)）
+  if(boss.modifiers && boss.modifiers.length>0){
+    boss.modifiers.forEach(function(mKey){
+      var mod = STAGE_MODIFIERS[mKey];
+      if(mod && mod.apply){
+        mod.apply([unit]);
+      }
+    });
+  }
+  return unit;
+}
+
+// 启动生肖 Boss 战斗
+function startZodiacBoss(bossIndex){
+  if(bossIndex < 0 || bossIndex >= ZODIAC_BOSSES.length){
+    showToast('不存在的 Boss'); return;
+  }
+  var boss = ZODIAC_BOSSES[bossIndex];
+  // 解锁检查：玩家必须通关 unlockStage 关卡
+  if(G.stageProgress < boss.unlockStage){
+    showToast('需通关第 ' + boss.unlockStage + ' 关后解锁'); return;
+  }
+  // 顺序检查：必须先击败前一个
+  if(bossIndex > 0 && G.zodiacProgress < bossIndex){
+    showToast('请先击败上一位 Boss'); return;
+  }
+  // 队伍检查
+  var team = (G.team||[]).filter(function(h){return h!==null});
+  if(team.length===0){ showToast('请先编队'); return; }
+
+  runZodiacBoss(bossIndex);
+}
+
+async function runZodiacBoss(bossIndex){
+  if(G_battleRunning){return;}
+  G_battleRunning = true;
+  G_battlePaused = false;
+
+  var boss = ZODIAC_BOSSES[bossIndex];
+  var teamHeroes = (G.team||[]).filter(h=>h!==null);
+
+  // 玩家单位
+  let playerUnits = teamHeroes.map(h=>createBattleUnit(h,false));
+  // 敌人：单个 Boss
+  let enemyUnits = [buildZodiacBossUnit(bossIndex)];
+  let allUnits=[...playerUnits,...enemyUnits];
+  let round=0;
+  const maxRounds=80;
+
+  // 重置战斗统计
+  if(typeof resetBattleStats === 'function') resetBattleStats();
+
+  // UI 切换到战斗面板
+  currentTab='battle';
+  document.querySelectorAll('.nav-btn').forEach(btn=>{btn.classList.toggle('active',btn.dataset.tab==='battle')});
+  var contentEl=document.getElementById('content');
+  var battlePanel=document.getElementById('battle-panel');
+  if(contentEl) contentEl.style.display='none';
+  if(battlePanel) battlePanel.style.display='';
+  // 清空底部按钮区
+  var btnAreaInit=document.getElementById('battle-buttons');
+  if(btnAreaInit) btnAreaInit.innerHTML='';
+  // 初始渲染队伍
+  if(typeof renderTeams === 'function') renderTeams();
+  var infoEl=document.getElementById('battle-info');
+  if(infoEl){
+    infoEl.innerHTML = '<div style="font-size:18px;font-weight:bold;color:#ffd700;margin-bottom:4px">'
+      + boss.icon + ' ' + boss.name + '</div>'
+      + '<div style="font-size:12px;color:#bbb">' + boss.desc + '</div>';
+  }
+
+  // 回合循环
+  var enemyUnit = enemyUnits[0];
+  var playerAlive = function(){return playerUnits.some(u=>u.alive);};
+  var bossAlive = function(){return enemyUnit.alive;};
+
+  while(G_battleRunning && round < maxRounds && playerAlive() && bossAlive()){
+    if(G_battlePaused){await sleep(200); continue;}
+    round++;
+    var roundEl=document.getElementById('battle-round');
+    if(roundEl) roundEl.textContent = round;
+
+    // 按速度排序所有存活单位
+    var order = allUnits.filter(u=>u.alive).sort(function(a,b){return b.spd-a.spd;});
+    for(var i=0;i<order.length;i++){
+      var u = order[i];
+      if(!u.alive) continue;
+      if(!G_battleRunning) break;
+      // 眩晕检查
+      if(u.buffs.some(x=>x.stat==='stun')){continue;}
+
+      // 回合开始：hpRegen（天赋） + regen（关卡修饰符）
+      if(u.talentEffects && u.talentEffects.hpRegen){
+        u.hp = Math.min(u.maxHP, u.hp + Math.floor(u.maxHP*u.talentEffects.hpRegen));
+      }
+      if(u._regenPct && u.hp < u.maxHP){
+        u.hp = Math.min(u.maxHP, u.hp + Math.floor(u.maxHP*u._regenPct));
+      }
+      // 扣 buff 持续时间
+      u.buffs = u.buffs.filter(function(bf){bf.duration--; return bf.duration>0;});
+      // DOT 结算
+      u.dot = u.dot.filter(function(df){
+        u.hp = Math.max(0, u.hp - df.dmg);
+        df.duration--;
+        if(u.hp<=0) u.alive=false;
+        return df.duration>0;
+      });
+      if(!u.alive) continue;
+
+      // 简单 AI：有技能放技能，否则普攻
+      var chosenSkill = null;
+      var allSkillIds = [];
+      if(u.hero && u.hero.skills) allSkillIds = allSkillIds.concat(u.hero.skills);
+      if(u.bonusSkills) allSkillIds = allSkillIds.concat(u.bonusSkills);
+      for(var si=0; si<allSkillIds.length; si++){
+        var sid = allSkillIds[si];
+        var sk = SKILLS[sid];
+        if(sk && (!u.cooldowns[sid] || u.cooldowns[sid]<=0) && u.mp>=sk.mpCost){
+          chosenSkill = sk; break;
+        }
+      }
+      // 选目标
+      var target = null;
+      var isEnemy = u.isEnemy;
+      var enemies = isEnemy ? playerUnits : enemyUnits;
+      var allies = isEnemy ? enemyUnits : playerUnits;
+      if(chosenSkill){
+        if(chosenSkill.target==='self') target = u;
+        else if(chosenSkill.target==='all_allies') target = allies.filter(a=>a.alive);
+        else if(chosenSkill.target==='all_enemies') target = enemies.filter(a=>a.alive);
+        else target = enemies.filter(a=>a.alive)[0];
+      }else{
+        target = enemies.filter(a=>a.alive)[0];
+      }
+      if(!target) continue;
+
+      if(chosenSkill && typeof executeSkillV2 === 'function'){
+        u.mp -= chosenSkill.mpCost;
+        u.cooldowns[chosenSkill.id] = chosenSkill.cooldown;
+        await executeSkillV2(u, target, chosenSkill, allUnits, function(txt, type){});
+      }else if(target){
+        var r = calcDamage(u, target, null);
+        if(!r.dodged){
+          var finalDmg = r.dmg;
+          if(target.shield>0){ var absorbed = Math.min(target.shield, finalDmg); target.shield-=absorbed; finalDmg-=absorbed; }
+          target.hp = Math.max(0, target.hp-finalDmg);
+          if(target.hp<=0) target.alive=false;
+          // 关卡反击机制
+          if(target.alive && target._counterPct && finalDmg>0){
+            var reflectDmg = Math.floor(finalDmg*target._counterPct);
+            u.hp = Math.max(0, u.hp-reflectDmg);
+            if(u.hp<=0) u.alive=false;
+          }
+        }
+      }
+      if(typeof renderTeams === 'function') renderTeams();
+      await sleep(150);
+    }
+
+    // 回合结束：cooldown 衰减
+    allUnits.forEach(function(u){
+      for(var cds in u.cooldowns){ u.cooldowns[cds]--; }
+    });
+  }
+
+  // 结算
+  var won = enemyUnit.hp<=0 || !enemyUnit.alive;
+
+  // 更新挑战记录
+  if(!G.zodiacChallenges[bossIndex]) G.zodiacChallenges[bossIndex] = {attempts:0, bestHp:enemyUnit.maxHP, defeated:false};
+  G.zodiacChallenges[bossIndex].attempts += 1;
+  var hpLeft = Math.max(0, enemyUnit.hp);
+  if(hpLeft < G.zodiacChallenges[bossIndex].bestHp) G.zodiacChallenges[bossIndex].bestHp = hpLeft;
+
+  if(won){
+    G.zodiacChallenges[bossIndex].defeated = true;
+    if(bossIndex+1 > G.zodiacProgress) G.zodiacProgress = bossIndex+1;
+    if(!G.zodiacClearCount[bossIndex]) G.zodiacClearCount[bossIndex]=0;
+    G.zodiacClearCount[bossIndex] += 1;
+  }
+  saveGame();
+
+  // UI 结算
+  var btnArea = document.getElementById('battle-buttons');
+  if(btnArea){
+    btnArea.innerHTML = '<div style="text-align:center;padding:16px">'
+      + '<div style="font-size:18px;font-weight:bold;margin-bottom:8px;color:'+(won?'#ffd700':'#e74c3c')+'">'
+      + (won ? '🎉 Boss 击败！' : '💀 挑战失败...') + '</div>'
+      + '<div style="font-size:12px;color:#bbb;margin-bottom:8px">Boss 剩余 HP: ' + hpLeft + ' / ' + enemyUnit.maxHP
+      + ' | 本次挑战次数: ' + G.zodiacChallenges[bossIndex].attempts + '</div>'
+      + '<button class="btn btn-primary" onclick="closeZodiacBattle()">返回 Boss 列表</button> '
+      + '<button class="btn" onclick="retryZodiac('+bossIndex+')">再战一次</button>'
+      + '</div>';
+  }
+
+  G_battleRunning=false;
+  G_battlePaused=false;
+}
+
+function closeZodiacBattle(){
+  G_battleRunning=false;
+  G_battlePaused=false;
+  if(typeof hideBattlePanel === 'function') hideBattlePanel();
+  switchTab('zodiac');
+}
+function retryZodiac(bossIndex){
+  G_battleRunning=false;
+  G_battlePaused=false;
+  startZodiacBoss(bossIndex);
+}
+
+// 生肖试炼页渲染
+function renderZodiac(el){
+  if(!el) return;
+  var html = '<div style="max-width:960px;margin:0 auto;padding:16px">'
+    + '<div style="font-size:22px;font-weight:bold;color:#ffd700;margin-bottom:4px">🐉 十二地支 · 生肖试炼</div>'
+    + '<div style="font-size:12px;color:#bbb;margin-bottom:16px">挑战十二位生肖守护者，击败他们以证明实力。Boss 强度根据你的队伍属性动态调整。</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">';
+
+  ZODIAC_BOSSES.forEach(function(b, idx){
+    var unlocked = G.stageProgress >= b.unlockStage;
+    var sequential = (idx===0) || (G.zodiacProgress >= idx);
+    var canFight = unlocked && sequential;
+    var defeated = (G.zodiacProgress > idx) || (G.zodiacChallenges[idx] && G.zodiacChallenges[idx].defeated);
+    var attempts = G.zodiacChallenges[idx] ? G.zodiacChallenges[idx].attempts : 0;
+    var clearCount = G.zodiacClearCount[idx] || 0;
+
+    var borderColor = canFight ? '#ffa500' : '#333';
+    var bgColor = canFight ? 'rgba(255,165,0,0.08)' : 'rgba(50,50,50,0.3)';
+    var label = '';
+    if(defeated) label = '<span style="color:#2ed573;font-weight:bold">✓ 已征服</span>';
+    else if(!unlocked) label = '<span style="color:#999">🔒 通关第'+b.unlockStage+'关解锁</span>';
+    else if(!sequential) label = '<span style="color:#999">🔒 先击败上一位 Boss</span>';
+    else label = '<span style="color:#ffa500;font-weight:bold">▶ 可挑战</span>';
+
+    html += '<div style="border:1px solid '+borderColor+';background:'+bgColor+';border-radius:8px;padding:12px">'
+      + '<div style="font-size:24px;text-align:center">'+b.icon+'</div>'
+      + '<div style="font-size:14px;font-weight:bold;text-align:center;margin:4px 0">'+b.name+'</div>'
+      + '<div style="font-size:11px;color:#bbb;text-align:center;margin-bottom:8px">'+b.desc+'</div>'
+      + '<div style="font-size:11px;color:#999;text-align:center">职业: '+(b.role||'?')
+      + ' | 难度: ★' + (1 + Math.floor(idx/2)) + '</div>'
+      + '<div style="font-size:11px;color:#999;text-align:center;margin:4px 0">挑战: '+attempts+' 次 | 通关: '+clearCount+' 次</div>'
+      + '<div style="text-align:center;margin-top:8px">' + label + '</div>'
+      + (canFight ? '<div style="margin-top:8px"><button class="btn btn-primary" style="width:100%" onclick="startZodiacBoss('+idx+')">⚔️ 挑战</button></div>' : '')
+      + '</div>';
+  });
+
+  html += '</div></div>';
+  el.innerHTML = html;
 }
 
 async function runBattle(stageId){
@@ -13827,6 +14246,7 @@ function renderCurrentTab(){
     case 'leaderboard': renderLeaderboard(contentEl);break;
     case 'breakthrough': contentEl.innerHTML=renderBreakthroughUI();break;
     case 'cheats': renderCheats(contentEl);break;
+    case 'zodiac': renderZodiac(contentEl);break;
   }
 }
 
@@ -20023,6 +20443,9 @@ function supabaseSaveToCloud(silent, forceFull) {
           _timestamp: Date.now(),
           heroes: saveData.game.heroes, // 英雄数据通常需要完整传
           stageProgress: saveData.game.stageProgress,
+          zodiacProgress: saveData.game.zodiacProgress,
+          zodiacChallenges: saveData.game.zodiacChallenges,
+          zodiacClearCount: saveData.game.zodiacClearCount,
           resources: saveData.game.resources,
           playerName: saveData.game.playerName,
           _diff: diff // 其他变化字段
