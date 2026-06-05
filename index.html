@@ -6619,7 +6619,13 @@ function decompressSaveV3V4(compressed) {
 }
 
 function restoreSaveData(data) {
+  try {
   if (!data) { debugLog('[RS]ERR: data为空'); return false; }
+  // 防御性检查：确保 data 是对象
+  if (typeof data !== 'object' || Array.isArray(data)) {
+    debugLog('[RS]ERR: data不是对象');
+    return false;
+  }
 
   var version = data.version || 1;
   var saved = data.game;
@@ -6837,13 +6843,50 @@ function restoreSaveData(data) {
     (saved.equipment||[]).reduce(function(m,e) { return e&&e.uid>m?e.uid:m; }, 0)
   );
 
-  // ===== 13. 写入 G 对象 =====
-  Object.keys(saved).forEach(function(k) { G[k] = saved[k]; });
+  // ===== 13. 写入 G 对象（白名单方式，防止旧字段污染）=====
+  var safeKeys = ['playerName','resources','heroes','team','equipment','buildings',
+    'stageProgress','zodiacProgress','zodiacChallenges','zodiacClearCount',
+    'battleState','heroIdCounter','pveWinStreak','pveMaxStreak',
+    'lastLoginDate','dailyBonusClaimed','loginStreak','lastLoginDateStreak',
+    'unknownHeroUnlocked','codex','exploreStats','lastOnlineTime','offlineEarnings',
+    'arenaState','achievements','stats','currentOmen','omenExpireTime',
+    'recruitPasswordVerified','mergeScrolls','zodiacTokens','dailyScrollShop',
+    'dailyScrollShopDate','autoDecompose','mergeLucky','mergePity','mergeFragments',
+    'mergeHistory','breakthroughMaterials','heroBreakthrough','oracleBonus',
+    'maxStageReached','tutorialDone','tutorialPhase','tutorialStep','chapter2Done',
+    'totalPlayTime','playerName','saveVersion'];
+  safeKeys.forEach(function(k) {
+    if (saved[k] !== undefined) G[k] = saved[k];
+  });
+  // 清理旧版顶层资源字段（防止覆盖新版 resources 子对象）
+  delete G.gold; delete G.gems; delete G.food; delete G.stone; delete G.iron; delete G.fame;
+  delete G.materials;
   G.heroIdCounter = finalHeroIdCounter;
 
   debugLog('[RS] 恢复成功: 英雄='+G.heroes.length+' 关卡='+G.stageProgress+' heroIdCounter='+G.heroIdCounter);
   console.log('[存档] 恢复完成 v'+version+' → 英雄:'+G.heroes.length+' 关卡:'+G.stageProgress+' 设备:'+deviceId);
   return true;
+  } catch(e) {
+    console.error('[restoreSaveData] 恢复存档时出错:', e);
+    debugLog('[RS]ERR: '+e.message);
+    // 尝试基本恢复：至少恢复英雄和进度
+    try {
+      if (data && data.game) {
+        if (data.game.heroes && Array.isArray(data.game.heroes)) G.heroes = data.game.heroes;
+        if (typeof data.game.stageProgress === 'number') G.stageProgress = data.game.stageProgress;
+      } else if (data && data.heroes) {
+        G.heroes = data.heroes;
+        if (typeof data.stageProgress === 'number') G.stageProgress = data.stageProgress;
+      }
+      if (G.heroes && G.heroes.length > 0) {
+        console.log('[restoreSaveData] 基本恢复成功，英雄:', G.heroes.length);
+        return true;
+      }
+    } catch(e2) {
+      console.error('[restoreSaveData] 基本恢复也失败:', e2);
+    }
+    return false;
+  }
 }
 
 // ===== 核心存盘函数 =====
@@ -6927,12 +6970,19 @@ async function loadGame() {
     // 1. 优先读 IndexedDB（主存储，容量更大更可靠）
     if (_isDBReady) {
       data = await dbGet('saves', slotIdx);
+      // JSON 解析容错
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data); } catch(e) { data = null; console.warn('[LG] IndexedDB数据JSON解析失败'); }
+      }
       if (data) debugLog('[LG] IndexedDB读到数据, 英雄:', data.game && data.game.heroes ? data.game.heroes.length : 0);
     }
 
     // 2. 回退到 localStorage
     if (!data) {
       data = lsGet(key);
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data); } catch(e) { data = null; console.warn('[LG] localStorage数据JSON解析失败'); }
+      }
       if (data) debugLog('[LG] localStorage读到数据, 英雄:', data.game && data.game.heroes ? data.game.heroes.length : 0);
     }
 
@@ -7086,6 +7136,7 @@ async function initStorageSystem() {
 
 // ===== 加载后初始化 =====
 function initGameAfterLoad() {
+  try {
   // 重建队伍引用（兼容 uid 和英雄对象两种格式）
   if (G.team && G.heroes) {
     G.team = G.team.map(function(item) {
@@ -7186,6 +7237,48 @@ function initGameAfterLoad() {
   if (G.chapter2Done === undefined) G.chapter2Done = (G.stageProgress || 1) > 100;
 
   setTimeout(function() { checkAllAchievements && checkAllAchievements(); }, 1000);
+  } catch(e) {
+    console.error('[initGameAfterLoad] 初始化后处理出错:', e);
+    // 确保关键字段存在，防止UI崩溃
+    try {
+      if (!G.heroes) G.heroes = [];
+      if (!G.team) G.team = [null,null,null,null,null,null];
+      if (!G.equipment) G.equipment = [];
+      if (!G.resources) G.resources = {gold:0,gems:0};
+      if (typeof G.stageProgress !== 'number' || G.stageProgress < 1) G.stageProgress = 1;
+      if (!G.arenaState) G.arenaState = {totalWins:0,winStreak:0,maxWinStreak:0,dailyChallengesUsed:0,totalLosses:0,highestDifficulty:'entry',lastChallengeDate:''};
+      if (!G.achievements) G.achievements = {unlocked:{},progress:{},totalClaimed:0};
+      if (!G.mergeHistory) G.mergeHistory = [];
+      if (!G.breakthroughMaterials) G.breakthroughMaterials = {rare:0,epic:0,legendary:0,mythic:0,hidden:0};
+      if (!G.heroBreakthrough) G.heroBreakthrough = {};
+      if (!G.codex) G.codex = {heroes:{},equipment:{},monsters:{}};
+      if (!G.stats) G.stats = {totalKills:0,totalHeroesRecruited:0,maxStageReached:1,maxHeroLevel:0};
+      // 修复英雄数据
+      if (G.heroes) G.heroes.forEach(function(h) {
+        if (!h) return;
+        if (typeof h.maxHP !== 'number') h.maxHP = 100;
+        if (typeof h.atk !== 'number') h.atk = 10;
+        if (typeof h.def !== 'number') h.def = 5;
+        if (typeof h.spd !== 'number') h.spd = 10;
+        if (typeof h.maxMP !== 'number') h.maxMP = 50;
+        if (typeof h.hp !== 'number' || h.hp <= 0) h.hp = h.maxHP;
+        if (typeof h.mp !== 'number') h.mp = h.maxMP;
+        if (!h.skills) h.skills = [];
+        if (!h.role) h.role = 'warrior';
+        if (!h.quality) h.quality = 'common';
+        if (typeof h.level !== 'number' || h.level < 1) h.level = 1;
+        if (!h.equipment) h.equipment = {weapon:null,armor:null,accessory:null};
+        if (!h.bonusSkills) h.bonusSkills = [];
+        if (!h.mutatedSkills) h.mutatedSkills = [];
+        if (!h.traits) h.traits = [];
+        if (!h.talents) h.talents = {};
+        if (h.locked === undefined) h.locked = false;
+      });
+      console.log('[initGameAfterLoad] 错误恢复完成，英雄:', G.heroes.length);
+    } catch(e2) {
+      console.error('[initGameAfterLoad] 错误恢复也失败:', e2);
+    }
+  }
 }
 
 // ===== 合成事件到期检查 =====
@@ -23924,19 +24017,93 @@ async function initGame(){
   var loadResult = await loadGame();
   debugLog('[IG] loadGame 返回:', loadResult);
   if(loadResult){
-    updateResUI();
-    startAutoProduction();
-    switchTab('town');
-    showToast('📂 已读取存档');
-    // 检查每日帮助弹窗
-    checkDailyHelp();
+    try {
+      updateResUI();
+      startAutoProduction();
+      switchTab('town');
+      showToast('📂 已读取存档');
+      checkDailyHelp();
+    } catch(e) {
+      console.error('[IG] 加载后渲染出错:', e);
+      // 强制恢复UI
+      try {
+        if (!G.heroes) G.heroes = [];
+        if (!G.resources) G.resources = {gold:0,gems:0};
+        updateResUI();
+        switchTab('town');
+      } catch(e2) {
+        console.error('[IG] 强制恢复UI也失败:', e2);
+        // 最后手段：重置游戏
+        resetGToDefaults();
+        initNewGame();
+      }
+    }
     return;
   }
   
   // 没有本地存档，初始化新游戏
   debugLog('[IG] 无存档，初始化新游戏');
   debugLog('初始化新游戏');
+  // 重置 G 对象到初始状态，防止被污染的存档数据影响新游戏
+  resetGToDefaults();
   initNewGame();
+}
+
+// 重置 G 对象到初始默认值（防止被旧存档污染）
+function resetGToDefaults(){
+  // 保留引用类型不变，只重置值
+  G.playerName = '';
+  G.resources = {gold:3000, gems:50, stone:300, iron:100, food:300, fame:0, expPotion:0, zodiacTokens:0};
+  G.heroes = [];
+  G.team = [null,null,null,null,null,null];
+  G.equipment = [];
+  G.buildings = {tavern:1, farm:1, mine:0, blacksmith:0, temple:0, arena:0};
+  G.stageProgress = 1;
+  G.zodiacProgress = 0;
+  G.zodiacChallenges = {};
+  G.zodiacClearCount = {};
+  G.battleState = null;
+  G.heroIdCounter = 0;
+  G.pveWinStreak = 0;
+  G.pveMaxStreak = 0;
+  G.lastLoginDate = '';
+  G.dailyBonusClaimed = true;
+  G.loginStreak = 0;
+  G.lastLoginDateStreak = '';
+  G.unknownHeroUnlocked = false;
+  G.codex = {heroes:{},equipment:{},monsters:{}};
+  G.exploreStats = {totalBattles:0,totalEvents:0,totalChests:0,totalShrines:0};
+  G.lastOnlineTime = Date.now();
+  G.offlineEarnings = null;
+  G.arenaState = {dailyChallengesUsed:0,lastChallengeDate:'',winStreak:0,maxWinStreak:0,totalWins:0,totalLosses:0,highestDifficulty:'easy',totalGoldEarned:0,totalFameEarned:0};
+  G.achievements = {unlocked:{},progress:{},totalClaimed:0};
+  G.stats = {totalKills:0,totalHeroesRecruited:0,totalEquipmentForged:0,totalEquipmentMerged:0,totalGoldEarned:0,totalGemsEarned:0,maxStageReached:1,maxHeroLevel:0};
+  G.currentOmen = 'normal';
+  G.omenExpireTime = 0;
+  G.recruitPasswordVerified = false;
+  G.mergeScrolls = [];
+  G.zodiacTokens = 0;
+  G.dailyScrollShop = [];
+  G.dailyScrollShopDate = '';
+  G.autoDecompose = {enabled:false,maxQuality:'common'};
+  G.mergeLucky = 0;
+  G.mergePity = 0;
+  G.mergeFragments = 0;
+  G.mergeHistory = [];
+  G.breakthroughMaterials = {rare:0,epic:0,legendary:0,mythic:0,hidden:0};
+  G.heroBreakthrough = {};
+  G.oracleBonus = {};
+  G.maxStageReached = 1;
+  G.tutorialDone = false;
+  G.tutorialPhase = '';
+  G.tutorialStep = 0;
+  G.chapter2Done = false;
+  G.totalPlayTime = 0;
+  G.playerName = '';
+  // 清理可能残留的旧字段
+  delete G.gold; delete G.gems; delete G.food; delete G.stone; delete G.iron; delete G.fame;
+  delete G.materials;
+  debugLog('[resetG] G对象已重置到默认值');
 }
 
 // 初始化新游戏
