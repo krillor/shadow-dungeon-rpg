@@ -2683,7 +2683,22 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 .guide-skip:hover{color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.06)}
 @keyframes guideFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
+
+/* ===== Grid → Flexbox 回退（旧浏览器兼容）===== */
+@supports not (display: grid) {
+  .merge-result-stats,.team-grid,.roguelike-grid,.arena-rewards-grid,.codex-grid,.zodiac-grid{display:flex!important;flex-wrap:wrap!important}
+  .merge-result-stats>*,.team-grid>*,.roguelike-grid>*,.arena-rewards-grid>*,.codex-grid>*,.zodiac-grid>*{flex:0 0 33%!important;max-width:33%!important;box-sizing:border-box!important}
+  .hero-grid{display:flex!important;flex-wrap:wrap!important}
+  .hero-grid>*{flex:0 0 50%!important;max-width:50%!important;box-sizing:border-box!important}
+}
 </style>
+<script>
+// ==================== 兼容性 Polyfill ====================
+if(!Object.entries){Object.entries=function(obj){var ownProps=Object.keys(obj),i=ownProps.length,res=Array(i);while(i--)res[i]=[ownProps[i],obj[ownProps[i]]];return res;};}
+if(!Object.values){Object.values=function(obj){return Object.keys(obj).map(function(k){return obj[k];});};}
+if(!Array.prototype.includes){Array.prototype.includes=function(searchElement){var O=Object(this),len=O.length>>>0;if(len===0)return false;var k=0;while(k<len){if(searchElement===O[k]||(searchElement!==searchElement&&O[k]!==O[k]))return true;k++;}return false;};}
+if(!String.prototype.includes){String.prototype.includes=function(search,start){if(start===undefined)start=0;return this.indexOf(search,start)!==-1;};}
+</script>
 </head>
 <body>
 <div id="app">
@@ -7771,7 +7786,7 @@ function checkCloudConflict() {
     
     // 获取本地存档时间
     var meta = getMeta();
-    var localTime = meta.slots[meta.currentSlot || 0]?.timestamp || 0;
+    var localTime = (meta.slots[meta.currentSlot || 0]||{}).timestamp || 0;
     
     // 获取云端存档信息
     tapCloudManager.get(tapSaveId).then(function(result) {
@@ -7782,7 +7797,7 @@ function checkCloudConflict() {
       
       try {
         var cloudData = JSON.parse(result.saveData);
-        var cloudTime = cloudData.game?.timestamp || cloudData.timestamp || 0;
+        var cloudTime = (cloudData.game||{}).timestamp || cloudData.timestamp || 0;
         
         // 如果本地比云端新超过 5 分钟，视为冲突
         var timeDiff = localTime - cloudTime;
@@ -15738,7 +15753,7 @@ function upgradeBuilding(buildingId){
   if(upgradeReq){
     for(let[k,v]of Object.entries(upgradeReq)){
       if((G.resources[k]||0)<v){
-        showToast(`升级需要${RESOURCE_DEFS[k]?.name||k}: ${v}`);
+        showToast(`升级需要${(RESOURCE_DEFS[k]||{}).name||k}: ${v}`);
         return;
       }
     }
@@ -15792,7 +15807,7 @@ function canRefreshTavern(){
 function refreshTavernOptions(){
   if(!canRefreshTavern()){
     const cost=getTavernRefreshCost();
-    const costStr=Object.entries(cost).map(([k,v])=>`${RESOURCE_DEFS[k]?.icon||''}${v}`).join(' ');
+    const costStr=Object.entries(cost).map(([k,v])=>`${(RESOURCE_DEFS[k]||{}).icon||''}${v}`).join(' ');
     showToast(`刷新需要: ${costStr}`);
     return;
   }
@@ -16552,7 +16567,7 @@ function renderTavernRecruit(){
         <button class="btn btn-primary" onclick="showRecruitAllMenu()" style="background:linear-gradient(135deg,#f39c12,#e67e22);border-color:#f39c12">⚡ 一键招募</button>
         ${(()=>{
           const cost=getTavernRefreshCost();
-          const costStr=Object.entries(cost).map(([k,v])=>`${RESOURCE_DEFS[k]?.icon||''}${v}`).join(' ');
+          const costStr=Object.entries(cost).map(([k,v])=>`${(RESOURCE_DEFS[k]||{}).icon||''}${v}`).join(' ');
           const canRefresh=canRefreshTavern();
           return`<button class="btn ${canRefresh?'':'disabled'}" ${canRefresh?`onclick="refreshTavernOptions()"`:''}>🔄 刷新 (${costStr})</button>`;
         })()}
@@ -16655,8 +16670,8 @@ function toggleHeroSort(){
   if(!list)return;
   var cards=Array.from(list.children);
   cards.sort(function(a,b){
-    var pa=parseInt(a.querySelector('.hero-power b')?.textContent)||0;
-    var pb=parseInt(b.querySelector('.hero-power b')?.textContent)||0;
+    var pa=parseInt((a.querySelector('.hero-power b')||{}).textContent)||0;
+    var pb=parseInt((b.querySelector('.hero-power b')||{}).textContent)||0;
     return window._heroSortDesc?pb-pa:pa-pb;
   });
   cards.forEach(function(c){list.appendChild(c)});
@@ -17464,7 +17479,7 @@ function buyExpPotion(){
 
 // 更新购买成本显示
 function updatePotionBuyCost(){
-  const count=parseInt(document.getElementById('potion-buy-count')?.value)||1;
+  const count=parseInt((document.getElementById('potion-buy-count')||{}).value)||1;
   const potionAmount=100;
   const potionPrice=50;
   const totalAmount=count*potionAmount;
@@ -17492,7 +17507,7 @@ function updatePotionBuyCost(){
 
 // 批量购买经验药水
 function buyExpPotionBatch(){
-  const count=parseInt(document.getElementById('potion-buy-count')?.value)||1;
+  const count=parseInt((document.getElementById('potion-buy-count')||{}).value)||1;
   buyExpPotionQuick(count);
 }
 
@@ -17553,7 +17568,7 @@ function buyExpPotionMax(){
 
 // 更新使用药水成本显示
 function updatePotionUseCost(heroUid){
-  const count=parseInt(document.getElementById(`potion-use-count-${heroUid}`)?.value)||1;
+  const count=parseInt((document.getElementById(`potion-use-count-${heroUid}`)||{}).value)||1;
   const hero=G.heroes.find(h=>h.uid===heroUid);
   const unitCost=100;
   const unitExp=hero?getPotionExpPerUnit(hero.level):100;
@@ -17577,7 +17592,7 @@ function updatePotionUseCost(heroUid){
 
 // 使用自定义数量的经验药水
 function useExpPotionCustom(heroUid){
-  const count=parseInt(document.getElementById(`potion-use-count-${heroUid}`)?.value)||1;
+  const count=parseInt((document.getElementById(`potion-use-count-${heroUid}`)||{}).value)||1;
   useExpPotion(heroUid,count);
 }
 
@@ -20006,7 +20021,7 @@ function showEquipDetail(equipUid){
   let setHtml='';
   if(tpl.setId && EQUIP_SETS[tpl.setId]){
     const set=EQUIP_SETS[tpl.setId];
-    const ownedPieces=set.pieces.filter(p=>G.equipment.some(e=>e.templateId===p||EQUIP_TEMPLATES.find(t=>t.id===e.id)?.id===p)).length;
+    const ownedPieces=set.pieces.filter(p=>G.equipment.some(e=>e.templateId===p||(EQUIP_TEMPLATES.find(t=>t.id===e.id)||{}).id===p)).length;
     setHtml='<div style="background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.2);border-radius:8px;padding:10px;margin:12px 0">'
       +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:16px">'+set.icon+'</span><span style="color:var(--gold);font-weight:bold">'+set.name+'</span></div>'
       +'<div style="font-size:11px;color:var(--text2);margin-bottom:6px">'+set.pieces.length+'件套 ('+ownedPieces+'/'+set.pieces.length+'件)</div>'
@@ -20507,7 +20522,7 @@ function renderBuildings(el){
         const level=G.buildings[id];
         const maxed=level>=def.maxLevel;
         const cost=maxed?{}:getBuildingCost(id,level);
-        const costStr=Object.entries(cost).map(([k,v])=>`${RESOURCE_DEFS[k]?.icon||''}${v}`).join(' ');
+        const costStr=Object.entries(cost).map(([k,v])=>`${(RESOURCE_DEFS[k]||{}).icon||''}${v}`).join(' ');
         // 检查特殊升级条件（支持 upgradeReqByLevel）
         let reqStr='';
         let canUpReq=true;
@@ -20520,7 +20535,7 @@ function renderBuildings(el){
             ureq=def.upgradeReq;
           }
           if(ureq){
-            reqStr=Object.entries(ureq).map(([k,v])=>`${RESOURCE_DEFS[k]?.icon||''}${v}`).join(' ');
+            reqStr=Object.entries(ureq).map(([k,v])=>`${(RESOURCE_DEFS[k]||{}).icon||''}${v}`).join(' ');
             canUpReq=Object.entries(ureq).every(([k,v])=>(G.resources[k]||0)>=v);
           }
         }
@@ -22382,7 +22397,7 @@ function redeemCodeFromTown(){
 function showCloudSavePanel(){
   var overlay=document.createElement('div');
   overlay.id='cloud-save-modal';
-  overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)';
+  overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)';
   overlay.innerHTML='<div style="background:linear-gradient(180deg,#1a1a35,#141428);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:360px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.6)">'+
     '<div style="text-align:center;margin-bottom:20px">'+
       '<div style="font-size:40px;margin-bottom:8px">☁️</div>'+
@@ -23120,7 +23135,7 @@ function initSupabase() {
         updateCloudStatusUI();
         // 如果当前是排行榜页面，刷新排行榜
         if (document.getElementById('leaderboard-list')) {
-          renderLeaderboard(document.getElementById('leaderboard-type')?.value || 'power');
+          renderLeaderboard((document.getElementById('leaderboard-type')||{}).value || 'power');
         }
         checkAndSyncFromCloud();
       }
