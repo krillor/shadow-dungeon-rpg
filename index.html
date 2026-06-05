@@ -22083,6 +22083,7 @@ function renderCheats(el){
       '<div class="panel-title">💾 存档</div>' +
       '<div class="btn-group">' +
         '<button class="btn btn-primary" onclick="showSaveInfo()">📊 存档管理</button>' +
+        '<button class="btn" style="border-color:rgba(52,152,219,.5);color:var(--blue)" onclick="repairRuntimeState()">🔧 修复状态</button>' +
       '</div>' +
       '<div style="margin-top:8px;font-size:11px;color:var(--text3)">查看槽位、备份、导出/导入存档</div>' +
     '</div>' +
@@ -24180,6 +24181,93 @@ function resetGToDefaults(){
   delete G.gold; delete G.gems; delete G.food; delete G.stone; delete G.iron; delete G.fame;
   delete G.materials;
   debugLog('[resetG] G对象已重置到默认值');
+}
+
+// 修复运行时状态（不删除存档数据）
+// 清除可能导致UI卡死的运行时状态，保留英雄/资源/进度
+function repairRuntimeState(){
+  // 1. 重置运行时状态变量
+  G_battleRunning = false;
+  currentTab = 'town';
+  
+  // 2. 重置教程状态
+  G.tutorialPhase = 'done';
+  G.tutorialStep = 99;
+  G.tutorialDone = true;
+  
+  // 3. 清除战斗状态
+  G.battleState = null;
+  
+  // 4. 关闭所有弹窗和遮罩
+  var els = ['tutorial-overlay','guide-highlight','guide-tooltip','player-name-overlay',
+             'modal-root','battle-panel','recruit-password-overlay'];
+  els.forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+    if(id==='modal-root') el.innerHTML = '';
+  });
+  
+  // 5. 确保 content 面板可见
+  var contentEl = document.getElementById('content');
+  if(contentEl) contentEl.style.display = '';
+  var battlePanel = document.getElementById('battle-panel');
+  if(battlePanel) battlePanel.style.display = 'none';
+  
+  // 6. 确保核心数据结构完整（不改变数据内容）
+  if(!G.heroes) G.heroes = [];
+  if(!G.team) G.team = [null,null,null,null,null,null];
+  if(!G.equipment) G.equipment = [];
+  if(!G.resources) G.resources = {gold:0,gems:0};
+  if(typeof G.stageProgress !== 'number' || G.stageProgress < 1) G.stageProgress = 1;
+  if(!G.buildings) G.buildings = {};
+  if(!G.achievements) G.achievements = {unlocked:{},progress:{},totalClaimed:0};
+  if(!G.arenaState) G.arenaState = {totalWins:0,winStreak:0,maxWinStreak:0,dailyChallengesUsed:0,totalLosses:0,highestDifficulty:'entry',lastChallengeDate:''};
+  if(!G.mergeHistory) G.mergeHistory = [];
+  if(!G.breakthroughMaterials) G.breakthroughMaterials = {rare:0,epic:0,legendary:0,mythic:0,hidden:0};
+  if(!G.heroBreakthrough) G.heroBreakthrough = {};
+  if(!G.codex) G.codex = {heroes:{},equipment:{},monsters:{}};
+  if(!G.stats) G.stats = {totalKills:0,totalHeroesRecruited:0,maxStageReached:1,maxHeroLevel:0};
+  
+  // 7. 修复英雄数据完整性
+  if(G.heroes){
+    G.heroes.forEach(function(h){
+      if(!h) return;
+      if(!h.equipment) h.equipment = {weapon:null,armor:null,accessory:null};
+      if(!h.skills) h.skills = [];
+      if(!h.bonusSkills) h.bonusSkills = [];
+      if(!h.mutatedSkills) h.mutatedSkills = [];
+      if(!h.traits) h.traits = [];
+      if(!h.talents) h.talents = {};
+      if(typeof h.quality==='undefined'||!h.quality) h.quality='common';
+      if(typeof h.role==='undefined'||!h.role) h.role='warrior';
+      if(typeof h.level!=='number'||h.level<1) h.level=1;
+      if(typeof h.maxHP!=='number') h.maxHP=100;
+      if(typeof h.atk!=='number') h.atk=10;
+      if(typeof h.def!=='number') h.def=5;
+      if(typeof h.spd!=='number') h.spd=10;
+      if(typeof h.maxMP!=='number') h.maxMP=50;
+      if(typeof h.hp!=='number'||h.hp<=0) h.hp=h.maxHP;
+      if(typeof h.mp!=='number') h.mp=h.maxMP;
+      if(typeof h.exp!=='number') h.exp=0;
+      if(!h.name) h.name='未知英雄';
+      if(!h.icon) h.icon='❓';
+      if(!h.lore) h.lore='';
+      if(h.locked===undefined) h.locked=false;
+    });
+  }
+  
+  // 8. 重新渲染UI
+  try {
+    updateResUI();
+    switchTab('town');
+    showToast('🔧 状态已修复，存档数据保留');
+  } catch(e) {
+    console.error('[repairRuntimeState] 重新渲染出错:', e);
+    // 强制回到城镇
+    currentTab = 'town';
+    var el = document.getElementById('content');
+    if(el) el.innerHTML = '<div class="panel"><div class="panel-title">🔧 状态已修复</div><div style="padding:12px;color:var(--text2)">运行时状态已重置，存档数据完整保留。</div><button class="btn btn-primary" onclick="location.reload()" style="margin-top:8px">刷新页面</button></div>';
+  }
 }
 
 // 初始化新游戏
