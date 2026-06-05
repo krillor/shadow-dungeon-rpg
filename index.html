@@ -1195,6 +1195,8 @@ body{
   position:relative;
   overflow:hidden;
   box-shadow:var(--shadow-sm);
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:rgba(212,175,55,0.15);
 }
 .hero-card::before{
   content:"";
@@ -3635,7 +3637,7 @@ function formatOmenTime(seconds) {
 
 // 等级成长：对数衰减曲线，前期快后期慢，避免无限膨胀
 // 公式: stat = baseStat * qualityMult * (1 + GROWTH_RATE * ln(1 + level))
-const GROWTH_RATE = 0.35;
+const GROWTH_RATE = 0.55;
 function calcStat(base, qualityMult, level){
   // 防止NaN的默认值
   base = Number(base) || 0;
@@ -10139,9 +10141,8 @@ function addHeroExp(hero,amount){
 function createBattleUnit(hero,isEnemy=false){
   const stats=getHeroStats(hero);
   G_battleUnitIdCounter++;
-  // 预计算该英雄的所有天赋效果，缓存在 battleUnit 上供战斗中使用
   const talentEffects = getTalentEffects(hero);
-  return{
+  var u = {
     hero:hero, isEnemy:isEnemy,
     name:hero.name||'未知', icon:hero.icon||'❓',
     role: hero.role || 'unknown',
@@ -10151,13 +10152,46 @@ function createBattleUnit(hero,isEnemy=false){
     atk:stats.atk, def:stats.def, spd:stats.spd,
     alive:true, shield:0,
     buffs:[], cooldowns:{},
-    dot:[], // 持续伤害
+    dot:[],
     bonusSkills: hero.bonusSkills||[],
-    talentEffects: talentEffects, // 天赋效果缓存
-    _talentDeathDefyUsed:false,   // 天赋 deathDefy 是否已使用
-    _talentDeathShieldUsed:false,  // 天赋 deathShield 是否已使用
-    _talentAtkStackCount:0,        // damageAtkStack 叠加次数
+    talentEffects: talentEffects,
+    _talentDeathDefyUsed:false,
+    _talentDeathShieldUsed:false,
+    _talentAtkStackCount:0,
   };
+
+  // ── 肉鸽祝福：吸血契约 ──
+  if(!isEnemy && hero._rlLifeSteal){
+    u._rlLifeSteal = hero._rlLifeSteal;
+  }
+  // ── 肉鸽遗物：镜盾（每层一次免死） ──
+  if(!isEnemy && hero._rlMirrorShield){
+    u._rlMirrorShield = true;
+    u._rlMirrorShieldUsed = false;
+  }
+  // ── 肉鸽：凤凰涅槃（首次死亡复活） ──
+  if(!isEnemy && hero._rlPhoenix){
+    u._rlPhoenix = true;
+    u._rlPhoenixUsed = false;
+  }
+  // ── 肉鸽遗物：不死之志（全队一次免死，局级） ──
+  if(!isEnemy && G_RL && (G_RL.relics||[]).some(function(r){return r.id==='relic_death_defier';}) && !G_RL._deathDefierUsed){
+    u._rlDeathDefier = true;
+  }
+  // ── 合成卷轴：技能精通（精通技能伤害+30%） ──
+  if(!isEnemy && hero.masteredSkills && hero.masteredSkills.length>0){
+    u._masteredSkills = hero.masteredSkills.slice();
+  }
+  // ── 肉鸽遗物：战鼓（Boss层攻击+30%，普通层速度+15%） ──
+  if(!isEnemy && G_RL && (G_RL.relics||[]).some(function(r){return r.id==='relic_war_drum';})){
+    if(G_RL.currentFloorData && G_RL.currentFloorData.isBoss){
+      u.atk = Math.floor(u.atk * 1.30);
+    } else {
+      u.spd = Math.floor(u.spd * 1.15);
+    }
+  }
+
+  return u;
 }
 
 function calcDamage(attacker,defender,skill=null,skillIdx=-1){
@@ -12269,6 +12303,14 @@ async function runBattle(stageOrId){
                 showFloat(unit,'🧛+'+healAmt,'heal');
               }
             }
+            // ── 肉鸽祝福：吸血契约 ──
+            if(!unit.isEnemy && unit._rlLifeSteal && dmg > 0){
+              var rlHeal = Math.floor(dmg * unit._rlLifeSteal);
+              if(rlHeal > 0){
+                unit.hp = Math.min(unit.maxHP, unit.hp + rlHeal);
+                showFloat(unit,'🩸+'+rlHeal,'heal');
+              }
+            }
             // 记录统计数据
             recordBattleStat(unit,'damage',dmg);
             recordBattleStat(target,'damageTaken',dmg);
@@ -12292,6 +12334,31 @@ async function runBattle(stageOrId){
               target.hp = 1;
               log(target.icon+target.name+' 触发不屈战魂！保留1点生命！','buff');
               showFloat(target,'不屈战魂!','buff-text');
+            }
+            // ── 肉鸽遗物：镜盾（每层一次免死） ──
+            if(target.hp<=0 && !target.isEnemy && target._rlMirrorShield && !target._rlMirrorShieldUsed){
+              target._rlMirrorShieldUsed = true;
+              target.hp = Math.floor(target.maxHP * 0.25);
+              target.shield = Math.floor(target.maxHP * 0.15);
+              log('🪞 '+target.icon+target.name+' 触发镜盾！以25%HP复活并获得护盾！','buff');
+              showFloat(target,'🪞镜盾！','buff-text');
+            }
+            // ── 肉鸽祝福：凤凰涅槃（每位英雄首次死亡复活） ──
+            if(target.hp<=0 && !target.isEnemy && target._rlPhoenix && !target._rlPhoenixUsed){
+              target._rlPhoenixUsed = true;
+              target.hp = Math.floor(target.maxHP * 0.40);
+              // 同步回英雄对象，防止战斗结束后HP为0被记为阵亡
+              if(target.hero) target.hero.hp = target.hp;
+              log('🔥 '+target.icon+target.name+' 凤凰涅槃！以40%HP复活！','buff');
+              showFloat(target,'🔥涅槃！','buff-text');
+            }
+            // ── 肉鸽遗物：不死之志（全局一次免死，任意英雄） ──
+            if(target.hp<=0 && !target.isEnemy && target._rlDeathDefier && !G_RL._deathDefierUsed){
+              G_RL._deathDefierUsed = true;
+              target.hp = Math.floor(target.maxHP * 0.30);
+              if(target.hero) target.hero.hp = target.hp;
+              log('💎 '+target.icon+target.name+' 触发不死之志！全局免死一次！','buff');
+              showFloat(target,'💎不死之志！','buff-text');
             }
 
             // 连击计数
@@ -12437,10 +12504,10 @@ async function runBattle(stageOrId){
       if(!G.zodiacClearCount || typeof G.zodiacClearCount !== 'object') G.zodiacClearCount = {};
       if(!G.zodiacClearCount[zodiacBossIndex]) G.zodiacClearCount[zodiacBossIndex]=0;
       G.zodiacClearCount[zodiacBossIndex] += 1;
-      // Boss 战胜奖励：额外金币+宝石
-      var bossBaseReward = Math.floor((stage.id||1) * 500 + 1000);
+      // Boss 战胜奖励：大量金币+宝石（金币随Boss等级递增）
+      var bossBaseReward = 100000 + zodiacBossIndex * 50000 + G.zodiacClearCount[zodiacBossIndex] * 20000;
       G.resources.gold = Math.min((G.resources.gold||0) + bossBaseReward, RESOURCE_LIMITS.gold);
-      G.resources.gems = Math.min((G.resources.gems||0) + 10, RESOURCE_LIMITS.gems);
+      G.resources.gems = Math.min((G.resources.gems||0) + 10 + zodiacBossIndex * 2, RESOURCE_LIMITS.gems);
       // === 生肖币掉落（每次击败Boss获得） ===
       var tokenDrop = 15 + zodiacBossIndex * 5; // 基础15，每Boss+5（鼠15→猪70）
       var newZodiacTokens = Math.min((G.zodiacTokens||0) + tokenDrop, RESOURCE_LIMITS.zodiacTokens);
@@ -12729,6 +12796,16 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
           return;
         }
         let dmg=r.dmg;
+        // ── 合成卷轴：技能精通（精通技能伤害+30%） ──
+        if(user._masteredSkills && user._masteredSkills.length > 0){
+          var allSIds2=[].concat(user.hero.skills||[],user.bonusSkills||[]);
+          for(var msk=0;msk<allSIds2.length;msk++){
+            if(allSIds2[msk]===skill.id && user._masteredSkills.indexOf(allSIds2[msk])>=0){
+              dmg = Math.floor(dmg * 1.30);
+              break;
+            }
+          }
+        }
         if(t.shield>0){const absorbed=Math.min(t.shield,dmg);t.shield-=absorbed;dmg-=absorbed;if(absorbed>0)showFloat(t,'🛡-'+absorbed,'shield-num')}
         t.hp=Math.max(0,t.hp-dmg);
         logFn(user.icon+' '+user.name+' 使用 '+skill.icon+skill.name+(isMutated?' 🧬':'')+' 对 '+t.icon+t.name+' 造成 '+dmg+' 点伤害'+(r.crit?' 💥暴击！':'')+(skill.executeThreshold&&t.hp<t.maxHP*skill.executeThreshold?' ⚔️处决！':'')+(isMutated?' ✨变异':''),r.crit?'crit':'damage');
@@ -13841,6 +13918,9 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
       (hero.isOracle?'<div class="merge-result-mutation" style="color:#8b5cf6">🔮 先知之眼 · 预知品质加成</div>':'')+
       (hero.isBerserker?'<div class="merge-result-mutation" style="color:#be123c">🩸 狂战士之血 · HP越低攻击越高(+'+Math.floor((hero.berserkerMaxBonus||0.8)*100)+'%)</div>':'')+
       (hero.isMimic?'<div class="merge-result-mutation" style="color:#ec4899">🎭 拟态者 · 复制了「'+(hero.mimicSource||'?')+'」</div>':'')+
+      (hero._scrollTag?'<div class="merge-result-mutation" style="color:#ffd700;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);border-radius:6px;padding:4px 8px;margin:4px 0">📜 卷轴效果: '+hero._scrollTag+'</div>':'')+
+      (hero.isTranscended?'<div class="merge-result-mutation" style="color:#00ffcc">✨ 超越界限 · 属性突破品质上限</div>':'')+
+      (hero.isSoulDevoured?'<div class="merge-result-mutation" style="color:#ff5555">💀 灵魂吞噬 · 属性=材料总和×1.2</div>':'')+
       '<div class="merge-result-quality" style="color:'+qualityColors[hero.quality]+'">'+QUALITY_NAMES[hero.quality]+'</div>'+
       '<div class="merge-result-name">'+displayName+'</div>'+
       '<div style="font-size:12px;color:var(--text2);margin-bottom:4px">'+(ROLES[hero.role]?ROLES[hero.role].icon+' '+ROLES[hero.role].name:'')+' · Lv.'+hero.level+'</div>'+
@@ -14853,30 +14933,106 @@ function renderMergeChallengesHTML() {
 
 // 卷轴定义表
 var MERGE_SCROLL_DEFS = [
-  // === 普通卷轴 (common) ===
-  { id:'scroll_mutation_up',   name:'变异增幅卷轴',   icon:'🧬', rarity:'common',  desc:'下次合成异变概率+20%',         effect:'mutationBoost', value:0.20, tokenPrice:30 },
-  { id:'scroll_quality_guard', name:'品质保底卷轴',   icon:'🛡️', rarity:'common',  desc:'下次合成结果不低于史诗品质',   effect:'qualityGuard',  value:'epic', tokenPrice:40 },
-  { id:'scroll_exp_boost',     name:'经验催化卷轴',   icon:'📚', rarity:'common',  desc:'合成结果英雄获得双倍经验',     effect:'expBoost',      value:2.0, tokenPrice:25 },
-  { id:'scroll_gold_discount', name:'合成折扣卷轴',   icon:'🏷️', rarity:'common',  desc:'下次合成费用减半',             effect:'goldDiscount',  value:0.5, tokenPrice:20 },
-  // === 稀有卷轴 (rare) ===
-  { id:'scroll_skill_lock',    name:'技能锁定卷轴',   icon:'🔒', rarity:'rare',   desc:'合成时锁定主英雄的全部技能',   effect:'skillLock',     value:true, tokenPrice:80 },
-  { id:'scroll_lucky_boost',   name:'幸运增幅卷轴',   icon:'🍀', rarity:'rare',   desc:'幸运值直接+15（不消耗保底）',  effect:'luckyBoost',    value:15, tokenPrice:100 },
-  { id:'scroll_double_merge',  name:'双重融合卷轴',   icon:'✨', rarity:'rare',   desc:'合成后额外获得1个随机英雄',    effect:'doubleMerge',   value:true, tokenPrice:120 },
-  // === 史诗卷轴 (epic) ===
-  { id:'scroll_mythic_guarantee', name:'神话保底卷轴', icon:'👑', rarity:'epic',   desc:'下次合成结果至少为神话品质',    effect:'qualityGuard',  value:'mythic', tokenPrice:250 },
-  { id:'scroll_all_mutate',    name:'全变异卷轴',     icon:'🌈', rarity:'epic',   desc:'合成结果所有技能均触发变异',    effect:'allMutate',     value:true, tokenPrice:300 },
-  // === 传说卷轴 (legendary) ===
-  { id:'scroll_hidden_chance', name:'隐藏觉醒卷轴',   icon:'🔮', rarity:'legendary', desc:'下次合成有15%概率产出隐藏品质', effect:'hiddenChance',  value:0.15, tokenPrice:500 },
+  // ========== 【普通卷轴】简单实用，门槛低 ==========
+  { id:'scroll_gold_discount',  name:'合成折扣卷轴',  icon:'🏷️', rarity:'common',
+    desc:'下次合成费用减为零',
+    effect:'goldDiscount', value:0, tokenPrice:15,
+    flavor:'薄薄一张纸，却能省下一大笔金币。' },
+
+  { id:'scroll_stat_up_small',  name:'强化注入卷轴',  icon:'💉', rarity:'common',
+    desc:'合成结果所有属性+10%',
+    effect:'statBoostFlat', value:0.10, tokenPrice:20,
+    flavor:'微弱的魔法注入，带来可感知的提升。' },
+
+  { id:'scroll_skill_extra',    name:'技能附加卷轴',  icon:'📖', rarity:'common',
+    desc:'合成结果额外继承材料中1个随机技能（合成后拥有1个额外技能）',
+    effect:'skillExtra', value:1, tokenPrice:25,
+    flavor:'字里行间藏着战斗的智慧。' },
+
+  { id:'scroll_mutation_up',    name:'变异催化卷轴',  icon:'🧬', rarity:'common',
+    desc:'本次合成异变概率+25%，触发后技能变异效果翻倍',
+    effect:'mutationBoost', value:0.25, tokenPrice:30,
+    flavor:'不稳定的魔素，催生出意想不到的变化。' },
+
+  // ========== 【稀有卷轴】有明确策略价值 ==========
+  { id:'scroll_skill_lock',     name:'技能印刻卷轴',  icon:'🔏', rarity:'rare',
+    desc:'强制继承第一位材料英雄的全部技能，并额外随机追加1个技能',
+    effect:'skillLock', value:true, tokenPrice:70,
+    flavor:'将技能的印记永久镌刻，分毫不差。' },
+
+  { id:'scroll_lucky_boost',    name:'幸运共鸣卷轴',  icon:'🍀', rarity:'rare',
+    desc:'幸运值+20，且本次合成触发异变时额外再变异1个技能',
+    effect:'luckyBoost', value:20, tokenPrice:90,
+    flavor:'四叶草的幸运，在合成炉里回响。' },
+
+  { id:'scroll_double_merge',   name:'残影分裂卷轴',  icon:'👥', rarity:'rare',
+    desc:'合成后额外产出1个同品质的"残影英雄"，属性为本体的65%',
+    effect:'doubleMerge', value:0.65, tokenPrice:110,
+    flavor:'一个灵魂，两份存在——残影会永远追随本体的脚步。' },
+
+  { id:'scroll_role_inherit',   name:'职业融合卷轴',  icon:'⚔️', rarity:'rare',
+    desc:'合成结果可选择继承任意一位材料的职业和职业被动',
+    effect:'roleInherit', value:true, tokenPrice:100,
+    flavor:'职业不再是束缚，而是可以选择的命运。' },
+
+  // ========== 【史诗卷轴】强力，可改变合成走势 ==========
+  { id:'scroll_stat_up_major',  name:'极限强化卷轴',  icon:'⚡', rarity:'epic',
+    desc:'合成结果所有属性+25%，且攻击/防御中较高的那项再额外+15%',
+    effect:'statBoostMajor', value:0.25, tokenPrice:200,
+    flavor:'蓄积已久的魔力在瞬间爆发，将英雄推向极限。' },
+
+  { id:'scroll_skill_mastery',  name:'技能精通卷轴',  icon:'🎯', rarity:'epic',
+    desc:'合成结果获得材料中所有技能（不受上限限制），并随机精通其中2个（伤害/治疗效果+30%）',
+    effect:'skillMastery', value:2, tokenPrice:220,
+    flavor:'掌握所有技能，并将其中几门磨练至炉火纯青。' },
+
+  { id:'scroll_mythic_guarantee', name:'神话降临卷轴', icon:'👑', rarity:'epic',
+    desc:'合成结果品质至少为神话，且神话英雄额外获得1个随机传说级技能',
+    effect:'qualityGuard', value:'mythic', tokenPrice:250,
+    flavor:'神话的荣光不需要运气，只需要这张卷轴。' },
+
+  { id:'scroll_all_mutate',     name:'混沌变异卷轴',  icon:'🌈', rarity:'epic',
+    desc:'所有技能触发变异，且有40%概率解锁"混沌天赋"——随机获得另一职业的独有被动',
+    effect:'allMutate', value:0.40, tokenPrice:280,
+    flavor:'混沌不是毁灭，而是无限可能的起点。' },
+
+  // ========== 【传说卷轴】稀世珍品，每张都改变游戏 ==========
+  { id:'scroll_hidden_chance',  name:'隐界裂缝卷轴',  icon:'🔮', rarity:'legendary',
+    desc:'本次合成有20%概率直接产出隐藏品质英雄，失败时品质至少为传说',
+    effect:'hiddenChance', value:0.20, tokenPrice:420,
+    flavor:'裂缝中窥见的光芒，或许就是传说的开端。' },
+
+  { id:'scroll_perfect_inherit', name:'完美传承卷轴', icon:'💎', rarity:'legendary',
+    desc:'合成结果继承所有材料的最高属性值（每项属性取材料中最大值），并全属性再+15%',
+    effect:'perfectInherit', value:0.15, tokenPrice:460,
+    flavor:'取精华，弃糟粕——完美传承是每个炼金师的终极追求。' },
+
+  { id:'scroll_skill_forge',    name:'技能铸造卷轴',  icon:'🔨', rarity:'legendary',
+    desc:'从材料所有技能中选取4个，将它们"铸造"融合成1个全新的强化技能（属性是原技能总和的80%）',
+    effect:'skillForge', value:4, tokenPrice:500,
+    flavor:'四技归一，方为至强。' },
+
+  // ========== 【神话卷轴】传说之上，万中无一 ==========
+  { id:'scroll_transcendence',  name:'超越界限卷轴',  icon:'✨', rarity:'mythic',
+    desc:'合成结果突破品质上限——属性按隐藏品质计算，但外观保持原品质；额外获得3个随机技能且全部触发变异',
+    effect:'transcendence', value:true, tokenPrice:900,
+    flavor:'品质只是数字，真正的强大从不被定义所束缚。' },
+
+  { id:'scroll_soul_devour',    name:'灵魂吞噬卷轴',  icon:'💀', rarity:'mythic',
+    desc:'完整吸收所有材料的属性总和（而非继承），技能全部保留，最终英雄属性=所有材料属性之和×1.2',
+    effect:'soulDevour', value:1.2, tokenPrice:1000,
+    flavor:'不是融合，而是吞噬。弱者成为强者的一部分。' },
 ];
 
 // 稀有度权重（每日刷新时随机抽卡用）
-var SCROLL_RARITY_WEIGHTS = { common:50, rare:30, epic:15, legendary:5 };
+var SCROLL_RARITY_WEIGHTS = { common:45, rare:28, epic:16, legendary:8, mythic:3 };
 // 稀有度显示配置
 var SCROLL_RARITY_CONFIG = {
-  common:    { name:'普通', color:'#aaa',    bg:'rgba(170,170,170,0.1)' },
-  rare:      { name:'稀有', color:'#4fc3f7', bg:'rgba(79,195,247,0.1)' },
-  epic:      { name:'史诗', color:'#ce93d8', bg:'rgba(206,147,216,0.1)' },
-  legendary: { name:'传说', color:'#ffd700', bg:'rgba(255,215,0,0.15)' }
+  common:    { name:'普通', color:'#9ca3af',  bg:'rgba(156,163,175,0.1)' },
+  rare:      { name:'稀有', color:'#4fc3f7',  bg:'rgba(79,195,247,0.1)'  },
+  epic:      { name:'史诗', color:'#ce93d8',  bg:'rgba(206,147,216,0.12)'},
+  legendary: { name:'传说', color:'#ffd700',  bg:'rgba(255,215,0,0.15)'  },
+  mythic:    { name:'神话', color:'#ff5555',  bg:'rgba(255,85,85,0.15)'  },
 };
 
 // 获取今日日期字符串
@@ -14891,23 +15047,42 @@ function refreshDailyScrollShop() {
   if (G.dailyScrollShopDate === today && G.dailyScrollShop && G.dailyScrollShop.length > 0) return;
   G.dailyScrollShopDate = today;
   G.dailyScrollShop = [];
-  // 随机3-5个卷轴
-  var count = 3 + Math.floor(Math.random() * 3); // 3~5
   var usedIds = [];
-  for (var i = 0; i < count; i++) {
+  // 阶梯保障：每日至少出1个稀有、以及1个随机中高档
+  var guaranteedRarities = ['common', 'rare'];
+  // 10%概率出史诗保障
+  if(Math.random() < 0.10) guaranteedRarities.push('epic');
+  // 2%概率出传说保障
+  if(Math.random() < 0.02) guaranteedRarities.push('legendary');
+  // 0.5%概率出神话保障（极稀有）
+  if(Math.random() < 0.005) guaranteedRarities.push('mythic');
+  // 剩余槽位随机填充（总共4~5个）
+  var totalCount = 4 + Math.floor(Math.random() * 2); // 4~5
+  // 先放保障卷轴
+  guaranteedRarities.forEach(function(rarity){
+    if(usedIds.length >= totalCount) return;
+    var pool = MERGE_SCROLL_DEFS.filter(function(s){ return s.rarity===rarity && usedIds.indexOf(s.id)===-1; });
+    if(pool.length === 0) return;
+    var scroll = pool[Math.floor(Math.random()*pool.length)];
+    usedIds.push(scroll.id);
+    var priceVar = 0.85 + Math.random() * 0.3;
+    G.dailyScrollShop.push({ scrollId: scroll.id, price: Math.max(1, Math.floor(scroll.tokenPrice * priceVar)), sold: false });
+  });
+  // 填满剩余槽位
+  while(G.dailyScrollShop.length < totalCount){
     var scroll = pickRandomScroll(usedIds);
-    if (scroll) {
-      usedIds.push(scroll.id);
-      // 价格在基础价格上浮动 ±20%
-      var priceVar = 0.8 + Math.random() * 0.4;
-      var finalPrice = Math.max(1, Math.floor(scroll.tokenPrice * priceVar));
-      G.dailyScrollShop.push({
-        scrollId: scroll.id,
-        price: finalPrice,
-        sold: false
-      });
-    }
+    if(!scroll) break;
+    usedIds.push(scroll.id);
+    var priceVar = 0.8 + Math.random() * 0.4;
+    G.dailyScrollShop.push({ scrollId: scroll.id, price: Math.max(1, Math.floor(scroll.tokenPrice * priceVar)), sold: false });
   }
+  // 按稀有度排序展示（高→低）
+  var rarityOrderMap = {mythic:0, legendary:1, epic:2, rare:3, common:4};
+  G.dailyScrollShop.sort(function(a, b){
+    var da = MERGE_SCROLL_DEFS.find(function(s){return s.id===a.scrollId;});
+    var db = MERGE_SCROLL_DEFS.find(function(s){return s.id===b.scrollId;});
+    return (rarityOrderMap[da&&da.rarity||'common']||4) - (rarityOrderMap[db&&db.rarity||'common']||4);
+  });
   saveGame();
 }
 
@@ -14981,7 +15156,7 @@ function useMergeScroll(scrollId) {
 function getActiveScrollEffect() {
   if (!G.mergeScrolls || G.mergeScrolls.length === 0) return null;
   // 优先使用高品质卷轴
-  var rarityOrder = ['legendary','epic','rare','common'];
+  var rarityOrder = ['mythic','legendary','epic','rare','common'];
   for (var ri = 0; ri < rarityOrder.length; ri++) {
     for (var si = 0; si < G.mergeScrolls.length; si++) {
       var s = G.mergeScrolls[si];
@@ -14998,38 +15173,51 @@ function getActiveScrollEffect() {
 function renderScrollShopHTML() {
   refreshDailyScrollShop();
   var html = '';
-  // 生肖币显示
-  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-  html += '<div style="font-size:13px;color:var(--gold);font-weight:bold">📜 每日合成卷轴</div>';
-  html += '<div style="font-size:12px;color:var(--text2)">🐉 生肖币: <b style="color:var(--gold)">' + (G.zodiacTokens||0) + '</b>';
-  html += ' <span style="font-size:10px;color:var(--text3)">（刷生肖Boss获得）</span></div>';
+  // 标题行
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
+  html += '<div style="font-size:13px;color:var(--gold);font-weight:bold">📜 每日合成卷轴商店</div>';
+  html += '<div style="font-size:12px"><span style="color:#9ca3af">●普通</span> <span style="color:#4fc3f7">●稀有</span> <span style="color:#ce93d8">●史诗</span> <span style="color:#ffd700">●传说</span> <span style="color:#ff5555">●神话</span></div>';
   html += '</div>';
-  // 刷新倒计时提示
+  // 资源 + 刷新倒计时
   var now = new Date();
   var tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1);
   var remainMs = tomorrow.getTime() - now.getTime();
   var remainH = Math.floor(remainMs / 3600000);
   var remainM = Math.floor((remainMs % 3600000) / 60000);
-  html += '<div style="font-size:10px;color:var(--text3);margin-bottom:8px">🔄 明日刷新: ' + remainH + '时' + remainM + '分后</div>';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+  html += '<div style="font-size:11px;color:var(--text3)">🔄 ' + remainH + '时' + remainM + '分后刷新</div>';
+  html += '<div style="font-size:12px">🐉 生肖币: <b style="color:var(--gold)">' + (G.zodiacTokens||0) + '</b></div>';
+  html += '</div>';
   // 卷轴列表
-  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">';
+  html += '<div style="display:flex;flex-direction:column;gap:8px">';
   (G.dailyScrollShop || []).forEach(function(item, idx) {
     var def = MERGE_SCROLL_DEFS.find(function(s){ return s.id === item.scrollId; });
     if (!def) return;
     var rc = SCROLL_RARITY_CONFIG[def.rarity] || SCROLL_RARITY_CONFIG.common;
     var canBuy = !item.sold && (G.zodiacTokens||0) >= item.price;
-    html += '<div style="border:1px solid ' + rc.color + ';background:' + rc.bg + ';border-radius:8px;padding:10px;opacity:' + (item.sold?'0.4':'1') + '">';
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">';
-    html += '<span style="font-size:14px">' + def.icon + ' ' + def.name + '</span>';
-    html += '<span style="font-size:9px;color:' + rc.color + ';border:1px solid ' + rc.color + ';border-radius:4px;padding:1px 4px">' + rc.name + '</span>';
+    var rarityStars = {common:'★', rare:'★★', epic:'★★★', legendary:'★★★★', mythic:'★★★★★'}[def.rarity] || '';
+    html += '<div style="border:1px solid ' + rc.color + ';background:' + rc.bg + ';border-radius:10px;padding:10px 12px;opacity:' + (item.sold?'0.4':'1') + ';position:relative;overflow:hidden">';
+    // 左侧彩条
+    html += '<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:' + rc.color + ';border-radius:3px 0 0 3px"></div>';
+    html += '<div style="margin-left:8px">';
+    // 顶行：名称 + 稀有度
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">';
+    html += '<div style="font-size:13px;font-weight:bold">' + def.icon + ' ' + def.name + '</div>';
+    html += '<span style="font-size:9px;color:' + rc.color + ';font-weight:bold">' + rarityStars + ' ' + rc.name + '</span>';
     html += '</div>';
-    html += '<div style="font-size:10px;color:var(--text2);margin-bottom:6px">' + def.desc + '</div>';
-    if (item.sold) {
-      html += '<div style="text-align:center;font-size:11px;color:var(--text3)">已售罄</div>';
-    } else {
-      html += '<button class="btn btn-sm" style="width:100%;font-size:11px;opacity:' + (canBuy?'1':'0.5') + '" onclick="buyScroll(' + idx + ')">🐉 ' + item.price + ' 生肖币</button>';
+    // 效果描述
+    html += '<div style="font-size:11px;color:var(--text2);margin-bottom:3px;line-height:1.5">' + def.desc + '</div>';
+    // 趣味文字
+    if (def.flavor) {
+      html += '<div style="font-size:10px;color:var(--text3);font-style:italic;margin-bottom:6px">「' + def.flavor + '」</div>';
     }
-    html += '</div>';
+    // 购买区
+    if (item.sold) {
+      html += '<div style="text-align:center;font-size:11px;color:var(--text3);padding:4px;border:1px dashed var(--border);border-radius:6px">✓ 已购买</div>';
+    } else {
+      html += '<button class="btn btn-sm" style="width:100%;font-size:11px;border-color:' + rc.color + ';color:' + rc.color + ';background:' + rc.bg + ';opacity:' + (canBuy?'1':'0.5') + '" onclick="buyScroll(' + idx + ')">🐉 ' + item.price + ' 生肖币' + (canBuy?'  购买':'  (不足)') + '</button>';
+    }
+    html += '</div></div>';
   });
   html += '</div>';
   // 已拥有卷轴
@@ -15041,19 +15229,36 @@ function renderScrollShopHTML() {
 function renderOwnedScrollsHTML() {
   if (!G.mergeScrolls || G.mergeScrolls.length === 0) return '';
   var html = '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">';
-  html += '<div style="font-size:12px;color:var(--text2);margin-bottom:6px">🎒 已拥有卷轴</div>';
-  html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
-  G.mergeScrolls.forEach(function(item) {
-    var def = MERGE_SCROLL_DEFS.find(function(s){ return s.id === item.id; });
-    if (!def) return;
-    var rc = SCROLL_RARITY_CONFIG[def.rarity] || SCROLL_RARITY_CONFIG.common;
-    html += '<div style="border:1px solid ' + rc.color + ';background:' + rc.bg + ';border-radius:6px;padding:4px 8px;font-size:11px;display:flex;align-items:center;gap:4px" title="' + def.desc + '">';
-    html += '<span>' + def.icon + '</span>';
-    html += '<span style="color:' + rc.color + '">' + def.name + '</span>';
-    html += '<span style="color:var(--text3)">×' + (item.count||1) + '</span>';
-    html += '</div>';
+  html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">🎒 背包卷轴（按稀有度自动优先使用）</div>';
+  // 按稀有度分组展示
+  var rarityOrder = ['mythic','legendary','epic','rare','common'];
+  var hasAny = false;
+  rarityOrder.forEach(function(rarity){
+    var items = G.mergeScrolls.filter(function(item){
+      var def = MERGE_SCROLL_DEFS.find(function(s){ return s.id===item.id; });
+      return def && def.rarity === rarity;
+    });
+    if(items.length === 0) return;
+    hasAny = true;
+    var rc = SCROLL_RARITY_CONFIG[rarity];
+    html += '<div style="margin-bottom:6px">';
+    html += '<div style="font-size:10px;color:'+rc.color+';font-weight:bold;margin-bottom:3px">'+rc.name+'级</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+    items.forEach(function(item) {
+      var def = MERGE_SCROLL_DEFS.find(function(s){ return s.id===item.id; });
+      if (!def) return;
+      html += '<div style="border:1px solid '+rc.color+';background:'+rc.bg+';border-radius:6px;padding:4px 8px;font-size:11px;display:flex;align-items:center;gap:4px;cursor:help" title="'+def.desc+'">';
+      html += '<span>'+def.icon+'</span>';
+      html += '<span style="color:'+rc.color+'">'+def.name+'</span>';
+      if((item.count||1) > 1){
+        html += '<span style="background:'+rc.color+';color:#000;border-radius:8px;padding:0 5px;font-size:10px;font-weight:bold">×'+(item.count||1)+'</span>';
+      }
+      html += '</div>';
+    });
+    html += '</div></div>';
   });
-  html += '</div></div>';
+  if(!hasAny) html += '<div style="color:var(--text3);font-size:11px">暂无卷轴</div>';
+  html += '</div>';
   return html;
 }
 
@@ -15217,9 +15422,9 @@ function executeMerge(heroUids){
   var maxQIdx=Math.max.apply(null,qualities);
   var mergeCost = (maxQIdx+1) * 200;
   
-  // === 卷轴：合成折扣 ===
+  // === 卷轴：合成折扣（归零） ===
   if (scrollUsed && activeScroll && activeScroll.effect === 'goldDiscount') {
-    mergeCost = Math.floor(mergeCost * activeScroll.value);
+    mergeCost = 0;
   }
   
   // === 赌局费用前置检查 ===
@@ -15273,64 +15478,347 @@ function executeMerge(heroUids){
   // === 应用合成卷轴效果 ===
   if (scrollUsed && activeScroll) {
     switch (activeScroll.effect) {
+
+      case 'goldDiscount':
+        // 已在费用计算时处理（归零）
+        break;
+
+      case 'statBoostFlat':
+        // 强化注入：全属性+10%
+        newHero.maxHP  = Math.floor(newHero.maxHP  * (1 + activeScroll.value));
+        newHero.hp     = newHero.maxHP;
+        newHero.atk    = Math.floor(newHero.atk    * (1 + activeScroll.value));
+        newHero.def    = Math.floor(newHero.def    * (1 + activeScroll.value));
+        newHero.spd    = Math.floor(newHero.spd    * (1 + activeScroll.value));
+        newHero.maxMP  = Math.floor(newHero.maxMP  * (1 + activeScroll.value));
+        newHero.mp     = newHero.maxMP;
+        newHero._scrollTag = '💉+10%';
+        break;
+
+      case 'skillExtra':
+        // 技能附加：额外继承材料中1个未拥有的技能
+        (function(){
+          var pool = [];
+          heroes.forEach(function(h){
+            (h.skills||[]).concat(h.bonusSkills||[]).forEach(function(s){
+              if(pool.indexOf(s)===-1 && newHero.skills.indexOf(s)===-1 && (newHero.bonusSkills||[]).indexOf(s)===-1) pool.push(s);
+            });
+          });
+          if(pool.length > 0){
+            var pick = pool[Math.floor(Math.random()*pool.length)];
+            if(!newHero.bonusSkills) newHero.bonusSkills = [];
+            newHero.bonusSkills.push(pick);
+            var sk = SKILLS[pick];
+            newHero._scrollTag = '📖+' + (sk ? sk.icon+sk.name : '技能');
+          }
+        })();
+        break;
+
       case 'mutationBoost':
-        // 变异增幅：重新判定变异（额外20%概率）
+        // 变异催化：+25%概率触发变异，已变异则追加1个变异技能
         if (!newHero.isMutation && Math.random() < activeScroll.value) {
           newHero.isMutation = true;
           newHero.mutatedSkills = newHero.mutatedSkills || [];
-          // 随机标记一个技能为变异
           if (newHero.skills.length > 0) {
-            var mutateIdx = Math.floor(Math.random() * newHero.skills.length);
-            if (newHero.mutatedSkills.indexOf(mutateIdx) === -1) {
-              newHero.mutatedSkills.push(mutateIdx);
-            }
+            newHero.mutatedSkills.push(Math.floor(Math.random() * newHero.skills.length));
+          }
+        } else if (newHero.isMutation) {
+          // 已变异：再追加1个变异技能
+          newHero.mutatedSkills = newHero.mutatedSkills || [];
+          var unmutated = [];
+          for(var si=0; si<newHero.skills.length; si++){
+            if(newHero.mutatedSkills.indexOf(si)===-1) unmutated.push(si);
+          }
+          if(unmutated.length > 0) newHero.mutatedSkills.push(unmutated[Math.floor(Math.random()*unmutated.length)]);
+        }
+        newHero._scrollTag = '🧬强化变异';
+        break;
+
+      case 'skillLock':
+        // 技能印刻：继承第一材料全部技能 + 额外追加1个
+        if (heroes.length > 0) {
+          var lockHero = heroes[0];
+          newHero.skills     = lockHero.skills.slice();
+          newHero.bonusSkills = (lockHero.bonusSkills||[]).slice();
+          // 额外追加1个其他材料的技能
+          var extraPool = [];
+          heroes.slice(1).forEach(function(h){
+            (h.skills||[]).concat(h.bonusSkills||[]).forEach(function(s){
+              if(newHero.skills.indexOf(s)===-1 && (newHero.bonusSkills||[]).indexOf(s)===-1 && extraPool.indexOf(s)===-1) extraPool.push(s);
+            });
+          });
+          if(extraPool.length > 0){
+            if(!newHero.bonusSkills) newHero.bonusSkills=[];
+            newHero.bonusSkills.push(extraPool[Math.floor(Math.random()*extraPool.length)]);
           }
         }
+        newHero._scrollTag = '🔏技能印刻';
         break;
+
+      case 'luckyBoost':
+        // 幸运共鸣：+20幸运，已触发变异时追加1个变异技能
+        if (!G.mergeLuckyBonus) G.mergeLuckyBonus = 0;
+        G.mergeLuckyBonus += activeScroll.value;
+        if (newHero.isMutation) {
+          newHero.mutatedSkills = newHero.mutatedSkills || [];
+          var mutatableIdx = [];
+          for(var si=0;si<newHero.skills.length;si++){
+            if(newHero.mutatedSkills.indexOf(si)===-1) mutatableIdx.push(si);
+          }
+          if(mutatableIdx.length>0) newHero.mutatedSkills.push(mutatableIdx[Math.floor(Math.random()*mutatableIdx.length)]);
+        }
+        newHero._scrollTag = '🍀幸运+20';
+        break;
+
+      case 'doubleMerge':
+        // 残影分裂：额外产出1个属性为本体65%的同品质英雄
+        newHero._scrollDoubleMerge = activeScroll.value; // 存储属性比例
+        newHero._scrollTag = '👥残影分裂';
+        break;
+
+      case 'roleInherit':
+        // 职业融合：让玩家选择继承哪个材料的职业（这里自动选最强职业）
+        (function(){
+          var bestHero = heroes.reduce(function(best, h){
+            var bs = getHeroStats(best);
+            var hs = getHeroStats(h);
+            return (hs.atk+hs.def+hs.maxHP+hs.spd) > (bs.atk+bs.def+bs.maxHP+bs.spd) ? h : best;
+          }, heroes[0]);
+          if(bestHero && bestHero.role !== newHero.role){
+            newHero.role = bestHero.role;
+            // 重新计算基础属性（职业基础值不同）
+            var role = ROLES[newHero.role] || ROLES.warrior;
+            var qm = QUALITY_MULT[newHero.quality] || 1;
+            var lv = newHero.level;
+            newHero.maxHP = Math.max(newHero.maxHP, calcStat(role.baseHP, qm, lv));
+            newHero.atk   = Math.max(newHero.atk,   calcStat(role.baseATK, qm, lv));
+            newHero.def   = Math.max(newHero.def,   calcStat(role.baseDEF, qm, lv));
+          }
+        })();
+        newHero._scrollTag = '⚔️职业融合';
+        break;
+
+      case 'statBoostMajor':
+        // 极限强化：全属性+25%，攻/防最高项再+15%
+        newHero.maxHP = Math.floor(newHero.maxHP * 1.25);
+        newHero.hp    = newHero.maxHP;
+        newHero.atk   = Math.floor(newHero.atk   * 1.25);
+        newHero.def   = Math.floor(newHero.def   * 1.25);
+        newHero.spd   = Math.floor(newHero.spd   * 1.25);
+        newHero.maxMP = Math.floor(newHero.maxMP  * 1.25);
+        newHero.mp    = newHero.maxMP;
+        if(newHero.atk >= newHero.def){
+          newHero.atk = Math.floor(newHero.atk * 1.15);
+        } else {
+          newHero.def = Math.floor(newHero.def * 1.15);
+        }
+        newHero._scrollTag = '⚡极限强化';
+        break;
+
+      case 'skillMastery':
+        // 技能精通：获得材料所有技能，随机精通2个
+        (function(){
+          var allSkillIds = [];
+          heroes.forEach(function(h){
+            (h.skills||[]).concat(h.bonusSkills||[]).forEach(function(s){
+              if(allSkillIds.indexOf(s)===-1) allSkillIds.push(s);
+            });
+          });
+          newHero.skills = allSkillIds.slice(0, Math.min(allSkillIds.length, 8));
+          newHero.bonusSkills = [];
+          // 随机精通2个技能（标记为强化）
+          newHero.masteredSkills = newHero.masteredSkills || [];
+          var shuffled = allSkillIds.slice().sort(function(){return Math.random()-0.5;});
+          for(var mi=0; mi<Math.min(2, shuffled.length); mi++){
+            newHero.masteredSkills.push(shuffled[mi]);
+          }
+        })();
+        newHero._scrollTag = '🎯技能精通';
+        break;
+
       case 'qualityGuard':
-        // 品质保底：确保品质不低于指定等级
-        var guardQuality = activeScroll.value; // 'epic' or 'mythic'
+        // 品质保底（史诗保底 或 神话保底）
+        var guardQuality = activeScroll.value;
         var guardIdx = QUALITIES.indexOf(guardQuality);
         var currentIdx = QUALITIES.indexOf(newHero.quality);
         if (currentIdx < guardIdx) {
           newHero.quality = guardQuality;
+          // 神话卷轴：额外给1个随机传说级技能
+          if(guardQuality === 'mythic'){
+            var legendarySkillPool = Object.keys(SKILLS).filter(function(sid){
+              var sk = SKILLS[sid];
+              return sk && sk.rarity === 'legendary';
+            });
+            if(legendarySkillPool.length > 0){
+              var lsk = legendarySkillPool[Math.floor(Math.random()*legendarySkillPool.length)];
+              if(!newHero.bonusSkills) newHero.bonusSkills=[];
+              if(newHero.skills.indexOf(lsk)===-1 && newHero.bonusSkills.indexOf(lsk)===-1){
+                newHero.bonusSkills.push(lsk);
+              }
+            }
+          }
         }
+        newHero._scrollTag = guardQuality==='mythic' ? '👑神话降临' : '🛡️品质保底';
         break;
-      case 'expBoost':
-        // 经验催化：标记双倍经验
-        newHero._scrollExpBoost = activeScroll.value;
-        break;
-      case 'skillLock':
-        // 技能锁定：锁定主英雄（第一个材料）的全部技能
-        if (heroes.length > 0) {
-          var lockHero = heroes[0];
-          newHero.skills = lockHero.skills.slice();
-          newHero.bonusSkills = lockHero.bonusSkills.slice();
-        }
-        break;
-      case 'luckyBoost':
-        // 幸运增幅：不影响本次合成（已生成），但标记给下次
-        if (!G.mergeLuckyBonus) G.mergeLuckyBonus = 0;
-        G.mergeLuckyBonus += activeScroll.value;
-        break;
-      case 'doubleMerge':
-        // 双重融合：标记，合成完成后额外生成英雄
-        newHero._scrollDoubleMerge = true;
-        break;
+
       case 'allMutate':
-        // 全变异：标记所有技能为变异
+        // 混沌变异：全技能变异，40%概率解锁混沌天赋
         newHero.isMutation = true;
         newHero.mutatedSkills = [];
         for (var si = 0; si < newHero.skills.length; si++) {
           newHero.mutatedSkills.push(si);
         }
+        // 40%概率：获得另一职业的独有被动（用 isGeneMutation 模拟）
+        if(Math.random() < activeScroll.value){
+          var allRoles = Object.keys(ROLES).filter(function(r){ return r !== newHero.role && r !== 'unknown'; });
+          if(allRoles.length > 0){
+            var chaoticRole = allRoles[Math.floor(Math.random()*allRoles.length)];
+            newHero.isGeneMutation = true;
+            newHero.chaoticRole = chaoticRole;
+            var roleData = ROLES[chaoticRole];
+            if(roleData && roleData.passiveSkill){
+              newHero.geneMutatedPassive = { name:'混沌·'+roleData.name, icon:'🌈', role:chaoticRole };
+            }
+          }
+        }
+        newHero._scrollTag = '🌈混沌变异';
         break;
+
       case 'hiddenChance':
-        // 隐藏觉醒：概率提升为隐藏品质
+        // 隐界裂缝：20%概率隐藏品质，失败时至少传说
         if (Math.random() < activeScroll.value) {
           newHero.quality = 'hidden';
           newHero.isHidden = true;
+          newHero._scrollTag = '🔮✨隐藏品质！';
+        } else {
+          var hiddenFailIdx = QUALITIES.indexOf('legendary');
+          if(QUALITIES.indexOf(newHero.quality) < hiddenFailIdx) newHero.quality = 'legendary';
+          newHero._scrollTag = '🔮传说保底';
         }
+        break;
+
+      case 'perfectInherit':
+        // 完美传承：每项属性取材料最大值，再+15%
+        (function(){
+          var maxHP=0, maxATK=0, maxDEF=0, maxSPD=0, maxMP=0;
+          heroes.forEach(function(h){
+            var hs = getHeroStats(h);
+            if(hs.maxHP  > maxHP)  maxHP  = hs.maxHP;
+            if(hs.atk    > maxATK) maxATK = hs.atk;
+            if(hs.def    > maxDEF) maxDEF = hs.def;
+            if(hs.spd    > maxSPD) maxSPD = hs.spd;
+            if(hs.maxMP  > maxMP)  maxMP  = hs.maxMP;
+          });
+          var boost = 1 + activeScroll.value;
+          newHero.maxHP  = Math.floor(Math.max(newHero.maxHP,  maxHP)  * boost);
+          newHero.hp     = newHero.maxHP;
+          newHero.atk    = Math.floor(Math.max(newHero.atk,    maxATK) * boost);
+          newHero.def    = Math.floor(Math.max(newHero.def,    maxDEF) * boost);
+          newHero.spd    = Math.floor(Math.max(newHero.spd,    maxSPD) * boost);
+          newHero.maxMP  = Math.floor(Math.max(newHero.maxMP,  maxMP)  * boost);
+          newHero.mp     = newHero.maxMP;
+        })();
+        newHero._scrollTag = '💎完美传承';
+        break;
+
+      case 'skillForge':
+        // 技能铸造：从材料技能中选4个，"铸造"成1个强化技能（以第一个为基础，剩余属性叠加）
+        (function(){
+          var allPool = [];
+          heroes.forEach(function(h){
+            (h.skills||[]).concat(h.bonusSkills||[]).forEach(function(s){
+              if(allPool.indexOf(s)===-1) allPool.push(s);
+            });
+          });
+          var forgeCount = Math.min(activeScroll.value, allPool.length);
+          var forged = allPool.slice(0, forgeCount);
+          // 用第一个技能作为基底，其余标记为已融合（视觉用）
+          if(forged.length > 0){
+            newHero.skills = [forged[0]]; // 铸造后只保留1个核心技能
+            if(!newHero.bonusSkills) newHero.bonusSkills=[];
+            // 额外补充其余未选技能
+            allPool.slice(forgeCount).forEach(function(s){ newHero.bonusSkills.push(s); });
+            newHero.isMutation = true;
+            newHero.mutatedSkills = [0]; // 铸造技能必定是变异状态
+            newHero.forgedSkills = forged; // 记录铸造来源
+            // 属性：材料平均值 × 1.3（铸造加成）
+            var totalHP=0, totalATK=0, totalDEF=0, totalSPD=0, totalMP=0;
+            heroes.forEach(function(h){ var s=getHeroStats(h); totalHP+=s.maxHP; totalATK+=s.atk; totalDEF+=s.def; totalSPD+=s.spd; totalMP+=s.maxMP; });
+            var n = heroes.length;
+            newHero.maxHP = Math.floor(Math.max(newHero.maxHP, totalHP/n*1.3));
+            newHero.hp    = newHero.maxHP;
+            newHero.atk   = Math.floor(Math.max(newHero.atk,   totalATK/n*1.3));
+            newHero.def   = Math.floor(Math.max(newHero.def,   totalDEF/n*1.3));
+            newHero.spd   = Math.floor(Math.max(newHero.spd,   totalSPD/n*1.3));
+            newHero.maxMP = Math.floor(Math.max(newHero.maxMP,  totalMP/n*1.3));
+            newHero.mp    = newHero.maxMP;
+          }
+        })();
+        newHero._scrollTag = '🔨技能铸造';
+        break;
+
+      case 'transcendence':
+        // 超越界限：属性按隐藏品质计算，+3个随机变异技能
+        (function(){
+          var hiddenMult = QUALITY_MULT['hidden'] || 3.2;
+          var curMult    = QUALITY_MULT[newHero.quality] || 1.0;
+          var ratio = hiddenMult / curMult;
+          newHero.maxHP  = Math.floor(newHero.maxHP  * ratio);
+          newHero.hp     = newHero.maxHP;
+          newHero.atk    = Math.floor(newHero.atk    * ratio);
+          newHero.def    = Math.floor(newHero.def    * ratio);
+          newHero.spd    = Math.floor(newHero.spd    * ratio);
+          newHero.maxMP  = Math.floor(newHero.maxMP  * ratio);
+          newHero.mp     = newHero.maxMP;
+          newHero.isTranscended = true; // 标记超越状态
+          // 3个随机技能 + 全部变异
+          var allPool2 = Object.keys(SKILLS);
+          newHero.mutatedSkills = newHero.mutatedSkills || [];
+          for(var ti=0; ti<3; ti++){
+            var rSkill = allPool2[Math.floor(Math.random()*allPool2.length)];
+            if(!newHero.bonusSkills) newHero.bonusSkills=[];
+            if(newHero.skills.indexOf(rSkill)===-1 && newHero.bonusSkills.indexOf(rSkill)===-1){
+              newHero.bonusSkills.push(rSkill);
+              newHero.isMutation = true;
+            }
+          }
+          // 原有技能也全部变异
+          for(var ii=0; ii<newHero.skills.length; ii++){
+            if(newHero.mutatedSkills.indexOf(ii)===-1) newHero.mutatedSkills.push(ii);
+          }
+        })();
+        newHero._scrollTag = '✨超越界限';
+        break;
+
+      case 'soulDevour':
+        // 灵魂吞噬：属性=所有材料属性之和×1.2，技能全部保留
+        (function(){
+          var sumHP=0, sumATK=0, sumDEF=0, sumSPD=0, sumMP=0;
+          var allDevourSkills = [];
+          heroes.forEach(function(h){
+            var hs = getHeroStats(h);
+            sumHP  += hs.maxHP; sumATK += hs.atk; sumDEF += hs.def;
+            sumSPD += hs.spd;  sumMP  += hs.maxMP;
+            (h.skills||[]).concat(h.bonusSkills||[]).forEach(function(s){
+              if(allDevourSkills.indexOf(s)===-1) allDevourSkills.push(s);
+            });
+          });
+          var mult = activeScroll.value;
+          newHero.maxHP  = Math.floor(sumHP  * mult);
+          newHero.hp     = newHero.maxHP;
+          newHero.atk    = Math.floor(sumATK * mult);
+          newHero.def    = Math.floor(sumDEF * mult);
+          newHero.spd    = Math.floor(sumSPD * mult);
+          newHero.maxMP  = Math.floor(sumMP  * mult);
+          newHero.mp     = newHero.maxMP;
+          newHero.skills     = allDevourSkills.slice(0, 8);
+          newHero.bonusSkills = allDevourSkills.slice(8);
+          newHero.isSoulDevoured = true;
+          // 提升品质（吞噬必定至少传说）
+          var legendIdx = QUALITIES.indexOf('legendary');
+          if(QUALITIES.indexOf(newHero.quality) < legendIdx) newHero.quality = 'legendary';
+        })();
+        newHero._scrollTag = '💀灵魂吞噬';
         break;
     }
   }
@@ -15392,17 +15880,24 @@ function executeMerge(heroUids){
     delete newHero._scrollExpBoost;
   }
   
-  // === 卷轴效果：双重融合（额外生成一个随机英雄） ===
+  // === 卷轴效果：残影分裂（额外生成属性为本体65%的同品质英雄） ===
   if (newHero._scrollDoubleMerge) {
+    var shadowRatio = newHero._scrollDoubleMerge;
     delete newHero._scrollDoubleMerge;
-    // 从材料中随机选一个模板生成额外英雄
-    var extraTemplate = heroes[Math.floor(Math.random() * heroes.length)];
-    var extraHero = generateFusedHero([extraTemplate, extraTemplate]);
-    // 降低额外英雄的品质
-    var extraQualities = ['common','rare','epic'];
-    extraHero.quality = extraQualities[Math.min(Math.floor(Math.random()*3), maxQIdx)];
-    G.heroes.push(extraHero);
-    showToast('✨ 双重融合！额外获得 ' + extraHero.icon + ' ' + extraHero.name);
+    var shadowHero = JSON.parse(JSON.stringify(newHero));
+    shadowHero.uid = ++G.heroIdCounter;
+    shadowHero.name = '残影·' + newHero.name;
+    shadowHero.maxHP  = Math.floor(newHero.maxHP  * shadowRatio);
+    shadowHero.hp     = shadowHero.maxHP;
+    shadowHero.atk    = Math.floor(newHero.atk    * shadowRatio);
+    shadowHero.def    = Math.floor(newHero.def    * shadowRatio);
+    shadowHero.spd    = Math.floor(newHero.spd    * shadowRatio);
+    shadowHero.maxMP  = Math.floor(newHero.maxMP  * shadowRatio);
+    shadowHero.mp     = shadowHero.maxMP;
+    shadowHero.isShadowClone = true;
+    delete shadowHero._scrollTag;
+    G.heroes.push(shadowHero);
+    showToast('👥 残影分裂！产出 ' + shadowHero.icon + ' ' + shadowHero.name + '（属性' + Math.round(shadowRatio*100) + '%）');
   }
   
   // 更新未知英雄解锁任务进度（合成职业和品质）
@@ -16838,7 +17333,8 @@ var _heroDetailList = [];
 var _heroDetailIdx = -1;
 
 function showHeroDetail(uid){
-  var h=G.heroes.find(function(x){return x.uid===uid});
+  uid = Number(uid); // 统一转为数字，防止类型不匹配
+  var h=G.heroes.find(function(x){return x.uid===uid || x.uid==uid;});
   if(!h)return;
   
   // 构建当前过滤后的英雄列表
@@ -18601,7 +19097,10 @@ function quickAddToTeam(heroUid){
   const idx=G.team.indexOf(null);
   if(idx===-1){showToast('队伍已满！');return}
   G.team[idx]=G.heroes.find(h=>h.uid===heroUid);
+  saveGame();
   if(onGuideQuickAdd()){
+    // 引导模式下：先渲染当前界面给用户视觉反馈，再跳转城镇
+    renderCurrentTab();
     return;
   }
   renderCurrentTab();
@@ -19155,9 +19654,16 @@ function renderMerge(el){
         var activeS = getActiveScrollEffect();
         if (!activeS) return '';
         var arc = SCROLL_RARITY_CONFIG[activeS.rarity];
-        return '<div style="background:' + arc.bg + ';border:1px solid ' + arc.color + ';border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;text-align:center">'
-          + '📜 下次合成将自动使用: <b style="color:' + arc.color + '">' + activeS.icon + ' ' + activeS.name + '</b>'
-          + ' <span style="color:var(--text3)">(' + activeS.desc + ')</span></div>';
+        var stars = {common:'★', rare:'★★', epic:'★★★', legendary:'★★★★', mythic:'★★★★★'}[activeS.rarity] || '';
+        return '<div style="background:' + arc.bg + ';border:1px solid ' + arc.color + ';border-radius:10px;padding:10px 14px;margin-bottom:12px;position:relative;overflow:hidden">'
+          + '<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:' + arc.color + '"></div>'
+          + '<div style="margin-left:8px">'
+          + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">'
+          + '<span style="font-size:12px;font-weight:bold;color:' + arc.color + '">' + activeS.icon + ' ' + activeS.name + '</span>'
+          + '<span style="font-size:10px;color:' + arc.color + '">' + stars + ' ' + arc.name + '</span>'
+          + '</div>'
+          + '<div style="font-size:11px;color:var(--text2)">' + activeS.desc + '</div>'
+          + '</div></div>';
       })()}
       
       <!-- 融合操作区 -->
@@ -19369,6 +19875,9 @@ function addMergeHero(heroUid){
   }
   if(!added){ showToast('合成框已满（最多3个）'); return; }
   
+  // 更新卡片选中状态
+  updateMergeHeroCardStyle(heroUid, true);
+  
   // 引导step6：动态提示下一步操作
   if(G.tutorialPhase==='guide' && G.tutorialStep>=6){
     var _filled=(window._mergeSlots||[]).filter(Boolean).length;
@@ -19388,6 +19897,7 @@ function removeMergeHero(heroUid){
   for(var i=0;i<3;i++){
     if(window._mergeSlots[i]!=null && window._mergeSlots[i]==heroUid){
       window._mergeSlots[i]=null;
+      updateMergeHeroCardStyle(heroUid, false);
       updateMergeUI();
       return;
     }
@@ -21019,91 +21529,348 @@ var RL_HERO_STARTERS = [
   { role:'healer',   name:'圣光祭司', icon:'💚', quality:'rare',  level:5,  skills:['group_heal','revive','blessing'] },
   { role:'assassin', name:'暗影刺客', icon:'🗡️', quality:'rare',  level:5,  skills:['backstab','assassinate','shadow_step'] },
   { role:'guardian', name:'深渊守卫', icon:'🛡️', quality:'rare',  level:5,  skills:['taunt','iron_wall','sacrifice'] },
+  { role:'warlock',  name:'诅咒术士', icon:'💀', quality:'rare',  level:5,  skills:['plague','soul_chain','life_drain'] },
+  { role:'ranger',   name:'荒野猎手', icon:'🏹', quality:'rare',  level:5,  skills:['multi_shot','trap','aim'] },
 ];
 
-// 肉鸽祝福（每层通关后3选1）
+// ==================== 遗物系统 ====================
+var RL_RELICS = [
+  // 普通遗物
+  { id:'relic_iron_heart', name:'铁心',    icon:'🫀', rarity:'common',
+    desc:'每场战斗开始时全队HP+5%',
+    trigger:'battle_start', apply:function(rl){ rl.heroes.forEach(function(h){ if(h.hp>0) h.hp=Math.min(h.maxHP, Math.floor(h.hp+h.maxHP*0.05)); }); }},
+  { id:'relic_lucky_coin', name:'幸运硬币',icon:'🪙', rarity:'common',
+    desc:'祝福选项变为4选1',
+    passive:true, effect:'more_blessing_choices'},
+  { id:'relic_wanderers_cloak',name:'游侠斗篷',icon:'🧥', rarity:'common',
+    desc:'全队速度永久+8%',
+    passive:true, effect:'spd_boost', value:0.08},
+  { id:'relic_cracked_gem', name:'破碎宝石',icon:'💠', rarity:'common',
+    desc:'全队MP永久+20%，技能释放更频繁',
+    passive:true, effect:'mp_boost', value:0.20},
+  { id:'relic_old_map',    name:'残旧地图',icon:'🗺️', rarity:'common',
+    desc:'每层额外出现1个随机事件',
+    passive:true, effect:'extra_event'},
+  // 稀有遗物
+  { id:'relic_blood_pact', name:'血誓契约',icon:'🩸', rarity:'rare',
+    desc:'每层通关后，死亡英雄有30%概率以50%HP复活',
+    trigger:'floor_clear', apply:function(rl){
+      rl.heroes.forEach(function(h){ if(h.hp<=0 && Math.random()<0.30){ h.hp=Math.floor(h.maxHP*0.5); showToast('🩸 血誓契约：'+h.name+' 复活！'); }});
+    }},
+  { id:'relic_war_drum',   name:'战鼓',   icon:'🥁', rarity:'rare',
+    desc:'BOSS层攻击力+30%，普通层速度+15%',
+    passive:true, effect:'context_boost'},
+  { id:'relic_crystal_ball',name:'预言水晶',icon:'🔮', rarity:'rare',
+    desc:'每次选祝福时，可以预览下一层敌人阵容',
+    passive:true, effect:'preview_enemies'},
+  { id:'relic_soul_jar',   name:'灵魂之罐',icon:'🫙', rarity:'rare',
+    desc:'英雄死亡时灵魂留存，下层可用100金币复活',
+    passive:true, effect:'soul_revive'},
+  { id:'relic_mirror_shield',name:'镜盾', icon:'🪞', rarity:'rare',
+    desc:'首次受到致死伤害时免疫一次（每层一次）',
+    passive:true, effect:'death_shield'},
+  // 史诗遗物
+  { id:'relic_chaos_core',  name:'混沌核心',icon:'🌀', rarity:'epic',
+    desc:'每层通关后随机强化一位英雄某项属性+50%',
+    trigger:'floor_clear', apply:function(rl){
+      var alive=rl.heroes.filter(function(h){return h.hp>0;});
+      if(!alive.length)return;
+      var h=alive[Math.floor(Math.random()*alive.length)];
+      var attrs=['maxHP','atk','def','spd'];
+      var attr=attrs[Math.floor(Math.random()*attrs.length)];
+      h[attr]=Math.floor(h[attr]*1.5);
+      if(attr==='maxHP'){h.hp=h.maxHP;}
+      showToast('🌀 混沌核心强化了 '+h.name+' 的 '+{maxHP:'HP',atk:'攻击',def:'防御',spd:'速度'}[attr]+'！');
+    }},
+  { id:'relic_time_glass',  name:'时沙漏', icon:'⏳', rarity:'epic',
+    desc:'进入Boss层时，全队所有属性重置为当前最大值（满血满蓝）并额外+10%',
+    trigger:'boss_entry', apply:function(rl){
+      rl.heroes.forEach(function(h){ if(h.hp>0){ h.hp=Math.floor(h.maxHP*1.1); h.maxHP=h.hp; h.mp=Math.floor(h.maxMP*1.1); h.maxMP=h.mp; }});
+      showToast('⏳ 时沙漏：进入Boss层，全队满状态+10%！');
+    }},
+  { id:'relic_echo_blade',  name:'回响之刃',icon:'🗡️', rarity:'epic',
+    desc:'每赢得5层，全队攻击永久+20%（可叠加无上限）',
+    passive:true, effect:'win_streak_atk', value:5},
+  // 传说遗物
+  { id:'relic_death_defier',name:'不死之志',icon:'💎', rarity:'legendary',
+    desc:'全队英雄HP归零时以20%HP复活一次（整场只触发一次）',
+    passive:true, effect:'once_revive'},
+  { id:'relic_endless_abyss',name:'无尽深渊',icon:'🌑', rarity:'legendary',
+    desc:'每进入新层，敌人HP+5%但全队所有属性也+5%（双倍成长）',
+    passive:true, effect:'double_scale'},
+];
+
+// ==================== 随机事件系统 ====================
+var RL_EVENTS = [
+  { id:'shrine',   name:'神秘神龛',  icon:'⛩️',
+    desc:'发现一座神龛，是否祭祀？',
+    choices:[
+      { text:'💰 献祭50金（获得随机祝福）', cost:{gold:50},
+        resolve:function(rl){ var b=rlGetBlessingChoices()[0]; b.apply(rl); rl.blessings.push(b); showToast('⛩️ 神龛赐予：'+b.name); }},
+      { text:'❤️ 献祭20%HP（强化随机英雄属性+30%）', cost:{hp:0.20},
+        resolve:function(rl){ var h=rl.heroes.filter(function(x){return x.hp>0;})[0]; if(h){h.atk=Math.floor(h.atk*1.3);h.def=Math.floor(h.def*1.3);h.hp=Math.max(1,Math.floor(h.hp*0.8)); showToast('⛩️ 神龛强化了 '+h.name+'！');} }},
+      { text:'🚶 离开，不冒险', resolve:function(){} }
+    ]
+  },
+  { id:'merchant', name:'流浪商人',  icon:'🧙',
+    desc:'一位商人愿意帮你强化英雄，但要价不菲。',
+    choices:[
+      { text:'💰 花200金：随机英雄全属性+15%', cost:{gold:200},
+        resolve:function(rl){ var alive=rl.heroes.filter(function(h){return h.hp>0;}); var h=alive[Math.floor(Math.random()*alive.length)]; if(h){['maxHP','atk','def','spd'].forEach(function(a){h[a]=Math.floor(h[a]*1.15);}); h.hp=h.maxHP; showToast('🧙 商人强化了 '+h.name+'！'); }}},
+      { text:'💰 花100金：全队HP恢复50%', cost:{gold:100},
+        resolve:function(rl){ rl.heroes.forEach(function(h){if(h.hp>0)h.hp=Math.min(h.maxHP,Math.floor(h.hp+h.maxHP*0.5));}); showToast('🧙 商人为全队提供了治疗！'); }},
+      { text:'🚶 没有金币，离开', resolve:function(){} }
+    ]
+  },
+  { id:'altar',    name:'献祭祭坛',  icon:'🔥',
+    desc:'黑暗祭坛低语：牺牲一位英雄，换取强大力量…',
+    choices:[
+      { text:'🩸 献祭HP最低的英雄（全队其余人全属性+40%）',
+        resolve:function(rl){
+          var alive=rl.heroes.filter(function(h){return h.hp>0;});
+          if(alive.length<=1){showToast('🔥 只剩一人，无法献祭！');return;}
+          alive.sort(function(a,b){return a.hp-b.hp;});
+          var victim=alive[0]; victim.hp=0;
+          showToast('🔥 '+victim.name+' 被献祭！');
+          rl.heroes.filter(function(h){return h.hp>0;}).forEach(function(h){
+            h.maxHP=Math.floor(h.maxHP*1.4);h.atk=Math.floor(h.atk*1.4);h.def=Math.floor(h.def*1.4);h.hp=h.maxHP;
+          });
+        }},
+      { text:'🚶 拒绝，离开祭坛', resolve:function(){} }
+    ]
+  },
+  { id:'treasure', name:'古老宝箱',  icon:'📦',
+    desc:'发现一个神秘宝箱，散发着奇异的光芒。',
+    choices:[
+      { text:'🔑 打开（可能是宝贝，也可能是陷阱）',
+        resolve:function(rl){
+          var roll=Math.random();
+          if(roll<0.5){ var b=rlGetBlessingChoices()[0]; b.apply(rl); rl.blessings.push(b); showToast('📦 宝箱！获得：'+b.name); }
+          else if(roll<0.75){ rl.heroes.forEach(function(h){if(h.hp>0)h.hp=Math.min(h.maxHP,Math.floor(h.hp+h.maxHP*0.3));}); showToast('📦 宝箱内藏着圣水，全队恢复30%HP！'); }
+          else{ rl.heroes.forEach(function(h){if(h.hp>0)h.hp=Math.max(1,Math.floor(h.hp*0.7));}); showToast('💀 陷阱！全队损失30%HP！'); }
+        }},
+      { text:'🚶 感觉不妙，绕开', resolve:function(){} }
+    ]
+  },
+  { id:'forge',    name:'遗忘锻炉',  icon:'⚒️',
+    desc:'远古锻炉仍在燃烧，可以强化一位英雄的某项属性。',
+    choices:[
+      { text:'⚔️ 强化攻击（最强英雄攻击+35%）',
+        resolve:function(rl){
+          var h=rl.heroes.filter(function(x){return x.hp>0;}).sort(function(a,b){return b.atk-a.atk;})[0];
+          if(h){h.atk=Math.floor(h.atk*1.35);showToast('⚒️ 锻炉强化了 '+h.name+' 的攻击！');}
+        }},
+      { text:'🛡️ 强化防御（最弱英雄防御+50%，HP+30%）',
+        resolve:function(rl){
+          var h=rl.heroes.filter(function(x){return x.hp>0;}).sort(function(a,b){return a.def-b.def;})[0];
+          if(h){h.def=Math.floor(h.def*1.5);h.maxHP=Math.floor(h.maxHP*1.3);h.hp=h.maxHP;showToast('⚒️ 锻炉强化了 '+h.name+' 的防御！');}
+        }},
+      { text:'🚶 锻炉需要材料，离开', resolve:function(){} }
+    ]
+  },
+  { id:'curse',    name:'诅咒封印',  icon:'💢',
+    desc:'邪恶的封印散发着紫色光芒，打破它？',
+    choices:[
+      { text:'💥 打破封印（全队HP-20%，但获得随机2个祝福）',
+        resolve:function(rl){
+          rl.heroes.forEach(function(h){if(h.hp>0){h.maxHP=Math.floor(h.maxHP*0.8);h.hp=Math.min(h.hp,h.maxHP);}});
+          var choices=rlGetBlessingChoices();
+          choices.slice(0,2).forEach(function(b){b.apply(rl);rl.blessings.push(b);});
+          showToast('💢 封印打破！获得了 '+choices.slice(0,2).map(function(b){return b.name;}).join('、'));
+        }},
+      { text:'🚶 留着封印，太危险了', resolve:function(){} }
+    ]
+  },
+  { id:'spring',   name:'治愈涌泉',  icon:'💧',
+    desc:'发现一处清澈的涌泉，泉水散发着治愈的光芒。',
+    choices:[
+      { text:'💧 让全队沐浴（全队HP完全恢复+额外+10%maxHP）',
+        resolve:function(rl){ rl.heroes.forEach(function(h){if(h.hp>0){h.maxHP=Math.floor(h.maxHP*1.1);h.hp=h.maxHP;}}); showToast('💧 涌泉的治愈力量，全队满血+HP上限+10%！'); }}
+    ]
+  },
+  { id:'gamble',   name:'命运赌桌',  icon:'🎲',
+    desc:'神秘赌徒出现：掷骰子决定命运！',
+    choices:[
+      { text:'🎲 赌一把！（50%全队+30%属性，50%全队-15%属性）',
+        resolve:function(rl){
+          if(Math.random()<0.5){
+            rl.heroes.forEach(function(h){if(h.hp>0){h.maxHP=Math.floor(h.maxHP*1.3);h.atk=Math.floor(h.atk*1.3);h.def=Math.floor(h.def*1.3);h.hp=h.maxHP;}});
+            showToast('🎲 赌赢了！全队全属性+30%！');
+          }else{
+            rl.heroes.forEach(function(h){if(h.hp>0){h.maxHP=Math.floor(h.maxHP*0.85);h.atk=Math.floor(h.atk*0.85);h.def=Math.floor(h.def*0.85);h.hp=Math.min(h.hp,h.maxHP);}});
+            showToast('🎲 赌输了……全队全属性-15%。');
+          }
+        }},
+      { text:'🚶 不赌，走人', resolve:function(){} }
+    ]
+  },
+  { id:'knowledge',name:'古老典籍',  icon:'📚',
+    desc:'发现一本泛黄的古籍，记载着未知的技艺。',
+    choices:[
+      { text:'📖 研读（随机英雄获得1个随机技能）',
+        resolve:function(rl){
+          var alive=rl.heroes.filter(function(h){return h.hp>0;});
+          var h=alive[Math.floor(Math.random()*alive.length)];
+          if(h){
+            var allSkillIds=Object.keys(SKILLS||{});
+            var newSkill=allSkillIds[Math.floor(Math.random()*allSkillIds.length)];
+            if(!h.bonusSkills)h.bonusSkills=[];
+            if(h.skills.indexOf(newSkill)===-1&&h.bonusSkills.indexOf(newSkill)===-1){
+              h.bonusSkills.push(newSkill);
+              var sk=SKILLS[newSkill];
+              showToast('📚 '+h.name+' 学会了 '+(sk?sk.icon+sk.name:'新技能')+'！');
+            }else{
+              h.atk=Math.floor(h.atk*1.1);
+              showToast('📚 技能已掌握，转化为力量，'+h.name+' 攻击+10%！');
+            }
+          }
+        }},
+      { text:'🚶 没兴趣，继续前进', resolve:function(){} }
+    ]
+  },
+];
+
+// ==================== 强化祝福系统（5档 + 诅咒选项） ====================
 var RL_BLESSINGS = [
-  // 属性强化
-  { id:'hp_up',    name:'生命强化',   icon:'❤️',  desc:'全队最大HP +20%',   rarity:'common',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.2); h.hp=h.maxHP; }); } },
-  { id:'atk_up',   name:'攻击强化',   icon:'⚔️',  desc:'全队攻击 +20%',     rarity:'common',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.atk=Math.floor(h.atk*1.2); }); } },
-  { id:'def_up',   name:'防御强化',   icon:'🛡️',  desc:'全队防御 +20%',     rarity:'common',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.def=Math.floor(h.def*1.2); }); } },
-  { id:'spd_up',   name:'速度强化',   icon:'💨',  desc:'全队速度 +15%',     rarity:'common',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.spd=Math.floor(h.spd*1.15); }); } },
-  { id:'mp_up',    name:'魔力强化',   icon:'💎',  desc:'全队MP +25%，技能更强', rarity:'common',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxMP=Math.floor(h.maxMP*1.25); h.mp=h.maxMP; }); } },
-  // 特殊效果
-  { id:'full_heal', name:'圣泉沐浴',  icon:'💧',  desc:'全队HP完全恢复',    rarity:'common',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.hp=h.maxHP; }); } },
-  { id:'double_atk',name:'双刃之刃', icon:'⚡',  desc:'全队攻击 +40%，防御 -10%', rarity:'rare',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.atk=Math.floor(h.atk*1.4); h.def=Math.floor(h.def*0.9); }); } },
-  { id:'berserker_mode',name:'狂战模式',icon:'🔥',desc:'全队HP -20%，攻击 +50%', rarity:'rare',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*0.8); h.hp=Math.min(h.hp,h.maxHP); h.atk=Math.floor(h.atk*1.5); }); } },
-  { id:'ironhide',  name:'铁皮厚甲',  icon:'🏰',  desc:'全队防御 +50%，速度 -10%', rarity:'rare',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.def=Math.floor(h.def*1.5); h.spd=Math.floor(h.spd*0.9); }); } },
-  { id:'vampiric',  name:'吸血之契',  icon:'🧛',  desc:'全队攻击附带15%吸血', rarity:'rare',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h._rlLifeSteal=(h._rlLifeSteal||0)+0.15; }); } },
-  { id:'all_boost', name:'全属强化',  icon:'✨',  desc:'全队全属性 +15%',   rarity:'epic',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.15); h.hp=Math.floor(h.hp*1.15); h.atk=Math.floor(h.atk*1.15); h.def=Math.floor(h.def*1.15); h.spd=Math.floor(h.spd*1.15); h.maxMP=Math.floor(h.maxMP*1.15); }); } },
-  { id:'godly_power',name:'神圣赐福', icon:'👑',  desc:'全队攻击和HP各 +60%', rarity:'legendary',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.6); h.hp=h.maxHP; h.atk=Math.floor(h.atk*1.6); }); } },
-  // 招募新英雄（随机模板）
-  { id:'recruit_warrior', name:'招募战士', icon:'⚔️', desc:'队伍加入一位稀有战士', rarity:'rare',
-    apply: function(rl){ if(rl.heroes.length<4) rl.heroes.push(rlCreateHero('warrior','rare',rl.floor*2+3)); } },
-  { id:'recruit_mage',    name:'招募法师', icon:'🔮', desc:'队伍加入一位稀有法师', rarity:'rare',
-    apply: function(rl){ if(rl.heroes.length<4) rl.heroes.push(rlCreateHero('mage','rare',rl.floor*2+3)); } },
-  { id:'recruit_healer',  name:'招募治愈者',icon:'💚', desc:'队伍加入一位稀有治愈者', rarity:'rare',
-    apply: function(rl){ if(rl.heroes.length<4) rl.heroes.push(rlCreateHero('healer','rare',rl.floor*2+3)); } },
-  // 从玩家英雄池召唤援军
-  { id:'summon_ally', name:'召唤援军', icon:'🤝', desc:'从你的英雄池中随机召唤一位英雄加入队伍', rarity:'epic',
+  // ── 普通 ──
+  { id:'hp_up',    name:'生命涌现',   icon:'❤️',  rarity:'common',
+    desc:'全队最大HP +18%',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.18); h.hp=Math.min(h.hp+Math.floor(h.maxHP*0.1),h.maxHP); }); } },
+  { id:'atk_up',   name:'锋芒毕露',   icon:'⚔️',  rarity:'common',
+    desc:'全队攻击 +18%',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.atk=Math.floor(h.atk*1.18); }); } },
+  { id:'def_up',   name:'坚若磐石',   icon:'🛡️',  rarity:'common',
+    desc:'全队防御 +22%',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.def=Math.floor(h.def*1.22); }); } },
+  { id:'spd_up',   name:'疾风步伐',   icon:'💨',  rarity:'common',
+    desc:'全队速度 +18%',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.spd=Math.floor(h.spd*1.18); }); } },
+  { id:'mp_up',    name:'魔力充盈',   icon:'💎',  rarity:'common',
+    desc:'全队MP +30%，下场战斗必定先手',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxMP=Math.floor(h.maxMP*1.3); h.mp=h.maxMP; }); } },
+  { id:'full_heal',name:'圣泉沐浴',   icon:'💧',  rarity:'common',
+    desc:'全队HP完全恢复 + 额外+8%maxHP',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.08); h.hp=h.maxHP; }); } },
+  // ── 稀有 ──
+  { id:'double_atk',name:'双刃狂潮',  icon:'⚡',  rarity:'rare',
+    desc:'全队攻击 +35%，防御 -8%（收益大于代价）',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.atk=Math.floor(h.atk*1.35); h.def=Math.floor(h.def*0.92); }); } },
+  { id:'ironhide',  name:'不破金身',  icon:'🏰',  rarity:'rare',
+    desc:'全队防御 +45%，HP +15%',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.def=Math.floor(h.def*1.45); h.maxHP=Math.floor(h.maxHP*1.15); h.hp=Math.min(h.hp,h.maxHP); }); } },
+  { id:'vampiric',  name:'吸血契约',  icon:'🧛',  rarity:'rare',
+    desc:'全队攻击附带20%吸血，HP+10%',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h._rlLifeSteal=(h._rlLifeSteal||0)+0.20; h.maxHP=Math.floor(h.maxHP*1.1); h.hp=Math.min(h.hp+Math.floor(h.maxHP*0.1),h.maxHP); }); } },
+  { id:'berserker_mode',name:'破釜沉舟',icon:'🔥',rarity:'rare',
+    desc:'全队HP上限-15%但攻击+45%（赌徒之选）',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*0.85); h.hp=Math.min(h.hp,h.maxHP); h.atk=Math.floor(h.atk*1.45); }); } },
+  { id:'recruit_random',name:'流亡英雄',icon:'🤝',rarity:'rare',
+    desc:'招募一位随机职业的英雄加入队伍（上限6人）',
     apply: function(rl){
-      if(rl.heroes.length >= 4) return;
-      var candidates = (G.heroes||[]).filter(function(h){
-        return h && !h.locked && !rl.heroes.some(function(rh){ return rh._rlOriginalUid === h.uid; });
+      if(rl.heroes.length>=6){showToast('队伍已满！');return;}
+      var roles=['warrior','mage','healer','guardian','assassin','ranger','warlock'];
+      var role=roles[Math.floor(Math.random()*roles.length)];
+      var qualities=['rare','epic'];
+      var quality=qualities[Math.floor(Math.random()*qualities.length)];
+      rl.heroes.push(rlCreateHero(role,quality,Math.floor(rl.floor*1.5+3)));
+      showToast('🤝 流亡英雄加入了队伍！');
+    }},
+  { id:'summon_ally',name:'召唤援军',  icon:'🌟', rarity:'rare',
+    desc:'从你的英雄池中召唤最强英雄参战（按层数缩放）',
+    apply: function(rl){
+      if(rl.heroes.length>=6){showToast('队伍已满！');return;}
+      var candidates=(G.heroes||[]).filter(function(h){
+        return h&&!h.locked&&!rl.heroes.some(function(rh){return rh._rlOriginalUid===h.uid;});
       });
-      if(candidates.length > 0) {
-        var pick = candidates[Math.floor(Math.random()*candidates.length)];
-        var scale = (rl._rlScale || 0.6) + (rl.floor - 1) * 0.05; // 随层数提升缩放
-        scale = Math.min(scale, 1.2); // 上限
-        rl.heroes.push(rlClonePlayerHero(pick, scale));
-      } else {
-        // 没有可选英雄，降级为模板招募
-        rl.heroes.push(rlCreateHero(['warrior','mage','healer','guardian','assassin'][Math.floor(Math.random()*5)],'rare',rl.floor*2+3));
+      if(candidates.length>0){
+        candidates.sort(function(a,b){return (QUALITIES.indexOf(b.quality)||0)-(QUALITIES.indexOf(a.quality)||0);});
+        var pick=candidates[0];
+        var scale=Math.min(1.0+rl.floor*0.04,2.0);
+        rl.heroes.push(rlClonePlayerHero(pick,scale));
+        showToast('🌟 援军 '+pick.name+' 加入了战斗！');
+      }else{
+        rl.heroes.push(rlCreateHero('warrior','epic',rl.floor*2+5));
+        showToast('🌟 流亡勇士加入了队伍！');
       }
-    } },
+    }},
+  // ── 史诗 ──
+  { id:'all_boost',  name:'众神庇佑', icon:'✨',  rarity:'epic',
+    desc:'全队全属性 +22%',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.22); h.hp=Math.floor(h.hp*1.15); h.atk=Math.floor(h.atk*1.22); h.def=Math.floor(h.def*1.22); h.spd=Math.floor(h.spd*1.22); h.maxMP=Math.floor(h.maxMP*1.22); }); } },
+  { id:'soul_bond',  name:'灵魂共鸣', icon:'💞',  rarity:'epic',
+    desc:'全队攻击取队伍平均值×1.5（拉平强弱，整体暴涨）',
+    apply: function(rl){
+      var alive=rl.heroes.filter(function(h){return h.hp>0;});
+      var avgAtk=alive.reduce(function(s,h){return s+h.atk;},0)/(alive.length||1);
+      alive.forEach(function(h){h.atk=Math.floor(avgAtk*1.5);});
+    }},
+  { id:'phoenix_flame',name:'凤凰重生',icon:'🔥', rarity:'epic',
+    desc:'战斗中每位英雄首次HP归零时自动复活（本局永久）',
+    apply: function(rl){ rl._rlPhoenixActive=true; rl.heroes.forEach(function(h){h._rlPhoenix=true;}); showToast('🔥 凤凰之焰点燃，死亡已不再是终点！'); }},
+  { id:'time_warp',  name:'时间回溯',  icon:'⏰',  rarity:'epic',
+    desc:'当前层如果已经失去了英雄，全部复活（一次性）',
+    apply: function(rl){
+      var dead=rl.heroes.filter(function(h){return h.hp<=0;});
+      dead.forEach(function(h){h.hp=Math.floor(h.maxHP*0.5);});
+      if(dead.length>0) showToast('⏰ 时间回溯！'+dead.length+'位英雄复活！');
+      else showToast('⏰ 时间回溯…无人阵亡，一切如故。');
+    }},
+  // ── 传说 ──
+  { id:'godly_power', name:'神圣降临', icon:'👑',  rarity:'legendary',
+    desc:'全队攻击和HP各 +55%，额外恢复满HP',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.55); h.hp=h.maxHP; h.atk=Math.floor(h.atk*1.55); }); } },
+  { id:'rift_power',  name:'裂隙之力', icon:'🌌', rarity:'legendary',
+    desc:'全队全属性 +35%，且此后每层通关后额外+3%（永久叠加）',
+    apply: function(rl){ rl.heroes.forEach(function(h){h.maxHP=Math.floor(h.maxHP*1.35);h.hp=h.maxHP;h.atk=Math.floor(h.atk*1.35);h.def=Math.floor(h.def*1.35);h.spd=Math.floor(h.spd*1.35);h.maxMP=Math.floor(h.maxMP*1.35);}); rl._riftGrowth=(rl._riftGrowth||0)+0.03; }},
+  // ── 诅咒（高收益高风险） ──
+  { id:'curse_power', name:'⚠️ 魔王诅咒',icon:'💀', rarity:'curse',
+    desc:'【风险】全队HP减半，但攻击、防御、速度各×2',
+    apply: function(rl){ rl.heroes.forEach(function(h){ if(h.hp>0){h.maxHP=Math.floor(h.maxHP/2);h.hp=Math.floor(h.hp/2);h.atk=Math.floor(h.atk*2);h.def=Math.floor(h.def*2);h.spd=Math.floor(h.spd*2);} }); }},
+  { id:'curse_glass', name:'⚠️ 玻璃炮',   icon:'💥', rarity:'curse',
+    desc:'【风险】全队防御归零，攻击×3',
+    apply: function(rl){ rl.heroes.forEach(function(h){ if(h.hp>0){h.atk=Math.floor(h.atk*3);h.def=1;} }); }},
 ];
 
-// 肉鸽关卡生成
+// ==================== 关卡主题（扩展） ====================
 var RL_FLOOR_THEMES = [
-  { name:'腐化矿坑', icon:'⛏️', enemies:[{role:'warrior',quality:'common'},{role:'warrior',quality:'common'}], modifier:'physical_resist' },
-  { name:'幽暗丛林', icon:'🌲', enemies:[{role:'ranger',quality:'common'},{role:'ranger',quality:'rare'}],   modifier:'high_dodge' },
-  { name:'骷髅墓地', icon:'💀', enemies:[{role:'guardian',quality:'rare'},{role:'warlock',quality:'common'}], modifier:'regen' },
-  { name:'熔岩深渊', icon:'🌋', enemies:[{role:'mage',quality:'rare'},{role:'mage',quality:'common'}],       modifier:'rage' },
-  { name:'冰封神殿', icon:'❄️', enemies:[{role:'paladin',quality:'rare'},{role:'healer',quality:'common'}],  modifier:'magic_resist' },
-  { name:'暗影要塞', icon:'🏰', enemies:[{role:'guardian',quality:'rare'},{role:'warrior',quality:'epic'}],  modifier:'shield_start' },
-  { name:'混沌裂隙', icon:'🌀', enemies:[{role:'warlock',quality:'epic'},{role:'assassin',quality:'rare'}],  modifier:'anti_heal' },
-];
-var RL_BOSS_THEMES = [
-  { name:'矿坑领主 · 铁甲蜘蛛', icon:'🕷️', role:'guardian', quality:'legendary', mult:3.0, skills:['taunt','iron_wall','fortify','ground_slam'] },
-  { name:'森林女巫 · 荆棘之母',  icon:'🌿', role:'warlock',  quality:'legendary', mult:3.2, skills:['plague','soul_chain','life_drain','curse'] },
-  { name:'亡灵将军 · 死亡行者',  icon:'💀', role:'warrior',  quality:'legendary', mult:3.5, skills:['execute','berserker','war_cry','cleave'] },
-  { name:'混沌魔法师 · 虚空之眼',icon:'👁️', role:'mage',     quality:'legendary', mult:4.0, skills:['meteor','mana_burst','blizzard','thunder'] },
-  { name:'深渊龙王 · 永恒毁灭',  icon:'🐉', role:'warrior',  quality:'mythic',    mult:5.0, skills:['execute','berserker','war_cry','ground_slam','cleave'] },
+  { name:'腐化矿坑', icon:'⛏️', flavor:'黑暗深处传来镐击声……', enemies:[{role:'warrior',quality:'common'},{role:'warrior',quality:'common'}], modifier:'physical_resist' },
+  { name:'幽暗丛林', icon:'🌲', flavor:'毒箭从树影中呼啸而来。',  enemies:[{role:'ranger',quality:'common'},{role:'ranger',quality:'rare'}],   modifier:'high_dodge' },
+  { name:'骷髅墓地', icon:'💀', flavor:'亡者在此复仇，无休无止。', enemies:[{role:'guardian',quality:'rare'},{role:'warlock',quality:'common'}], modifier:'regen' },
+  { name:'熔岩深渊', icon:'🌋', flavor:'岩浆的温度令人窒息。',    enemies:[{role:'mage',quality:'rare'},{role:'mage',quality:'common'}],       modifier:'rage' },
+  { name:'冰封神殿', icon:'❄️', flavor:'寒霜侵骨，魔法凝固。',    enemies:[{role:'paladin',quality:'rare'},{role:'healer',quality:'common'}],  modifier:'magic_resist' },
+  { name:'暗影要塞', icon:'🏰', flavor:'铁甲卫士守护着黑暗秘密。', enemies:[{role:'guardian',quality:'rare'},{role:'warrior',quality:'epic'}],  modifier:'shield_start' },
+  { name:'混沌裂隙', icon:'🌀', flavor:'空间在此扭曲，理性失效。', enemies:[{role:'warlock',quality:'epic'},{role:'assassin',quality:'rare'}],  modifier:'anti_heal' },
+  { name:'血色竞技场',icon:'🩸', flavor:'观众的欢呼声令人毛骨悚然。',enemies:[{role:'warrior',quality:'epic'},{role:'guardian',quality:'rare'},{role:'assassin',quality:'rare'}], modifier:'rage' },
+  { name:'幽灵船舱', icon:'🚢', flavor:'船上只有幽魂的哭泣。',    enemies:[{role:'warlock',quality:'rare'},{role:'warlock',quality:'epic'}],   modifier:'anti_heal' },
+  { name:'机关陷阱室',icon:'⚙️', flavor:'每一步都可能触发致命机关。',enemies:[{role:'ranger',quality:'epic'},{role:'assassin',quality:'epic'}],  modifier:'high_dodge' },
+  { name:'古龙祭祀场',icon:'🐲', flavor:'古老的仪式正在进行中……', enemies:[{role:'paladin',quality:'epic'},{role:'mage',quality:'epic'}],       modifier:'magic_resist' },
+  { name:'时间裂缝',  icon:'⏳', flavor:'过去与未来在此交汇。',    enemies:[{role:'mage',quality:'legendary'},{role:'healer',quality:'rare'}],  modifier:'regen' },
 ];
 
-// 深拷贝玩家英雄为肉鸽英雄（保留培养成果）
+var RL_BOSS_THEMES = [
+  { name:'矿坑领主 · 铁甲蜘蛛', icon:'🕷️', role:'guardian', quality:'legendary', mult:2.8, skills:['taunt','iron_wall','fortify','ground_slam'],
+    ability:'【护甲再生】每回合恢复10%防御值', abilityEffect:'regen_def', flavor:'八条铁腿踏破岩石，毒液侵蚀一切……' },
+  { name:'森林女巫 · 荆棘之母',  icon:'🌿', role:'warlock',  quality:'legendary', mult:3.0, skills:['plague','soul_chain','life_drain','curse'],
+    ability:'【反伤荆棘】受到攻击时反弹20%伤害', abilityEffect:'thorns', flavor:'自然的愤怒，化为无尽的荆棘……' },
+  { name:'亡灵将军 · 死亡行者',  icon:'💀', role:'warrior',  quality:'legendary', mult:3.3, skills:['execute','berserker','war_cry','cleave'],
+    ability:'【不死军团】每5回合召唤1个骷髅兵', abilityEffect:'summon_minion', flavor:'无法被真正杀死——只是暂时沉睡。' },
+  { name:'混沌魔法师 · 虚空之眼',icon:'👁️', role:'mage',     quality:'legendary', mult:3.8, skills:['meteor','mana_burst','blizzard','thunder'],
+    ability:'【法力过载】每回合随机对一个英雄施加沉默（跳过一次技能）', abilityEffect:'silence_random', flavor:'凝视虚空，虚空也在凝视你……' },
+  { name:'深渊龙王 · 永恒毁灭',  icon:'🐉', role:'warrior',  quality:'mythic',    mult:4.5, skills:['execute','berserker','war_cry','ground_slam','cleave'],
+    ability:'【龙焰领域】进入战斗时全场英雄HP-15%，每回合全队持续灼烧3%HP', abilityEffect:'burn_field', flavor:'不是在战斗，而是在见证世界末日。' },
+  { name:'混沌之母 · 无形吞噬',  icon:'🌑', role:'warlock',  quality:'mythic',    mult:5.0, skills:['plague','soul_chain','life_drain','curse','meteor'],
+    ability:'【属性吞噬】每击杀一位英雄，永久吸取其50%属性', abilityEffect:'attribute_devour', flavor:'她吞噬一切——光明、秩序、还有希望。' },
+  { name:'时间暴君 · 永恒困囚',  icon:'⌛', role:'mage',     quality:'mythic',    mult:5.5, skills:['meteor','blizzard','thunder','mana_burst'],
+    ability:'【时间倒流】每3回合将战场上所有英雄HP重置回战斗开始时的数值', abilityEffect:'time_reset', flavor:'在他的领域中，没有人能真正受伤——也没有人能赢。' },
+];
+
+// 深拷贝玩家英雄为肉鸽英雄
 function rlClonePlayerHero(playerHero, floorScale) {
-  // floorScale: 强度缩放系数（基于肉鸽层数）
   var scale = floorScale || 1;
   var h = JSON.parse(JSON.stringify(playerHero));
-  // 标记为肉鸽英雄
   h.uid = 'rl_' + Date.now() + '_' + Math.floor(Math.random()*10000);
-  h._rlOriginalUid = playerHero.uid; // 记录原始uid
-  h._rlOriginalLevel = playerHero.level; // 记录原始等级
-  // 属性缩放：保留玩家培养的属性比例，按层数适配
-  // 基础属性 = 玩家属性 * 缩放系数
+  h._rlOriginalUid = playerHero.uid;
+  h._rlOriginalLevel = playerHero.level;
   h.maxHP = Math.max(1, Math.floor(h.maxHP * scale));
   h.hp = h.maxHP;
   h.atk = Math.max(1, Math.floor(h.atk * scale));
@@ -21111,15 +21878,13 @@ function rlClonePlayerHero(playerHero, floorScale) {
   h.spd = Math.max(1, Math.floor(h.spd * scale));
   h.maxMP = Math.max(1, Math.floor(h.maxMP * scale));
   h.mp = h.maxMP;
-  // 保留技能、天赋、特质等
   if(!h.skills) h.skills = [];
   if(!h.bonusSkills) h.bonusSkills = [];
   if(!h.traits) h.traits = [];
   if(!h.talents) h.talents = {};
   if(!h.equipment) h.equipment = {weapon:null,armor:null,accessory:null};
-  // 肉鸽经验系统
   h._rlExp = 0;
-  h._rlLevel = h.level; // 肉鸽内等级（可独立升级）
+  h._rlLevel = h.level;
   return h;
 }
 
@@ -21141,107 +21906,146 @@ function rlCreateHero(role, quality, level) {
   };
 }
 
-// 生成肉鸽关卡敌人
+// 生成肉鸽关卡敌人（动态难度：自动感知玩家总战力）
 function rlGenerateEnemies(floor) {
   var isBoss = (floor % 5 === 0);
-  var scaleMult = 1 + (floor - 1) * 0.25;
+  var isMidBoss = (floor % 10 === 7); // 7、17、27层：精英战
+  // 动态难度计算：基于玩家当前队伍战力
+  var playerPower = G_RL ? G_RL.heroes.filter(function(h){return h.hp>0;}).reduce(function(s,h){
+    return s + h.maxHP*0.5 + h.atk*3 + h.def*2 + h.spd*1;
+  }, 0) : 0;
+  // 基础缩放：层数决定基础，玩家战力决定浮动（防止碾压或被碾压）
+  var baseScale = 1 + (floor - 1) * 0.22;
+  var powerScale = playerPower > 0 ? Math.min(Math.max(playerPower / Math.max(1, G_RL && G_RL._baselinePower || playerPower), 0.5), 2.5) : 1;
+  // 混合缩放：70%层数基础 + 30%战力感知
+  var scaleMult = baseScale * (0.7 + powerScale * 0.3);
   var enemies = [];
 
   if (isBoss) {
-    var bossTheme = RL_BOSS_THEMES[Math.min(Math.floor((floor/5)-1), RL_BOSS_THEMES.length-1)];
+    var bossIdx = Math.min(Math.floor((floor/5)-1), RL_BOSS_THEMES.length-1);
+    var bossTheme = RL_BOSS_THEMES[bossIdx];
     var r = ROLES[bossTheme.role];
     var qm = QUALITY_MULT[bossTheme.quality] || 1;
     var lv = Math.min(99, floor * 3);
-    function cs(base){ return Math.max(1, Math.floor(base * qm * scaleMult * bossTheme.mult * (1+(lv-1)*0.08))); }
+    function bcs(base){ return Math.max(1, Math.floor(base * qm * scaleMult * bossTheme.mult * (1+(lv-1)*0.08))); }
     enemies.push({ name:bossTheme.name, icon:bossTheme.icon, role:bossTheme.role, quality:bossTheme.quality,
       level:lv, skills:bossTheme.skills, bonusSkills:[],
-      maxHP:cs(r.baseHP), atk:cs(r.baseATK), def:cs(r.baseDEF), spd:cs(r.baseSPD), maxMP:cs(r.baseMP),
-      hp:cs(r.baseHP), mp:0, equipment:{weapon:null,armor:null,accessory:null} });
+      maxHP:bcs(r.baseHP), atk:bcs(r.baseATK), def:bcs(r.baseDEF), spd:bcs(r.baseSPD), maxMP:bcs(r.baseMP),
+      hp:bcs(r.baseHP), mp:0, equipment:{weapon:null,armor:null,accessory:null},
+      _rlBossAbility: bossTheme.abilityEffect, _rlBossAbilityDesc: bossTheme.ability });
   } else {
-    var theme = RL_FLOOR_THEMES[(floor-1) % RL_FLOOR_THEMES.length];
-    theme.enemies.forEach(function(e) {
+    var themeIdx = (floor-1) % RL_FLOOR_THEMES.length;
+    var theme = RL_FLOOR_THEMES[themeIdx];
+    // 精英战（7/17/27层）：敌方额外+1个史诗级
+    var enemyList = theme.enemies.slice();
+    if(isMidBoss){
+      var extraRoles=['warrior','mage','guardian','warlock','assassin'];
+      enemyList.push({role:extraRoles[Math.floor(Math.random()*extraRoles.length)],quality:'epic'});
+    }
+    enemyList.forEach(function(e) {
       var r = ROLES[e.role] || ROLES.warrior;
       var qm = QUALITY_MULT[e.quality] || 1;
       var lv = Math.max(1, Math.min(99, floor * 2));
       function cs(base){ return Math.max(1, Math.floor(base * qm * scaleMult * (1+(lv-1)*0.08))); }
       var pool = ROLE_SKILLS[e.role] || ROLE_SKILLS.warrior;
-      var skills = pool.slice().sort(function(){return Math.random()-0.5}).slice(0,2);
+      var skills = pool.slice().sort(function(){return Math.random()-0.5}).slice(0,2+(isMidBoss?1:0));
       enemies.push({ name:r.name, icon:r.icon, role:e.role, quality:e.quality,
         level:lv, skills:skills, bonusSkills:[],
         maxHP:cs(r.baseHP), atk:cs(r.baseATK), def:cs(r.baseDEF), spd:cs(r.baseSPD), maxMP:cs(r.baseMP),
         hp:cs(r.baseHP), mp:0, equipment:{weapon:null,armor:null,accessory:null} });
     });
   }
-  return { enemies:enemies, isBoss:isBoss,
+  return { enemies:enemies, isBoss:isBoss, isMidBoss:isMidBoss,
     theme: isBoss ? RL_BOSS_THEMES[Math.min(Math.floor((floor/5)-1),RL_BOSS_THEMES.length-1)] : RL_FLOOR_THEMES[(floor-1)%RL_FLOOR_THEMES.length],
     modifier: isBoss ? null : (RL_FLOOR_THEMES[(floor-1)%RL_FLOOR_THEMES.length].modifier || null) };
 }
 
-// 随机选3个祝福（加权：常见多，传说少）
+// 随机选祝福（3或4选1，取决于遗物；诅咒偶尔出现增加刺激）
 function rlGetBlessingChoices() {
-  var weights = { common:60, rare:30, epic:8, legendary:2 };
-  var pool = RL_BLESSINGS.slice().sort(function(){return Math.random()-0.5});
-  // 过滤：队满时不提供招募类
-  if (G_RL && G_RL.heroes.length >= 4) {
-    pool = pool.filter(function(b){ return !b.id.startsWith('recruit_'); });
+  var hasLuckyCoin = G_RL && G_RL.relics && G_RL.relics.some(function(r){return r.id==='relic_lucky_coin';});
+  var choiceCount = hasLuckyCoin ? 4 : 3;
+  var weights = { common:50, rare:28, epic:14, legendary:5, curse:3 };
+  var pool = RL_BLESSINGS.slice().sort(function(){return Math.random()-0.5;});
+  // 队满时不提供招募类
+  if (G_RL && G_RL.heroes.length >= 6) {
+    pool = pool.filter(function(b){ return b.id !== 'recruit_random' && b.id !== 'summon_ally'; });
+  }
+  // 诅咒只在第5层以后、有一定层数时出现
+  if(!G_RL || G_RL.floor < 5) {
+    pool = pool.filter(function(b){ return b.rarity !== 'curse'; });
   }
   var chosen = [];
-  var rarityOrder = ['legendary','epic','rare','common'];
-  // 保证至少1个好祝福
-  var guarantee = Math.random() < 0.3 ? 'rare' : 'common';
-  var byRarity = {};
-  rarityOrder.forEach(function(r){ byRarity[r] = pool.filter(function(b){return b.rarity===r;}); });
-  // 先放一个保底
-  var gpool = byRarity[guarantee].length ? byRarity[guarantee] : byRarity.common;
+  // 保证有一个稀有+
+  var guarantee = Math.random() < 0.35 ? 'rare' : (Math.random() < 0.1 ? 'epic' : 'common');
+  var gpool = pool.filter(function(b){return b.rarity===guarantee;});
+  if(!gpool.length) gpool = pool.filter(function(b){return b.rarity==='common';});
   if(gpool.length) { chosen.push(gpool[Math.floor(Math.random()*gpool.length)]); }
-  // 再随机选2个（去重）
   var remaining = pool.filter(function(b){ return !chosen.some(function(c){return c.id===b.id;}); });
-  while(chosen.length < 3 && remaining.length > 0) {
-    var idx = Math.floor(Math.random() * remaining.length);
-    chosen.push(remaining[idx]);
-    remaining.splice(idx, 1);
+  while(chosen.length < choiceCount && remaining.length > 0) {
+    // 加权随机
+    var totalW=0; remaining.forEach(function(b){totalW+=(weights[b.rarity]||10);});
+    var roll=Math.random()*totalW, cum=0, picked=remaining[remaining.length-1];
+    for(var ri=0;ri<remaining.length;ri++){cum+=(weights[remaining[ri].rarity]||10);if(roll<=cum){picked=remaining[ri];break;}}
+    chosen.push(picked);
+    remaining = remaining.filter(function(b){return b.id!==picked.id;});
+  }
+  return chosen;
+}
+
+// 获取随机事件
+function rlGetRandomEvent() {
+  return RL_EVENTS[Math.floor(Math.random()*RL_EVENTS.length)];
+}
+
+// 获取随机遗物
+function rlGetRelicChoices() {
+  var weights = { common:50, rare:30, epic:15, legendary:5 };
+  var ownedIds = (G_RL && G_RL.relics) ? G_RL.relics.map(function(r){return r.id;}) : [];
+  var pool = RL_RELICS.filter(function(r){return ownedIds.indexOf(r.id)===-1;});
+  if(!pool.length) return [];
+  var chosen=[], remaining=pool.slice().sort(function(){return Math.random()-0.5;});
+  while(chosen.length<2&&remaining.length>0){
+    var totalW=0; remaining.forEach(function(r){totalW+=(weights[r.rarity]||10);});
+    var roll=Math.random()*totalW,cum=0,picked=remaining[0];
+    for(var ri=0;ri<remaining.length;ri++){cum+=(weights[remaining[ri].rarity]||10);if(roll<=cum){picked=remaining[ri];break;}}
+    chosen.push(picked);
+    remaining=remaining.filter(function(r){return r.id!==picked.id;});
   }
   return chosen;
 }
 
 // 渲染肉鸽主界面
 function renderRoguelike(el) {
-  if (G_RL && G_RL.phase === 'blessing') {
-    renderRLBlessingChoose(el);
-    return;
-  }
-  if (G_RL && G_RL.phase === 'active') {
-    renderRLActive(el);
-    return;
-  }
-  // 主菜单
+  if (G_RL && G_RL.phase === 'blessing') { renderRLBlessingChoose(el); return; }
+  if (G_RL && G_RL.phase === 'event')    { renderRLEvent(el); return; }
+  if (G_RL && G_RL.phase === 'relic')    { renderRLRelicChoose(el); return; }
+  if (G_RL && G_RL.phase === 'active')   { renderRLActive(el); return; }
+
   var bestFloor = parseInt(localStorage.getItem('_rl_best_floor') || '0', 10);
   var bestRun   = JSON.parse(localStorage.getItem('_rl_best_run') || 'null');
 
   el.innerHTML =
     '<div class="panel" style="background:linear-gradient(145deg,rgba(20,10,40,.98),rgba(30,15,55,.95));border-color:rgba(168,85,247,.4)">'
     + '<div style="text-align:center;padding:8px 0 16px">'
-      + '<div style="font-size:40px;margin-bottom:8px">🎲</div>'
-      + '<div style="font-size:18px;font-weight:bold;color:#c084fc;letter-spacing:2px;margin-bottom:4px">肉鸽地牢</div>'
-      + '<div style="font-size:12px;color:var(--text3)">每次挑战都是全新体验 · 全灭即结束</div>'
+      + '<div style="font-size:44px;margin-bottom:8px">🎲</div>'
+      + '<div style="font-size:20px;font-weight:bold;color:#c084fc;letter-spacing:3px;margin-bottom:4px">肉鸽地牢</div>'
+      + '<div style="font-size:11px;color:var(--text3);letter-spacing:1px">每次挑战都是全新体验 · 全灭即结束</div>'
     + '</div>'
-    // 规则说明
-    + '<div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--text2);line-height:2">'
-      + '🎲 每局随机选择 <b>3位初始英雄</b><br>'
-      + '⚔️ 每层击败敌人后选择 <b>祝福强化</b><br>'
-      + '💀 <b>每5层</b>遭遇精英Boss<br>'
-      + '❌ 英雄死亡不可复活，<b>全灭即失败</b><br>'
-      + '🎁 每5层奖励 💎宝石，<b>通关20层</b>额外奖励传说英雄'
+    + '<div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:10px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--text2);line-height:2">'
+      + '🎲 随机选择初始英雄，踏入深渊<br>'
+      + '⚔️ 击败敌人后选择 <b>祝福/遗物/随机事件</b><br>'
+      + '🏴 每<b>5层</b>遭遇精英Boss，每<b>10层</b>有精英战<br>'
+      + '💀 英雄死亡<b>不可复活</b>，全灭即失败<br>'
+      + '🏆 通关越深，奖励越丰厚<br>'
+      + '<span style="color:#f59e0b">⚠️ 敌人强度随你的战力动态调整，越强的你面对越强的敌人</span>'
     + '</div>'
-    // 历史记录
     + (bestFloor > 0
       ? '<div style="background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px">'
-        + '🏆 历史最深：<b style="color:var(--gold)">第' + bestFloor + '层</b>'
-        + (bestRun ? '  |  ⚔️ 最多通关：' + bestRun.floor + '层' : '')
+        + '🏆 最深记录：<b style="color:var(--gold)">第' + bestFloor + '层</b>'
+        + (bestRun ? '  ·  ⚔️ 本局最佳：' + bestRun.floor + '层' : '')
         + '</div>'
       : '')
-    // 开始按钮
-    + '<button class="btn btn-primary" style="width:100%;padding:14px;font-size:16px;background:linear-gradient(135deg,rgba(168,85,247,.9),rgba(139,69,197,.8));border-color:rgba(168,85,247,.6)" onclick="startRoguelike()">⚔️ 开始挑战</button>'
+    + '<button class="btn btn-primary" style="width:100%;padding:14px;font-size:16px;background:linear-gradient(135deg,rgba(168,85,247,.9),rgba(139,69,197,.8));border-color:rgba(168,85,247,.6)" onclick="startRoguelike()">⚔️ 踏入深渊</button>'
     + (bestFloor > 0
       ? '<button class="btn" style="width:100%;margin-top:8px;font-size:13px" onclick="renderRLHistory(document.getElementById(\'content\'))">📜 历史记录</button>'
       : '')
@@ -21360,24 +22164,31 @@ function rlPickHero(idx) {
   var rlScale = window._rlScale || 0.6;
 
   if (item.source === 'player') {
-    // 深拷贝玩家英雄，保留培养成果
     hero = rlClonePlayerHero(item.hero, rlScale);
   } else {
-    // 使用预设模板
     var tpl = item.hero;
     hero = rlCreateHero(tpl.role, tpl.quality, tpl.level);
     hero.name = tpl.name;
     hero.skills = tpl.skills.slice();
   }
 
+  // 记录基准战力（用于动态难度）
+  var basePower = hero.maxHP*0.5 + hero.atk*3 + hero.def*2 + hero.spd*1;
+
   G_RL = {
     phase: 'active',
     floor: 1,
     heroes: [hero],
     blessings: [],
+    relics: [],          // 遗物列表
+    events: [],          // 已触发事件记录
     history: [],
     startTime: Date.now(),
-    _rlScale: rlScale
+    _rlScale: rlScale,
+    _baselinePower: basePower,
+    _winsCount: 0,       // 连胜计数（用于裂隙之力等效果）
+    _riftGrowth: 0,      // 裂隙成长率
+    _goldPool: 50,       // 肉鸽内金币
   };
   renderRLActive(document.getElementById('content'));
 }
@@ -21389,63 +22200,104 @@ function renderRLActive(el) {
   G_RL.currentFloorData = floorData;
 
   var aliveHeroes = G_RL.heroes.filter(function(h){ return h.hp > 0; });
-  var blessingTags = G_RL.blessings.map(function(b){
-    return '<span style="font-size:10px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);border-radius:4px;padding:2px 6px;color:#c084fc">' + b.icon + b.name + '</span>';
+  var deadCount = G_RL.heroes.length - aliveHeroes.length;
+
+  // 祝福标签
+  var blessingTags = G_RL.blessings.slice(-6).map(function(b){
+    var colors={common:'#9ca3af',rare:'#4fc3f7',epic:'#ce93d8',legendary:'#ffd700',curse:'#ef4444'};
+    var c=colors[b.rarity]||'#aaa';
+    return '<span style="font-size:10px;background:rgba(168,85,247,.12);border:1px solid '+c+'55;border-radius:4px;padding:2px 6px;color:'+c+'">'+b.icon+b.name+'</span>';
   }).join(' ');
 
-  var heroCards = aliveHeroes.map(function(h) {
-    var hpPct = Math.max(0, Math.floor(h.hp / h.maxHP * 100));
+  // 遗物标签
+  var relicTags = (G_RL.relics||[]).map(function(r){
+    var colors={common:'#9ca3af',rare:'#4fc3f7',epic:'#ce93d8',legendary:'#ffd700'};
+    var c=colors[r.rarity]||'#aaa';
+    return '<span style="font-size:10px;background:rgba(255,215,0,.08);border:1px solid '+c+'55;border-radius:4px;padding:2px 6px;color:'+c+'" title="'+r.desc+'">'+r.icon+r.name+'</span>';
+  }).join(' ');
+
+  // 英雄卡片
+  var heroCards = G_RL.heroes.map(function(h) {
+    var isDead = h.hp <= 0;
+    var hpPct = isDead ? 0 : Math.max(0, Math.floor(h.hp / h.maxHP * 100));
     var hpColor = hpPct > 60 ? '#2ecc71' : hpPct > 30 ? '#f39c12' : '#e74c3c';
-    return '<div style="background:rgba(0,0,0,.3);border-radius:6px;padding:8px 10px;border:1px solid rgba(168,85,247,.2)">'
+    var statusTags = '';
+    if(h._rlLifeSteal) statusTags += '<span style="font-size:9px;color:#dc2626">🧛吸血</span> ';
+    if(h._rlPhoenix) statusTags += '<span style="font-size:9px;color:#ef4444">🔥涅槃</span> ';
+    return '<div style="background:rgba(0,0,0,.3);border-radius:6px;padding:8px 10px;border:1px solid '+(isDead?'rgba(239,68,68,.3)':'rgba(168,85,247,.2)')+';">'
       + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
-        + '<span style="font-size:18px">' + h.icon + '</span>'
-        + '<span style="font-size:12px;font-weight:bold">' + h.name + '</span>'
-        + '<span style="font-size:10px;color:var(--text3)">Lv.' + h.level + '</span>'
+        + '<span style="font-size:18px;'+(isDead?'filter:grayscale(1);opacity:.5':'')+'">'+h.icon+'</span>'
+        + '<span style="font-size:12px;font-weight:bold;'+(isDead?'color:var(--text3);text-decoration:line-through':'')+'">'+h.name+'</span>'
+        + '<span style="font-size:10px;color:var(--text3)">Lv.'+h.level+'</span>'
+        + (isDead ? '<span style="font-size:10px;color:#e74c3c">💀阵亡</span>' : '')
       + '</div>'
-      + '<div style="display:flex;align-items:center;gap:6px">'
-        + '<div style="flex:1;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden">'
-          + '<div style="height:100%;width:' + hpPct + '%;background:' + hpColor + ';border-radius:3px;transition:width .3s"></div>'
+      + (isDead ? '' :
+        '<div style="display:flex;align-items:center;gap:6px">'
+          + '<div style="flex:1;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden">'
+            + '<div style="height:100%;width:'+hpPct+'%;background:'+hpColor+';border-radius:3px;transition:width .3s"></div>'
+          + '</div>'
+          + '<span style="font-size:10px;color:var(--text3);white-space:nowrap">'+Math.floor(h.hp)+'/'+h.maxHP+'</span>'
         + '</div>'
-        + '<span style="font-size:10px;color:var(--text3);white-space:nowrap">' + Math.floor(h.hp) + '/' + h.maxHP + '</span>'
-      + '</div>'
+        + (statusTags ? '<div style="margin-top:3px">'+statusTags+'</div>' : ''))
     + '</div>';
   }).join('');
 
-  var deadCount = G_RL.heroes.length - aliveHeroes.length;
   var rewardGems = Math.floor(G_RL.floor / 5) * 5;
+  var isBoss = floorData.isBoss;
+  var isMidBoss = floorData.isMidBoss;
+  var floorLabel = isBoss ? '⚠️ BOSS层' : (isMidBoss ? '⚡ 精英战' : '');
+  var floorBorderColor = isBoss ? 'rgba(255,215,0,.4)' : isMidBoss ? 'rgba(239,68,68,.3)' : 'rgba(168,85,247,.2)';
+  var hasExtraEvent = (G_RL.relics||[]).some(function(r){return r.id==='relic_old_map';});
+
+  // 动态难度指示器
+  var playerPower = aliveHeroes.reduce(function(s,h){return s+h.maxHP*0.5+h.atk*3+h.def*2+h.spd;},0);
+  var powerRatio = playerPower / Math.max(1, G_RL._baselinePower||playerPower);
+  var diffLabel = powerRatio < 0.8 ? '🟢 轻松' : powerRatio < 1.5 ? '🟡 适中' : powerRatio < 2.5 ? '🟠 挑战' : '🔴 极限';
 
   el.innerHTML =
     '<div class="panel" style="background:linear-gradient(145deg,rgba(20,10,40,.98),rgba(30,15,55,.95));border-color:rgba(168,85,247,.4)">'
     // 顶部信息栏
-    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
-      + '<div><span style="color:#c084fc;font-weight:bold;font-size:15px">🎲 第 ' + G_RL.floor + ' 层</span>'
-        + (floorData.isBoss ? ' <span style="color:#ffd700;font-size:11px">⚠️ BOSS层</span>' : '') + '</div>'
-      + '<div style="font-size:11px;color:var(--text3)">存活 ' + aliveHeroes.length + '/' + G_RL.heroes.length + (deadCount>0?' <span style="color:#e74c3c">(' + deadCount + '阵亡)</span>':'') + '</div>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+      + '<div>'
+        + '<span style="color:#c084fc;font-weight:bold;font-size:16px">🎲 第 ' + G_RL.floor + ' 层</span>'
+        + (floorLabel ? ' <span style="font-size:11px;color:#ffd700">'+floorLabel+'</span>' : '')
+      + '</div>'
+      + '<div style="text-align:right;font-size:11px">'
+        + '<div style="color:var(--text3)">存活 <b style="color:'+(aliveHeroes.length<=1?'#e74c3c':'#2ecc71')+'">'+aliveHeroes.length+'</b>/'+G_RL.heroes.length+(deadCount>0?' <span style="color:#e74c3c">('+deadCount+'阵亡)</span>':'')+'</div>'
+        + '<div style="color:var(--text3)">难度: '+diffLabel+'  💰<b style="color:var(--gold)">'+(G_RL._goldPool||0)+'</b></div>'
+      + '</div>'
     + '</div>'
-    // 队伍状态
-    + '<div style="display:grid;grid-template-columns:repeat(' + Math.min(aliveHeroes.length,2) + ',1fr);gap:6px;margin-bottom:12px">'
+    // 英雄状态
+    + '<div style="display:grid;grid-template-columns:repeat('+Math.min(Math.max(aliveHeroes.length,G_RL.heroes.length),2)+',1fr);gap:6px;margin-bottom:10px">'
       + heroCards
     + '</div>'
-    // 祝福列表
-    + (G_RL.blessings.length > 0
-      ? '<div style="margin-bottom:12px;font-size:11px;line-height:2"><span style="color:var(--text3)">当前祝福：</span>' + blessingTags + '</div>'
+    // 祝福 + 遗物
+    + (G_RL.blessings.length > 0 || (G_RL.relics||[]).length > 0
+      ? '<div style="margin-bottom:10px;font-size:11px">'
+          + (G_RL.blessings.length>0 ? '<div style="margin-bottom:4px"><span style="color:var(--text3)">祝福：</span>'+blessingTags+'</div>' : '')
+          + ((G_RL.relics||[]).length>0 ? '<div><span style="color:var(--text3)">遗物：</span>'+relicTags+'</div>' : '')
+        + '</div>'
       : '')
     // 下一层信息
-    + '<div style="background:rgba(0,0,0,.3);border-radius:8px;padding:12px;margin-bottom:14px;border:1px solid ' + (floorData.isBoss?'rgba(255,215,0,.3)':'rgba(168,85,247,.2)') + '">'
-      + '<div style="font-weight:bold;margin-bottom:6px">' + floorData.theme.icon + ' ' + floorData.theme.name + (floorData.isBoss?' 🏆 精英Boss':'') + '</div>'
-      + '<div style="font-size:11px;color:var(--text2)">'
-        + '敌方：' + floorData.enemies.map(function(e){return e.icon+e.name+'(Lv.'+e.level+')'}).join('、')
-      + '</div>'
-      + (floorData.modifier && STAGE_MODIFIERS[floorData.modifier]
-        ? '<div style="font-size:10px;color:#f39c12;margin-top:4px">⚠️ ' + STAGE_MODIFIERS[floorData.modifier].name + '：' + STAGE_MODIFIERS[floorData.modifier].desc + '</div>'
+    + '<div style="background:rgba(0,0,0,.3);border-radius:8px;padding:12px;margin-bottom:12px;border:1px solid '+floorBorderColor+'">'
+      + '<div style="font-weight:bold;margin-bottom:4px;font-size:13px">'+floorData.theme.icon+' '+floorData.theme.name+(isBoss?' 🏆':isMidBoss?' ⚡':'')+' 层</div>'
+      + (floorData.theme.flavor ? '<div style="font-size:10px;color:var(--text3);font-style:italic;margin-bottom:6px">「'+floorData.theme.flavor+'」</div>' : '')
+      + '<div style="font-size:11px;color:var(--text2)">敌方阵容：'+floorData.enemies.map(function(e){return e.icon+e.name+'(Lv.'+e.level+')'}).join('、')+'</div>'
+      + (floorData.modifier && STAGE_MODIFIERS && STAGE_MODIFIERS[floorData.modifier]
+        ? '<div style="font-size:10px;color:#f59e0b;margin-top:4px">⚠️ '+STAGE_MODIFIERS[floorData.modifier].name+'：'+STAGE_MODIFIERS[floorData.modifier].desc+'</div>'
         : '')
-      + (floorData.isBoss && rewardGems > 0
-        ? '<div style="font-size:11px;color:var(--gold);margin-top:6px">🎁 通关奖励：💎 ' + rewardGems + ' 宝石</div>'
+      + (isBoss && floorData.theme.ability
+        ? '<div style="font-size:10px;color:#ef4444;margin-top:4px;background:rgba(239,68,68,.1);border-radius:4px;padding:3px 6px">💀 Boss技：'+floorData.theme.ability+'</div>'
+        : '')
+      + (isBoss && rewardGems > 0
+        ? '<div style="font-size:11px;color:var(--gold);margin-top:6px">🎁 通关奖励：💎'+rewardGems+' 宝石</div>'
         : '')
     + '</div>'
+    // 战斗提示
+    + (hasExtraEvent ? '<div style="font-size:11px;color:#c084fc;margin-bottom:8px;text-align:center">🗺️ 残旧地图感应到了附近的秘密……</div>' : '')
     // 操作按钮
     + '<button class="btn btn-primary" style="width:100%;padding:12px;font-size:15px;background:linear-gradient(135deg,rgba(168,85,247,.9),rgba(139,69,197,.8));border-color:rgba(168,85,247,.6)" onclick="rlStartFight()">'
-      + (floorData.isBoss ? '⚔️ 挑战 Boss！' : '⚔️ 进入战斗')
+      + (isBoss ? '⚔️ 挑战 Boss！' : isMidBoss ? '⚡ 进入精英战！' : '⚔️ 进入战斗')
     + '</button>'
     + '<button class="btn" style="width:100%;margin-top:8px;font-size:12px;color:var(--text3)" onclick="rlAbandon()">🏳️ 放弃本局</button>'
     + '</div>';
@@ -21458,13 +22310,32 @@ function rlStartFight() {
   var aliveHeroes = G_RL.heroes.filter(function(h){ return h.hp > 0; });
   if(aliveHeroes.length === 0) { rlGameOver(false); return; }
 
-  // 临时替换 G.team 为肉鸽队伍，战斗后还原
+  // ── 进入Boss层：触发 boss_entry 遗物 ──
+  if(floorData.isBoss){
+    (G_RL.relics||[]).forEach(function(r){ if(r.trigger==='boss_entry' && r.apply) r.apply(G_RL); });
+  }
+  // ── 遗物：镜盾——每层重置（给英雄加标记）──
+  var hasMirrorShield = (G_RL.relics||[]).some(function(r){return r.id==='relic_mirror_shield';});
+  if(hasMirrorShield){
+    G_RL.heroes.forEach(function(h){ if(h.hp>0) h._rlMirrorShield = true; });
+  }
+  // ── 遗物：不死之志——每局第一次判断 ──
+  var hasDeathDefier = (G_RL.relics||[]).some(function(r){return r.id==='relic_death_defier';});
+  if(hasDeathDefier && !G_RL._deathDefierUsed){
+    G_RL.heroes.forEach(function(h){ if(h.hp>0) h._rlDeathDefierReady = true; });
+  }
+  // ── 遗物：铁心——每场战斗开始时全队HP+5% ──
+  var hasIronHeart = (G_RL.relics||[]).find(function(r){return r.id==='relic_iron_heart';});
+  if(hasIronHeart && hasIronHeart.trigger==='battle_start'){
+    hasIronHeart.apply(G_RL);
+    showToast('🫀 铁心：战斗开始，全队HP+5%！');
+  }
+
   var savedTeam = G.team.slice();
   var savedHeroes = G.heroes.slice();
   G.team = aliveHeroes.concat([null,null,null,null,null,null]).slice(0,6);
   G.heroes = aliveHeroes;
 
-  // 构建stage对象
   var stageMods = floorData.modifier ? [floorData.modifier] : [];
   var stage = {
     id: 9000 + G_RL.floor,
@@ -21488,21 +22359,60 @@ function rlStartFight() {
 
 // 战斗结束回调（通过patch battle结束逻辑触发）
 function rlOnBattleWin(savedTeam, savedHeroes, floorData) {
-  // 还原主线队伍
   G.team = savedTeam;
   G.heroes = savedHeroes;
 
-  // 同步英雄HP（战斗后HP变化）—— 通过uid匹配
-  // 由于肉鸽英雄是临时对象，战斗系统会修改其hp字段
-  // battleUnits里的hero字段指向同一对象，无需额外同步
+  // 应用裂隙之力成长
+  if(G_RL._riftGrowth && G_RL._riftGrowth > 0){
+    var rg = G_RL._riftGrowth;
+    G_RL.heroes.forEach(function(h){
+      if(h.hp>0){ h.maxHP=Math.floor(h.maxHP*(1+rg)); h.hp=Math.min(h.hp,h.maxHP); h.atk=Math.floor(h.atk*(1+rg)); h.def=Math.floor(h.def*(1+rg)); }
+    });
+  }
 
-  // Boss层奖励
+  // 应用遗物：混沌核心（每层通关随机强化）
+  (G_RL.relics||[]).forEach(function(r){ if(r.trigger==='floor_clear' && r.apply) r.apply(G_RL); });
+  // 应用遗物：血誓契约（死亡复活）
+  var bloodPact = (G_RL.relics||[]).find(function(r){return r.id==='relic_blood_pact';});
+  if(bloodPact){ bloodPact.apply(G_RL); }
+
+  // 凤凰效果重置（每层重置凤凰）
+  if(G_RL._rlPhoenixActive){ G_RL.heroes.forEach(function(h){h._rlPhoenix=true;}); }
+
+  // ── 实际发放奖励给玩家（按进展阶梯） ──
+  var floor = G_RL.floor;
+  var stageProgress = G.stageProgress || 0;
+  // 金币：每层基础 + 层数缩放，参考玩家当前关卡进展
+  // 早期（0-20关）50-300金/层，中期（20-50关）200-800金/层，后期（50+关）500-2000金/层
+  var progressScale = Math.max(1, Math.min(stageProgress / 20, 5)); // 1~5倍缩放
+  var baseGold = 30 + floor * 8;
+  var goldReward = Math.floor(baseGold * progressScale);
+  // Boss层额外×2.5金币
+  var gemReward = 0;
+  if(floorData.isBoss){
+    goldReward = Math.floor(goldReward * 2.5);
+    // 宝石：Boss层才给，数量随层数和进展
+    var baseGems = Math.floor(floor / 5) * 2; // 第5层2颗、第10层4颗...
+    gemReward = Math.max(1, Math.floor(baseGems * Math.max(1, progressScale * 0.5)));
+    gemReward = Math.min(gemReward, 30); // 单次上限30颗
+  } else {
+    // 普通层：小概率给1-2宝石（10%概率）
+    if(Math.random() < 0.10 + floor * 0.005) gemReward = 1 + (floor > 15 ? 1 : 0);
+  }
+  // 发放
+  G.resources.gold = Math.min((G.resources.gold||0) + goldReward, RESOURCE_LIMITS.gold||9999999);
+  if(gemReward > 0){
+    G.resources.gems = Math.min((G.resources.gems||0) + gemReward, RESOURCE_LIMITS.gems||999999);
+  }
+  updateResUI();
+  // Toast提示（避免每层都弹，只在有宝石或Boss时提示）
+  if(floorData.isBoss || gemReward > 0){
+    showToast('🎲 第'+floor+'层通关！获得 💰'+goldReward+(gemReward>0?' 💎'+gemReward:''));
+  }
+
+  // Boss层特殊奖励
   if(floorData.isBoss) {
-    var rewardGems = Math.floor(G_RL.floor / 5) * 5;
-    G.resources.gems = Math.min((G.resources.gems||0) + rewardGems, RESOURCE_LIMITS.gems||999999);
-    updateResUI();
-    showToast('🎲 肉鸽通关第' + G_RL.floor + '层！获得 💎' + rewardGems + ' 宝石！');
-    // 通关20层奖励传说英雄
+    // 通关20层奖励
     if(G_RL.floor >= 20 && !G_RL._legendaryRewarded) {
       G_RL._legendaryRewarded = true;
       var lgTpls = HERO_TEMPLATES.filter(function(t){ return t.quality === 'legendary'; });
@@ -21511,45 +22421,76 @@ function rlOnBattleWin(savedTeam, savedHeroes, floorData) {
         var hero = createHero(tpl.id, 1);
         G.heroes.push(hero);
         saveGame();
-        showToast('🏆 恭喜通关20层！获得传说英雄 ' + hero.icon + ' ' + hero.name + '！');
+        showToast('🏆 恭喜通关20层！获得传说英雄 '+hero.icon+' '+hero.name+'！');
+      }
+    }
+    // 通关30层奖励神话英雄
+    if(G_RL.floor >= 30 && !G_RL._mythicRewarded) {
+      G_RL._mythicRewarded = true;
+      var mythicTpls = HERO_TEMPLATES.filter(function(t){ return t.quality === 'mythic'; });
+      if(mythicTpls.length > 0) {
+        var tpl = mythicTpls[Math.floor(Math.random()*mythicTpls.length)];
+        var hero = createHero(tpl.id, 1);
+        G.heroes.push(hero);
+        saveGame();
+        showToast('👑 史诗成就！通关30层！获得神话英雄 '+hero.icon+' '+hero.name+'！');
       }
     }
   }
+
+  // 肉鸽内部金币（用于事件消费），每层补充
+  G_RL._goldPool = (G_RL._goldPool||0) + 20 + floor * 5;
 
   // 记录最深层数
   var best = parseInt(localStorage.getItem('_rl_best_floor')||'0',10);
   if(G_RL.floor > best) localStorage.setItem('_rl_best_floor', G_RL.floor);
 
-  // 肉鸽英雄获得经验并升级
-  var expGain = 10 + G_RL.floor * 3;
+  // 英雄经验升级
+  var expGain = 12 + G_RL.floor * 4;
   G_RL.heroes.forEach(function(h) {
-    if (h.hp > 0) { // 只有存活英雄获得经验
+    if (h.hp > 0) {
       h._rlExp = (h._rlExp || 0) + expGain;
       var expNeed = 30 + h._rlLevel * 15;
       while (h._rlExp >= expNeed && h._rlLevel < 99) {
         h._rlExp -= expNeed;
         h._rlLevel++;
-        // 升级属性提升
         var r = ROLES[h.role];
-        if (r) {
-          h.maxHP += Math.floor(r.baseHP * 0.05);
-          h.atk += Math.floor(r.baseATK * 0.05);
-          h.def += Math.floor(r.baseDEF * 0.05);
-          h.spd += Math.floor(r.baseSPD * 0.03);
-          h.maxMP += Math.floor(r.baseMP * 0.04);
-        }
+        if (r) { h.maxHP+=Math.floor(r.baseHP*0.05); h.atk+=Math.floor(r.baseATK*0.05); h.def+=Math.floor(r.baseDEF*0.05); h.spd+=Math.floor(r.baseSPD*0.03); h.maxMP+=Math.floor(r.baseMP*0.04); }
         expNeed = 30 + h._rlLevel * 15;
       }
-      h.hp = Math.min(h.hp + Math.floor(h.maxHP * 0.1), h.maxHP); // 恢复10%HP
+      h.hp = Math.min(h.hp + Math.floor(h.maxHP * 0.12), h.maxHP);
       h.level = h._rlLevel;
     }
   });
 
   G_RL.floor++;
-  G_RL.phase = 'blessing';
+  G_RL._winsCount = (G_RL._winsCount||0) + 1;
+  // 裂隙之力效果统计
+  var echoBladeRelic = (G_RL.relics||[]).find(function(r){return r.id==='relic_echo_blade';});
+  if(echoBladeRelic && G_RL._winsCount % echoBladeRelic.value === 0){
+    G_RL.heroes.forEach(function(h){if(h.hp>0)h.atk=Math.floor(h.atk*1.20);});
+    showToast('🗡️ 回响之刃：全队攻击+20%！（第'+G_RL._winsCount+'场胜利）');
+  }
 
-  // 选择祝福
+  // 决定下一步：事件 → 遗物（每10层）→ 祝福
+  var hasExtraEvent = (G_RL.relics||[]).some(function(r){return r.id==='relic_old_map';});
+  var triggerEvent = Math.random() < (hasExtraEvent ? 0.55 : 0.35) && G_RL.floor > 2;
+  var triggerRelic = (G_RL.floor % 10 === 1) && (G_RL.relics||[]).length < RL_RELICS.length; // 每10层提供遗物
+  var triggerBossRelic = floorData.isBoss && (G_RL.relics||[]).length < RL_RELICS.length; // Boss通关也提供遗物
+
   G_RL.blessingChoices = rlGetBlessingChoices();
+
+  if(triggerEvent){
+    G_RL.currentEvent = rlGetRandomEvent();
+    G_RL.phase = 'event';
+    G_RL._afterEventPhase = (triggerRelic || triggerBossRelic) ? 'relic' : 'blessing';
+  } else if(triggerRelic || triggerBossRelic){
+    G_RL.relicChoices = rlGetRelicChoices();
+    G_RL.phase = 'relic';
+  } else {
+    G_RL.phase = 'blessing';
+  }
+
   switchTab('roguelike');
 }
 
@@ -21563,28 +22504,30 @@ function rlOnBattleLose(savedTeam, savedHeroes) {
 // 渲染祝福选择
 function renderRLBlessingChoose(el) {
   if(!G_RL || !G_RL.blessingChoices) return;
-  var rarityColors = { common:'#aaa', rare:'#4fc3f7', epic:'#ce93d8', legendary:'#ffd700' };
-  var rarityNames  = { common:'普通', rare:'稀有', epic:'史诗', legendary:'传说' };
+  var rarityColors = { common:'#9ca3af', rare:'#4fc3f7', epic:'#ce93d8', legendary:'#ffd700', curse:'#ef4444' };
+  var rarityNames  = { common:'普通', rare:'稀有', epic:'史诗', legendary:'传说', curse:'⚠️诅咒' };
   var completedFloor = G_RL.floor - 1;
 
   el.innerHTML =
     '<div class="panel" style="background:linear-gradient(145deg,rgba(20,10,40,.98),rgba(30,15,55,.95));border-color:rgba(168,85,247,.4)">'
-    + '<div style="text-align:center;margin-bottom:16px">'
-      + '<div style="font-size:14px;font-weight:bold;color:#c084fc">✨ 通关第' + completedFloor + '层！选择祝福</div>'
-      + '<div style="font-size:11px;color:var(--text3);margin-top:4px">即将进入第 ' + G_RL.floor + ' 层</div>'
+    + '<div style="text-align:center;margin-bottom:14px">'
+      + '<div style="font-size:14px;font-weight:bold;color:#c084fc">✨ 通关第'+completedFloor+'层！选择祝福</div>'
+      + '<div style="font-size:11px;color:var(--text3);margin-top:3px">即将进入第 '+G_RL.floor+' 层</div>'
     + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px">'
     + G_RL.blessingChoices.map(function(b, idx) {
         var color = rarityColors[b.rarity] || '#aaa';
-        return '<div class="panel" style="cursor:pointer;border-color:' + color + '33;transition:all .2s;background:rgba(0,0,0,.3)" onclick="rlPickBlessing(' + idx + ')">'
-          + '<div style="display:flex;align-items:center;gap:12px">'
-            + '<div style="font-size:28px;width:40px;text-align:center">' + b.icon + '</div>'
+        var isCurse = b.rarity === 'curse';
+        return '<div class="panel" style="cursor:pointer;border-color:'+color+(isCurse?'':'33')+';transition:all .2s;background:rgba(0,0,0,.3);position:relative;overflow:hidden" onclick="rlPickBlessing('+idx+')">'
+          + '<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:'+color+'"></div>'
+          + '<div style="margin-left:10px;display:flex;align-items:center;gap:10px">'
+            + '<div style="font-size:26px;width:36px;text-align:center">'+b.icon+'</div>'
             + '<div style="flex:1">'
-              + '<div style="font-weight:bold;color:' + color + '">' + b.name
-                + ' <span style="font-size:10px;font-weight:normal;opacity:.7">[' + rarityNames[b.rarity] + ']</span></div>'
-              + '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + b.desc + '</div>'
+              + '<div style="font-weight:bold;color:'+color+'">'+b.name+' <span style="font-size:10px;font-weight:normal;opacity:.7">['+rarityNames[b.rarity]+']</span></div>'
+              + '<div style="font-size:11px;color:var(--text2);margin-top:2px">'+b.desc+'</div>'
+              + (isCurse?'<div style="font-size:10px;color:#ef4444;margin-top:2px">⚠️ 高风险高收益，请谨慎选择</div>':'')
             + '</div>'
-            + '<div style="color:' + color + ';font-size:20px">›</div>'
+            + '<div style="color:'+color+';font-size:20px">›</div>'
           + '</div>'
         + '</div>';
       }).join('')
@@ -21602,30 +22545,169 @@ function rlPickBlessing(idx) {
   renderRLActive(document.getElementById('content'));
 }
 
+// 渲染随机事件界面
+function renderRLEvent(el) {
+  if(!G_RL || !G_RL.currentEvent) { G_RL.phase='blessing'; renderRLBlessingChoose(el); return; }
+  var evt = G_RL.currentEvent;
+  el.innerHTML =
+    '<div class="panel" style="background:linear-gradient(145deg,rgba(20,10,40,.98),rgba(30,15,55,.95));border-color:rgba(168,85,247,.4)">'
+    + '<div style="text-align:center;margin-bottom:16px">'
+      + '<div style="font-size:44px;margin-bottom:8px">'+evt.icon+'</div>'
+      + '<div style="font-size:15px;font-weight:bold;color:#c084fc">'+evt.name+'</div>'
+      + '<div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.6">'+evt.desc+'</div>'
+    + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px">'
+    + evt.choices.map(function(c, idx){
+        return '<div class="panel" style="cursor:pointer;border-color:rgba(168,85,247,.3);background:rgba(0,0,0,.3)" onclick="rlPickEvent('+idx+')">'
+          + '<div style="font-size:12px;color:var(--text)">'+c.text+'</div>'
+          + (c.cost ? '<div style="font-size:10px;color:var(--text3);margin-top:4px">消耗：'+(c.cost.gold?'💰'+c.cost.gold:c.cost.hp?'❤️HP×'+c.cost.hp:'')+'</div>' : '')
+        + '</div>';
+      }).join('')
+    + '</div>'
+    + '</div>';
+}
+
+function rlPickEvent(idx) {
+  if(!G_RL || !G_RL.currentEvent) return;
+  var evt = G_RL.currentEvent;
+  var choice = evt.choices[idx];
+  // 检查费用
+  if(choice.cost){
+    if(choice.cost.gold && (G_RL._goldPool||0) < choice.cost.gold){
+      showToast('💰 肉鸽金币不足！（当前'+Math.floor(G_RL._goldPool||0)+'枚）');
+      return;
+    }
+    if(choice.cost.gold) G_RL._goldPool -= choice.cost.gold;
+  }
+  choice.resolve(G_RL);
+  G_RL.events.push(evt.id);
+  G_RL.currentEvent = null;
+  // 事件后流向
+  if(G_RL._afterEventPhase === 'relic'){
+    G_RL.relicChoices = rlGetRelicChoices();
+    G_RL.phase = 'relic';
+    G_RL._afterEventPhase = null;
+  } else {
+    G_RL.phase = 'blessing';
+  }
+  renderRoguelike(document.getElementById('content'));
+}
+
+// 渲染遗物选择界面
+function renderRLRelicChoose(el) {
+  if(!G_RL || !G_RL.relicChoices || !G_RL.relicChoices.length){
+    G_RL.phase = 'blessing';
+    renderRLBlessingChoose(el);
+    return;
+  }
+  var rarityColors = { common:'#9ca3af', rare:'#4fc3f7', epic:'#ce93d8', legendary:'#ffd700' };
+  var rarityNames  = { common:'普通遗物', rare:'稀有遗物', epic:'史诗遗物', legendary:'传说遗物' };
+  el.innerHTML =
+    '<div class="panel" style="background:linear-gradient(145deg,rgba(20,10,40,.98),rgba(30,15,55,.95));border-color:rgba(255,215,0,.4)">'
+    + '<div style="text-align:center;margin-bottom:14px">'
+      + '<div style="font-size:36px;margin-bottom:6px">🏺</div>'
+      + '<div style="font-size:15px;font-weight:bold;color:#ffd700">发现遗物！</div>'
+      + '<div style="font-size:11px;color:var(--text3);margin-top:3px">遗物提供持续效果，伴随整局游戏</div>'
+    + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px">'
+    + G_RL.relicChoices.map(function(r, idx){
+        var color = rarityColors[r.rarity] || '#aaa';
+        return '<div class="panel" style="cursor:pointer;border-color:'+color+'55;background:rgba(0,0,0,.3);position:relative;overflow:hidden" onclick="rlPickRelic('+idx+')">'
+          + '<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:'+color+'"></div>'
+          + '<div style="margin-left:10px;display:flex;align-items:center;gap:10px">'
+            + '<div style="font-size:28px;width:36px;text-align:center">'+r.icon+'</div>'
+            + '<div style="flex:1">'
+              + '<div style="font-weight:bold;color:'+color+'">'+r.name+' <span style="font-size:10px;font-weight:normal;opacity:.7">['+rarityNames[r.rarity]+']</span></div>'
+              + '<div style="font-size:11px;color:var(--text2);margin-top:2px">'+r.desc+'</div>'
+            + '</div>'
+            + '<div style="color:'+color+';font-size:20px">›</div>'
+          + '</div>'
+        + '</div>';
+      }).join('')
+    + '<div class="panel" style="cursor:pointer;border-color:rgba(168,85,247,.2);background:rgba(0,0,0,.2)" onclick="rlSkipRelic()">'
+      + '<div style="text-align:center;font-size:12px;color:var(--text3)">🚶 不需要遗物，继续前进</div>'
+    + '</div>'
+    + '</div>'
+    + '</div>';
+}
+
+function rlPickRelic(idx){
+  if(!G_RL || !G_RL.relicChoices) return;
+  var relic = G_RL.relicChoices[idx];
+  if(!G_RL.relics) G_RL.relics=[];
+  G_RL.relics.push(relic);
+  // 立即应用被动遗物效果（属性类）
+  if(relic.passive && relic.effect === 'spd_boost'){
+    G_RL.heroes.forEach(function(h){if(h.hp>0)h.spd=Math.floor(h.spd*(1+relic.value));});
+  }
+  if(relic.passive && relic.effect === 'mp_boost'){
+    G_RL.heroes.forEach(function(h){if(h.hp>0){h.maxMP=Math.floor(h.maxMP*(1+relic.value));h.mp=h.maxMP;}});
+  }
+  showToast('🏺 获得遗物：'+relic.icon+relic.name+'！');
+  G_RL.relicChoices = null;
+  G_RL.phase = 'blessing';
+  renderRLBlessingChoose(document.getElementById('content'));
+}
+
+function rlSkipRelic(){
+  if(!G_RL) return;
+  G_RL.relicChoices = null;
+  G_RL.phase = 'blessing';
+  renderRLBlessingChoose(document.getElementById('content'));
+}
+
 // 游戏结束
 function rlGameOver(won) {
-  var floor = G_RL ? G_RL.floor : 0;
+  var floor = G_RL ? Math.max(1, G_RL.floor - 1) : 0;
   var blessings = G_RL ? G_RL.blessings : [];
+  var relics = G_RL ? (G_RL.relics||[]) : [];
   var best = parseInt(localStorage.getItem('_rl_best_floor')||'0',10);
   if(floor > best) localStorage.setItem('_rl_best_floor', floor);
 
-  // 保存历史记录
+  // 保存历史
   var hist = JSON.parse(localStorage.getItem('_rl_history')||'[]');
-  hist.unshift({ floor:floor-1, blessings:blessings.map(function(b){return b.name;}), date:new Date().toLocaleDateString(), won:won });
+  hist.unshift({
+    floor: floor,
+    blessings: blessings.map(function(b){return b.icon+b.name;}),
+    relics: relics.map(function(r){return r.icon+r.name;}),
+    date: new Date().toLocaleDateString(),
+    won: won
+  });
   if(hist.length>20) hist.length=20;
   localStorage.setItem('_rl_history', JSON.stringify(hist));
 
+  var summary = G_RL;
   G_RL = null;
   switchTab('roguelike');
+
+  // 结算弹窗
+  var relicSummary = relics.length>0
+    ? '<div style="margin-top:8px;font-size:11px;color:var(--text3)">遗物：'+relics.map(function(r){return r.icon+r.name;}).join(' ')+'</div>'
+    : '';
+  var blessingCount = blessings.length;
+  // 计算本局累计金币（近似：每层平均奖励）
+  var estGold = 0, estGems = 0;
+  for(var fi=1;fi<=floor;fi++){
+    var ps = Math.max(1, Math.min((G.stageProgress||0)/20, 5));
+    estGold += Math.floor((30+fi*8)*ps*(fi%5===0?2.5:1));
+    if(fi%5===0) estGems += Math.max(1,Math.floor(Math.floor(fi/5)*2*Math.max(1,ps*0.5)));
+  }
+  var rewardSummary = '<div style="margin-top:8px;font-size:12px;color:var(--gold)">💰 本局约获得: <b>'+estGold+'</b> 金币'+(estGems>0?' <b>💎'+estGems+'</b> 宝石':'')+'</div>';
   setTimeout(function(){
-    showModal('🎲 肉鸽地牢结算',
+    showModal('🎲 肉鸽地牢 结算',
       '<div style="text-align:center;padding:8px 0">'
-      + '<div style="font-size:36px;margin-bottom:8px">' + (won?'🏆':'💀') + '</div>'
-      + '<div style="font-size:15px;font-weight:bold;color:' + (won?'var(--gold)':'#e74c3c') + ';margin-bottom:12px">'
+      + '<div style="font-size:42px;margin-bottom:8px">' + (won?'🏆':'💀') + '</div>'
+      + '<div style="font-size:16px;font-weight:bold;color:' + (won?'var(--gold)':'#e74c3c') + ';margin-bottom:12px">'
         + (won ? '挑战成功！' : '英雄全灭') + '</div>'
-      + '<div style="font-size:13px;color:var(--text2)">通关层数：<b style="color:#c084fc">第 ' + (floor-1) + ' 层</b></div>'
-      + '<div style="font-size:12px;color:var(--text3);margin-top:8px">历史最深：第 ' + Math.max(best, floor-1) + ' 层</div>'
-      + '<button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="closeModal();startRoguelike()">再来一局</button>'
+      + '<div style="font-size:14px;color:var(--text2)">通关层数：<b style="color:#c084fc;font-size:18px">第 '+floor+' 层</b></div>'
+      + '<div style="font-size:12px;color:var(--text3);margin-top:6px">历史最深：第 '+Math.max(best,floor)+' 层</div>'
+      + '<div style="font-size:12px;color:var(--text3);margin-top:4px">祝福收集：'+blessingCount+'个</div>'
+      + rewardSummary
+      + relicSummary
+      + '<div style="display:flex;gap:8px;margin-top:16px">'
+        + '<button class="btn btn-primary" style="flex:1" onclick="closeModal();startRoguelike()">⚔️ 再来一局</button>'
+        + '<button class="btn" style="flex:1" onclick="closeModal()">返回</button>'
+      + '</div>'
       + '</div>'
     );
   }, 300);
@@ -23320,18 +24402,18 @@ function validateSaveData(saveData) {
   // 资源：兼容顶层和 resources 子对象两种格式
   var hasGold = (g.gold !== undefined) || (g.resources && g.resources.gold !== undefined);
   if (!hasGold) errors.push('资源(gold)数据异常');
-  // 大小限制 5MB
+  // 大小限制（已取消）
   var jsonStr = JSON.stringify(saveData);
-  if (jsonStr.length > 5 * 1024 * 1024) errors.push('存档过大: ' + (jsonStr.length/1024/1024).toFixed(2) + 'MB');
+  // if (jsonStr.length > 5 * 1024 * 1024) errors.push('存档过大: ' + (jsonStr.length/1024/1024).toFixed(2) + 'MB');
   return errors;
 }
 
 // Supabase 保存到云端（带可靠性检查）
 // 云存档操作冷却时间（秒）
-var CLOUD_SAVE_COOLDOWN = 30; // 上传冷却30秒
-var CLOUD_LOAD_COOLDOWN = 60; // 下载冷却60秒
-var CLOUD_DAILY_SAVE_LIMIT = 5;  // 每日最多上传5次
-var CLOUD_DAILY_LOAD_LIMIT = 10; // 每日最多下载10次
+var CLOUD_SAVE_COOLDOWN = 0;  // 上传冷却（已取消限制）
+var CLOUD_LOAD_COOLDOWN = 0;  // 下载冷却（已取消限制）
+var CLOUD_DAILY_SAVE_LIMIT = 999999;  // 每日上传上限（已取消限制）
+var CLOUD_DAILY_LOAD_LIMIT = 999999;  // 每日下载上限（已取消限制）
 
 // 获取今日日期字符串
 function getTodayKey() {
