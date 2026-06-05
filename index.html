@@ -20,7 +20,8 @@
 <!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- Pako 压缩库（云存档压缩） -->
-<script src="https://cdn.jsdelivr.net/npm/pako@2/dist/pako.min.js">
+<script src="https://cdn.jsdelivr.net/npm/pako@2/dist/pako.min.js"></script>
+<script>
 // ==================== 大数值处理系统 V3 ====================
 // JavaScript 安全整数上限是 2^53-1 ≈ 9e15，超过会丢失精度
 // 解决方案：1) BigInt处理 2) 对数压缩 3) 分片存储
@@ -159,30 +160,6 @@ var HeroDataShard = {
   }
 };
 
-// ==================== 属性突破系统 V2 ====================
-// 属性上限配置（扩展支持超大数值，使用对数增长）
-var STAT_QUALITY_CAP={
-  common:{maxHP:800,atk:120,def:100,spd:80,maxMP:150},
-  rare:{maxHP:2000,atk:280,def:240,spd:180,maxMP:350},
-  epic:{maxHP:5000,atk:650,def:550,spd:420,maxMP:800},
-  legendary:{maxHP:9000,atk:999,def:999,spd:750,maxMP:999},
-  mythic:{maxHP:9999,atk:999,def:999,spd:900,maxMP:999},
-  hidden:{maxHP:14999,atk:1499,def:1499,spd:1300,maxMP:1499},
-  unknown:{maxHP:19999,atk:1999,def:1999,spd:1666,maxMP:1999},
-  // 新增超大数值等级（使用字符串存储大数）
-  cosmic:{maxHP:'50000',atk:'5000',def:'5000',spd:'3000',maxMP:'5000'},
-  eternal:{maxHP:'100000',atk:'10000',def:'10000',spd:'5000',maxMP:'10000'},
-  infinite:{maxHP:'1000000',atk:'100000',def:'100000',spd:'20000',maxMP:'100000'}
-};
-
-// 超大数值等级顺序
-var QUALITY_ORDER = ['common','rare','epic','legendary','mythic','hidden','unknown','cosmic','eternal','infinite'];
-
-// 获取下一个品质等级
-function getNextQuality(current) {
-  var idx = QUALITY_ORDER.indexOf(current);
-  return idx >= 0 && idx < QUALITY_ORDER.length - 1 ? QUALITY_ORDER[idx + 1] : null;
-}
 
 // 安全数值上限（超过此值使用BigInt）
 var SAFE_NUMBER_MAX = 9007199254740991; // 2^53 - 1
@@ -190,7 +167,6 @@ var SAFE_NUMBER_MAX = 9007199254740991; // 2^53 - 1
 // 检查是否需要使用BigInt
 function needsBigInt(v) {
   if (typeof v === 'string') {
-    // 检查字符串数值是否超过安全范围
     var num = parseFloat(v);
     return num > SAFE_NUMBER_MAX || isNaN(num);
   }
@@ -234,310 +210,12 @@ function formatBigNumber(v) {
   if (n < 1000000) return Math.floor(n).toLocaleString();
   return LogScale.format(n);
 }
-
-// 突破材料配置
-var BREAKTHROUGH_MATERIALS={
-  rare:{name:'突破精华',icon:'💧',cost:{gold:5000,material:10},arenaDrop:{chance:0.3,min:1,max:2}},
-  epic:{name:'突破结晶',icon:'💎',cost:{gold:15000,material:15},arenaDrop:{chance:0.25,min:1,max:2}},
-  legendary:{name:'传说碎片',icon:'⚜️',cost:{gold:50000,material:20},arenaDrop:{chance:0.2,min:1,max:2}},
-  mythic:{name:'神话核心',icon:'🔮',cost:{gold:150000,material:30},arenaDrop:{chance:0.15,min:1,max:2}},
-  hidden:{name:'隐藏核心',icon:'✦',cost:{gold:500000,material:50},arenaDrop:{chance:0.1,min:1,max:1}}
-};
-
-// 竞技场V2配置
-var ARENA_CONFIG_V2={
-  difficulties:['entry','easy','normal','hard','nightmare','hell','mythic'],
-  unlockRequirements:{entry:0,easy:3,normal:10,hard:25,nightmare:50,hell:100,mythic:200},
-  difficultyNames:{entry:'入门',easy:'简单',normal:'普通',hard:'困难',nightmare:'噩梦',hell:'地狱',mythic:'神话'},
-  difficultyIcons:{entry:'🟢',easy:'🟢',normal:'🟡',hard:'🟠',nightmare:'🔴',hell:'💀',mythic:'👹'},
-  difficultyDesc:{entry:'等级×50%·新手',easy:'等级×70%·基础',normal:'等级×90%·标准',hard:'等级×110%·优化',nightmare:'等级×130%·完美',hell:'等级×150%·极限',mythic:'等级×180%·超越'},
-  statMultiplier:{entry:0.5,easy:0.7,normal:0.9,hard:1.1,nightmare:1.3,hell:1.5,mythic:1.8},
-  maxQuality:{entry:'common',easy:'rare',normal:'epic',hard:'legendary',nightmare:'legendary',hell:'mythic',mythic:'hidden'},
-  skillCount:{entry:1,easy:2,normal:2,hard:3,nightmare:3,hell:4,mythic:5},
-  equipmentLevel:{entry:'none',easy:'basic',normal:'standard',hard:'enhanced',nightmare:'epic',hell:'legendary',mythic:'mythic'},
-  bondEnabled:{entry:false,easy:false,normal:false,hard:true,nightmare:true,hell:true,mythic:true},
-  rewardMultiplier:{entry:0.5,easy:1,normal:1.5,hard:2.5,nightmare:4,hell:6,mythic:10},
-  materialDrop:{entry:{rare:0.1},easy:{rare:0.3,epic:0.05},normal:{rare:0.2,epic:0.25,legendary:0.02},hard:{epic:0.2,legendary:0.15,mythic:0.01},nightmare:{epic:0.1,legendary:0.25,mythic:0.08},hell:{legendary:0.2,mythic:0.15,hidden:0.05},mythic:{legendary:0.1,mythic:0.25,hidden:0.15}}
-};
-
-// 初始化突破系统
-function initBreakthroughSystem(){
-  if(!G.breakthroughMaterials){
-    G.breakthroughMaterials={rare:0,epic:0,legendary:0,mythic:0,hidden:0};
-  }
-  if(!G.heroBreakthrough)G.heroBreakthrough={};
-}
-
-// 获取突破后品质
-function getNextQuality(current,tier){
-  var qualities=['common','rare','epic','legendary','mythic','hidden'];
-  var idx=qualities.indexOf(current);
-  if(idx===-1)return current;
-  return qualities[Math.min(idx+tier,qualities.length-1)];
-}
-
-// 执行突破
-function performBreakthrough(hero){
-  initBreakthroughSystem();
-  var nextQ=getNextQuality(hero.quality,1);
-  var mat=BREAKTHROUGH_MATERIALS[nextQ];
-  if(!mat){
-    showToast('❌ 已达最高品质');
-    return false;
-  }
-  if((G.breakthroughMaterials[nextQ]||0)<mat.cost.material){
-    showToast('❌ '+mat.name+'不足（需'+mat.cost.material+'个）');
-    return false;
-  }
-  if((G.resources.gold||0)<mat.cost.gold){
-    showToast('❌ 金币不足');
-    return false;
-  }
-  G.breakthroughMaterials[nextQ]-=mat.cost.material;
-  G.resources.gold-=mat.cost.gold;
-  if(!G.heroBreakthrough[hero.uid])G.heroBreakthrough[hero.uid]={tier:0,count:0};
-  G.heroBreakthrough[hero.uid].tier++;
-  G.heroBreakthrough[hero.uid].count++;
-  var newCap=STAT_QUALITY_CAP[nextQ];
-  hero.quality=nextQ;
-  // 大数值优化：使用安全数值计算
-  var hpRatio=hero.maxHP>0?hero.hp/hero.maxHP:0;
-  hero.maxHP=safeMin(safeMul(hero.maxHP,1.2),newCap.maxHP);
-  hero.hp=Math.floor(parseFloat(hero.maxHP)*hpRatio);
-  hero.atk=safeMin(safeMul(hero.atk,1.15),newCap.atk);
-  hero.def=safeMin(safeMul(hero.def,1.15),newCap.def);
-  hero.spd=safeMin(safeMul(hero.spd,1.1),newCap.spd);
-  hero.maxMP=safeMin(safeMul(hero.maxMP,1.1),newCap.maxMP);
-  hero.mp=Math.min(parseFloat(hero.mp)||0,parseFloat(hero.maxMP)||0);
-  if(!hero.bonusSkills)hero.bonusSkills=[];
-  if(hero.bonusSkills.length<3){
-    var roleTpls=HERO_TEMPLATES.filter(function(t){return t.role===hero.role&&t.quality!=='common'});
-    var pool=[];
-    roleTpls.forEach(function(t){t.skills.forEach(function(s){if(hero.skills.indexOf(s)<0&&hero.bonusSkills.indexOf(s)<0&&pool.indexOf(s)<0)pool.push(s);});});
-    if(pool.length>0)hero.bonusSkills.push(pool[Math.floor(Math.random()*pool.length)]);
-  }
-  showToast('✨ '+hero.name+'突破成功！品质→'+QUALITY_NAMES[nextQ]);
-  saveGame();
-  return true;
-}
-
-// 渲染突破界面
-function renderBreakthroughUI(){
-  initBreakthroughSystem();
-  var html='<div class="panel"><div class="panel-title">⚡ 属性突破系统</div>';
-  html+='<div style="font-size:12px;color:var(--text2);margin-bottom:12px;">通过竞技场获得突破材料，提升英雄品质上限</div>';
-  html+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;">';
-  Object.keys(BREAKTHROUGH_MATERIALS).forEach(function(k){
-    var m=BREAKTHROUGH_MATERIALS[k];
-    var cnt=G.breakthroughMaterials[k]||0;
-    html+='<div style="background:rgba(0,0,0,.2);padding:8px;border-radius:8px;text-align:center;">';
-    html+='<div style="font-size:20px;">'+m.icon+'</div>';
-    html+='<div style="font-size:10px;color:var(--text2);">'+m.name+'</div>';
-    html+='<div style="font-size:14px;font-weight:bold;color:var(--gold);">'+cnt+'</div></div>';
-  });
-  html+='</div><div style="max-height:300px;overflow-y:auto;">';
-  G.heroes.forEach(function(hero){
-    var nextQ=getNextQuality(hero.quality,1);
-    if(!nextQ||nextQ===hero.quality)return;
-    var m=BREAKTHROUGH_MATERIALS[nextQ];
-    var ok=(G.breakthroughMaterials[nextQ]||0)>=m.cost.material&&(G.resources.gold||0)>=m.cost.gold;
-    html+='<div style="background:var(--panel2);padding:10px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">';
-    html+='<div style="font-size:28px;">'+hero.icon+'</div>';
-    html+='<div style="flex:1;"><div style="font-weight:bold;">'+hero.name+'</div>';
-    html+='<div style="font-size:10px;color:var(--text2);">'+QUALITY_NAMES[hero.quality]+' → '+QUALITY_NAMES[nextQ]+'</div></div>';
-    html+='<div style="text-align:right;font-size:11px;"><div>'+m.icon+'×'+m.cost.material+'</div><div>💰'+m.cost.gold+'</div></div>';
-    html+='<button class="btn btn-sm '+(ok?'btn-primary':'')+'" '+(ok?'onclick="performBreakthroughById('+hero.uid+')"':'disabled')+'>'+(ok?'突破':'不足')+'</button></div>';
-  });
-  html+='</div></div>';
-  return html;
-}
-
-function performBreakthroughById(uid){
-  var hero=G.heroes.find(function(h){return h.uid===uid;});
-  if(hero){performBreakthrough(hero);renderCurrentTab();}
-}
-
-function renderArenaDifficultySelect(){
-  initBreakthroughSystem();
-  var config=ARENA_CONFIG_V2;
-  var totalWins=G.arenaState.totalWins||0;
-  var html='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">';
-  config.difficulties.forEach(function(diff){
-    var unlocked=totalWins>=config.unlockRequirements[diff];
-    html+='<div class="arena-diff-btn '+(unlocked?'':'locked')+'" onclick="'+(unlocked?'selectArenaDifficulty(\''+diff+'\')':'')+'">';
-    html+='<div style="font-size:20px;">'+config.difficultyIcons[diff]+'</div>';
-    html+='<div style="font-weight:bold;">'+config.difficultyNames[diff]+'</div>';
-    html+='<div style="font-size:10px;color:var(--text2);">'+config.difficultyDesc[diff]+'</div>';
-    if(!unlocked)html+='<div style="font-size:9px;color:var(--red);">🔒需'+config.unlockRequirements[diff]+'胜</div>';
-    html+='</div>';
-  });
-  html+='</div>';
-  return html;
-}
-
-// 游戏初始化时自动初始化突破系统
-initBreakthroughSystem();
-
 </script>
 <!-- TapTap H5 Debug SDK (生产环境请移除) -->
 <script>
 (function(){var taptapDebug=window.TTED||{log:function(){console.log.apply(console,arguments)}};window.TTED=taptapDebug;console.log('[TapTap H5] SDK已加载');})();
 </script>
-<script src="https://ms-sdk-release.vivo.com.cn/h5/debug/TTED.js">
-// ==================== 属性突破系统 V2 ====================
-// 属性上限配置
-var STAT_QUALITY_CAP={
-  common:{maxHP:800,atk:120,def:100,spd:80,maxMP:150},
-  rare:{maxHP:2000,atk:280,def:240,spd:180,maxMP:350},
-  epic:{maxHP:5000,atk:650,def:550,spd:420,maxMP:800},
-  legendary:{maxHP:9000,atk:999,def:999,spd:750,maxMP:999},
-  mythic:{maxHP:9999,atk:999,def:999,spd:900,maxMP:999},
-  hidden:{maxHP:14999,atk:1499,def:1499,spd:1300,maxMP:1499}
-};
-
-// 突破材料配置
-var BREAKTHROUGH_MATERIALS={
-  rare:{name:'突破精华',icon:'💧',cost:{gold:5000,material:10},arenaDrop:{chance:0.3,min:1,max:2}},
-  epic:{name:'突破结晶',icon:'💎',cost:{gold:15000,material:15},arenaDrop:{chance:0.25,min:1,max:2}},
-  legendary:{name:'传说碎片',icon:'⚜️',cost:{gold:50000,material:20},arenaDrop:{chance:0.2,min:1,max:2}},
-  mythic:{name:'神话核心',icon:'🔮',cost:{gold:150000,material:30},arenaDrop:{chance:0.15,min:1,max:2}},
-  hidden:{name:'隐藏核心',icon:'✦',cost:{gold:500000,material:50},arenaDrop:{chance:0.1,min:1,max:1}}
-};
-
-// 竞技场V2配置
-var ARENA_CONFIG_V2={
-  difficulties:['entry','easy','normal','hard','nightmare','hell','mythic'],
-  unlockRequirements:{entry:0,easy:3,normal:10,hard:25,nightmare:50,hell:100,mythic:200},
-  difficultyNames:{entry:'入门',easy:'简单',normal:'普通',hard:'困难',nightmare:'噩梦',hell:'地狱',mythic:'神话'},
-  difficultyIcons:{entry:'🟢',easy:'🟢',normal:'🟡',hard:'🟠',nightmare:'🔴',hell:'💀',mythic:'👹'},
-  difficultyDesc:{entry:'等级×50%·新手',easy:'等级×70%·基础',normal:'等级×90%·标准',hard:'等级×110%·优化',nightmare:'等级×130%·完美',hell:'等级×150%·极限',mythic:'等级×180%·超越'},
-  statMultiplier:{entry:0.5,easy:0.7,normal:0.9,hard:1.1,nightmare:1.3,hell:1.5,mythic:1.8},
-  maxQuality:{entry:'common',easy:'rare',normal:'epic',hard:'legendary',nightmare:'legendary',hell:'mythic',mythic:'hidden'},
-  skillCount:{entry:1,easy:2,normal:2,hard:3,nightmare:3,hell:4,mythic:5},
-  equipmentLevel:{entry:'none',easy:'basic',normal:'standard',hard:'enhanced',nightmare:'epic',hell:'legendary',mythic:'mythic'},
-  bondEnabled:{entry:false,easy:false,normal:false,hard:true,nightmare:true,hell:true,mythic:true},
-  rewardMultiplier:{entry:0.5,easy:1,normal:1.5,hard:2.5,nightmare:4,hell:6,mythic:10},
-  materialDrop:{entry:{rare:0.1},easy:{rare:0.3,epic:0.05},normal:{rare:0.2,epic:0.25,legendary:0.02},hard:{epic:0.2,legendary:0.15,mythic:0.01},nightmare:{epic:0.1,legendary:0.25,mythic:0.08},hell:{legendary:0.2,mythic:0.15,hidden:0.05},mythic:{legendary:0.1,mythic:0.25,hidden:0.15}}
-};
-
-// 初始化突破系统
-function initBreakthroughSystem(){
-  if(!G.breakthroughMaterials){
-    G.breakthroughMaterials={rare:0,epic:0,legendary:0,mythic:0,hidden:0};
-  }
-  if(!G.heroBreakthrough)G.heroBreakthrough={};
-}
-
-// 获取突破后品质
-function getNextQuality(current,tier){
-  var qualities=['common','rare','epic','legendary','mythic','hidden'];
-  var idx=qualities.indexOf(current);
-  if(idx===-1)return current;
-  return qualities[Math.min(idx+tier,qualities.length-1)];
-}
-
-// 执行突破
-function performBreakthrough(hero){
-  initBreakthroughSystem();
-  var nextQ=getNextQuality(hero.quality,1);
-  var mat=BREAKTHROUGH_MATERIALS[nextQ];
-  if(!mat){
-    showToast('❌ 已达最高品质');
-    return false;
-  }
-  if((G.breakthroughMaterials[nextQ]||0)<mat.cost.material){
-    showToast('❌ '+mat.name+'不足（需'+mat.cost.material+'个）');
-    return false;
-  }
-  if((G.resources.gold||0)<mat.cost.gold){
-    showToast('❌ 金币不足');
-    return false;
-  }
-  G.breakthroughMaterials[nextQ]-=mat.cost.material;
-  G.resources.gold-=mat.cost.gold;
-  if(!G.heroBreakthrough[hero.uid])G.heroBreakthrough[hero.uid]={tier:0,count:0};
-  G.heroBreakthrough[hero.uid].tier++;
-  G.heroBreakthrough[hero.uid].count++;
-  var newCap=STAT_QUALITY_CAP[nextQ];
-  hero.quality=nextQ;
-  var hpRatio=hero.maxHP>0?hero.hp/hero.maxHP:0;
-  hero.maxHP=Math.min(Math.floor(hero.maxHP*1.2),newCap.maxHP);
-  hero.hp=Math.floor(hero.maxHP*hpRatio);
-  hero.atk=Math.min(Math.floor(hero.atk*1.15),newCap.atk);
-  hero.def=Math.min(Math.floor(hero.def*1.15),newCap.def);
-  hero.spd=Math.min(Math.floor(hero.spd*1.1),newCap.spd);
-  hero.maxMP=Math.min(Math.floor(hero.maxMP*1.1),newCap.maxMP);
-  hero.mp=Math.min(hero.mp,hero.maxMP);
-  if(!hero.bonusSkills)hero.bonusSkills=[];
-  if(hero.bonusSkills.length<3){
-    var roleTpls=HERO_TEMPLATES.filter(function(t){return t.role===hero.role&&t.quality!=='common'});
-    var pool=[];
-    roleTpls.forEach(function(t){t.skills.forEach(function(s){if(hero.skills.indexOf(s)<0&&hero.bonusSkills.indexOf(s)<0&&pool.indexOf(s)<0)pool.push(s);});});
-    if(pool.length>0)hero.bonusSkills.push(pool[Math.floor(Math.random()*pool.length)]);
-  }
-  showToast('✨ '+hero.name+'突破成功！品质→'+QUALITY_NAMES[nextQ]);
-  saveGame();
-  return true;
-}
-
-// 渲染突破界面
-function renderBreakthroughUI(){
-  initBreakthroughSystem();
-  var html='<div class="panel"><div class="panel-title">⚡ 属性突破系统</div>';
-  html+='<div style="font-size:12px;color:var(--text2);margin-bottom:12px;">通过竞技场获得突破材料，提升英雄品质上限</div>';
-  html+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;">';
-  Object.keys(BREAKTHROUGH_MATERIALS).forEach(function(k){
-    var m=BREAKTHROUGH_MATERIALS[k];
-    var cnt=G.breakthroughMaterials[k]||0;
-    html+='<div style="background:rgba(0,0,0,.2);padding:8px;border-radius:8px;text-align:center;">';
-    html+='<div style="font-size:20px;">'+m.icon+'</div>';
-    html+='<div style="font-size:10px;color:var(--text2);">'+m.name+'</div>';
-    html+='<div style="font-size:14px;font-weight:bold;color:var(--gold);">'+cnt+'</div></div>';
-  });
-  html+='</div><div style="max-height:300px;overflow-y:auto;">';
-  G.heroes.forEach(function(hero){
-    var nextQ=getNextQuality(hero.quality,1);
-    if(!nextQ||nextQ===hero.quality)return;
-    var m=BREAKTHROUGH_MATERIALS[nextQ];
-    var ok=(G.breakthroughMaterials[nextQ]||0)>=m.cost.material&&(G.resources.gold||0)>=m.cost.gold;
-    html+='<div style="background:var(--panel2);padding:10px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">';
-    html+='<div style="font-size:28px;">'+hero.icon+'</div>';
-    html+='<div style="flex:1;"><div style="font-weight:bold;">'+hero.name+'</div>';
-    html+='<div style="font-size:10px;color:var(--text2);">'+QUALITY_NAMES[hero.quality]+' → '+QUALITY_NAMES[nextQ]+'</div></div>';
-    html+='<div style="text-align:right;font-size:11px;"><div>'+m.icon+'×'+m.cost.material+'</div><div>💰'+m.cost.gold+'</div></div>';
-    html+='<button class="btn btn-sm '+(ok?'btn-primary':'')+'" '+(ok?'onclick="performBreakthroughById('+hero.uid+')"':'disabled')+'>'+(ok?'突破':'不足')+'</button></div>';
-  });
-  html+='</div></div>';
-  return html;
-}
-
-function performBreakthroughById(uid){
-  var hero=G.heroes.find(function(h){return h.uid===uid;});
-  if(hero){performBreakthrough(hero);renderCurrentTab();}
-}
-
-function renderArenaDifficultySelect(){
-  initBreakthroughSystem();
-  var config=ARENA_CONFIG_V2;
-  var totalWins=G.arenaState.totalWins||0;
-  var html='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">';
-  config.difficulties.forEach(function(diff){
-    var unlocked=totalWins>=config.unlockRequirements[diff];
-    html+='<div class="arena-diff-btn '+(unlocked?'':'locked')+'" onclick="'+(unlocked?'selectArenaDifficulty(\''+diff+'\')':'')+'">';
-    html+='<div style="font-size:20px;">'+config.difficultyIcons[diff]+'</div>';
-    html+='<div style="font-weight:bold;">'+config.difficultyNames[diff]+'</div>';
-    html+='<div style="font-size:10px;color:var(--text2);">'+config.difficultyDesc[diff]+'</div>';
-    if(!unlocked)html+='<div style="font-size:9px;color:var(--red);">🔒需'+config.unlockRequirements[diff]+'胜</div>';
-    html+='</div>';
-  });
-  html+='</div>';
-  return html;
-}
-
-// 游戏初始化时自动初始化突破系统
-initBreakthroughSystem();
-
-</script>
+<script src="https://ms-sdk-release.vivo.com.cn/h5/debug/TTED.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -931,39 +609,49 @@ body{
 @keyframes particleFloat{0%{opacity:0;transform:translateY(20px) scale(0)}50%{opacity:1;transform:translateY(-20px) scale(1)}100%{opacity:0;transform:translateY(-60px) scale(.5)}}
 
 
-/* ===== 城镇界面 - 现代风格 ===== */
-/* 城镇主面板 - 使用标准面板变量保持一致 */
+/* ===== 城镇界面 V4 - 优化排版 ===== */
+/* 城镇主面板 - 精致暗夜卡片 */
 .town-main-panel{
-  padding:20px;
-  background:linear-gradient(145deg,var(--panel),rgba(30,30,58,0.9));
+  padding:18px 16px 14px;
+  background:linear-gradient(145deg,var(--panel),rgba(30,30,58,0.92));
   border-radius:var(--radius-lg);
   border:1px solid var(--border);
   box-shadow:var(--shadow-md),var(--shadow-inset);
   position:relative;
   overflow:hidden;
 }
-/* 城镇头部 - 标题和资源在一行 */
+/* 主面板左上装饰光晕 */
+.town-main-panel::after{
+  content:'';
+  position:absolute;
+  top:-60px;left:-60px;
+  width:120px;height:120px;
+  background:radial-gradient(circle,rgba(212,175,55,0.06) 0%,transparent 70%);
+  pointer-events:none;
+}
+/* 城镇头部 - 更紧凑 */
 .town-header{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:16px;
-  padding-bottom:16px;
-  border-bottom:1px solid var(--border);
-  margin-bottom:16px;
+  gap:10px;
+  padding-bottom:12px;
+  border-bottom:1px solid rgba(45,45,90,0.6);
+  margin-bottom:12px;
 }
 /* 标题行 */
 .town-title-row{
   display:flex;
   align-items:center;
-  gap:10px;
+  gap:8px;
+  flex-shrink:0;
 }
 .town-title-row .icon{
-  font-size:28px;
-  filter:drop-shadow(0 2px 8px rgba(212,175,55,0.4));
+  font-size:24px;
+  filter:drop-shadow(0 2px 8px rgba(212,175,55,0.35));
 }
 .town-title{
-  font-size:20px;
+  font-size:18px;
   font-weight:800;
   background:linear-gradient(135deg,var(--gold2),var(--gold),var(--gold3));
   background-size:200% auto;
@@ -978,47 +666,47 @@ body{
   0%,100%{text-shadow:0 0 20px rgba(212,175,55,0.3)}
   50%{text-shadow:0 0 30px rgba(212,175,55,0.55)}
 }
-/* 资源栏 - 精美卡片式显示 */
+/* 资源栏 - 紧凑精美胶囊式 */
 .town-resources-bar{
   display:flex;
   align-items:center;
-  gap:8px;
+  gap:5px;
   flex-wrap:nowrap;
   overflow-x:auto;
   scrollbar-width:none;
   -ms-overflow-style:none;
-  padding:4px;
+  padding:2px;
 }
 .town-resources-bar::-webkit-scrollbar{display:none}
 .town-res-item{
   display:flex;
   align-items:center;
-  gap:6px;
-  font-size:12px;
+  gap:4px;
+  font-size:11px;
   white-space:nowrap;
   flex-shrink:0;
-  padding:6px 14px;
+  padding:4px 10px;
   background:linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02));
-  border-radius:20px;
-  border:1px solid rgba(255,255,255,0.08);
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,0.07);
   transition:var(--transition);
   cursor:pointer;
   box-shadow:var(--shadow-inset);
 }
 .town-res-item:hover{
-  transform:translateY(-2px);
+  transform:translateY(-1px);
   border-color:var(--gold);
-  box-shadow:0 4px 12px rgba(0,0,0,0.2),var(--shadow-inset);
+  box-shadow:0 3px 10px rgba(0,0,0,0.2),var(--shadow-inset);
 }
 .town-res-icon{
-  font-size:14px;
+  font-size:12px;
   line-height:1;
   filter:drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }
 .town-res-val{
-  font-size:13px;
+  font-size:12px;
   font-weight:700;
-  letter-spacing:0.3px;
+  letter-spacing:0.2px;
 }
 .town-res-val.gold{
   background:linear-gradient(180deg,var(--gold2),var(--gold));
@@ -1026,98 +714,272 @@ body{
   -webkit-text-fill-color:transparent;
   background-clip:text;
   font-weight:700;
-  font-size:13px;
+  font-size:12px;
 }
 .town-res-val.gems{
   color:#a855f7;
   font-weight:700;
-  font-size:13px;
+  font-size:12px;
 }
 .town-res-val.food{
   color:#f97316;
   font-weight:700;
-  font-size:13px;
+  font-size:12px;
 }
 .town-res-val.potion{
   color:#22c55e;
   font-weight:700;
-  font-size:13px;
+  font-size:12px;
 }
 .town-res-sep{
   color:rgba(255,255,255,0.2);
   font-size:12px;
   flex-shrink:0;
 }
-/* 响应式：小屏幕时资源换行 */
-@media (max-width:500px){
-  .town-header{
-    flex-direction:column;
-    align-items:flex-start;
-    gap:12px;
-  }
-  .town-resources-bar{
-    width:100%;
-    flex-wrap:wrap;
-  }
-  .town-hero-summary{
-    grid-template-columns:repeat(2,1fr);
-  }
-  .town-modules-grid{
-    grid-template-columns:repeat(2,1fr);
-  }
-  .stage-grid{gap:6px}
-  .stage-node{min-width:68px;padding:10px 8px}
-  .battle-stats-board{flex-direction:column}
-  .battle-toolbar{padding:8px 10px;gap:6px}
-  .battle-toolbar-group{gap:4px}
-  .battle-ctrl-btn{padding:5px 8px;font-size:10px}
-  .battle-ctrl-btn.btn-speed{min-width:30px;padding:5px 6px;font-size:10px}
-  .battle-toolbar-sep{display:none}
+/* 资源值额外样式 */
+.town-res-val.stone{
+  color:#94a3b8;
+  font-weight:700;
+  font-size:12px;
 }
+.town-res-val.iron{
+  color:#a8a29e;
+  font-weight:700;
+  font-size:12px;
+}
+
+/* 英雄摘要统计 - 现代化仪表盘卡片 */
 .town-hero-summary{
   display:grid;
   grid-template-columns:repeat(4,1fr);
-  gap:12px;
-  margin-top:16px;
-  padding:16px;
-  background:linear-gradient(145deg,rgba(0,0,0,0.2),rgba(0,0,0,0.1));
-  border-radius:var(--radius-lg);
-  font-size:12px;
-  border:1px solid var(--border);
-  box-shadow:var(--shadow-sm),var(--shadow-inset);
+  gap:8px;
+  margin-top:0;
+  padding:12px;
+  background:linear-gradient(145deg,rgba(0,0,0,0.25),rgba(0,0,0,0.12));
+  border-radius:var(--radius-md);
+  border:1px solid rgba(45,45,90,0.4);
+  box-shadow:var(--shadow-inset);
 }
 .town-hero-summary-item{
   text-align:center;
-  padding:12px 8px;
-  border-radius:var(--radius-md);
+  padding:8px 6px;
+  border-radius:var(--radius-sm);
   transition:var(--transition-bounce);
-  background:linear-gradient(145deg,rgba(255,255,255,0.02),transparent);
+  background:linear-gradient(145deg,rgba(255,255,255,0.03),transparent);
   border:1px solid transparent;
+  cursor:default;
 }
 .town-hero-summary-item:hover{
-  background:linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02));
-  border-color:var(--border);
+  background:linear-gradient(145deg,rgba(255,255,255,0.07),rgba(255,255,255,0.02));
+  border-color:rgba(45,45,90,0.6);
   transform:translateY(-2px);
   box-shadow:var(--shadow-sm);
 }
+.town-hero-summary-icon{
+  font-size:16px;
+  display:block;
+  margin-bottom:2px;
+  filter:drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+}
 .town-hero-summary-val{
-  font-size:22px;
+  font-size:20px;
   font-weight:900;
   color:var(--gold);
-  filter:drop-shadow(0 2px 4px rgba(212,175,55,0.3));
+  filter:drop-shadow(0 1px 3px rgba(212,175,55,0.25));
+  line-height:1.2;
 }
 .town-hero-summary-lbl{
   color:var(--text2);
-  margin-top:6px;
-  font-size:11px;
+  margin-top:3px;
+  font-size:10px;
   letter-spacing:0.5px;
   font-weight:500;
+  text-transform:uppercase;
 }
+
+/* 城镇故事区域 - 地下城堡氛围（更紧凑） */
+.town-story-section{
+  padding:10px 14px;
+  margin:8px 0;
+  background:
+    linear-gradient(180deg,rgba(8,8,16,0.95) 0%,rgba(18,14,28,0.9) 40%,rgba(12,10,20,0.95) 100%);
+  border-radius:var(--radius-md);
+  border:1px solid rgba(100,80,160,0.18);
+  box-shadow:
+    var(--shadow-inset),
+    inset 0 0 40px rgba(0,0,0,0.35),
+    0 0 20px rgba(80,50,140,0.06);
+  position:relative;
+  overflow:hidden;
+}
+/* 顶部装饰线 */
+.town-story-section::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;
+  height:2px;
+  background:linear-gradient(90deg,transparent 5%,rgba(140,120,180,0.35) 20%,rgba(212,175,55,0.25) 50%,rgba(140,120,180,0.35) 80%,transparent 95%);
+}
+/* 右下角火把光晕 */
+.town-story-section::after{
+  content:'';
+  position:absolute;
+  bottom:-8px;right:-8px;
+  width:60px;height:60px;
+  background:radial-gradient(circle,rgba(255,140,50,0.1) 0%,rgba(255,100,30,0.05) 40%,transparent 70%);
+  pointer-events:none;
+  animation:torch-flicker 3s ease-in-out infinite;
+}
+@keyframes torch-flicker{
+  0%,100%{opacity:.7;transform:scale(1)}
+  25%{opacity:1;transform:scale(1.05)}
+  50%{opacity:.6;transform:scale(.98)}
+  75%{opacity:.9;transform:scale(1.02)}
+}
+/* 故事文字 */
+.town-story-text{
+  color:rgba(200,190,210,0.82);
+  font-size:12px;
+  line-height:1.8;
+  margin-bottom:4px;
+  text-shadow:0 1px 3px rgba(0,0,0,0.5);
+  position:relative;
+  z-index:1;
+  letter-spacing:0.3px;
+}
+.town-story-text:last-child{margin-bottom:0}
+/* 故事区域装饰 */
+.town-story-deco{
+  position:absolute;
+  top:6px;left:10px;
+  font-size:9px;
+  opacity:0.12;
+  pointer-events:none;
+  z-index:0;
+}
+.town-story-torch{
+  position:absolute;
+  bottom:4px;right:8px;
+  font-size:12px;
+  opacity:0.2;
+  pointer-events:none;
+  z-index:0;
+  animation:torch-flicker 2.5s ease-in-out infinite;
+  filter:drop-shadow(0 0 5px rgba(255,120,30,0.35));
+}
+/* 飘浮灰尘粒子 */
+.town-story-dust{
+  position:absolute;
+  top:0;left:0;right:0;bottom:0;
+  pointer-events:none;
+  z-index:0;
+  overflow:hidden;
+}
+.town-story-dust::before{
+  content:'';
+  position:absolute;
+  width:2px;height:2px;
+  background:rgba(200,180,160,0.12);
+  border-radius:50%;
+  top:30%;left:20%;
+  animation:dust-float-1 8s ease-in-out infinite;
+}
+.town-story-dust::after{
+  content:'';
+  position:absolute;
+  width:2px;height:2px;
+  background:rgba(200,180,160,0.08);
+  border-radius:50%;
+  top:60%;left:70%;
+  animation:dust-float-2 10s ease-in-out infinite;
+}
+@keyframes dust-float-1{
+  0%,100%{transform:translate(0,0);opacity:0}
+  20%{opacity:0.25}
+  50%{transform:translate(40px,-20px);opacity:0.12}
+  80%{opacity:0.2}
+}
+@keyframes dust-float-2{
+  0%,100%{transform:translate(0,0);opacity:0}
+  30%{opacity:0.15}
+  60%{transform:translate(-30px,-25px);opacity:0.08}
+  90%{opacity:0.15}
+}
+
+/* 城镇快速入口面板 */
+.town-quick-panel{
+  background:linear-gradient(145deg,var(--panel),rgba(30,30,58,0.92));
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:14px 16px;
+  margin-top:10px;
+}
+.town-quick-btns{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:8px;
+}
+/* 快速入口按钮强化 */
+.town-quick-btns .btn{
+  flex:1;
+  min-width:0;
+  font-size:12px;
+  padding:10px 12px;
+  border-radius:var(--radius-sm);
+  font-weight:700;
+  letter-spacing:0.5px;
+  transition:var(--transition-bounce);
+}
+.town-quick-btns .btn:hover{
+  transform:translateY(-2px);
+}
+
+/* 新手引导高亮动画：城镇按钮 */
+.town-module-btn.guide-active{
+  border-color:var(--gold)!important;
+  box-shadow:0 0 0 2px rgba(212,175,55,.5),0 0 18px rgba(212,175,55,.35),var(--shadow-lg)!important;
+  animation:townBtnPulse 1.8s ease-in-out infinite;
+  position:relative;
+  z-index:200;
+}
+@keyframes townBtnPulse{
+  0%,100%{box-shadow:0 0 0 2px rgba(212,175,55,.4),0 0 16px rgba(212,175,55,.3)}
+  50%{box-shadow:0 0 0 4px rgba(212,175,55,.7),0 0 28px rgba(212,175,55,.55)}
+}
+/* 新手步骤角标 */
+.town-module-btn .guide-badge{
+  position:absolute;
+  top:-7px;right:-7px;
+  width:18px;height:18px;
+  background:linear-gradient(135deg,#f59e0b,#d97706);
+  border-radius:50%;
+  font-size:10px;
+  font-weight:900;
+  color:#000;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 6px rgba(0,0,0,.5);
+  animation:badgeBounce 1.2s ease-in-out infinite;
+  z-index:2;
+}
+@keyframes badgeBounce{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.25)}
+}
+
+/* 城镇模块网格（主功能） */
+.town-modules-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin-top:10px;
+}
+/* 模块按钮 - 更现代、更精致 */
 .town-module-btn{
   background:linear-gradient(145deg,var(--panel2),var(--panel));
   border:1px solid var(--border);
-  border-radius:var(--radius-lg);
-  padding:20px 14px;
+  border-radius:var(--radius-md);
+  padding:16px 10px;
   cursor:pointer;
   transition:var(--transition-bounce);
   text-align:center;
@@ -1135,7 +997,7 @@ body{
   transition:opacity 0.3s;
 }
 .town-module-btn:hover{
-  transform:translateY(-4px);
+  transform:translateY(-3px);
   border-color:var(--gold);
   box-shadow:var(--shadow-lg),var(--shadow-gold);
 }
@@ -1143,150 +1005,55 @@ body{
   opacity:1;
 }
 .town-module-btn:active{
-  transform:translateY(-2px);
+  transform:translateY(-1px);
   box-shadow:var(--shadow-sm);
 }
 .town-module-btn-icon{
-  font-size:36px;
-  margin-bottom:10px;
+  font-size:30px;
+  margin-bottom:6px;
   display:block;
   filter:drop-shadow(0 3px 6px rgba(0,0,0,0.4));
   transition:var(--transition-bounce);
 }
 .town-module-btn:hover .town-module-btn-icon{
-  transform:scale(1.15);
+  transform:scale(1.12);
   filter:drop-shadow(0 6px 12px rgba(212,175,55,0.4));
 }
 .town-module-btn-name{
-  font-size:14px;
+  font-size:13px;
   font-weight:700;
   color:var(--gold);
   letter-spacing:0.5px;
 }
 .town-module-btn-info{
-  font-size:11px;
+  font-size:10px;
   color:var(--text2);
-  margin-top:4px;
+  margin-top:3px;
   letter-spacing:0.3px;
   font-weight:500;
 }
-.town-quick-btns{
-  display:flex;
-  gap:12px;
-  flex-wrap:wrap;
+/* 模块按钮 - 光晕涟漪反馈 */
+.town-module-btn:not(:active)::after{
+  content:'';
+  position:absolute;
+  top:50%;left:50%;
+  width:0;height:0;
+  background:radial-gradient(circle,rgba(212,175,55,0.08),transparent 70%);
+  border-radius:50%;
+  transform:translate(-50%,-50%);
+  transition:width 0.6s ease,height 0.6s ease,opacity 0.3s;
+  opacity:0;
+  pointer-events:none;
+}
+.town-module-btn:hover::after{
+  width:120px;height:120px;
+  opacity:1;
 }
 
-/* 城镇故事区域 - 地下城堡氛围 */
-.town-story-section{
-  padding:20px;
-  background:
-    linear-gradient(180deg,rgba(8,8,16,0.95) 0%,rgba(18,14,28,0.9) 40%,rgba(12,10,20,0.95) 100%);
-  border-radius:var(--radius-lg);
-  margin:16px 0;
-  border:1px solid rgba(100,80,160,0.2);
-  box-shadow:
-    var(--shadow-inset),
-    inset 0 0 60px rgba(0,0,0,0.4),
-    0 0 30px rgba(80,50,140,0.08);
-  position:relative;
-  overflow:hidden;
-}
-/* 顶部石拱装饰线 */
-.town-story-section::before{
-  content:'';
-  position:absolute;
-  top:0;left:0;right:0;
-  height:2px;
-  background:linear-gradient(90deg,transparent 5%,rgba(140,120,180,0.4) 20%,rgba(212,175,55,0.3) 50%,rgba(140,120,180,0.4) 80%,transparent 95%);
-}
-/* 右下角火把光晕 */
-.town-story-section::after{
-  content:'';
-  position:absolute;
-  bottom:-10px;right:-10px;
-  width:80px;height:80px;
-  background:radial-gradient(circle,rgba(255,140,50,0.12) 0%,rgba(255,100,30,0.06) 40%,transparent 70%);
-  pointer-events:none;
-  animation:torch-flicker 3s ease-in-out infinite;
-}
-@keyframes torch-flicker{
-  0%,100%{opacity:.7;transform:scale(1)}
-  25%{opacity:1;transform:scale(1.05)}
-  50%{opacity:.6;transform:scale(.98)}
-  75%{opacity:.9;transform:scale(1.02)}
-}
-/* 故事文字 - 带城堡氛围 */
-.town-story-text{
-  color:rgba(200,190,210,0.85);
-  font-size:13px;
-  line-height:2;
-  margin-bottom:6px;
-  text-shadow:0 1px 3px rgba(0,0,0,0.5);
-  position:relative;
-  z-index:1;
-  letter-spacing:0.3px;
-}
-/* 故事区域装饰：左上角锁链图标 */
-.town-story-deco{
-  position:absolute;
-  top:8px;left:12px;
-  font-size:10px;
-  opacity:0.15;
-  pointer-events:none;
-  z-index:0;
-}
-/* 故事区域装饰：右下角火把 */
-.town-story-torch{
-  position:absolute;
-  bottom:6px;right:10px;
-  font-size:14px;
-  opacity:0.25;
-  pointer-events:none;
-  z-index:0;
-  animation:torch-flicker 2.5s ease-in-out infinite;
-  filter:drop-shadow(0 0 6px rgba(255,120,30,0.4));
-}
-/* 飘浮灰尘粒子效果 */
-.town-story-dust{
-  position:absolute;
-  top:0;left:0;right:0;bottom:0;
-  pointer-events:none;
-  z-index:0;
-  overflow:hidden;
-}
-.town-story-dust::before{
-  content:'';
-  position:absolute;
-  width:3px;height:3px;
-  background:rgba(200,180,160,0.15);
-  border-radius:50%;
-  top:30%;left:20%;
-  animation:dust-float-1 8s ease-in-out infinite;
-}
-.town-story-dust::after{
-  content:'';
-  position:absolute;
-  width:2px;height:2px;
-  background:rgba(200,180,160,0.1);
-  border-radius:50%;
-  top:60%;left:70%;
-  animation:dust-float-2 10s ease-in-out infinite;
-}
-@keyframes dust-float-1{
-  0%,100%{transform:translate(0,0);opacity:0}
-  20%{opacity:0.3}
-  50%{transform:translate(40px,-20px);opacity:0.15}
-  80%{opacity:0.25}
-}
-@keyframes dust-float-2{
-  0%,100%{transform:translate(0,0);opacity:0}
-  30%{opacity:0.2}
-  60%{transform:translate(-30px,-25px);opacity:0.1}
-  90%{opacity:0.2}
-}
+/* 进度信息 */
 .town-progress-info{
-  margin-top:12px;
-  padding-top:12px;
+  margin-top:10px;
+  padding-top:10px;
   border-top:1px solid var(--border);
 }
 .town-progress-item{
@@ -1294,7 +1061,7 @@ body{
   align-items:center;
   gap:8px;
   padding:6px 10px;
-  margin-bottom:6px;
+  margin-bottom:5px;
   background:rgba(0,0,0,0.2);
   border-radius:var(--radius-sm);
   font-size:12px;
@@ -1303,10 +1070,9 @@ body{
 }
 .town-progress-item:hover{
   background:rgba(0,0,0,0.25);
-  border-color:var(--border);
 }
 .town-progress-icon{
-  font-size:16px;
+  font-size:14px;
 }
 .town-progress-item.streak{
   background:linear-gradient(135deg,rgba(255,107,0,0.15),rgba(255,107,0,0.05));
@@ -1319,29 +1085,100 @@ body{
   color:var(--gold);
 }
 
-/* 城镇快速入口面板 - 使用标准panel变量 */
-.town-quick-panel{
-  background:linear-gradient(145deg,var(--panel),rgba(30,30,58,0.9));
-  border:1px solid var(--border);
+/* 新手引导进度条 */
+.town-guide-progress{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 12px;
+  margin-bottom:8px;
+  background:linear-gradient(135deg,rgba(212,175,55,.08),rgba(212,175,55,.04));
+  border:1px solid rgba(212,175,55,.25);
+  border-radius:var(--radius-sm);
+  font-size:11px;
+  color:var(--text2);
+}
+.town-guide-progress-label{
+  white-space:nowrap;
+  color:var(--gold);
+  font-weight:700;
+  font-size:11px;
+}
+.town-guide-progress-bar{
+  flex:1;
+  height:4px;
+  background:rgba(255,255,255,.1);
+  border-radius:2px;
+  overflow:hidden;
+}
+.town-guide-progress-fill{
+  height:100%;
+  background:linear-gradient(90deg,var(--gold2),var(--gold));
+  border-radius:2px;
+  transition:width .5s ease;
+  box-shadow:0 0 6px rgba(212,175,55,.5);
+}
+.town-guide-step-text{
+  white-space:nowrap;
+  font-size:10px;
+  color:var(--text3);
 }
 
-/* 城镇模块网格 */
-.town-modules-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:12px;
+/* 模块按钮缺省position:relative确保badge定位 */
+.town-module-btn{
+  position:relative;
 }
 
-/* 资源值额外样式 */
-.town-res-val.stone{
-  color:#94a3b8;
-  font-weight:700;
-  font-size:13px;
+/* ===== 响应式：中等屏幕 ===== */
+@media (max-width:600px){
+  .town-header{
+    flex-direction:column;
+    align-items:stretch;
+    gap:8px;
+  }
+  .town-title-row{
+    justify-content:center;
+  }
+  .town-resources-bar{
+    width:100%;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+  .town-hero-summary{
+    grid-template-columns:repeat(2,1fr);
+    gap:6px;
+  }
+  .town-modules-grid{
+    grid-template-columns:repeat(2,1fr);
+    gap:8px;
+  }
 }
-.town-res-val.iron{
-  color:#a8a29e;
-  font-weight:700;
-  font-size:13px;
+@media (max-width:400px){
+  .town-main-panel{padding:14px 12px 10px}
+  .town-res-item{padding:3px 8px;font-size:10px}
+  .town-res-val{font-size:11px}
+  .town-module-btn{padding:12px 8px}
+  .town-module-btn-icon{font-size:26px}
+  .town-module-btn-name{font-size:12px}
+  .town-story-section{padding:10px 12px}
+  .town-story-text{font-size:11px;line-height:1.6}
+  .town-hero-summary{padding:8px}
+  .town-quick-panel{padding:12px}
+}
+@media (max-width:360px){
+  .town-hero-summary{grid-template-columns:repeat(2,1fr)}
+  .town-modules-grid{grid-template-columns:repeat(2,1fr);gap:6px}
+}
+/* 其他页面响应式（保留原有） */
+@media (max-width:500px){
+  .stage-grid{gap:6px}
+  .stage-node{min-width:68px;padding:10px 8px}
+  .battle-stats-board{flex-direction:column}
+  .battle-toolbar{padding:8px 10px;gap:6px}
+  .battle-toolbar-group{gap:4px}
+  .battle-ctrl-btn{padding:5px 8px;font-size:10px}
+  .battle-ctrl-btn.btn-speed{min-width:30px;padding:5px 6px;font-size:10px}
+  .battle-toolbar-sep{display:none}
 }
 
 /* ===== 英雄卡片 - 精美卡片风格 ===== */
@@ -2780,7 +2617,7 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
 .bond-preview-item{background:rgba(0,0,0,.15);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:4px 0;transition:var(--transition);cursor:default}
 .bond-preview-item:hover{border-color:var(--border-light);background:rgba(0,0,0,.2)}
 .bond-preview-item.active{animation:bondPulse 2s ease-in-out infinite}
-@keyframes bondPulse{0%,100%{box-shadow:0 0 4px rgba(201,162,39,.1)}50%{box-shadow:0 0 12px rgba(201,162,39,.2)}}
+
 .bond-section-title{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:bold;margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.06)}
 #battle-bonds-display{display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px;background:rgba(0,0,0,.2);border-radius:8px;border:1px solid rgba(255,255,255,.05);margin-top:6px}
 
@@ -2867,6 +2704,7 @@ input[type="number"]:focus,input[type="text"]:focus{border-color:var(--gold)!imp
     <!-- <div class="nav-btn" data-tab="codex" title="图鉴">📖<div class="nav-label">图鉴</div></div> -->
     <!-- 屏蔽成就模块 -->
     <!-- <div class="nav-btn" data-tab="achievements" title="成就">🏅<div class="nav-label">成就</div></div> -->
+    <div class="nav-btn" data-tab="roguelike" title="肉鸽地牢">🎲<div class="nav-label">肉鸽</div></div>
     <div class="nav-btn" data-tab="leaderboard" title="排行">🏆<div class="nav-label">排行</div></div>
     <div class="nav-btn" data-tab="cheats" id="nav-cheats-btn" title="金手指" style="color:#c0392b">🔓<div class="nav-label">金手指</div></div>
     <div class="nav-btn" data-tab="zodiac" title="生肖Boss">🐉<div class="nav-label">生肖</div></div>
@@ -3101,7 +2939,7 @@ function startTownGuide(){
     if(G.tutorialPhase==='guide' && G.tutorialStep===1 && currentTab==='town'){
       showGuideTip('town-recruit','🍺 招募英雄','欢迎来到城镇！\n\n点击「招募」按钮，前往酒馆招募更多英雄。');
     }
-  },500);
+  },600);
 }
 
 // ==================== 第二章剧情系统 ====================
@@ -3229,8 +3067,9 @@ function showGuideTip(targetId,tipTitle,tipText,arrowDir){
   hideGuideTip();
   var targetEl=document.getElementById(targetId);
   if(!targetEl || !G_guideHighlightEl || !G_guideTooltipEl) return;
-  // 确保目标元素在可视区域内，使用即时滚动避免动画期间坐标不准
-  targetEl.scrollIntoView({behavior:'instant',block:'center'});
+  // fixed定位元素（如导航栏）不能用scrollIntoView，否则坐标错位
+  var isFixed=(getComputedStyle(targetEl).position==='fixed');
+  if(!isFixed) targetEl.scrollIntoView({behavior:'instant',block:'center'});
   // 等待浏览器完成布局后再计算位置
   requestAnimationFrame(function(){
     requestAnimationFrame(function(){
@@ -3308,14 +3147,15 @@ function finishTutorial(){
   G.tutorialPhase='';
   G.tutorialStep=0;
   
-  // 引导完成奖励
-  var rewardGold = 1000;
-  var rewardGems = 20;
-  var rewardIronOre = 10;
-  
-  G.gold = (G.gold || 0) + rewardGold;
-  G.gems = (G.gems || 0) + rewardGems;
-  G.materials['iron_ore'] = (G.materials['iron_ore'] || 0) + rewardIronOre;
+  // 引导完成奖励（写入正确的 G.resources 字段）
+  if(!G.resources) G.resources={};
+  var rewardGold = 3000;
+  var rewardGems = 50;
+  var rewardExpPotion = 200;
+  G.resources.gold = (G.resources.gold || 0) + rewardGold;
+  G.resources.gems = (G.resources.gems || 0) + rewardGems;
+  G.resources.expPotion = (G.resources.expPotion || 0) + rewardExpPotion;
+  updateResUI();
   
   // 随机赠送一个传说英雄
   var legendaryTemplates = HERO_TEMPLATES.filter(function(t) { return t.quality === 'legendary'; });
@@ -3324,9 +3164,10 @@ function finishTutorial(){
     var hero = createHero(randomTpl.id);
     G.heroes.push(hero);
     updateStat('heroRecruited', 1);
-    showToast('🎉 引导完成！获得: ' + rewardGold + '金币, ' + rewardGems + '宝石, ' + rewardIronOre + '铁矿, 传说英雄 ' + hero.icon + hero.name);
+    // 弹出引导完成奖励面板
+    showGuideReward(rewardGold, rewardGems, rewardExpPotion, hero);
   } else {
-    showToast('🎉 引导完成！获得: ' + rewardGold + '金币, ' + rewardGems + '宝石, ' + rewardIronOre + '铁矿');
+    showGuideReward(rewardGold, rewardGems, rewardExpPotion, null);
   }
   
   saveGame();
@@ -3385,16 +3226,37 @@ function onGuideBattleClick(){
 }
 
 function onGuideMergeClick(){
-  if(G.tutorialPhase==='guide' && G.tutorialStep===6){
-    G.tutorialStep=0;
-    // 显示合成引导介绍面板
-    var mergeIntro=document.getElementById('merge-intro');
-    if(mergeIntro) mergeIntro.style.display='block';
-    // 立即完成引导
-    finishTutorial();
+  if(G.tutorialPhase==='guide' && G.tutorialStep>=6){
+    hideGuideTip();
+    saveGame();
+    // 等renderMerge完成后再显示提示（step保持6，renderMerge里会给卡片加ID）
+    setTimeout(function(){
+      showGuideTip('merge-slot-0','👥 添加英雄','点击上方「?」槽位选择英雄！\n\n添加2个以上英雄后\n点「开始融合」完成引导获得奖励！','below');
+    }, 400);
     return true;
   }
   return false;
+}
+
+// 引导完成奖励弹出面板
+function showGuideReward(gold, gems, expPotion, hero){
+  var heroLine = hero ? ('\n⭐ 传说英雄：' + hero.icon + ' ' + hero.name) : '';
+  var msg = '🎉 新手引导完成！\n\n获得奖励：\n💰 金币 +' + gold + '\n💎 宝石 +' + gems + '\n🧪 经验药水 +' + expPotion + heroLine;
+  // 用 showModal 弹一个漂亮的奖励弹窗
+  showModal('🎊 引导完成奖励',
+    '<div style="text-align:center;padding:8px 0">'
+    + '<div style="font-size:40px;margin-bottom:12px">🎊</div>'
+    + '<div style="font-size:15px;font-weight:bold;color:var(--gold);margin-bottom:16px">新手引导完成！</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;text-align:left;background:rgba(0,0,0,.2);border-radius:8px;padding:12px">'
+    + '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">💰</span><span>金币 <b style="color:var(--gold)">+' + gold + '</b></span></div>'
+    + '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">💎</span><span>宝石 <b style="color:#a855f7">+' + gems + '</b></span></div>'
+    + '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">🧪</span><span>经验药水 <b style="color:#22c55e">+' + expPotion + '</b></span></div>'
+    + (hero ? '<div style="display:flex;align-items:center;gap:8px;margin-top:4px;padding-top:8px;border-top:1px solid var(--border)"><span style="font-size:24px">' + hero.icon + '</span><span>传说英雄 <b class="q-legendary">' + hero.name + '</b> 已加入！</span></div>' : '')
+    + '</div>'
+    + '<button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="closeModal()">领取！</button>'
+    + '</div>'
+  );
+  saveGame();
 }
 
 function showTownGuideIfNeeded(){
@@ -3406,13 +3268,21 @@ function showTownGuideIfNeeded(){
       return;
     }
     if(currentTab!=='town'){hideGuideTip();return}
+    // 更新引导高亮（直接操作DOM，避免重渲染导致循环）
+    document.querySelectorAll('.town-module-btn').forEach(function(b){ b.classList.remove('guide-active'); var bd=b.querySelector('.guide-badge'); if(bd) bd.remove(); });
+    // step7/8 在合成页由 addMergeHero/doMerge 处理
+    // step6在城镇显示合成导航提示，进入合成页后由onGuideMergeClick接管
     switch(G.tutorialStep){
-      case 1:
+      case 1:{
+        var _rb=document.getElementById('town-recruit');
+        if(_rb){_rb.classList.add('guide-active');if(!_rb.querySelector('.guide-badge')){var _bd=document.createElement('div');_bd.className='guide-badge';_bd.textContent='1';_rb.appendChild(_bd);}}
         showGuideTip('town-recruit','🍺 招募英雄','欢迎来到城镇！\n\n点击「招募」按钮，前往酒馆招募更多英雄。');
-        break;
-      case 4:
+        break;}
+      case 4:{
+        var _ab=document.getElementById('auto-battle-btn');
+        if(_ab){_ab.classList.add('guide-active');if(!_ab.querySelector('.guide-badge')){var _bd=document.createElement('div');_bd.className='guide-badge';_bd.textContent='4';_ab.appendChild(_bd);}}
         showGuideTip('auto-battle-btn','⚔️ 自动推图','太棒了！\n\n点击「自动推图」开始挑战关卡！');
-        break;
+        break;}
       case 5:
         showGuideTip('battle-nav-btn','💀 战斗','推图已开始！\n\n点击左侧「战斗」查看战斗画面。');
         break;
@@ -5905,7 +5775,6 @@ function renderBondsHTML(activeBonds, compact){
 }
 
 
-
 // 装备特殊技能定义
 const EQUIP_SPECIAL_SKILLS = {
   'sk_fire_enchant': {
@@ -6488,6 +6357,8 @@ let G = {
   zodiacTokens: 0,               // 生肖币（刷Boss获得）
   dailyScrollShop: [],           // 每日刷新的卷轴商店 [{scrollId, price, sold, ...}]
   dailyScrollShopDate: '',       // 商店刷新日期
+  // 自动分解系统
+  autoDecompose: { enabled: false, maxQuality: 'common' }, // 自动分解设置
 };
 
 // ==================== 存档系统 V5（无损序列化 + IndexedDB 为主存储） ====================
@@ -8467,6 +8338,12 @@ function showModal(title,contentHTML,buttons){
 }
 function closeModal(){
   document.getElementById('modal-root').innerHTML='';
+  // 引导奖励弹窗（等合成结果关闭后触发）
+  if(window._pendingGuideReward){
+    window._pendingGuideReward=false;
+    setTimeout(function(){ finishTutorial(); }, 150);
+    return;
+  }
   // 事件弹窗关闭后自动显示合成结果
   if(window._pendingMergeResult && window._accidentHero){
     window._pendingMergeResult = false;
@@ -12544,6 +12421,8 @@ async function runBattle(stageOrId){
     }
     
     let drop=null;
+    let dropAutoDecomposed=false;
+    let dropIron=0;
     if(Math.random()<0.3+stage.id*0.05 && G.equipment.length < MAX_EQUIPMENT_COUNT){
       const possibleDrops=EQUIP_TEMPLATES.filter(e=>QUALITIES.indexOf(e.quality)<=Math.min(stage.id,4));
       if(possibleDrops.length>0){
@@ -12551,9 +12430,22 @@ async function runBattle(stageOrId){
         drop={uid:++G.heroIdCounter,id:tpl.id,heroUid:null};
         G.equipment.push(drop);
         recordCodex('equipment',tpl.id);
+        // 自动分解检查
+        var adResult = autoDecomposeCheck(drop);
+        if (adResult) {
+          dropAutoDecomposed = true;
+          dropIron = adResult.iron;
+          drop = null; // 已分解，标记为空
+        }
       }
     }
-    log('\n📦 战利品：💰'+(rw.gold||0)+' 🍞'+(rw.food||0)+' 🪨'+(rw.stone||0)+' ⛏️'+(rw.iron||0)+(rw.gems?' 💎'+rw.gems:'')+' ⭐经验+'+(rw.exp||0)+(potionDrop>0?' 🧪经验药水+'+potionDrop:'')+(drop?' 🎁'+EQUIP_TEMPLATES.find(t=>t.id===drop.id).name:''),'title');
+    var lootLog = '\n📦 战利品：💰'+(rw.gold||0)+' 🍞'+(rw.food||0)+' 🪨'+(rw.stone||0)+' ⛏️'+(rw.iron||0)+(rw.gems?' 💎'+rw.gems:'')+' ⭐经验+'+(rw.exp||0)+(potionDrop>0?' 🧪经验药水+'+potionDrop:'');
+    if (dropAutoDecomposed) {
+      lootLog += ' ♻️自动分解+⛏️'+dropIron;
+    } else if (drop) {
+      lootLog += ' 🎁'+EQUIP_TEMPLATES.find(t=>t.id===drop.id).name;
+    }
+    log(lootLog,'title');
     if(G.pveWinStreak>=3){
       log('🔥 '+G.pveWinStreak+'连胜！奖励加成 +'+Math.round((streakBonus-1)*100)+'%','crit');
     }
@@ -12578,6 +12470,24 @@ async function runBattle(stageOrId){
     checkAchievement('battle_6');
   }else{
     showToast('战斗失败...');
+  }
+
+  // 肉鸽回调
+  if(window._rlPendingCallback){
+    var _rlCb = window._rlPendingCallback;
+    window._rlPendingCallback = null;
+    // 将战斗后 HP 写回肉鸽英雄对象（unit.hero 指向同一引用，直接同步）
+    playerUnits.forEach(function(u){
+      if(u.hero && u.hero.uid && String(u.hero.uid).startsWith('rl_')){
+        u.hero.hp = Math.max(0, Math.floor(u.hp));
+      }
+    });
+    updateResUI();
+    G_battleRunning = false;
+    G_battlePaused = false;
+    if(won){ _rlCb.onWin(); }
+    else { _rlCb.onLose(); }
+    return;
   }
 
   updateResUI();
@@ -13482,14 +13392,24 @@ function generateFusedHero(heroes){
     atk=Math.floor(atk*(1+omenEffects.atkBonus));
   }
   
-  // === 限制属性不超过品质上限 ===
+  // === 隐藏规则：属性超出品质上限10倍时对数衰减，收益趋近于0 ===
+  // 公式：超出部分 = cap * ln(1 + excess/cap)，使超出越多增量越少
+  function _softStat(val, cap){
+    if(!cap || val <= cap * 10) return val;
+    var threshold = cap * 10;
+    var excess = val - threshold;
+    var softExcess = cap * Math.log(1 + excess / cap);
+    return Math.floor(threshold + softExcess);
+  }
+
+  // === 限制属性不超过品质上限（含对数衰减） ===
   if(STAT_QUALITY_CAP && STAT_QUALITY_CAP[newQuality]){
     var cap=STAT_QUALITY_CAP[newQuality];
-    maxHP=Math.min(maxHP,cap.maxHP);
-    atk=Math.min(atk,cap.atk);
-    def=Math.min(def,cap.def);
-    spd=Math.min(spd,cap.spd);
-    maxMP=Math.min(maxMP,cap.maxMP);
+    maxHP=_softStat(maxHP, cap.maxHP);
+    atk=_softStat(atk, cap.atk);
+    def=_softStat(def, cap.def);
+    spd=_softStat(spd, cap.spd);
+    maxMP=_softStat(maxMP, cap.maxMP);
   }
   
   console.log('[Merge]',newQuality,mainRole,'mult='+inheritMult.toFixed(2),'finalHP='+maxHP);
@@ -13823,10 +13743,14 @@ function showMergeResult(hero, isQualityUp, oldQuality, materials, accident){
 
 function closeMergeResult(){
   var overlay=document.querySelector('.merge-result-overlay');
-  // 清理所有可能的特效元素（包括新增的羁绊、连击、逆境等特效）
   var flashes=document.querySelectorAll('.merge-mythic-flash,.merge-legendary-flash,.merge-quality-up-flash,.merge-mutation-flash,.merge-mythic-text,.merge-legendary-text,.merge-mythic-particles,.merge-bond-flash,.merge-streak-flash,.merge-upset-flash,.merge-enhance-flash');
   if(overlay)overlay.remove();
   flashes.forEach(function(f){f.remove()});
+  // 引导奖励：合成结果关闭后触发
+  if(window._pendingGuideReward){
+    window._pendingGuideReward=false;
+    setTimeout(function(){ finishTutorial(); }, 200);
+  }
 }
 
 // ==================== 合成事件系统 ====================
@@ -15325,6 +15249,15 @@ function executeMerge(heroUids){
   
   // 添加新英雄
   G.heroes.push(newHero);
+  // 引导 step8：融合完成后结束引导
+  // 引导：进入合成页后只要合成了2个以上英雄就发奖励（step>=6）
+  if(G.tutorialPhase==='guide' && G.tutorialStep>=6 && heroes.length>=2){
+    hideGuideTip();
+    G.tutorialDone=true;
+    G.tutorialPhase='';
+    G.tutorialStep=0;
+    window._pendingGuideReward=true;
+  }
   
   // === 卷轴效果：经验催化 ===
   if (newHero._scrollExpBoost) {
@@ -16218,19 +16151,17 @@ function switchTab(tab){
 function renderCurrentTab(){
   var contentEl=document.getElementById('content');
   var battlePanel=document.getElementById('battle-panel');
+  if(!contentEl) return; // DOM未就绪
   
   if(G_battleRunning && currentTab==='battle'){
-    // 战斗中切到战斗页（手动或自动推图）：显示战斗面板，隐藏content
     contentEl.style.display='none';
     battlePanel.style.display='';
   }else if(G_battleRunning){
-    // 战斗运行中切到其他页：隐藏战斗面板，显示content
     battlePanel.style.display='none';
     contentEl.style.display='';
   }else{
-    // 没有战斗：正常显示content
     contentEl.style.display='';
-    battlePanel.style.display='none';
+    if(battlePanel) battlePanel.style.display='none';
   }
   
   switch(currentTab){
@@ -16244,6 +16175,7 @@ function renderCurrentTab(){
     case 'arena': renderArena(contentEl);break;
     case 'codex': renderCodex(contentEl);break;
     case 'achievements': renderAchievements(contentEl);break;
+    case 'roguelike': renderRoguelike(contentEl);break;
     case 'leaderboard': renderLeaderboard(contentEl);break;
     case 'breakthrough': contentEl.innerHTML=renderBreakthroughUI();break;
     case 'cheats': renderCheats(contentEl);break;
@@ -16252,6 +16184,23 @@ function renderCurrentTab(){
 }
 
 function renderTown(el){
+  // 确保所有基础数据结构存在（防止重置后新游戏字段缺失）
+  G.resources=G.resources||{};
+  G.resources.gold=G.resources.gold||0;
+  G.resources.gems=G.resources.gems||0;
+  G.resources.food=G.resources.food||0;
+  G.resources.expPotion=G.resources.expPotion||0;
+  G.resources.stone=G.resources.stone||0;
+  G.resources.iron=G.resources.iron||0;
+  G.zodiacTokens=G.zodiacTokens||G.resources.zodiacTokens||0;
+  G.team=G.team||[];
+  G.equipment=G.equipment||[];
+  G.buildings=G.buildings||{};
+  G.heroes=G.heroes||[];
+  G.stageProgress=G.stageProgress||1;
+  G.tutorialPhase=G.tutorialPhase||'';
+  G.tutorialStep=G.tutorialStep||0;
+
   // 数据初始化和错误处理
   try{
     var nextStage=getStage(G.stageProgress);
@@ -16259,12 +16208,6 @@ function renderTown(el){
     console.error('[Town Error] getStage:',e);
     var nextStage={icon:'💀',name:'未知关卡'};
   }
-  
-  // 确保基础数据结构存在
-  G.team=G.team||[];
-  G.equipment=G.equipment||[];
-  G.buildings=G.buildings||{};
-  G.heroes=G.heroes||[];
   
   // 计算统计（带防护）
   var heroCount=G.heroes.length;
@@ -16296,7 +16239,23 @@ function renderTown(el){
   
   // 构建HTML
   try{
-    el.innerHTML='<div class="panel town-main-panel">'
+    // 新手引导进度条（仅在引导阶段显示）
+    var guideProgressHtml = '';
+    if(G.tutorialPhase === 'guide' && G.tutorialStep >= 1 && G.tutorialStep <= 6){
+      var _stepLabels = ['','招募英雄','招募英雄','编入队伍','开始推图','查看战斗','合成融合'];
+      var _stepIcons  = ['','🍺','🍺','🛡️','⚔️','💀','⚗️'];
+      var _curStep = Math.min(G.tutorialStep, 6);
+      var _pct = Math.round((_curStep-1)/5*100);
+      guideProgressHtml = '<div class="town-guide-progress">'
+        +'<span class="town-guide-progress-label">📖 新手引导</span>'
+        +'<div class="town-guide-progress-bar"><div class="town-guide-progress-fill" style="width:'+_pct+'%"></div></div>'
+        +'<span class="town-guide-step-text">'+_stepIcons[_curStep]+' '+_stepLabels[_curStep]+'</span>'
+        +'</div>';
+    }
+    var _isGuideRecruit = (G.tutorialPhase==='guide' && G.tutorialStep===1);
+    var _isGuideAutoBattle = (G.tutorialPhase==='guide' && G.tutorialStep===4);
+
+        el.innerHTML=guideProgressHtml+'<div class="panel town-main-panel">'
       +'<div class="town-header">'
         +'<div class="town-title-row">'
           +'<span class="icon">🏰</span>'
@@ -16310,28 +16269,40 @@ function renderTown(el){
           +'<div class="town-res-item" title="生肖币"><span class="town-res-icon">🐉</span><span class="town-res-val gold" id="res-zodiacTokens" style="color:#ffa500">'+(G.zodiacTokens||0)+'</span></div>'
         +'</div>'
       +'</div>'
+      // 英雄统计摘要（带图标）
+      +'<div class="town-hero-summary">'
+        +'<div class="town-hero-summary-item"><span class="town-hero-summary-icon">👥</span><div class="town-hero-summary-val">'+heroCount+'</div><div class="town-hero-summary-lbl">英雄总数</div></div>'
+        +'<div class="town-hero-summary-item"><span class="town-hero-summary-icon">⚔️</span><div class="town-hero-summary-val">'+teamCount+'/6</div><div class="town-hero-summary-lbl">队伍编成</div></div>'
+        +'<div class="town-hero-summary-item"><span class="town-hero-summary-icon">💪</span><div class="town-hero-summary-val">'+teamPower+'</div><div class="town-hero-summary-lbl">队伍战力</div></div>'
+        +'<div class="town-hero-summary-item"><span class="town-hero-summary-icon">🗺️</span><div class="town-hero-summary-val">'+(G.stageProgress-1)+'</div><div class="town-hero-summary-lbl">已通关卡</div></div>'
+      +'</div>'
+      // 故事区域（紧凑版 + 动态进度提示）
       +'<div class="town-story-section">'
         +'<span class="town-story-deco">⛓️</span>'
         +'<span class="town-story-torch">🔥</span>'
         +'<div class="town-story-dust"></div>'
-        +'<div class="town-story-text">黑暗笼罩了这片大陆。曾经繁荣的帝国已经覆灭，亡灵和恶魔在废墟中游荡。</div>'
-        +'<div class="town-story-text">你是最后的希望——一位流浪的指挥官，必须召集英雄，探索地牢，击败黑暗势力。</div>'
-      +'</div>'
-      +'<div class="town-hero-summary">'
-        +'<div class="town-hero-summary-item"><div class="town-hero-summary-val">'+heroCount+'</div><div class="town-hero-summary-lbl">英雄</div></div>'
-        +'<div class="town-hero-summary-item"><div class="town-hero-summary-val">'+teamCount+'/6</div><div class="town-hero-summary-lbl">队伍</div></div>'
-        +'<div class="town-hero-summary-item"><div class="town-hero-summary-val">'+teamPower+'</div><div class="town-hero-summary-lbl">战力</div></div>'
-        +'<div class="town-hero-summary-item"><div class="town-hero-summary-val">'+(G.stageProgress-1)+'</div><div class="town-hero-summary-lbl">关卡</div></div>'
+        +'<div class="town-story-text" style="font-size:11px;line-height:1.7">黑暗笼罩大陆，亡灵在废墟游荡。召集英雄，击败黑暗势力。</div>'
       +'</div>'
     +'</div>'
-    +'<div class="panel town-quick-panel">'
-      +'<div class="panel-title"><span class="icon">⚔️</span> 快速入口</div>'
-      +'<div class="town-quick-btns">'
-        +'<button class="btn btn-primary auto-battle-btn" id="auto-battle-btn" style="flex:1" onclick="startAutoBattle(G.stageProgress)">▶️ 自动推图</button>'
-        +'<button class="btn" id="town-recruit" style="flex:1" onclick="onGuideRecruitClick()">🍺 招募</button>'
-      +'</div>'
-    +'</div>'
+    // 功能模块入口（招募和推图优先）
     +'<div class="town-modules-grid">'
+      +'<div id="town-recruit" class="town-module-btn'+(_isGuideRecruit?' guide-active':'')+'" onclick="onGuideRecruitClick()" style="background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(217,119,6,.06));border-color:rgba(245,158,11,.25)">'
+        +(_isGuideRecruit?'<div class="guide-badge">1</div>':'')
+        +'<div class="town-module-btn-icon">🍺</div>'
+        +'<div class="town-module-btn-name" style="color:#fbbf24">招募</div>'
+        +'<div class="town-module-btn-info" style="color:#f59e0b">酒馆招贤</div>'
+      +'</div>'
+      +'<div id="auto-battle-btn" class="town-module-btn'+(_isGuideAutoBattle?' guide-active':'')+'" onclick="startAutoBattle(G.stageProgress)" style="background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(37,99,235,.08));border-color:rgba(59,130,246,.3)">'
+        +(_isGuideAutoBattle?'<div class="guide-badge">4</div>':'')
+        +'<div class="town-module-btn-icon">▶️</div>'
+        +'<div class="town-module-btn-name" style="color:#60a5fa">自动推图</div>'
+        +'<div class="town-module-btn-info" style="color:#93c5fd">第'+(G.stageProgress||1)+'关</div>'
+      +'</div>'
+      +'<div class="town-module-btn" onclick="switchTab(\'battle\')">'
+        +'<div class="town-module-btn-icon">🗡️</div>'
+        +'<div class="town-module-btn-name">战斗</div>'
+        +'<div class="town-module-btn-info">查看战况</div>'
+      +'</div>'
       +'<div class="town-module-btn" onclick="switchTab(\'heroes\')">'
         +'<div class="town-module-btn-icon">👥</div>'
         +'<div class="town-module-btn-name">英雄</div>'
@@ -16342,25 +16313,25 @@ function renderTown(el){
         +'<div class="town-module-btn-name">编队</div>'
         +'<div class="town-module-btn-info">'+teamCount+'/6</div>'
       +'</div>'
-      +'<div class="town-module-btn" onclick="switchTab(\'battle\')">'
-        +'<div class="town-module-btn-icon">🗡️</div>'
-        +'<div class="town-module-btn-name">战斗</div>'
-        +'<div class="town-module-btn-info">第'+(G.stageProgress||1)+'关</div>'
-      +'</div>'
       +'<div class="town-module-btn" onclick="switchTab(\'merge\')">'
         +'<div class="town-module-btn-icon">⚗️</div>'
         +'<div class="town-module-btn-name">合成</div>'
-        +'<div class="town-module-btn-info">融合</div>'
+        +'<div class="town-module-btn-info">融合晋升</div>'
       +'</div>'
       +'<div class="town-module-btn" onclick="switchTab(\'equip\')">'
         +'<div class="town-module-btn-icon">🛡️</div>'
         +'<div class="town-module-btn-name">装备</div>'
-        +'<div class="town-module-btn-info">'+equipCount+' 件</div>'
+        +'<div class="town-module-btn-info">'+equipCount+' 件闲置</div>'
+      +'</div>'
+      +'<div class="town-module-btn" onclick="switchTab(\'roguelike\')" style="background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(139,69,197,.08));border-color:rgba(168,85,247,.3)">'
+        +'<div class="town-module-btn-icon" style="filter:drop-shadow(0 0 6px rgba(168,85,247,.5))">🎲</div>'
+        +'<div class="town-module-btn-name" style="color:#c084fc">肉鸽地牢</div>'
+        +'<div class="town-module-btn-info" style="color:#a855f7">随机挑战</div>'
       +'</div>'
       +'<div class="town-module-btn" onclick="switchTab(\'leaderboard\')">'
         +'<div class="town-module-btn-icon">🏆</div>'
         +'<div class="town-module-btn-name">排行</div>'
-        +'<div class="town-module-btn-info">查看榜单</div>'
+        +'<div class="town-module-btn-info">竞技榜单</div>'
       +'</div>'
       +(G.stageProgress>=101
         ? '<div class="town-module-btn zodiac-entry-btn" onclick="switchTab(\'zodiac\')" style="border-color:rgba(255,180,0,.5);background:linear-gradient(135deg,rgba(255,140,0,.12),rgba(180,80,0,.08))">'
@@ -16375,41 +16346,30 @@ function renderTown(el){
           +'</div>'
       )
     +'</div>'
-    // 兑换码和存档管理入口（卡片式按钮）
-    +'<div class="town-modules-grid" style="margin-top:12px">'
-      +'<div class="town-module-btn" onclick="showRedeemModal()">'
-        +'<div class="town-module-btn-icon">🎁</div>'
-        +'<div class="town-module-btn-name">兑换码</div>'
-        +'<div class="town-module-btn-info">加群领礼包</div>'
-      +'</div>'
-      +'<div class="town-module-btn" onclick="showSaveManageModal()">'
-        +'<div class="town-module-btn-icon">💾</div>'
-        +'<div class="town-module-btn-name">存档管理</div>'
-        +'<div class="town-module-btn-info">本地+云端</div>'
-      +'</div>'
-      +'<div class="town-module-btn" onclick="showCheatEntryModal()">'
-        +'<div class="town-module-btn-icon">🔓</div>'
-        +'<div class="town-module-btn-name">金手指</div>'
-        +'<div class="town-module-btn-info">'+(G_cheats&&G_cheats.unlocked?'已解锁':'未解锁')+'</div>'
-      +'</div>'
-    +'</div>'
-    // 离线收益和每日登录（已屏蔽）
-    // +(G.offlineEarnings?'<div class="daily-bonus-banner" style="cursor:pointer;background:linear-gradient(135deg,rgba(100,200,255,.15),rgba(50,150,255,.05));border-color:rgba(100,200,255,.3)" onclick="claimOfflineEarnings()">'
-    //   +'<span style="font-size:16px">💤</span> 离线收益可领取！离线 '+G.offlineEarnings.hours.toFixed(1)+' 小时<br>'
-    //   +'<span class="text-xs">💰'+G.offlineEarnings.gold+' 🍞'+G.offlineEarnings.food+' 🪨'+G.offlineEarnings.stone+' ⛏️'+G.offlineEarnings.iron+'</span>'
-    // +'</div>':'')
-    // +(!G.dailyBonusClaimed?'<div class="daily-bonus-banner" style="cursor:pointer" onclick="claimDailyBonus()">'
-    //   +'<span style="font-size:16px">🎁</span> 点击领取每日登录奖励！<br>'
-    //   +'<span class="text-xs text-dim">随进度提升：约'+(200+G.stageProgress*30)+'💰 '+(100+G.stageProgress*10)+'🍞 '+(30+G.stageProgress*5)+'🪨 '+(15+G.stageProgress*3)+'⛏️</span>'
-    // +'</div>':'')
-  }catch(htmlErr){
-    // HTML生成失败时显示原始错误
+    +'<div style="display:flex;gap:6px;margin-top:8px">'
+      +'<button class="btn btn-sm" style="flex:1;font-size:11px;padding:7px 4px" onclick="showRedeemModal()">🎁 兑换码</button>'
+      +'<button class="btn btn-sm" style="flex:1;font-size:11px;padding:7px 4px" onclick="showSaveManageModal()">💾 存档</button>'
+      +'<button class="btn btn-sm" style="flex:1;font-size:11px;padding:7px 4px;'+(G_cheats&&G_cheats.unlocked?'color:var(--gold);border-color:rgba(212,175,55,.4)':'')+'" onclick="showCheatEntryModal()">🔓 金手指</button>'
+    +'</div>';}catch(htmlErr){
     console.error('[Town Error] HTML generation:',htmlErr);
-    el.innerHTML='<div class="panel" style="border-color:#ff6b6b;background:rgba(255,107,107,.1)">'
-      +'<div style="color:#ff6b6b;font-weight:bold;margin-bottom:8px">❌ 主界面加载失败</div>'
-      +'<div style="color:var(--text2);font-size:11px">'+htmlErr.message+'</div>'
-      +'<button class="btn" style="margin-top:12px" onclick="location.reload()">🔄 刷新页面</button>'
-    +'</div>';
+    // 降级渲染：显示核心功能按钮，避免完全黑屏
+    try{
+      el.innerHTML='<div class="panel">'
+        +'<div class="panel-title">🏰 暗影地牢</div>'
+        +'<div class="town-modules-grid" style="margin-top:12px">'
+          +'<div class="town-module-btn" onclick="onGuideRecruitClick()"><div class="town-module-btn-icon">🍺</div><div class="town-module-btn-name">招募</div></div>'
+          +'<div class="town-module-btn" onclick="startAutoBattle(G.stageProgress||1)"><div class="town-module-btn-icon">▶️</div><div class="town-module-btn-name">推图</div></div>'
+          +'<div class="town-module-btn" onclick="switchTab(\'battle\')"><div class="town-module-btn-icon">🗡️</div><div class="town-module-btn-name">战斗</div></div>'
+          +'<div class="town-module-btn" onclick="switchTab(\'heroes\')"><div class="town-module-btn-icon">👥</div><div class="town-module-btn-name">英雄</div></div>'
+          +'<div class="town-module-btn" onclick="switchTab(\'team\')"><div class="town-module-btn-icon">⚔️</div><div class="town-module-btn-name">编队</div></div>'
+          +'<div class="town-module-btn" onclick="switchTab(\'merge\')"><div class="town-module-btn-icon">⚗️</div><div class="town-module-btn-name">合成</div></div>'
+        +'</div>'
+        +'<div style="margin-top:8px;padding:8px;background:rgba(255,100,100,.08);border:1px solid rgba(255,100,100,.2);border-radius:6px;font-size:11px;color:#ff9999">'
+          +'⚠️ '+htmlErr.message
+          +'<button class="btn btn-sm" style="margin-left:8px" onclick="location.reload()">刷新</button>'
+        +'</div>'
+      +'</div>';
+    }catch(e2){}
   }
   showTownGuideIfNeeded();
 }
@@ -18012,7 +17972,6 @@ function showTalentTree(heroUid){
 .arena-diff-btn.active{background:var(--panel);border-color:var(--gold);box-shadow:0 0 8px rgba(201,162,39,.3)}
 
 /* 突破按钮特效 */
-@keyframes breakthroughGlow{0%,100%{box-shadow:0 0 5px rgba(168,85,247,.3)}50%{box-shadow:0 0 15px rgba(168,85,247,.6)}}
 .btn-breakthrough{animation:breakthroughGlow 2s ease infinite;border-color:var(--purple);color:var(--purple)}
 .btn-breakthrough:hover{background:linear-gradient(135deg,#1a0a2a,#2a1a3a);box-shadow:0 0 15px rgba(168,85,247,.4)}
 
@@ -18682,7 +18641,13 @@ function quickClear(stageId){
       var drop={uid:++G.heroIdCounter,id:tpl.id,heroUid:null};
       G.equipment.push(drop);
       recordCodex('equipment',tpl.id);
-      showToast('扫荡成功！获得 '+tpl.name);
+      // 自动分解检查
+      var adResult = autoDecomposeCheck(drop);
+      if (adResult) {
+        showToast('扫荡成功！♻️自动分解 '+tpl.name+' → ⛏️'+adResult.iron);
+      } else {
+        showToast('扫荡成功！获得 '+tpl.name);
+      }
     }else{
       showToast('扫荡成功！💰'+finalGold+' 🍞'+finalFood);
     }
@@ -18776,7 +18741,12 @@ function renderMerge(el){
       clickHandler=isUsed?'removeMergeHero('+h.uid+')':'addMergeHero('+h.uid+')';
     }
     
-    heroesHTML+='<div class="hero-card quality-'+h.quality+'" data-uid="'+h.uid+'" onclick="'+clickHandler+'" style="'+cardStyle+'">';
+    // 引导 step7：给第一张可用英雄卡加 id
+    var _guideCardId='';
+    if(G.tutorialPhase==='guide' && G.tutorialStep>=6 && heroesHTML==='' && !isInTeam && !h.locked && !isUsed){
+      _guideCardId=' id="guide-merge-hero"';
+    }
+    heroesHTML+='<div class="hero-card quality-'+h.quality+'"'+_guideCardId+' data-uid="'+h.uid+'" onclick="'+clickHandler+'" style="'+cardStyle+'">';
     
     // 已选标记
     if(isUsed){
@@ -19213,19 +19183,35 @@ function quickAddMergeHeroes(mode){
 
 function addMergeHero(heroUid){
   heroUid = Number(heroUid);
+  // 已在槽位中，忽略
   for(var i=0;i<3;i++){
     if(window._mergeSlots[i]!=null && window._mergeSlots[i]==heroUid){
       return;
     }
   }
+  // 加入槽位
+  var added=false;
   for(var i=0;i<3;i++){
     if(!window._mergeSlots[i]){
       window._mergeSlots[i]=heroUid;
-      updateMergeUI();
-      return;
+      added=true;
+      break;
     }
   }
-  showToast('合成框已满（最多3个）');
+  if(!added){ showToast('合成框已满（最多3个）'); return; }
+  
+  // 引导step6：动态提示下一步操作
+  if(G.tutorialPhase==='guide' && G.tutorialStep>=6){
+    var _filled=(window._mergeSlots||[]).filter(Boolean).length;
+    if(_filled===1){
+      showGuideTip('merge-slot-1','👥 继续添加','再选一个英雄加入融合槽！','below');
+    } else if(_filled>=2){
+      setTimeout(function(){
+        showGuideTip('merge-btn','⚗️ 开始融合','英雄已就位！\n\n点击「开始融合」完成引导并获得奖励！','above');
+      }, 200);
+    }
+  }
+  updateMergeUI();
 }
 
 function removeMergeHero(heroUid){
@@ -19784,7 +19770,38 @@ function renderEquip(el){
     +'<div class="text-xs text-dim" style="margin-top:5px">一键穿戴: 按战力分配 · 一键强化: 已穿戴高品质优先</div>'
     +'</div>';
 
+  // 自动分解面板
+  if (!G.autoDecompose) G.autoDecompose = { enabled: false, maxQuality: 'common' };
+  var adEnabled = G.autoDecompose.enabled;
+  var adMaxQ = G.autoDecompose.maxQuality;
+  var qColors = {common:'#aaa',rare:'#5b9bd5',epic:'#b06ce6',legendary:'#e8c840',mythic:'#ff6b6b'};
+  var qualityNames = {common:'普通',rare:'稀有',epic:'史诗',legendary:'传说',mythic:'神话'};
+  var adQualities = ['common','rare','epic','legendary','mythic'];
+  var adQualityBtns = adQualities.map(function(q){
+    var isActive = (adMaxQ === q);
+    return '<button class="btn btn-sm" onclick="setAutoDecomposeQuality(\''+q+'\')" style="flex:1;'
+      +'background:'+(isActive?'rgba(212,175,55,.15)':'rgba(255,255,255,.03)')+';'
+      +'border-color:'+(isActive?'var(--gold)':'var(--border)')+';'
+      +'color:'+(isActive?'var(--gold)':qColors[q])+';'
+      +'font-weight:'+(isActive?'bold':'normal')+'">'
+      +(isActive?'⭐ ':'')+qualityNames[q]+(isActive?' ✓':'')+'</button>';
+  }).join('');
+  
+  var autoDecomposeHtml='<div class="panel" style="margin-bottom:0;border-color:'+(adEnabled?'var(--gold)':'var(--border)')+'">'
+    +'<div class="panel-title"><span class="icon">♻️</span> 自动分解'
+    +'<span style="font-size:11px;margin-left:8px;color:'+(adEnabled?'var(--green)':'var(--text3)')+'">'
+    +(adEnabled?'🟢 已开启':'⚫ 已关闭')+'</span></div>'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
+    +'<button class="btn '+(adEnabled?'btn-primary':'')+'" onclick="toggleAutoDecompose()" style="flex:1;font-weight:bold">'
+    +(adEnabled?'⏸️ 关闭自动分解':'▶️ 开启自动分解')+'</button>'
+    +'</div>'
+    +(adEnabled?'<div style="font-size:11px;color:var(--text2);margin-bottom:8px">📋 自动分解品质上限（含以下品质自动分解）：</div><div class="btn-group" style="gap:4px">'+adQualityBtns+'</div>'
+      +'<div style="font-size:10px;color:var(--text3);margin-top:6px">💡 战斗/扫荡获得装备时，若品质≤ '+qualityNames[adMaxQ]+' 则自动分解为铁矿</div>'
+    :'<div style="font-size:10px;color:var(--text3)">💡 开启后，战斗/扫荡获得的低品质装备将自动分解为铁矿</div>')
+    +'</div>';
+
   el.innerHTML=quickHtml
+    +autoDecomposeHtml
     +'<div class="panel" style="padding:0;overflow:hidden">'
     + tabBar
     +'<div style="padding:12px">'+ activeContent+'</div>'
@@ -20118,6 +20135,50 @@ function doDecompose(equipUid,tpl){
   saveGame();
   updateResUI();
   renderCurrentTab();
+}
+
+// ==================== 自动分解系统 ====================
+// 切换自动分解开关
+function toggleAutoDecompose(){
+  if (!G.autoDecompose) G.autoDecompose = { enabled: false, maxQuality: 'common' };
+  G.autoDecompose.enabled = !G.autoDecompose.enabled;
+  saveGame();
+  renderCurrentTab();
+  var status = G.autoDecompose.enabled ? '✅ 自动分解已开启' : '⏸️ 自动分解已关闭';
+  showToast(status);
+}
+
+// 设置自动分解品质上限
+function setAutoDecomposeQuality(quality){
+  if (!G.autoDecompose) G.autoDecompose = { enabled: false, maxQuality: 'common' };
+  G.autoDecompose.maxQuality = quality;
+  saveGame();
+  renderCurrentTab();
+}
+
+// 自动分解检查：传入装备对象，如果符合条件则自动分解并返回铁矿数量
+// 返回: null表示未分解（保留装备），{iron: number}表示已分解
+function autoDecomposeCheck(eq){
+  if (!G.autoDecompose || !G.autoDecompose.enabled) return null;
+  if (!eq || eq.heroUid !== null) return null; // 已装备的不分解
+  
+  var tpl = EQUIP_TEMPLATES.find(function(t){ return t.id === eq.id; });
+  if (!tpl) return null;
+  
+  var maxIdx = QUALITIES.indexOf(G.autoDecompose.maxQuality);
+  var eqIdx = QUALITIES.indexOf(tpl.quality);
+  if (eqIdx < 0 || eqIdx > maxIdx) return null; // 品质高于上限，保留
+  
+  // 执行分解
+  var baseIron = 5 + eqIdx * 10;
+  var enhanceBonus = (eq.enhance || 0) * 5;
+  var ironReturn = baseIron + enhanceBonus;
+  
+  // 从装备列表中移除
+  G.equipment = G.equipment.filter(function(e){ return e.uid !== eq.uid; });
+  G.resources.iron = Math.min((G.resources.iron || 0) + ironReturn, RESOURCE_LIMITS.iron);
+  
+  return { iron: ironReturn, name: tpl.name, quality: tpl.quality };
 }
 
 // 一键分解（分解指定品质及以下的所有未装备装备）
@@ -20773,6 +20834,578 @@ function showEquipmentGallery(){
 }
 
 // ==================== 排行榜页面 ====================
+
+// ==================== 肉鸽地牢系统 ====================
+// 设计：独立模式，不影响主线。临时英雄，每层选择祝福，全灭即结束，通关给奖励。
+
+var G_RL = null; // 当前肉鸽局状态
+
+// 肉鸽英雄起始模板（3选1）
+var RL_HERO_STARTERS = [
+  { role:'warrior',  name:'铁血战士', icon:'⚔️', quality:'rare',  level:5,  skills:['cleave','berserker','execute'] },
+  { role:'mage',     name:'虚空法师', icon:'🔮', quality:'rare',  level:5,  skills:['fireball','thunder','blizzard'] },
+  { role:'healer',   name:'圣光祭司', icon:'💚', quality:'rare',  level:5,  skills:['group_heal','revive','blessing'] },
+  { role:'assassin', name:'暗影刺客', icon:'🗡️', quality:'rare',  level:5,  skills:['backstab','assassinate','shadow_step'] },
+  { role:'guardian', name:'深渊守卫', icon:'🛡️', quality:'rare',  level:5,  skills:['taunt','iron_wall','sacrifice'] },
+];
+
+// 肉鸽祝福（每层通关后3选1）
+var RL_BLESSINGS = [
+  // 属性强化
+  { id:'hp_up',    name:'生命强化',   icon:'❤️',  desc:'全队最大HP +20%',   rarity:'common',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.2); h.hp=h.maxHP; }); } },
+  { id:'atk_up',   name:'攻击强化',   icon:'⚔️',  desc:'全队攻击 +20%',     rarity:'common',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.atk=Math.floor(h.atk*1.2); }); } },
+  { id:'def_up',   name:'防御强化',   icon:'🛡️',  desc:'全队防御 +20%',     rarity:'common',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.def=Math.floor(h.def*1.2); }); } },
+  { id:'spd_up',   name:'速度强化',   icon:'💨',  desc:'全队速度 +15%',     rarity:'common',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.spd=Math.floor(h.spd*1.15); }); } },
+  { id:'mp_up',    name:'魔力强化',   icon:'💎',  desc:'全队MP +25%，技能更强', rarity:'common',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxMP=Math.floor(h.maxMP*1.25); h.mp=h.maxMP; }); } },
+  // 特殊效果
+  { id:'full_heal', name:'圣泉沐浴',  icon:'💧',  desc:'全队HP完全恢复',    rarity:'common',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.hp=h.maxHP; }); } },
+  { id:'double_atk',name:'双刃之刃', icon:'⚡',  desc:'全队攻击 +40%，防御 -10%', rarity:'rare',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.atk=Math.floor(h.atk*1.4); h.def=Math.floor(h.def*0.9); }); } },
+  { id:'berserker_mode',name:'狂战模式',icon:'🔥',desc:'全队HP -20%，攻击 +50%', rarity:'rare',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*0.8); h.hp=Math.min(h.hp,h.maxHP); h.atk=Math.floor(h.atk*1.5); }); } },
+  { id:'ironhide',  name:'铁皮厚甲',  icon:'🏰',  desc:'全队防御 +50%，速度 -10%', rarity:'rare',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.def=Math.floor(h.def*1.5); h.spd=Math.floor(h.spd*0.9); }); } },
+  { id:'vampiric',  name:'吸血之契',  icon:'🧛',  desc:'全队攻击附带15%吸血', rarity:'rare',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h._rlLifeSteal=(h._rlLifeSteal||0)+0.15; }); } },
+  { id:'all_boost', name:'全属强化',  icon:'✨',  desc:'全队全属性 +15%',   rarity:'epic',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.15); h.hp=Math.floor(h.hp*1.15); h.atk=Math.floor(h.atk*1.15); h.def=Math.floor(h.def*1.15); h.spd=Math.floor(h.spd*1.15); h.maxMP=Math.floor(h.maxMP*1.15); }); } },
+  { id:'godly_power',name:'神圣赐福', icon:'👑',  desc:'全队攻击和HP各 +60%', rarity:'legendary',
+    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.6); h.hp=h.maxHP; h.atk=Math.floor(h.atk*1.6); }); } },
+  // 招募新英雄
+  { id:'recruit_warrior', name:'招募战士', icon:'⚔️', desc:'队伍加入一位稀有战士', rarity:'rare',
+    apply: function(rl){ if(rl.heroes.length<4) rl.heroes.push(rlCreateHero('warrior','rare',rl.floor*2+3)); } },
+  { id:'recruit_mage',    name:'招募法师', icon:'🔮', desc:'队伍加入一位稀有法师', rarity:'rare',
+    apply: function(rl){ if(rl.heroes.length<4) rl.heroes.push(rlCreateHero('mage','rare',rl.floor*2+3)); } },
+  { id:'recruit_healer',  name:'招募治愈者',icon:'💚', desc:'队伍加入一位稀有治愈者', rarity:'rare',
+    apply: function(rl){ if(rl.heroes.length<4) rl.heroes.push(rlCreateHero('healer','rare',rl.floor*2+3)); } },
+];
+
+// 肉鸽关卡生成
+var RL_FLOOR_THEMES = [
+  { name:'腐化矿坑', icon:'⛏️', enemies:[{role:'warrior',quality:'common'},{role:'warrior',quality:'common'}], modifier:'physical_resist' },
+  { name:'幽暗丛林', icon:'🌲', enemies:[{role:'ranger',quality:'common'},{role:'ranger',quality:'rare'}],   modifier:'high_dodge' },
+  { name:'骷髅墓地', icon:'💀', enemies:[{role:'guardian',quality:'rare'},{role:'warlock',quality:'common'}], modifier:'regen' },
+  { name:'熔岩深渊', icon:'🌋', enemies:[{role:'mage',quality:'rare'},{role:'mage',quality:'common'}],       modifier:'rage' },
+  { name:'冰封神殿', icon:'❄️', enemies:[{role:'paladin',quality:'rare'},{role:'healer',quality:'common'}],  modifier:'magic_resist' },
+  { name:'暗影要塞', icon:'🏰', enemies:[{role:'guardian',quality:'rare'},{role:'warrior',quality:'epic'}],  modifier:'shield_start' },
+  { name:'混沌裂隙', icon:'🌀', enemies:[{role:'warlock',quality:'epic'},{role:'assassin',quality:'rare'}],  modifier:'anti_heal' },
+];
+var RL_BOSS_THEMES = [
+  { name:'矿坑领主 · 铁甲蜘蛛', icon:'🕷️', role:'guardian', quality:'legendary', mult:3.0, skills:['taunt','iron_wall','fortify','ground_slam'] },
+  { name:'森林女巫 · 荆棘之母',  icon:'🌿', role:'warlock',  quality:'legendary', mult:3.2, skills:['plague','soul_chain','life_drain','curse'] },
+  { name:'亡灵将军 · 死亡行者',  icon:'💀', role:'warrior',  quality:'legendary', mult:3.5, skills:['execute','berserker','war_cry','cleave'] },
+  { name:'混沌魔法师 · 虚空之眼',icon:'👁️', role:'mage',     quality:'legendary', mult:4.0, skills:['meteor','mana_burst','blizzard','thunder'] },
+  { name:'深渊龙王 · 永恒毁灭',  icon:'🐉', role:'warrior',  quality:'mythic',    mult:5.0, skills:['execute','berserker','war_cry','ground_slam','cleave'] },
+];
+
+// 创建肉鸽临时英雄
+function rlCreateHero(role, quality, level) {
+  var r = ROLES[role];
+  if(!r) r = ROLES.warrior;
+  var qm = QUALITY_MULT[quality] || 1;
+  function cs(base){ return Math.max(1, Math.floor(base * qm * (1 + (level-1)*0.08))); }
+  var pool = ROLE_SKILLS[role] || ROLE_SKILLS.warrior;
+  var skills = pool.slice().sort(function(){return Math.random()-0.5}).slice(0,3);
+  return {
+    uid: 'rl_' + Date.now() + '_' + Math.random(),
+    name: r.name, icon: r.icon, role: role, quality: quality, level: level,
+    maxHP: cs(r.baseHP), atk: cs(r.baseATK), def: cs(r.baseDEF), spd: cs(r.baseSPD), maxMP: cs(r.baseMP),
+    hp: cs(r.baseHP), mp: cs(r.baseMP),
+    skills: skills, bonusSkills: [], equipment:{weapon:null,armor:null,accessory:null},
+    traits:[], isMutation:false
+  };
+}
+
+// 生成肉鸽关卡敌人
+function rlGenerateEnemies(floor) {
+  var isBoss = (floor % 5 === 0);
+  var scaleMult = 1 + (floor - 1) * 0.25;
+  var enemies = [];
+
+  if (isBoss) {
+    var bossTheme = RL_BOSS_THEMES[Math.min(Math.floor((floor/5)-1), RL_BOSS_THEMES.length-1)];
+    var r = ROLES[bossTheme.role];
+    var qm = QUALITY_MULT[bossTheme.quality] || 1;
+    var lv = Math.min(99, floor * 3);
+    function cs(base){ return Math.max(1, Math.floor(base * qm * scaleMult * bossTheme.mult * (1+(lv-1)*0.08))); }
+    enemies.push({ name:bossTheme.name, icon:bossTheme.icon, role:bossTheme.role, quality:bossTheme.quality,
+      level:lv, skills:bossTheme.skills, bonusSkills:[],
+      maxHP:cs(r.baseHP), atk:cs(r.baseATK), def:cs(r.baseDEF), spd:cs(r.baseSPD), maxMP:cs(r.baseMP),
+      hp:cs(r.baseHP), mp:0, equipment:{weapon:null,armor:null,accessory:null} });
+  } else {
+    var theme = RL_FLOOR_THEMES[(floor-1) % RL_FLOOR_THEMES.length];
+    theme.enemies.forEach(function(e) {
+      var r = ROLES[e.role] || ROLES.warrior;
+      var qm = QUALITY_MULT[e.quality] || 1;
+      var lv = Math.max(1, Math.min(99, floor * 2));
+      function cs(base){ return Math.max(1, Math.floor(base * qm * scaleMult * (1+(lv-1)*0.08))); }
+      var pool = ROLE_SKILLS[e.role] || ROLE_SKILLS.warrior;
+      var skills = pool.slice().sort(function(){return Math.random()-0.5}).slice(0,2);
+      enemies.push({ name:r.name, icon:r.icon, role:e.role, quality:e.quality,
+        level:lv, skills:skills, bonusSkills:[],
+        maxHP:cs(r.baseHP), atk:cs(r.baseATK), def:cs(r.baseDEF), spd:cs(r.baseSPD), maxMP:cs(r.baseMP),
+        hp:cs(r.baseHP), mp:0, equipment:{weapon:null,armor:null,accessory:null} });
+    });
+  }
+  return { enemies:enemies, isBoss:isBoss,
+    theme: isBoss ? RL_BOSS_THEMES[Math.min(Math.floor((floor/5)-1),RL_BOSS_THEMES.length-1)] : RL_FLOOR_THEMES[(floor-1)%RL_FLOOR_THEMES.length],
+    modifier: isBoss ? null : (RL_FLOOR_THEMES[(floor-1)%RL_FLOOR_THEMES.length].modifier || null) };
+}
+
+// 随机选3个祝福（加权：常见多，传说少）
+function rlGetBlessingChoices() {
+  var weights = { common:60, rare:30, epic:8, legendary:2 };
+  var pool = RL_BLESSINGS.slice().sort(function(){return Math.random()-0.5});
+  // 过滤：队满时不提供招募类
+  if (G_RL && G_RL.heroes.length >= 4) {
+    pool = pool.filter(function(b){ return !b.id.startsWith('recruit_'); });
+  }
+  var chosen = [];
+  var rarityOrder = ['legendary','epic','rare','common'];
+  // 保证至少1个好祝福
+  var guarantee = Math.random() < 0.3 ? 'rare' : 'common';
+  var byRarity = {};
+  rarityOrder.forEach(function(r){ byRarity[r] = pool.filter(function(b){return b.rarity===r;}); });
+  // 先放一个保底
+  var gpool = byRarity[guarantee].length ? byRarity[guarantee] : byRarity.common;
+  if(gpool.length) { chosen.push(gpool[Math.floor(Math.random()*gpool.length)]); }
+  // 再随机选2个（去重）
+  var remaining = pool.filter(function(b){ return !chosen.some(function(c){return c.id===b.id;}); });
+  while(chosen.length < 3 && remaining.length > 0) {
+    var idx = Math.floor(Math.random() * remaining.length);
+    chosen.push(remaining[idx]);
+    remaining.splice(idx, 1);
+  }
+  return chosen;
+}
+
+// 渲染肉鸽主界面
+function renderRoguelike(el) {
+  if (G_RL && G_RL.phase === 'blessing') {
+    renderRLBlessingChoose(el);
+    return;
+  }
+  if (G_RL && G_RL.phase === 'active') {
+    renderRLActive(el);
+    return;
+  }
+  // 主菜单
+  var bestFloor = parseInt(localStorage.getItem('_rl_best_floor') || '0', 10);
+  var bestRun   = JSON.parse(localStorage.getItem('_rl_best_run') || 'null');
+
+  el.innerHTML =
+    '<div class="panel" style="background:linear-gradient(145deg,rgba(20,10,40,.98),rgba(30,15,55,.95));border-color:rgba(168,85,247,.4)">'
+    + '<div style="text-align:center;padding:8px 0 16px">'
+      + '<div style="font-size:40px;margin-bottom:8px">🎲</div>'
+      + '<div style="font-size:18px;font-weight:bold;color:#c084fc;letter-spacing:2px;margin-bottom:4px">肉鸽地牢</div>'
+      + '<div style="font-size:12px;color:var(--text3)">每次挑战都是全新体验 · 全灭即结束</div>'
+    + '</div>'
+    // 规则说明
+    + '<div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--text2);line-height:2">'
+      + '🎲 每局随机选择 <b>3位初始英雄</b><br>'
+      + '⚔️ 每层击败敌人后选择 <b>祝福强化</b><br>'
+      + '💀 <b>每5层</b>遭遇精英Boss<br>'
+      + '❌ 英雄死亡不可复活，<b>全灭即失败</b><br>'
+      + '🎁 每5层奖励 💎宝石，<b>通关20层</b>额外奖励传说英雄'
+    + '</div>'
+    // 历史记录
+    + (bestFloor > 0
+      ? '<div style="background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px">'
+        + '🏆 历史最深：<b style="color:var(--gold)">第' + bestFloor + '层</b>'
+        + (bestRun ? '  |  ⚔️ 最多通关：' + bestRun.floor + '层' : '')
+        + '</div>'
+      : '')
+    // 开始按钮
+    + '<button class="btn btn-primary" style="width:100%;padding:14px;font-size:16px;background:linear-gradient(135deg,rgba(168,85,247,.9),rgba(139,69,197,.8));border-color:rgba(168,85,247,.6)" onclick="startRoguelike()">⚔️ 开始挑战</button>'
+    + (bestFloor > 0
+      ? '<button class="btn" style="width:100%;margin-top:8px;font-size:13px" onclick="renderRLHistory(document.getElementById(\'content\'))">📜 历史记录</button>'
+      : '')
+    + '</div>';
+}
+
+// 开始肉鸽
+function startRoguelike() {
+  // 构建初始英雄选择（随机3个起始英雄）
+  var pool = RL_HERO_STARTERS.slice().sort(function(){return Math.random()-0.5}).slice(0,3);
+  var el = document.getElementById('content');
+
+  el.innerHTML =
+    '<div class="panel" style="background:linear-gradient(145deg,rgba(20,10,40,.98),rgba(30,15,55,.95));border-color:rgba(168,85,247,.4)">'
+    + '<div style="text-align:center;margin-bottom:16px">'
+      + '<div style="font-size:16px;font-weight:bold;color:#c084fc">选择你的初始英雄</div>'
+      + '<div style="font-size:11px;color:var(--text3);margin-top:4px">你只能选择一位，但可以在挑战中招募更多</div>'
+    + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px">'
+    + pool.map(function(tpl, idx) {
+        var r = ROLES[tpl.role];
+        var skillNames = tpl.skills.map(function(s){ return SKILLS[s] ? SKILLS[s].name : s; }).join('、');
+        return '<div class="panel" style="cursor:pointer;border-color:rgba(168,85,247,.3);transition:all .2s" onclick="rlPickHero(' + idx + ',' + JSON.stringify(tpl).replace(/"/g,'\'') + ')">'
+          + '<div style="display:flex;align-items:center;gap:12px">'
+            + '<div style="font-size:36px;width:48px;text-align:center">' + tpl.icon + '</div>'
+            + '<div style="flex:1">'
+              + '<div style="font-weight:bold;color:#c084fc">' + tpl.name + ' <span style="font-size:11px;color:var(--text3)">Lv.' + tpl.level + ' ' + r.name + '</span></div>'
+              + '<div style="font-size:11px;color:var(--text2);margin-top:2px">' + r.desc + '</div>'
+              + '<div style="font-size:10px;color:var(--text3);margin-top:4px">技能：' + skillNames + '</div>'
+            + '</div>'
+            + '<div style="text-align:right;font-size:11px;color:var(--text3)">'
+              + '❤️' + Math.floor(ROLES[tpl.role].baseHP * (QUALITY_MULT[tpl.quality]||1) * (1+(tpl.level-1)*0.08)) + '<br>'
+              + '⚔️' + Math.floor(ROLES[tpl.role].baseATK * (QUALITY_MULT[tpl.quality]||1) * (1+(tpl.level-1)*0.08))
+            + '</div>'
+          + '</div>'
+        + '</div>';
+      }).join('')
+    + '</div>'
+    + '<button class="btn" style="width:100%;margin-top:12px" onclick="renderRoguelike(document.getElementById(\'content\'))">返回</button>'
+    + '</div>';
+
+  // 存储pool供选择回调用
+  window._rlStarterPool = pool;
+}
+
+function rlPickHero(idx, tpl) {
+  var hero = rlCreateHero(tpl.role, tpl.quality, tpl.level);
+  hero.name = tpl.name;
+  hero.skills = tpl.skills.slice();
+
+  G_RL = {
+    phase: 'active',
+    floor: 1,
+    heroes: [hero],
+    blessings: [],
+    history: [],
+    startTime: Date.now()
+  };
+  renderRLActive(document.getElementById('content'));
+}
+
+// 渲染活跃肉鸽状态
+function renderRLActive(el) {
+  if (!G_RL) { renderRoguelike(el); return; }
+  var floorData = rlGenerateEnemies(G_RL.floor);
+  G_RL.currentFloorData = floorData;
+
+  var aliveHeroes = G_RL.heroes.filter(function(h){ return h.hp > 0; });
+  var blessingTags = G_RL.blessings.map(function(b){
+    return '<span style="font-size:10px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);border-radius:4px;padding:2px 6px;color:#c084fc">' + b.icon + b.name + '</span>';
+  }).join(' ');
+
+  var heroCards = aliveHeroes.map(function(h) {
+    var hpPct = Math.max(0, Math.floor(h.hp / h.maxHP * 100));
+    var hpColor = hpPct > 60 ? '#2ecc71' : hpPct > 30 ? '#f39c12' : '#e74c3c';
+    return '<div style="background:rgba(0,0,0,.3);border-radius:6px;padding:8px 10px;border:1px solid rgba(168,85,247,.2)">'
+      + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
+        + '<span style="font-size:18px">' + h.icon + '</span>'
+        + '<span style="font-size:12px;font-weight:bold">' + h.name + '</span>'
+        + '<span style="font-size:10px;color:var(--text3)">Lv.' + h.level + '</span>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:6px">'
+        + '<div style="flex:1;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden">'
+          + '<div style="height:100%;width:' + hpPct + '%;background:' + hpColor + ';border-radius:3px;transition:width .3s"></div>'
+        + '</div>'
+        + '<span style="font-size:10px;color:var(--text3);white-space:nowrap">' + Math.floor(h.hp) + '/' + h.maxHP + '</span>'
+      + '</div>'
+    + '</div>';
+  }).join('');
+
+  var deadCount = G_RL.heroes.length - aliveHeroes.length;
+  var rewardGems = Math.floor(G_RL.floor / 5) * 5;
+
+  el.innerHTML =
+    '<div class="panel" style="background:linear-gradient(145deg,rgba(20,10,40,.98),rgba(30,15,55,.95));border-color:rgba(168,85,247,.4)">'
+    // 顶部信息栏
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+      + '<div><span style="color:#c084fc;font-weight:bold;font-size:15px">🎲 第 ' + G_RL.floor + ' 层</span>'
+        + (floorData.isBoss ? ' <span style="color:#ffd700;font-size:11px">⚠️ BOSS层</span>' : '') + '</div>'
+      + '<div style="font-size:11px;color:var(--text3)">存活 ' + aliveHeroes.length + '/' + G_RL.heroes.length + (deadCount>0?' <span style="color:#e74c3c">(' + deadCount + '阵亡)</span>':'') + '</div>'
+    + '</div>'
+    // 队伍状态
+    + '<div style="display:grid;grid-template-columns:repeat(' + Math.min(aliveHeroes.length,2) + ',1fr);gap:6px;margin-bottom:12px">'
+      + heroCards
+    + '</div>'
+    // 祝福列表
+    + (G_RL.blessings.length > 0
+      ? '<div style="margin-bottom:12px;font-size:11px;line-height:2"><span style="color:var(--text3)">当前祝福：</span>' + blessingTags + '</div>'
+      : '')
+    // 下一层信息
+    + '<div style="background:rgba(0,0,0,.3);border-radius:8px;padding:12px;margin-bottom:14px;border:1px solid ' + (floorData.isBoss?'rgba(255,215,0,.3)':'rgba(168,85,247,.2)') + '">'
+      + '<div style="font-weight:bold;margin-bottom:6px">' + floorData.theme.icon + ' ' + floorData.theme.name + (floorData.isBoss?' 🏆 精英Boss':'') + '</div>'
+      + '<div style="font-size:11px;color:var(--text2)">'
+        + '敌方：' + floorData.enemies.map(function(e){return e.icon+e.name+'(Lv.'+e.level+')'}).join('、')
+      + '</div>'
+      + (floorData.modifier && STAGE_MODIFIERS[floorData.modifier]
+        ? '<div style="font-size:10px;color:#f39c12;margin-top:4px">⚠️ ' + STAGE_MODIFIERS[floorData.modifier].name + '：' + STAGE_MODIFIERS[floorData.modifier].desc + '</div>'
+        : '')
+      + (floorData.isBoss && rewardGems > 0
+        ? '<div style="font-size:11px;color:var(--gold);margin-top:6px">🎁 通关奖励：💎 ' + rewardGems + ' 宝石</div>'
+        : '')
+    + '</div>'
+    // 操作按钮
+    + '<button class="btn btn-primary" style="width:100%;padding:12px;font-size:15px;background:linear-gradient(135deg,rgba(168,85,247,.9),rgba(139,69,197,.8));border-color:rgba(168,85,247,.6)" onclick="rlStartFight()">'
+      + (floorData.isBoss ? '⚔️ 挑战 Boss！' : '⚔️ 进入战斗')
+    + '</button>'
+    + '<button class="btn" style="width:100%;margin-top:8px;font-size:12px;color:var(--text3)" onclick="rlAbandon()">🏳️ 放弃本局</button>'
+    + '</div>';
+}
+
+// 开始肉鸽战斗
+function rlStartFight() {
+  if(!G_RL) return;
+  var floorData = G_RL.currentFloorData;
+  var aliveHeroes = G_RL.heroes.filter(function(h){ return h.hp > 0; });
+  if(aliveHeroes.length === 0) { rlGameOver(false); return; }
+
+  // 临时替换 G.team 为肉鸽队伍，战斗后还原
+  var savedTeam = G.team.slice();
+  var savedHeroes = G.heroes.slice();
+  G.team = aliveHeroes.concat([null,null,null,null,null,null]).slice(0,6);
+  G.heroes = aliveHeroes;
+
+  // 构建stage对象
+  var stageMods = floorData.modifier ? [floorData.modifier] : [];
+  var stage = {
+    id: 9000 + G_RL.floor,
+    name: floorData.theme.name,
+    icon: floorData.theme.icon,
+    desc: '肉鸽地牢 第' + G_RL.floor + '层',
+    enemies: floorData.enemies,
+    modifiers: stageMods,
+    isBoss: floorData.isBoss,
+    rewards: { gold:0, exp:0, gems:0, food:0, stone:0, iron:0 },
+    _isRoguelike: true,
+    _rlOnWin: function() { rlOnBattleWin(savedTeam, savedHeroes, floorData); },
+    _rlOnLose: function() { rlOnBattleLose(savedTeam, savedHeroes); }
+  };
+
+  G_RL.phase = 'fighting';
+  window._rlPendingCallback = { onWin: stage._rlOnWin, onLose: stage._rlOnLose, savedTeam:savedTeam, savedHeroes:savedHeroes, floorData:floorData };
+  switchTab('battle');
+  runBattle(stage);
+}
+
+// 战斗结束回调（通过patch battle结束逻辑触发）
+function rlOnBattleWin(savedTeam, savedHeroes, floorData) {
+  // 还原主线队伍
+  G.team = savedTeam;
+  G.heroes = savedHeroes;
+
+  // 同步英雄HP（战斗后HP变化）—— 通过uid匹配
+  // 由于肉鸽英雄是临时对象，战斗系统会修改其hp字段
+  // battleUnits里的hero字段指向同一对象，无需额外同步
+
+  // Boss层奖励
+  if(floorData.isBoss) {
+    var rewardGems = Math.floor(G_RL.floor / 5) * 5;
+    G.resources.gems = Math.min((G.resources.gems||0) + rewardGems, RESOURCE_LIMITS.gems||999999);
+    updateResUI();
+    showToast('🎲 肉鸽通关第' + G_RL.floor + '层！获得 💎' + rewardGems + ' 宝石！');
+    // 通关20层奖励传说英雄
+    if(G_RL.floor >= 20 && !G_RL._legendaryRewarded) {
+      G_RL._legendaryRewarded = true;
+      var lgTpls = HERO_TEMPLATES.filter(function(t){ return t.quality === 'legendary'; });
+      if(lgTpls.length > 0) {
+        var tpl = lgTpls[Math.floor(Math.random()*lgTpls.length)];
+        var hero = createHero(tpl.id, 1);
+        G.heroes.push(hero);
+        saveGame();
+        showToast('🏆 恭喜通关20层！获得传说英雄 ' + hero.icon + ' ' + hero.name + '！');
+      }
+    }
+  }
+
+  // 记录最深层数
+  var best = parseInt(localStorage.getItem('_rl_best_floor')||'0',10);
+  if(G_RL.floor > best) localStorage.setItem('_rl_best_floor', G_RL.floor);
+
+  G_RL.floor++;
+  G_RL.phase = 'blessing';
+
+  // 选择祝福
+  G_RL.blessingChoices = rlGetBlessingChoices();
+  switchTab('roguelike');
+}
+
+function rlOnBattleLose(savedTeam, savedHeroes) {
+  G.team = savedTeam;
+  G.heroes = savedHeroes;
+  G_RL.phase = 'active';
+  rlGameOver(false);
+}
+
+// 渲染祝福选择
+function renderRLBlessingChoose(el) {
+  if(!G_RL || !G_RL.blessingChoices) return;
+  var rarityColors = { common:'#aaa', rare:'#4fc3f7', epic:'#ce93d8', legendary:'#ffd700' };
+  var rarityNames  = { common:'普通', rare:'稀有', epic:'史诗', legendary:'传说' };
+  var completedFloor = G_RL.floor - 1;
+
+  el.innerHTML =
+    '<div class="panel" style="background:linear-gradient(145deg,rgba(20,10,40,.98),rgba(30,15,55,.95));border-color:rgba(168,85,247,.4)">'
+    + '<div style="text-align:center;margin-bottom:16px">'
+      + '<div style="font-size:14px;font-weight:bold;color:#c084fc">✨ 通关第' + completedFloor + '层！选择祝福</div>'
+      + '<div style="font-size:11px;color:var(--text3);margin-top:4px">即将进入第 ' + G_RL.floor + ' 层</div>'
+    + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px">'
+    + G_RL.blessingChoices.map(function(b, idx) {
+        var color = rarityColors[b.rarity] || '#aaa';
+        return '<div class="panel" style="cursor:pointer;border-color:' + color + '33;transition:all .2s;background:rgba(0,0,0,.3)" onclick="rlPickBlessing(' + idx + ')">'
+          + '<div style="display:flex;align-items:center;gap:12px">'
+            + '<div style="font-size:28px;width:40px;text-align:center">' + b.icon + '</div>'
+            + '<div style="flex:1">'
+              + '<div style="font-weight:bold;color:' + color + '">' + b.name
+                + ' <span style="font-size:10px;font-weight:normal;opacity:.7">[' + rarityNames[b.rarity] + ']</span></div>'
+              + '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + b.desc + '</div>'
+            + '</div>'
+            + '<div style="color:' + color + ';font-size:20px">›</div>'
+          + '</div>'
+        + '</div>';
+      }).join('')
+    + '</div>'
+    + '</div>';
+}
+
+function rlPickBlessing(idx) {
+  if(!G_RL) return;
+  var blessing = G_RL.blessingChoices[idx];
+  blessing.apply(G_RL);
+  G_RL.blessings.push(blessing);
+  G_RL.phase = 'active';
+  G_RL.blessingChoices = null;
+  renderRLActive(document.getElementById('content'));
+}
+
+// 游戏结束
+function rlGameOver(won) {
+  var floor = G_RL ? G_RL.floor : 0;
+  var blessings = G_RL ? G_RL.blessings : [];
+  var best = parseInt(localStorage.getItem('_rl_best_floor')||'0',10);
+  if(floor > best) localStorage.setItem('_rl_best_floor', floor);
+
+  // 保存历史记录
+  var hist = JSON.parse(localStorage.getItem('_rl_history')||'[]');
+  hist.unshift({ floor:floor-1, blessings:blessings.map(function(b){return b.name;}), date:new Date().toLocaleDateString(), won:won });
+  if(hist.length>20) hist.length=20;
+  localStorage.setItem('_rl_history', JSON.stringify(hist));
+
+  G_RL = null;
+  switchTab('roguelike');
+  setTimeout(function(){
+    showModal('🎲 肉鸽地牢结算',
+      '<div style="text-align:center;padding:8px 0">'
+      + '<div style="font-size:36px;margin-bottom:8px">' + (won?'🏆':'💀') + '</div>'
+      + '<div style="font-size:15px;font-weight:bold;color:' + (won?'var(--gold)':'#e74c3c') + ';margin-bottom:12px">'
+        + (won ? '挑战成功！' : '英雄全灭') + '</div>'
+      + '<div style="font-size:13px;color:var(--text2)">通关层数：<b style="color:#c084fc">第 ' + (floor-1) + ' 层</b></div>'
+      + '<div style="font-size:12px;color:var(--text3);margin-top:8px">历史最深：第 ' + Math.max(best, floor-1) + ' 层</div>'
+      + '<button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="closeModal();startRoguelike()">再来一局</button>'
+      + '</div>'
+    );
+  }, 300);
+}
+
+function rlAbandon() {
+  showConfirm('放弃本局', '确定放弃当前肉鸽挑战吗？', function(){
+    rlGameOver(false);
+  }, '放弃', '继续');
+}
+
+function renderRLHistory(el) {
+  var hist = JSON.parse(localStorage.getItem('_rl_history')||'[]');
+  var best = localStorage.getItem('_rl_best_floor')||'0';
+  el.innerHTML =
+    '<div class="panel">'
+    + '<div class="panel-title">📜 肉鸽历史记录</div>'
+    + '<div style="margin-bottom:8px;font-size:12px;color:var(--gold)">🏆 历史最深：第' + best + '层</div>'
+    + (hist.length===0
+      ? '<div style="text-align:center;color:var(--text3);padding:30px">暂无记录</div>'
+      : hist.map(function(r,i){
+          return '<div style="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid var(--border)">'
+            + '<span style="font-size:18px">' + (r.won?'🏆':'💀') + '</span>'
+            + '<div style="flex:1"><div style="font-size:13px">第<b style="color:#c084fc">' + r.floor + '</b>层</div>'
+              + '<div style="font-size:10px;color:var(--text3)">' + r.date + '</div></div>'
+            + '<div style="font-size:10px;color:var(--text3);text-align:right">' + (r.blessings||[]).slice(0,3).join('、') + '</div>'
+          + '</div>';
+        }).join(''))
+    + '<button class="btn" style="width:100%;margin-top:12px" onclick="renderRoguelike(document.getElementById(\'content\'))">返回</button>'
+    + '</div>';
+}
+
+
+// 本地榜单（无网络时显示）
+function renderLocalLeaderboard(listEl, type) {
+  var typeNames = {
+    power: {name:'战力榜', icon:'⚔️', unit:'', key:'power'},
+    stage: {name:'关卡榜', icon:'💀', unit:'关', key:'stage'},
+    arena: {name:'竞技榜', icon:'🏟️', unit:'胜', key:'arena'},
+    heroes: {name:'英雄榜', icon:'🧙', unit:'人', key:'heroes'}
+  };
+  var typeInfo = typeNames[type] || typeNames.power;
+
+  // 读取本地历史记录（每次游玩时写入）
+  var localKey = '_local_lb_' + type;
+  var records = [];
+  try { records = JSON.parse(localStorage.getItem(localKey) || '[]'); } catch(e) {}
+
+  // 加入当前成绩
+  var scores = {
+    power: (function(){ var p=0; G.team.forEach(function(h){if(h)p+=calcHeroPower(h);}); return p; })(),
+    stage: G.stageProgress || 1,
+    arena: (G.arenaState && G.arenaState.totalWins) || 0,
+    heroes: G.heroes ? G.heroes.length : 0
+  };
+  var curScore = scores[type] || 0;
+  var curName = G.playerName || '我';
+  var today = new Date().toLocaleDateString();
+
+  // 更新本地记录（同名玩家只保留最高分）
+  var found = false;
+  for (var i = 0; i < records.length; i++) {
+    if (records[i].name === curName) {
+      if (curScore > records[i].score) records[i] = {name:curName, score:curScore, date:today};
+      found = true; break;
+    }
+  }
+  if (!found) records.push({name:curName, score:curScore, date:today});
+  records.sort(function(a,b){ return b.score - a.score; });
+  if (records.length > 50) records = records.slice(0, 50);
+  try { localStorage.setItem(localKey, JSON.stringify(records)); } catch(e) {}
+
+  var html = '<div style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">'
+    + '<span style="font-weight:bold;color:var(--gold)">' + typeInfo.icon + ' ' + typeInfo.name + ' <span style="font-size:10px;font-weight:normal;color:var(--text3)">(本地)</span></span>'
+    + '<span style="font-size:10px;color:var(--text3)">☁️ 离线模式</span>'
+    + '</div>';
+
+  if (records.length === 0) {
+    html += '<div style="text-align:center;color:var(--text3);padding:30px 0">暂无记录</div>';
+  } else {
+    html += '<div class="leaderboard-scroll-container"><div class="leaderboard-list">';
+    for (var j = 0; j < records.length; j++) {
+      var r = records[j];
+      var rank = j + 1;
+      var isMe = r.name === curName;
+      var rankClass = rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':rank<=10?'rank-top10':'rank-normal';
+      var rankIcon = rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank;
+      html += '<div class="leaderboard-item ' + (isMe?'is-me':'') + '">'
+        + '<div class="leaderboard-rank ' + rankClass + '">' + rankIcon + '</div>'
+        + '<div class="leaderboard-info">'
+          + '<div class="leaderboard-name">' + (isMe?'<b style="color:var(--gold)">':'') + r.name + (isMe?'</b>':'') + '</div>'
+          + '<div class="leaderboard-date">' + r.date + '</div>'
+        + '</div>'
+        + '<div class="leaderboard-score">' + (r.score||0).toLocaleString() + '<span class="leaderboard-unit">' + typeInfo.unit + '</span></div>'
+        + '</div>';
+    }
+    html += '</div></div>';
+    html += '<div style="text-align:center;color:var(--text3);font-size:11px;margin-top:8px">本地历史 · 共 ' + records.length + ' 条</div>';
+  }
+
+  listEl.innerHTML = html;
+}
+
 function renderLeaderboard(el){
   // 计算玩家数据
   var teamPower = 0;
@@ -20834,17 +21467,9 @@ function loadLeaderboardData(type){
   
   var typeInfo = typeNames[type] || typeNames.power;
   
-  // 检查云端连接状态
+  // 检查云端连接状态，离线时显示本地榜单
   if (!isCloudReady || !sb || !deviceId) {
-    var statusHTML = '<div style="text-align:center;padding:40px 0;color:var(--text3)">' +
-      '<div style="font-size:24px;margin-bottom:8px">☁️</div>' +
-      '<div style="font-weight:bold;margin-bottom:8px;color:var(--text)">排行榜服务未连接</div>' +
-      '<div style="font-size:12px;line-height:1.8">';
-    if (!sb) { statusHTML += 'Supabase SDK 未加载<br>'; }
-    else if (!deviceId) { statusHTML += '设备 ID 未生成<br>'; }
-    else { statusHTML += '云端服务连接失败<br>'; }
-    statusHTML += '<br>排行榜需要网络连接，请检查：<br>1. 网络是否正常<br>2. 是否在 TapTap 平台内打开<br>3. 刷新页面重试</div></div>';
-    listEl.innerHTML = statusHTML;
+    renderLocalLeaderboard(listEl, type);
     return;
   }
   
@@ -23318,6 +23943,23 @@ async function initGame(){
 function initNewGame(){
   // 标记首次游戏
   G.tutorialDone=false;
+
+  // 补全 resources 字段（重置后新游戏时确保所有字段存在）
+  if(!G.resources) G.resources={};
+  if(G.resources.gold===undefined) G.resources.gold=3000;
+  if(G.resources.gems===undefined) G.resources.gems=50;
+  if(G.resources.food===undefined) G.resources.food=300;
+  if(G.resources.stone===undefined) G.resources.stone=300;
+  if(G.resources.iron===undefined) G.resources.iron=100;
+  if(G.resources.fame===undefined) G.resources.fame=0;
+  if(G.resources.expPotion===undefined) G.resources.expPotion=0;
+  if(G.resources.zodiacTokens===undefined) G.resources.zodiacTokens=0;
+  if(G.zodiacTokens===undefined) G.zodiacTokens=0;
+  // 补全其他可能缺失的字段
+  if(!G.mergeScrolls) G.mergeScrolls=[];
+  if(!G.dailyScrollShop) G.dailyScrollShop=[];
+  if(!G.breakthroughMaterials) G.breakthroughMaterials={rare:0,epic:0,legendary:0,mythic:0,hidden:0};
+  if(!G.arenaState) G.arenaState={totalWins:0,winStreak:0,maxWinStreak:0,dailyChallengesUsed:0,totalLosses:0,highestDifficulty:'entry',lastChallengeDate:''};
   
   // 给玩家初始英雄
   const starter1=createHero('swordsman',1);
@@ -23344,19 +23986,23 @@ function initNewGame(){
   G.equipment.push(createEquipment('leather_armor'));
   G.equipment.push(createEquipment('magic_ring'));
 
-  updateResUI();
-  G.stageProgress=1;
-  startAutoProduction();
-  switchTab('town');
-  
-  // 保存新游戏数据
-  saveGame();
-  
-  // 检查每日帮助弹窗
-  checkDailyHelp();
-  
-  // 启动新手引导
-  setTimeout(startTutorial,1000);
+  try{
+    updateResUI();
+    G.stageProgress=1;
+    startAutoProduction();
+    switchTab('town');
+    saveGame();
+    checkDailyHelp();
+    setTimeout(startTutorial,1000);
+  }catch(e){
+    console.error('[initNewGame]',e);
+    // 降级：直接渲染城镇
+    var _el=document.getElementById('content');
+    if(_el) renderTown(_el);
+    document.getElementById('content').insertAdjacentHTML('afterbegin',
+      '<div style="padding:8px 12px;margin-bottom:8px;background:rgba(255,100,100,.1);border:1px solid rgba(255,100,100,.3);border-radius:6px;font-size:11px;color:#ff9999">'
+      +'⚠️ 初始化异常: '+e.message+'</div>');
+  }
 }
 
 // 导航事件
@@ -23372,8 +24018,27 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
   });
 });
 
+// 全局错误捕获（黑屏调试用）
+window.onerror = function(msg, src, line, col, err){
+  var el = document.getElementById('content');
+  if(el && el.innerHTML.trim()===''){
+    el.innerHTML = '<div style="padding:20px;color:#ff6b6b;font-size:13px;word-break:break-all">'
+      + '<b>❌ 启动错误（请截图发给开发者）</b><br><br>'
+      + msg + '<br>' + src + ':' + line
+      + '<br><br><button onclick="location.reload()" style="padding:8px 16px;background:#333;color:#fff;border:1px solid #666;border-radius:6px;cursor:pointer">刷新重试</button>'
+      + '</div>';
+  }
+  return false;
+};
+
 // 启动游戏
-initGame();
+initGame().catch(function(e){
+  var el = document.getElementById('content');
+  if(el) el.innerHTML = '<div style="padding:20px;color:#ff6b6b;font-size:13px;word-break:break-all">'
+    + '<b>❌ initGame 异常</b><br><br>' + e.message + '<br><br>'
+    + '<button onclick="location.reload()" style="padding:8px 16px;background:#333;color:#fff;border:1px solid #666;border-radius:6px;cursor:pointer">刷新重试</button>'
+    + '</div>';
+});
 
 // H5独立模式隐藏金手指按钮
 if(G_isH5Package){
@@ -23396,7 +24061,11 @@ var STAT_QUALITY_CAP={
   epic:{maxHP:5000,atk:650,def:550,spd:420,maxMP:800},
   legendary:{maxHP:9000,atk:999,def:999,spd:750,maxMP:999},
   mythic:{maxHP:9999,atk:999,def:999,spd:900,maxMP:999},
-  hidden:{maxHP:14999,atk:1499,def:1499,spd:1300,maxMP:1499}
+  hidden:{maxHP:14999,atk:1499,def:1499,spd:1300,maxMP:1499},
+  unknown:{maxHP:19999,atk:1999,def:1999,spd:1666,maxMP:1999},
+  cosmic:{maxHP:'50000',atk:'5000',def:'5000',spd:'3000',maxMP:'5000'},
+  eternal:{maxHP:'100000',atk:'10000',def:'10000',spd:'5000',maxMP:'10000'},
+  infinite:{maxHP:'1000000',atk:'100000',def:'100000',spd:'20000',maxMP:'100000'}
 };
 
 // 突破材料配置
@@ -23434,7 +24103,7 @@ function initBreakthroughSystem(){
 
 // 获取突破后品质
 function getNextQuality(current,tier){
-  var qualities=['common','rare','epic','legendary','mythic','hidden'];
+  var qualities=['common','rare','epic','legendary','mythic','hidden','unknown','cosmic','eternal','infinite'];
   var idx=qualities.indexOf(current);
   if(idx===-1)return current;
   return qualities[Math.min(idx+tier,qualities.length-1)];
@@ -23465,13 +24134,13 @@ function performBreakthrough(hero){
   var newCap=STAT_QUALITY_CAP[nextQ];
   hero.quality=nextQ;
   var hpRatio=hero.maxHP>0?hero.hp/hero.maxHP:0;
-  hero.maxHP=Math.min(Math.floor(hero.maxHP*1.2),newCap.maxHP);
-  hero.hp=Math.floor(hero.maxHP*hpRatio);
-  hero.atk=Math.min(Math.floor(hero.atk*1.15),newCap.atk);
-  hero.def=Math.min(Math.floor(hero.def*1.15),newCap.def);
-  hero.spd=Math.min(Math.floor(hero.spd*1.1),newCap.spd);
-  hero.maxMP=Math.min(Math.floor(hero.maxMP*1.1),newCap.maxMP);
-  hero.mp=Math.min(hero.mp,hero.maxMP);
+  hero.maxHP=safeMin(safeMul(hero.maxHP,1.2),newCap.maxHP);
+  hero.hp=Math.floor(parseFloat(hero.maxHP)*hpRatio);
+  hero.atk=safeMin(safeMul(hero.atk,1.15),newCap.atk);
+  hero.def=safeMin(safeMul(hero.def,1.15),newCap.def);
+  hero.spd=safeMin(safeMul(hero.spd,1.1),newCap.spd);
+  hero.maxMP=safeMin(safeMul(hero.maxMP,1.1),newCap.maxMP);
+  hero.mp=Math.min(parseFloat(hero.mp)||0,parseFloat(hero.maxMP)||0);
   if(!hero.bonusSkills)hero.bonusSkills=[];
   if(hero.bonusSkills.length<3){
     var roleTpls=HERO_TEMPLATES.filter(function(t){return t.role===hero.role&&t.quality!=='common'});
