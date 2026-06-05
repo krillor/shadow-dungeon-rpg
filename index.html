@@ -12483,6 +12483,23 @@ async function runBattle(stageOrId){
     return;
   }
 
+  // ★★★ 肉鸽回调（必须在奖励处理之前，防止污染主线进度）★★★
+  if(window._rlPendingCallback){
+    var _rlCb = window._rlPendingCallback;
+    window._rlPendingCallback = null;
+    playerUnits.forEach(function(u){
+      if(u.hero && u.hero.uid && String(u.hero.uid).startsWith('rl_')){
+        u.hero.hp = Math.max(0, Math.floor(u.hp));
+      }
+    });
+    updateResUI();
+    G_battleRunning = false;
+    G_battlePaused = false;
+    if(won){ _rlCb.onWin(); }
+    else { _rlCb.onLose(); }
+    return;
+  }
+
   if(won){
     // 战斗胜利：清空敌方显示区域
     enemyTeamEl.innerHTML='';
@@ -12586,24 +12603,6 @@ async function runBattle(stageOrId){
     checkAchievement('battle_6');
   }else{
     showToast('战斗失败...');
-  }
-
-  // 肉鸽回调
-  if(window._rlPendingCallback){
-    var _rlCb = window._rlPendingCallback;
-    window._rlPendingCallback = null;
-    // 将战斗后 HP 写回肉鸽英雄对象（unit.hero 指向同一引用，直接同步）
-    playerUnits.forEach(function(u){
-      if(u.hero && u.hero.uid && String(u.hero.uid).startsWith('rl_')){
-        u.hero.hp = Math.max(0, Math.floor(u.hp));
-      }
-    });
-    updateResUI();
-    G_battleRunning = false;
-    G_battlePaused = false;
-    if(won){ _rlCb.onWin(); }
-    else { _rlCb.onLose(); }
-    return;
   }
 
   updateResUI();
@@ -16477,11 +16476,6 @@ function renderTown(el){
             +'<div class="town-module-btn-info" style="color:#666">'+(G.stageProgress-1)+'/100关</div>'
           +'</div>'
       )
-    +'</div>'
-    +'<div style="display:flex;gap:6px;margin-top:8px">'
-      +'<button class="btn btn-sm" style="flex:1;font-size:11px;padding:7px 4px" onclick="showRedeemModal()">🎁 兑换码</button>'
-      +'<button class="btn btn-sm" style="flex:1;font-size:11px;padding:7px 4px" onclick="showSaveManageModal()">💾 存档</button>'
-      +'<button class="btn btn-sm" style="flex:1;font-size:11px;padding:7px 4px;'+(G_cheats&&G_cheats.unlocked?'color:var(--gold);border-color:rgba(212,175,55,.4)':'')+'" onclick="showCheatEntryModal()">🔓 金手指</button>'
     +'</div>';}catch(htmlErr){
     console.error('[Town Error] HTML generation:',htmlErr);
     // 降级渲染：显示核心功能按钮，避免完全黑屏
