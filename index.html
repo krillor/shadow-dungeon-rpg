@@ -12504,21 +12504,21 @@ async function runBattle(stageOrId){
       if(!G.zodiacClearCount[zodiacBossIndex]) G.zodiacClearCount[zodiacBossIndex]=0;
       G.zodiacClearCount[zodiacBossIndex] += 1;
       // Boss 战胜奖励：大量金币+宝石（金币随Boss等级递增）
-      var bossBaseReward = 100000 + zodiacBossIndex * 50000 + G.zodiacClearCount[zodiacBossIndex] * 20000;
+      var bossBaseReward = 200000 + zodiacBossIndex * 100000 + G.zodiacClearCount[zodiacBossIndex] * 50000;
       G.resources.gold = Math.min((G.resources.gold||0) + bossBaseReward, RESOURCE_LIMITS.gold);
-      G.resources.gems = Math.min((G.resources.gems||0) + 10 + zodiacBossIndex * 2, RESOURCE_LIMITS.gems);
+      G.resources.gems = Math.min((G.resources.gems||0) + 20 + zodiacBossIndex * 5, RESOURCE_LIMITS.gems);
       // === 生肖币掉落（每次击败Boss获得） ===
-      var tokenDrop = 15 + zodiacBossIndex * 5; // 基础15，每Boss+5（鼠15→猪70）
+      var tokenDrop = 50 + zodiacBossIndex * 20; // 鼠50→猪270
       var newZodiacTokens = Math.min((G.zodiacTokens||0) + tokenDrop, RESOURCE_LIMITS.zodiacTokens);
       G.zodiacTokens = newZodiacTokens;
       if(G.resources) G.resources.zodiacTokens = newZodiacTokens;
       log('🐉 生肖币 +' + tokenDrop, 'info');
-      // === 概率掉落卷轴（20%基础概率，随Boss等级提升） ===
-      var scrollDropChance = 0.20 + zodiacBossIndex * 0.02; // 鼠20%→猪42%
+      // === 概率掉落卷轴（30%基础概率，随Boss等级提升，可掉神话） ===
+      var scrollDropChance = 0.30 + zodiacBossIndex * 0.03; // 鼠30%→猪63%
       if (Math.random() < scrollDropChance) {
-        // 按Boss等级决定掉落卷轴稀有度上限
-        var maxRarity = zodiacBossIndex < 4 ? 'common' : (zodiacBossIndex < 8 ? 'rare' : (zodiacBossIndex < 10 ? 'epic' : 'legendary'));
-        var rarityOrder = ['common','rare','epic','legendary'];
+        // 按Boss等级决定掉落卷轴稀有度上限（高Boss可掉神话）
+        var maxRarity = zodiacBossIndex < 3 ? 'common' : (zodiacBossIndex < 6 ? 'rare' : (zodiacBossIndex < 9 ? 'epic' : (zodiacBossIndex < 11 ? 'legendary' : 'mythic')));
+        var rarityOrder = ['common','rare','epic','legendary','mythic'];
         var maxRIdx = rarityOrder.indexOf(maxRarity);
         var dropPool = MERGE_SCROLL_DEFS.filter(function(s){ return rarityOrder.indexOf(s.rarity) <= maxRIdx; });
         if (dropPool.length > 0) {
