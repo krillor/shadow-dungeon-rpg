@@ -16795,34 +16795,33 @@ function renderHeroCard(h){
   var displayQuality = isUnknown ? 'unknown' : h.quality;
   var displayRole = isUnknown ? 'unknown' : h.role;
   
-  return`<div class="hero-card quality-${displayQuality}" data-role="${displayRole}" data-quality="${displayQuality}" data-uid="${h.uid}" onclick="showHeroDetail(${h.uid})" style="cursor:pointer">
-    ${inTeam?'<div class="hero-team-badge">🛡️ 队伍中</div>':''}
-    ${isUnknown?'<div class="hero-team-badge" style="background:linear-gradient(90deg,#ff00ff,#ff00cc)">🔒 未解锁</div>':''}
-    <button class="hero-lock-btn${h.locked?' hero-lock-btn-locked':''}" onclick="event.stopPropagation();toggleHeroLock(${h.uid})" title="${h.locked?'解锁':'锁定'}">${h.locked?'🔒':'🔓'}</button>
-    <div class="hero-avatar" style="background:rgba(${isUnknown?'255,0,255':h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':'220,50,50'},.2)">
-      ${displayIcon}
-    </div>
-    <div class="hero-info">
-      <div class="hero-name"><span class="q-${displayQuality}">${displayName}</span> ${inTeam?'<span class="text-green text-xs">[队伍中]</span>':''} ${h.isMutation?'<span style="color:#a855f7;font-size:10px">☣️异变</span>':''}</div>
-      <div class="hero-meta">${role.icon} ${role.name} · ${QUALITY_NAMES[displayQuality]} · Lv.${h.level} ${h.bonusSkills.length>0?'<span class="text-purple">★合成</span>':''} ${h.mutatedSkills&&h.mutatedSkills.length>0?'<span style="color:#d4a0ff;font-size:10px">🧬含变异</span>':''}</div>
-      <div class="text-xs text-dim" style="margin:4px 0;padding:4px;background:rgba(0,0,0,.2);border-radius:4px">💡 ${roleTraits[displayRole]||'未知职业'}${h.isGeneMutation&&h.geneMutatedPassive?' · <span style="color:#22d3ee">🧬突变被动:'+h.geneMutatedPassive.name+'</span>':''}${h.inscription?' · <span style="color:#fb923c">📜'+h.inscription.name+'</span>':''}${h.isShadowCursed?' · <span style="color:#6366f1">🌑暗影侵蚀</span>':''}${h.isFrogCursed?' · <span style="color:#4ade80">🐸青蛙诅咒</span>':''}${h.isBard&&h.bardPoem?' · <span style="color:#c084fc">🎵'+h.bardPoem.name+'</span>':''}${h.isAwakened?' · <span style="color:#facc15">🏆觉醒</span>':''}${h.isBlackHole?' · <span style="color:#7c3aed">🌀黑洞</span>':''}${h.isBalanced?' · <span style="color:#fbbf24">⚖️天平</span>':''}${h.isReincarnated?' · <span style="color:#a78bfa">🔄转生</span>':''}${h.isSoulSwap?' · <span style="color:#e879f9">🎭灵魂交换</span>':''}${h.isPhoenix?' · <span style="color:#ef4444">🔥凤凰涅槃'+(h.phoenixUsed?'(已用)':'')+'</span>':''}${h.isVampire?' · <span style="color:#dc2626">🧛吸血鬼</span>':''}${h.isAlchemist?' · <span style="color:#a3e635">⚗️炼金术</span>':''}${h.isGambler?' · <span style="color:#f59e0b">🎰赌徒'+(h.isGamblerWin?'(赢)':'(输)')+'</span>':''}${h.isTimeBomb?' · <span style="color:#6b7280">💣炸弹('+(h.timeBombCountdown||0)+')</span>':''}${h.isParasite?' · <span style="color:#84cc16">🦠寄生体</span>':''}${h.isChameleon?' · <span style="color:#06b6d4">🦎变色龙</span>':''}${h.isOracle?' · <span style="color:#8b5cf6">🔮先知</span>':''}${h.isBerserker?' · <span style="color:#be123c">🩸狂战士</span>':''}${h.isMimic?' · <span style="color:#ec4899">🎭拟态('+h.mimicSource+')</span>':''}</div>
-      <div class="hero-stats">
-        <span class="stat-tag" title="${statTips.maxHP}">❤️<b>${stats.maxHP}</b></span>
-        <span class="stat-tag" title="${statTips.atk}">⚔️<b>${stats.atk}</b></span>
-        <span class="stat-tag" title="${statTips.def}">🛡️<b>${stats.def}</b></span>
-        <span class="stat-tag" title="${statTips.spd}">💨<b>${stats.spd}</b></span>
-        <span class="stat-tag" title="${statTips.maxMP}">💎<b>${stats.maxMP}</b></span>
-      </div>
-      <div class="bar-wrap"><div class="bar-fill" style="width:${(h.exp/expNeed)*100}%;background:var(--exp-bar)"></div></div>
-      <div class="text-xs text-dim">EXP: ${h.exp}/${expNeed}</div>
-      <div class="hero-power">⚡战力: <b>${power}</b></div>
-      <div class="hero-skills">${isUnknown?'<span class="skill-tag" style="background:rgba(255,0,255,0.2);color:#ff00ff">❓ 技能未知</span>':allSkills.map(sid=>{const sk=SKILLS[sid];return sk?`<span class="skill-tag" title="${sk.desc}">${sk.icon}${sk.name}</span>`:''}).join('')}</div>
-      ${h.traits&&h.traits.length>0?`<div class="mt-4" style="display:flex;flex-wrap:wrap;gap:2px">${h.traits.map(t=>`<span class="trait-tag" title="${t.desc}">${t.icon}${t.name}</span>`).join('')}</div>`:''}
-      <div class="text-xs text-dim mt-4" style="font-style:italic">"${h.lore}"</div>
-    </div>
-  </div>`;
+  return '<div class="hero-card quality-'+displayQuality+'" data-role="'+displayRole+'" data-quality="'+displayQuality+'" data-uid="'+h.uid+'" onclick="showHeroDetail('+h.uid+')" style="cursor:pointer">'
+    +(inTeam?'<div class="hero-team-badge">🛡️ 队伍中</div>':'')
+    +(isUnknown?'<div class="hero-team-badge" style="background:linear-gradient(90deg,#ff00ff,#ff00cc)">🔒 未解锁</div>':'')
+    +'<button class="hero-lock-btn'+(h.locked?' hero-lock-btn-locked':'')+'" onclick="event.stopPropagation();toggleHeroLock('+h.uid+')" title="'+(h.locked?'解锁':'锁定')+'">'+(h.locked?'🔒':'🔓')+'</button>'
+    +'<div class="hero-avatar" style="background:rgba('+(isUnknown?'255,0,255':h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':'220,50,50')+',.2)">'
+    +displayIcon
+    +'</div>'
+    +'<div class="hero-info">'
+    +'<div class="hero-name"><span class="q-'+displayQuality+'">'+displayName+'</span> '+(inTeam?'<span class="text-green text-xs">[队伍中]</span>':'')+' '+(h.isMutation?'<span style="color:#a855f7;font-size:10px">☣️异变</span>':'')+'</div>'
+    +'<div class="hero-meta">'+role.icon+' '+role.name+' · '+QUALITY_NAMES[displayQuality]+' · Lv.'+h.level+' '+(h.bonusSkills.length>0?'<span class="text-purple">★合成</span>':'')+' '+(h.mutatedSkills&&h.mutatedSkills.length>0?'<span style="color:#d4a0ff;font-size:10px">🧬含变异</span>':'')+'</div>'
+    +'<div class="text-xs text-dim" style="margin:4px 0;padding:4px;background:rgba(0,0,0,.2);border-radius:4px">💡 '+(roleTraits[displayRole]||'未知职业') +(h.isGeneMutation&&h.geneMutatedPassive?' · <span style="color:#22d3ee">🧬突变被动:'+h.geneMutatedPassive.name+'</span>':'') +(h.inscription?' · <span style="color:#fb923c">📜'+h.inscription.name+'</span>':'') +(h.isShadowCursed?' · <span style="color:#6366f1">🌑暗影侵蚀</span>':'') +(h.isFrogCursed?' · <span style="color:#4ade80">🐸青蛙诅咒</span>':'') +(h.isBard&&h.bardPoem?' · <span style="color:#c084fc">🎵'+h.bardPoem.name+'</span>':'') +(h.isAwakened?' · <span style="color:#facc15">🏆觉醒</span>':'') +(h.isBlackHole?' · <span style="color:#7c3aed">🌀黑洞</span>':'') +(h.isBalanced?' · <span style="color:#fbbf24">⚖️天平</span>':'') +(h.isReincarnated?' · <span style="color:#a78bfa">🔄转生</span>':'') +(h.isSoulSwap?' · <span style="color:#e879f9">🎭灵魂交换</span>':'') +(h.isPhoenix?' · <span style="color:#ef4444">🔥凤凰涅槃'+(h.phoenixUsed?'(已用)':'')+'</span>':'') +(h.isVampire?' · <span style="color:#dc2626">🧛吸血鬼</span>':'') +(h.isAlchemist?' · <span style="color:#a3e635">⚗️炼金术</span>':'') +(h.isGambler?' · <span style="color:#f59e0b">🎰赌徒'+(h.isGamblerWin?'(赢)':'(输)')+'</span>':'') +(h.isTimeBomb?' · <span style="color:#6b7280">💣炸弹('+(h.timeBombCountdown||0)+')</span>':'') +(h.isParasite?' · <span style="color:#84cc16">🦠寄生体</span>':'') +(h.isChameleon?' · <span style="color:#06b6d4">🦎变色龙</span>':'') +(h.isOracle?' · <span style="color:#8b5cf6">🔮先知</span>':'') +(h.isBerserker?' · <span style="color:#be123c">🩸狂战士</span>':'') +(h.isMimic?' · <span style="color:#ec4899">🎭拟态('+h.mimicSource+')</span>':'') +'</div>'
+    +'<div class="hero-stats">'
+    +'<span class="stat-tag" title="'+statTips.maxHP+'">❤️<b>'+stats.maxHP+'</b></span>'
+    +'<span class="stat-tag" title="'+statTips.atk+'">⚔️<b>'+stats.atk+'</b></span>'
+    +'<span class="stat-tag" title="'+statTips.def+'">🛡️<b>'+stats.def+'</b></span>'
+    +'<span class="stat-tag" title="'+statTips.spd+'">💨<b>'+stats.spd+'</b></span>'
+    +'<span class="stat-tag" title="'+statTips.maxMP+'">💎<b>'+stats.maxMP+'</b></span>'
+    +'</div>'
+    +'<div class="bar-wrap"><div class="bar-fill" style="width:'+((h.exp/expNeed)*100)+'%;background:var(--exp-bar)"></div></div>'
+    +'<div class="text-xs text-dim">EXP: '+h.exp+'/'+expNeed+'</div>'
+    +'<div class="hero-power">⚡战力: <b>'+power+'</b></div>'
+    +'<div class="hero-skills">'+(isUnknown?'<span class="skill-tag" style="background:rgba(255,0,255,0.2);color:#ff00ff">❓ 技能未知</span>':allSkills.map(function(sid){var sk=SKILLS[sid];return sk?'<span class="skill-tag" title="'+sk.desc+'">'+sk.icon+sk.name+'</span>':''}).join(''))+'</div>'
+    +(h.traits&&h.traits.length>0?'<div class="mt-4" style="display:flex;flex-wrap:wrap;gap:2px">'+h.traits.map(function(t){return '<span class="trait-tag" title="'+t.desc+'">'+t.icon+t.name+'</span>'}).join('')+'</div>':'')
+    +'<div class="text-xs text-dim mt-4" style="font-style:italic">"'+h.lore+'"</div>'
+    +'</div>'
+  +'</div>';
 }
-
 // 英雄详情弹窗（增强版）
 // 记录当前详情页英雄列表和索引，用于左右滑动切换
 var _heroDetailList = [];
