@@ -2725,6 +2725,12 @@ if(!String.prototype.includes){String.prototype.includes=function(search,start){
     <div class="nav-btn" data-tab="zodiac" title="生肖Boss">🐉<div class="nav-label">生肖</div></div>
   </div>
   <div id="main">
+    <!-- 顶部快捷工具栏（兑换码/存档/修复状态） -->
+    <div id="top-toolbar" style="display:flex;gap:6px;padding:6px 8px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto">
+      <button class="btn btn-sm" style="flex:none;font-size:11px;padding:5px 10px;white-space:nowrap" onclick="showRedeemModal()">🎁 兑换码</button>
+      <button class="btn btn-sm" style="flex:none;font-size:11px;padding:5px 10px;white-space:nowrap" onclick="showSaveManageModal()">💾 存档</button>
+      <button class="btn btn-sm" style="flex:none;font-size:11px;padding:5px 10px;white-space:nowrap;border-color:rgba(52,152,219,.4);color:var(--blue)" onclick="repairRuntimeState()">🔧 修复状态</button>
+    </div>
     <div id="content"></div>
     <div id="battle-panel" style="display:none">
       <div class="panel">
