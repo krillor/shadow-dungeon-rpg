@@ -16290,7 +16290,7 @@ function renderCurrentTab(){
     console.error('[renderCurrentTab] 渲染出错 ('+currentTab+'):', e);
     contentEl.innerHTML = '<div class="panel"><div class="panel-title">⚠️ 页面渲染异常</div>'
       + '<div style="padding:8px;font-size:12px;color:var(--text2)">标签: ' + currentTab + '<br>错误: ' + e.message + '</div>'
-      + '<button class="btn btn-primary" onclick="switchTab('town')" style="margin-top:8px">返回城镇</button></div>';
+      + '<button class="btn btn-primary" onclick="switchTab(\'town\')" style="margin-top:8px">返回城镇</button></div>';
   }
 }
 
