@@ -5800,7 +5800,7 @@ function renderBondsHTML(activeBonds, compact){
         +'</div>'
         +'<div class="bond-card-desc">'+ab.threshold.desc+'</div>'
         +'<div class="bond-card-story">📖 '+bond.story+'</div>'
-        +'</div>';
+      +'</div>';
     }
   }
   return html;
@@ -11447,6 +11447,7 @@ function renderZodiac(el){
       +'<div style="font-size:11px;color:#999;text-align:center;margin:4px 0">挑战:'+attempts+' 次 | 通关:'+clearCount+' 次</div>'
       +'<div style="text-align:center;margin-top:6px">'+statusLabel+'</div>'
       +(canFight?'<div style="margin-top:10px"><button class="btn btn-primary" style="width:100%" onclick="startZodiacBoss('+idx+')">⚔️ 挑战</button></div>':'')
+      +(defeated?'<div style="margin-top:6px"><button class="btn" style="width:100%;font-size:11px;padding:6px;background:rgba(255,215,0,.06);border-color:rgba(255,215,0,.25);color:#ffd700" onclick="showZodiacStory('+idx+',null)">📖 查看传说</button></div>':'')
       +'</div>';
   });
   html+='</div></div>';
