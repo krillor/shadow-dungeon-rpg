@@ -16837,10 +16837,10 @@ function showHeroDetail(uid){
   _heroDetailList = [];
   cards.forEach(function(card) {
     var cardUid = parseInt(card.getAttribute('data-uid'));
-    var hero = G.heroes.find(x => x.uid === cardUid);
+    var hero = G.heroes.find(function(x){return x.uid===cardUid;});
     if (hero) _heroDetailList.push(hero);
   });
-  _heroDetailIdx = _heroDetailList.findIndex(x => x.uid === uid);
+  _heroDetailIdx = _heroDetailList.findIndex(function(x){return x.uid===uid;});
   if (_heroDetailIdx < 0) _heroDetailIdx = 0;
 
   _renderHeroDetail(h);
