@@ -24402,18 +24402,18 @@ function validateSaveData(saveData) {
   // 资源：兼容顶层和 resources 子对象两种格式
   var hasGold = (g.gold !== undefined) || (g.resources && g.resources.gold !== undefined);
   if (!hasGold) errors.push('资源(gold)数据异常');
-  // 大小限制（已取消）
+  // 大小限制 5MB
   var jsonStr = JSON.stringify(saveData);
-  // if (jsonStr.length > 5 * 1024 * 1024) errors.push('存档过大: ' + (jsonStr.length/1024/1024).toFixed(2) + 'MB');
+  if (jsonStr.length > 5 * 1024 * 1024) errors.push('存档过大: ' + (jsonStr.length/1024/1024).toFixed(2) + 'MB');
   return errors;
 }
 
 // Supabase 保存到云端（带可靠性检查）
 // 云存档操作冷却时间（秒）
 var CLOUD_SAVE_COOLDOWN = 0;  // 上传冷却（已取消限制）
-var CLOUD_LOAD_COOLDOWN = 0;  // 下载冷却（已取消限制）
+var CLOUD_LOAD_COOLDOWN = 60; // 下载冷却60秒
 var CLOUD_DAILY_SAVE_LIMIT = 999999;  // 每日上传上限（已取消限制）
-var CLOUD_DAILY_LOAD_LIMIT = 999999;  // 每日下载上限（已取消限制）
+var CLOUD_DAILY_LOAD_LIMIT = 10; // 每日最多下载10次
 
 // 获取今日日期字符串
 function getTodayKey() {
