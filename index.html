@@ -4803,7 +4803,6 @@ function showZodiacStory(bossIndex, onClose){
       + '<div style="font-size:48px;margin-bottom:8px;filter:drop-shadow(0 0 14px '+lore.color+'99)">'+lore.icon+'</div>'
       + '<div style="font-size:16px;font-weight:bold;color:'+lore.color+';letter-spacing:2px;margin-bottom:4px">'+lore.title+'</div>'
       + '<div style="font-size:11px;color:#aaa;font-style:italic;margin-bottom:8px">'+lore.subtitle+'</div>'
-      + '<span style="display:inline-block;font-size:10px;color:'+hintColor+';background:'+hintColor+'18;border:1px solid '+hintColor+'44;border-radius:10px;padding:2px 10px;letter-spacing:1px">'+lore.worldHint+'</span>'
     + '</div>'
     + '<div style="padding:0 2px 4px;max-height:340px;overflow-y:auto">'
       + '<div style="background:rgba(0,0,0,.25);border-left:3px solid '+lore.color+';border-radius:0 6px 6px 0;padding:12px 14px 8px;margin-bottom:10px">'
@@ -11448,7 +11447,6 @@ function renderZodiac(el){
       +'<div style="font-size:11px;color:#999;text-align:center;margin:4px 0">挑战:'+attempts+' 次 | 通关:'+clearCount+' 次</div>'
       +'<div style="text-align:center;margin-top:6px">'+statusLabel+'</div>'
       +(canFight?'<div style="margin-top:10px"><button class="btn btn-primary" style="width:100%" onclick="startZodiacBoss('+idx+')">⚔️ 挑战</button></div>':'')
-      +(defeated?'<div style="margin-top:6px"><button class="btn" style="width:100%;font-size:11px;padding:6px;background:rgba(255,215,0,.06);border-color:rgba(255,215,0,.25);color:#ffd700" onclick="showZodiacStory('+idx+',null)">📖 查看传说</button></div>':'')
       +'</div>';
   });
   html+='</div></div>';
@@ -22408,6 +22406,44 @@ function rlOnBattleWin(savedTeam, savedHeroes, floorData) {
   // Toast提示（避免每层都弹，只在有宝石或Boss时提示）
   if(floorData.isBoss || gemReward > 0){
     showToast('🎲 第'+floor+'层通关！获得 💰'+goldReward+(gemReward>0?' 💎'+gemReward:''));
+  }
+
+  // ── 肉鸽卷轴掉落（概率不高，深层品质更高） ──
+  var scrollDropChance = 0.08 + floor * 0.004; // 基础8%，每层+0.4%，第30层约20%
+  if(floorData.isBoss) scrollDropChance += 0.10; // Boss层额外+10%
+  if(Math.random() < scrollDropChance && typeof MERGE_SCROLL_DEFS !== 'undefined'){
+    // 根据层数决定品质权重
+    var scrollWeights;
+    if(floor <= 5){
+      scrollWeights = {common:80, rare:20, epic:0, legendary:0, mythic:0};
+    } else if(floor <= 15){
+      scrollWeights = {common:50, rare:35, epic:15, legendary:0, mythic:0};
+    } else if(floor <= 25){
+      scrollWeights = {common:30, rare:35, epic:25, legendary:10, mythic:0};
+    } else if(floor <= 40){
+      scrollWeights = {common:15, rare:30, epic:30, legendary:20, mythic:5};
+    } else {
+      scrollWeights = {common:5, rare:20, epic:30, legendary:30, mythic:15};
+    }
+    // 加权随机选品质
+    var scrollPool = MERGE_SCROLL_DEFS.filter(function(s){
+      return scrollWeights[s.rarity] > 0;
+    });
+    var totalW = 0;
+    scrollPool.forEach(function(s){ totalW += scrollWeights[s.rarity]; });
+    var rnd = Math.random() * totalW;
+    var chosen = scrollPool[0];
+    var acc = 0;
+    for(var si=0; si<scrollPool.length; si++){
+      acc += scrollWeights[scrollPool[si].rarity];
+      if(rnd <= acc){ chosen = scrollPool[si]; break; }
+    }
+    // 添加到玩家背包
+    if(chosen && typeof addMergeScroll === 'function'){
+      addMergeScroll(chosen.id, 1);
+      var rarityNames = {common:'普通',rare:'稀有',epic:'史诗',legendary:'传说',mythic:'神话'};
+      showToast('📜 肉鸽掉落 '+chosen.icon+' '+chosen.name+' ('+rarityNames[chosen.rarity]+')');
+    }
   }
 
   // Boss层特殊奖励
