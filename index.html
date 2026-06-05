@@ -21052,13 +21052,30 @@ var RL_BLESSINGS = [
     apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.15); h.hp=Math.floor(h.hp*1.15); h.atk=Math.floor(h.atk*1.15); h.def=Math.floor(h.def*1.15); h.spd=Math.floor(h.spd*1.15); h.maxMP=Math.floor(h.maxMP*1.15); }); } },
   { id:'godly_power',name:'神圣赐福', icon:'👑',  desc:'全队攻击和HP各 +60%', rarity:'legendary',
     apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.6); h.hp=h.maxHP; h.atk=Math.floor(h.atk*1.6); }); } },
-  // 招募新英雄
+  // 招募新英雄（随机模板）
   { id:'recruit_warrior', name:'招募战士', icon:'⚔️', desc:'队伍加入一位稀有战士', rarity:'rare',
     apply: function(rl){ if(rl.heroes.length<4) rl.heroes.push(rlCreateHero('warrior','rare',rl.floor*2+3)); } },
   { id:'recruit_mage',    name:'招募法师', icon:'🔮', desc:'队伍加入一位稀有法师', rarity:'rare',
     apply: function(rl){ if(rl.heroes.length<4) rl.heroes.push(rlCreateHero('mage','rare',rl.floor*2+3)); } },
   { id:'recruit_healer',  name:'招募治愈者',icon:'💚', desc:'队伍加入一位稀有治愈者', rarity:'rare',
     apply: function(rl){ if(rl.heroes.length<4) rl.heroes.push(rlCreateHero('healer','rare',rl.floor*2+3)); } },
+  // 从玩家英雄池召唤援军
+  { id:'summon_ally', name:'召唤援军', icon:'🤝', desc:'从你的英雄池中随机召唤一位英雄加入队伍', rarity:'epic',
+    apply: function(rl){
+      if(rl.heroes.length >= 4) return;
+      var candidates = (G.heroes||[]).filter(function(h){
+        return h && !h.locked && !rl.heroes.some(function(rh){ return rh._rlOriginalUid === h.uid; });
+      });
+      if(candidates.length > 0) {
+        var pick = candidates[Math.floor(Math.random()*candidates.length)];
+        var scale = (rl._rlScale || 0.6) + (rl.floor - 1) * 0.05; // 随层数提升缩放
+        scale = Math.min(scale, 1.2); // 上限
+        rl.heroes.push(rlClonePlayerHero(pick, scale));
+      } else {
+        // 没有可选英雄，降级为模板招募
+        rl.heroes.push(rlCreateHero(['warrior','mage','healer','guardian','assassin'][Math.floor(Math.random()*5)],'rare',rl.floor*2+3));
+      }
+    } },
 ];
 
 // 肉鸽关卡生成
@@ -21078,6 +21095,36 @@ var RL_BOSS_THEMES = [
   { name:'混沌魔法师 · 虚空之眼',icon:'👁️', role:'mage',     quality:'legendary', mult:4.0, skills:['meteor','mana_burst','blizzard','thunder'] },
   { name:'深渊龙王 · 永恒毁灭',  icon:'🐉', role:'warrior',  quality:'mythic',    mult:5.0, skills:['execute','berserker','war_cry','ground_slam','cleave'] },
 ];
+
+// 深拷贝玩家英雄为肉鸽英雄（保留培养成果）
+function rlClonePlayerHero(playerHero, floorScale) {
+  // floorScale: 强度缩放系数（基于肉鸽层数）
+  var scale = floorScale || 1;
+  var h = JSON.parse(JSON.stringify(playerHero));
+  // 标记为肉鸽英雄
+  h.uid = 'rl_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+  h._rlOriginalUid = playerHero.uid; // 记录原始uid
+  h._rlOriginalLevel = playerHero.level; // 记录原始等级
+  // 属性缩放：保留玩家培养的属性比例，按层数适配
+  // 基础属性 = 玩家属性 * 缩放系数
+  h.maxHP = Math.max(1, Math.floor(h.maxHP * scale));
+  h.hp = h.maxHP;
+  h.atk = Math.max(1, Math.floor(h.atk * scale));
+  h.def = Math.max(1, Math.floor(h.def * scale));
+  h.spd = Math.max(1, Math.floor(h.spd * scale));
+  h.maxMP = Math.max(1, Math.floor(h.maxMP * scale));
+  h.mp = h.maxMP;
+  // 保留技能、天赋、特质等
+  if(!h.skills) h.skills = [];
+  if(!h.bonusSkills) h.bonusSkills = [];
+  if(!h.traits) h.traits = [];
+  if(!h.talents) h.talents = {};
+  if(!h.equipment) h.equipment = {weapon:null,armor:null,accessory:null};
+  // 肉鸽经验系统
+  h._rlExp = 0;
+  h._rlLevel = h.level; // 肉鸽内等级（可独立升级）
+  return h;
+}
 
 // 创建肉鸽临时英雄
 function rlCreateHero(role, quality, level) {
@@ -21206,31 +21253,95 @@ function renderRoguelike(el) {
 
 // 开始肉鸽
 function startRoguelike() {
-  // 构建初始英雄选择（随机3个起始英雄）
-  var pool = RL_HERO_STARTERS.slice().sort(function(){return Math.random()-0.5}).slice(0,3);
   var el = document.getElementById('content');
+
+  // 从玩家英雄池中随机选取3个候选
+  var playerHeroes = (G.heroes || []).filter(function(h) {
+    return h && !h.locked && h.level >= 1;
+  });
+
+  // 如果玩家英雄不足3个，用预设模板补充
+  var pool = [];
+  if (playerHeroes.length >= 3) {
+    // 随机打乱后取前3个（优先选高品质英雄）
+    var sorted = playerHeroes.slice().sort(function(a, b) {
+      var qi = (QUALITIES.indexOf(b.quality) || 0) - (QUALITIES.indexOf(a.quality) || 0);
+      if (qi !== 0) return qi;
+      return b.level - a.level;
+    });
+    // 从前5个中随机选3个（保证一定随机性）
+    var topN = sorted.slice(0, Math.min(5, sorted.length));
+    topN.sort(function(){ return Math.random() - 0.5; });
+    pool = topN.slice(0, 3).map(function(h) {
+      return { source: 'player', hero: h };
+    });
+  } else if (playerHeroes.length > 0) {
+    // 有少量英雄：全部放入 + 预设补充
+    playerHeroes.forEach(function(h) {
+      pool.push({ source: 'player', hero: h });
+    });
+    var remaining = 3 - pool.length;
+    var starters = RL_HERO_STARTERS.slice().sort(function(){return Math.random()-0.5}).slice(0, remaining);
+    starters.forEach(function(tpl) {
+      pool.push({ source: 'template', hero: tpl });
+    });
+  } else {
+    // 没有英雄：使用预设模板
+    var starters = RL_HERO_STARTERS.slice().sort(function(){return Math.random()-0.5}).slice(0, 3);
+    starters.forEach(function(tpl) {
+      pool.push({ source: 'template', hero: tpl });
+    });
+  }
+
+  // 肉鸽起始层数缩放系数（第1层，英雄属性适配到约5级强度）
+  var rlScale = 0.6; // 玩家高等级英雄属性缩放到合理范围
 
   el.innerHTML =
     '<div class="panel" style="background:linear-gradient(145deg,rgba(20,10,40,.98),rgba(30,15,55,.95));border-color:rgba(168,85,247,.4)">'
     + '<div style="text-align:center;margin-bottom:16px">'
       + '<div style="font-size:16px;font-weight:bold;color:#c084fc">选择你的初始英雄</div>'
-      + '<div style="font-size:11px;color:var(--text3);margin-top:4px">你只能选择一位，但可以在挑战中招募更多</div>'
+      + '<div style="font-size:11px;color:var(--text3);margin-top:4px">' + (pool[0].source === 'player' ? '从你的英雄池中挑选，保留培养成果' : '选择一位初始英雄，可在挑战中招募更多') + '</div>'
     + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px">'
-    + pool.map(function(tpl, idx) {
-        var r = ROLES[tpl.role];
-        var skillNames = tpl.skills.map(function(s){ return SKILLS[s] ? SKILLS[s].name : s; }).join('、');
-        return '<div class="panel" style="cursor:pointer;border-color:rgba(168,85,247,.3);transition:all .2s" onclick="rlPickHero(' + idx + ',' + JSON.stringify(tpl).replace(/"/g,'\'') + ')">'
+    + pool.map(function(item, idx) {
+        var isPlayer = item.source === 'player';
+        var h = item.hero;
+        var r = ROLES[h.role];
+        var qName = QUALITY_NAMES[h.quality] || h.quality;
+        var skillNames, displayName, displayIcon, displayLevel, hpVal, atkVal;
+        if (isPlayer) {
+          var stats = getHeroStats(h);
+          skillNames = (h.skills || []).concat(h.bonusSkills || []).map(function(s){ return SKILLS[s] ? SKILLS[s].name : s; }).join('、');
+          displayName = h.name;
+          displayIcon = h.icon;
+          displayLevel = h.level;
+          hpVal = stats.maxHP;
+          atkVal = stats.atk;
+        } else {
+          skillNames = h.skills.map(function(s){ return SKILLS[s] ? SKILLS[s].name : s; }).join('、');
+          displayName = h.name;
+          displayIcon = h.icon;
+          displayLevel = h.level;
+          hpVal = Math.floor(r.baseHP * (QUALITY_MULT[h.quality]||1) * (1+(h.level-1)*0.08));
+          atkVal = Math.floor(r.baseATK * (QUALITY_MULT[h.quality]||1) * (1+(h.level-1)*0.08));
+        }
+        var tag = isPlayer ? '<span style="font-size:9px;background:rgba(46,204,113,.2);color:#2ecc71;border:1px solid rgba(46,204,113,.3);border-radius:3px;padding:1px 4px;margin-left:4px">你的英雄</span>' : '';
+        var traitTags = '';
+        if (isPlayer && h.traits && h.traits.length > 0) {
+          traitTags = '<div style="font-size:9px;color:var(--text3);margin-top:2px">' + h.traits.map(function(t){ return t.icon + t.name; }).join(' ') + '</div>';
+        }
+        return '<div class="panel" style="cursor:pointer;border-color:rgba(168,85,247,.3);transition:all .2s" onclick="rlPickHero(' + idx + ')">'
           + '<div style="display:flex;align-items:center;gap:12px">'
-            + '<div style="font-size:36px;width:48px;text-align:center">' + tpl.icon + '</div>'
+            + '<div style="font-size:36px;width:48px;text-align:center">' + displayIcon + '</div>'
             + '<div style="flex:1">'
-              + '<div style="font-weight:bold;color:#c084fc">' + tpl.name + ' <span style="font-size:11px;color:var(--text3)">Lv.' + tpl.level + ' ' + r.name + '</span></div>'
+              + '<div style="font-weight:bold;color:#c084fc">' + displayName + tag + ' <span style="font-size:11px;color:var(--text3)">Lv.' + displayLevel + ' ' + qName + ' ' + r.name + '</span></div>'
               + '<div style="font-size:11px;color:var(--text2);margin-top:2px">' + r.desc + '</div>'
               + '<div style="font-size:10px;color:var(--text3);margin-top:4px">技能：' + skillNames + '</div>'
+              + traitTags
             + '</div>'
             + '<div style="text-align:right;font-size:11px;color:var(--text3)">'
-              + '❤️' + Math.floor(ROLES[tpl.role].baseHP * (QUALITY_MULT[tpl.quality]||1) * (1+(tpl.level-1)*0.08)) + '<br>'
-              + '⚔️' + Math.floor(ROLES[tpl.role].baseATK * (QUALITY_MULT[tpl.quality]||1) * (1+(tpl.level-1)*0.08))
+              + '❤️' + hpVal + '<br>'
+              + '⚔️' + atkVal
             + '</div>'
           + '</div>'
         + '</div>';
@@ -21241,12 +21352,26 @@ function startRoguelike() {
 
   // 存储pool供选择回调用
   window._rlStarterPool = pool;
+  window._rlScale = rlScale;
 }
 
-function rlPickHero(idx, tpl) {
-  var hero = rlCreateHero(tpl.role, tpl.quality, tpl.level);
-  hero.name = tpl.name;
-  hero.skills = tpl.skills.slice();
+function rlPickHero(idx) {
+  var pool = window._rlStarterPool || [];
+  var item = pool[idx];
+  if (!item) return;
+  var hero;
+  var rlScale = window._rlScale || 0.6;
+
+  if (item.source === 'player') {
+    // 深拷贝玩家英雄，保留培养成果
+    hero = rlClonePlayerHero(item.hero, rlScale);
+  } else {
+    // 使用预设模板
+    var tpl = item.hero;
+    hero = rlCreateHero(tpl.role, tpl.quality, tpl.level);
+    hero.name = tpl.name;
+    hero.skills = tpl.skills.slice();
+  }
 
   G_RL = {
     phase: 'active',
@@ -21254,7 +21379,8 @@ function rlPickHero(idx, tpl) {
     heroes: [hero],
     blessings: [],
     history: [],
-    startTime: Date.now()
+    startTime: Date.now(),
+    _rlScale: rlScale
   };
   renderRLActive(document.getElementById('content'));
 }
@@ -21396,6 +21522,31 @@ function rlOnBattleWin(savedTeam, savedHeroes, floorData) {
   // 记录最深层数
   var best = parseInt(localStorage.getItem('_rl_best_floor')||'0',10);
   if(G_RL.floor > best) localStorage.setItem('_rl_best_floor', G_RL.floor);
+
+  // 肉鸽英雄获得经验并升级
+  var expGain = 10 + G_RL.floor * 3;
+  G_RL.heroes.forEach(function(h) {
+    if (h.hp > 0) { // 只有存活英雄获得经验
+      h._rlExp = (h._rlExp || 0) + expGain;
+      var expNeed = 30 + h._rlLevel * 15;
+      while (h._rlExp >= expNeed && h._rlLevel < 99) {
+        h._rlExp -= expNeed;
+        h._rlLevel++;
+        // 升级属性提升
+        var r = ROLES[h.role];
+        if (r) {
+          h.maxHP += Math.floor(r.baseHP * 0.05);
+          h.atk += Math.floor(r.baseATK * 0.05);
+          h.def += Math.floor(r.baseDEF * 0.05);
+          h.spd += Math.floor(r.baseSPD * 0.03);
+          h.maxMP += Math.floor(r.baseMP * 0.04);
+        }
+        expNeed = 30 + h._rlLevel * 15;
+      }
+      h.hp = Math.min(h.hp + Math.floor(h.maxHP * 0.1), h.maxHP); // 恢复10%HP
+      h.level = h._rlLevel;
+    }
+  });
 
   G_RL.floor++;
   G_RL.phase = 'blessing';
