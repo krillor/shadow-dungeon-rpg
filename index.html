@@ -16761,14 +16761,14 @@ function renderHeroes(el){
 function renderHeroCard(h){
   if(!h) return '<div class="hero-card" style="padding:10px;color:var(--text3)">⚠️ 英雄数据异常</div>';
   // 未知英雄特殊处理
-  const isUnknown = h.isUnknown && !h.isUnlocked;
-  const role = isUnknown ? {icon:'❓',name:'未知'} : (ROLES[h.role] || ROLES['warrior']);
-  const stats = isUnknown ? {maxHP:'???',atk:'???',def:'???',spd:'???',maxMP:'???'} : getHeroStats(h);
-  const expNeed = getExpToLevel(h.level);
-  const allSkills = isUnknown ? [] : [...h.skills,...h.bonusSkills];
-  const inTeam = G.team.some(t=>t&&t.uid===h.uid);
+  var isUnknown = h.isUnknown && !h.isUnlocked;
+  var role = isUnknown ? {icon:'❓',name:'未知'} : (ROLES[h.role] || ROLES['warrior']);
+  var stats = isUnknown ? {maxHP:'???',atk:'???',def:'???',spd:'???',maxMP:'???'} : getHeroStats(h);
+  var expNeed = getExpToLevel(h.level);
+  var allSkills = isUnknown ? [] : h.skills.concat(h.bonusSkills||[]);
+  var inTeam = G.team.some(function(t){return t&&t.uid===h.uid});
   // 职业特性描述
-  const roleTraits={
+  var roleTraits={
     warrior:'近战输出，擅长AOE和爆发',
     guardian:'坦克，擅长嘲讽和护盾',
     mage:'远程法术，高伤害AOE',
@@ -16780,7 +16780,7 @@ function renderHeroCard(h){
     unknown:'???'
   };
   // 属性解释
-  const statTips={
+  var statTips={
     maxHP:'生命值 - 决定存活能力',
     atk:'攻击力 - 决定伤害输出',
     def:'防御力 - 减少受到的伤害',
@@ -16790,10 +16790,10 @@ function renderHeroCard(h){
   var power = isUnknown ? '???' : calcHeroPower(h);
   
   // 未知英雄显示处理
-  const displayName = isUnknown ? h.displayName : h.name;
-  const displayIcon = isUnknown ? h.displayIcon : h.icon;
-  const displayQuality = isUnknown ? 'unknown' : h.quality;
-  const displayRole = isUnknown ? 'unknown' : h.role;
+  var displayName = isUnknown ? h.displayName : h.name;
+  var displayIcon = isUnknown ? h.displayIcon : h.icon;
+  var displayQuality = isUnknown ? 'unknown' : h.quality;
+  var displayRole = isUnknown ? 'unknown' : h.role;
   
   return`<div class="hero-card quality-${displayQuality}" data-role="${displayRole}" data-quality="${displayQuality}" data-uid="${h.uid}" onclick="showHeroDetail(${h.uid})" style="cursor:pointer">
     ${inTeam?'<div class="hero-team-badge">🛡️ 队伍中</div>':''}
@@ -16829,7 +16829,7 @@ var _heroDetailList = [];
 var _heroDetailIdx = -1;
 
 function showHeroDetail(uid){
-  const h=G.heroes.find(x=>x.uid===uid);
+  var h=G.heroes.find(function(x){return x.uid===uid});
   if(!h)return;
   
   // 构建当前过滤后的英雄列表
@@ -24375,33 +24375,8 @@ function repairRuntimeState(){
   if(!G.codex) G.codex = {heroes:{},equipment:{},monsters:{}};
   if(!G.stats) G.stats = {totalKills:0,totalHeroesRecruited:0,maxStageReached:1,maxHeroLevel:0};
   
-  // 7. 修复英雄数据完整性
-  if(G.heroes){
-    G.heroes.forEach(function(h){
-      if(!h) return;
-      if(!h.equipment) h.equipment = {weapon:null,armor:null,accessory:null};
-      if(!h.skills) h.skills = [];
-      if(!h.bonusSkills) h.bonusSkills = [];
-      if(!h.mutatedSkills) h.mutatedSkills = [];
-      if(!h.traits) h.traits = [];
-      if(!h.talents) h.talents = {};
-      if(typeof h.quality==='undefined'||!h.quality) h.quality='common';
-      if(typeof h.role==='undefined'||!h.role) h.role='warrior';
-      if(typeof h.level!=='number'||h.level<1) h.level=1;
-      if(typeof h.maxHP!=='number') h.maxHP=100;
-      if(typeof h.atk!=='number') h.atk=10;
-      if(typeof h.def!=='number') h.def=5;
-      if(typeof h.spd!=='number') h.spd=10;
-      if(typeof h.maxMP!=='number') h.maxMP=50;
-      if(typeof h.hp!=='number'||h.hp<=0) h.hp=h.maxHP;
-      if(typeof h.mp!=='number') h.mp=h.maxMP;
-      if(typeof h.exp!=='number') h.exp=0;
-      if(!h.name) h.name='未知英雄';
-      if(!h.icon) h.icon='❓';
-      if(!h.lore) h.lore='';
-      if(h.locked===undefined) h.locked=false;
-    });
-  }
+  // 7. 不修改英雄数据（由renderHeroes的数据防御处理）
+  if(!Array.isArray(G.heroes)) G.heroes = [];
   
   // 8. 重新渲染UI
   try {
