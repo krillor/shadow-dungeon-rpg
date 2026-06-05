@@ -8599,7 +8599,7 @@ function showConfirm(title,message,onConfirm,confirmText,cancelText){
 
 // openModal: 直接将HTML渲染到modal-root（用于showHeroDetail等）
 function openModal(html){
-  document.getElementById('modal-root').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">${html}</div>`;
+  document.getElementById('modal-root').innerHTML='<div class="modal-overlay" onclick="if(event.target===this)closeModal()">'+html+'</div>';
 }
 
 // ==================== 英雄特质系统 ====================
@@ -17625,23 +17625,21 @@ function showHelpModal(){
 
 // 兑换码弹窗
 function showRedeemModal(){
-  const html=`
-    <div style="max-width:360px">
-      <div style="text-align:center;margin-bottom:16px">
-        <div style="font-size:40px;margin-bottom:8px">🎁</div>
-        <div style="font-size:16px;font-weight:bold;color:#27ae60">兑换码</div>
-        <div style="font-size:12px;color:var(--text3);margin-top:4px">加群 1076667471 获取礼包码</div>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:16px">
-        <input type="text" id="modal-redeem-input" style="flex:1;padding:12px 14px;border:1px solid rgba(39,174,96,.5);background:var(--panel2);color:var(--text);border-radius:8px;font-size:14px;font-family:inherit;outline:none;text-transform:uppercase" placeholder="输入兑换码" autocomplete="off">
-        <button class="btn btn-primary" onclick="redeemCodeFromModal()" style="padding:12px 24px;font-size:14px">兑换</button>
-      </div>
-      <div id="modal-redeem-result" style="font-size:13px;text-align:center;min-height:20px"></div>
-      <div style="text-align:center;margin-top:16px">
-        <button class="btn" onclick="closeModal()">关闭</button>
-      </div>
-    </div>
-  `;
+  var html='<div style="max-width:360px">'
+    +'<div style="text-align:center;margin-bottom:16px">'
+      +'<div style="font-size:40px;margin-bottom:8px">🎁</div>'
+      +'<div style="font-size:16px;font-weight:bold;color:#27ae60">兑换码</div>'
+      +'<div style="font-size:12px;color:var(--text3);margin-top:4px">加群 1076667471 获取礼包码</div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:16px">'
+      +'<input type="text" id="modal-redeem-input" style="flex:1;padding:12px 14px;border:1px solid rgba(39,174,96,.5);background:var(--panel2);color:var(--text);border-radius:8px;font-size:14px;font-family:inherit;outline:none;text-transform:uppercase" placeholder="输入兑换码" autocomplete="off">'
+      +'<button class="btn btn-primary" onclick="redeemCodeFromModal()" style="padding:12px 24px;font-size:14px">兑换</button>'
+    +'</div>'
+    +'<div id="modal-redeem-result" style="font-size:13px;text-align:center;min-height:20px"></div>'
+    +'<div style="text-align:center;margin-top:16px">'
+      +'<button class="btn" onclick="closeModal()">关闭</button>'
+    +'</div>'
+  +'</div>';
   openModal(html);
   // 自动聚焦输入框
   setTimeout(function(){
@@ -17672,36 +17670,34 @@ function redeemCodeFromModal(){
 
 // 存档管理弹窗
 function showSaveManageModal(){
-  const html=`
-    <div style="max-width:360px">
-      <div style="text-align:center;margin-bottom:20px">
-        <div style="font-size:40px;margin-bottom:8px">💾</div>
-        <div style="font-size:16px;font-weight:bold;color:#3498db">存档管理</div>
-        <div style="font-size:12px;color:var(--text3);margin-top:4px">本地存档 + 云端备份双保险</div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-        <button class="btn" onclick="closeModal();showSaveInfo()" style="padding:14px;font-size:13px;background:rgba(52,152,219,.1);border-color:rgba(52,152,219,.3)">
-          <div style="font-size:20px;margin-bottom:4px">💾</div>
-          <div>本地存档</div>
-        </button>
-        <button class="btn" onclick="closeModal();showCloudSavePanel()" style="padding:14px;font-size:13px;background:rgba(155,89,182,.1);border-color:rgba(155,89,182,.3)">
-          <div style="font-size:20px;margin-bottom:4px">☁️</div>
-          <div>云存档</div>
-        </button>
-        <button class="btn" onclick="exportSaveToFile()" style="padding:14px;font-size:13px;background:rgba(46,204,113,.1);border-color:rgba(46,204,113,.3)">
-          <div style="font-size:20px;margin-bottom:4px">📤</div>
-          <div>导出</div>
-        </button>
-        <button class="btn" onclick="importSaveFromFile()" style="padding:14px;font-size:13px;background:rgba(241,196,15,.1);border-color:rgba(241,196,15,.3)">
-          <div style="font-size:20px;margin-bottom:4px">📥</div>
-          <div>导入</div>
-        </button>
-      </div>
-      <div style="text-align:center">
-        <button class="btn" onclick="closeModal()">关闭</button>
-      </div>
-    </div>
-  `;
+  var html='<div style="max-width:360px">'
+    +'<div style="text-align:center;margin-bottom:20px">'
+      +'<div style="font-size:40px;margin-bottom:8px">💾</div>'
+      +'<div style="font-size:16px;font-weight:bold;color:#3498db">存档管理</div>'
+      +'<div style="font-size:12px;color:var(--text3);margin-top:4px">本地存档 + 云端备份双保险</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">'
+      +'<button class="btn" onclick="closeModal();showSaveInfo()" style="padding:14px;font-size:13px;background:rgba(52,152,219,.1);border-color:rgba(52,152,219,.3)">'
+        +'<div style="font-size:20px;margin-bottom:4px">💾</div>'
+        +'<div>本地存档</div>'
+      +'</button>'
+      +'<button class="btn" onclick="closeModal();showCloudSavePanel()" style="padding:14px;font-size:13px;background:rgba(155,89,182,.1);border-color:rgba(155,89,182,.3)">'
+        +'<div style="font-size:20px;margin-bottom:4px">☁️</div>'
+        +'<div>云存档</div>'
+      +'</button>'
+      +'<button class="btn" onclick="exportSaveToFile()" style="padding:14px;font-size:13px;background:rgba(46,204,113,.1);border-color:rgba(46,204,113,.3)">'
+        +'<div style="font-size:20px;margin-bottom:4px">📤</div>'
+        +'<div>导出</div>'
+      +'</button>'
+      +'<button class="btn" onclick="importSaveFromFile()" style="padding:14px;font-size:13px;background:rgba(241,196,15,.1);border-color:rgba(241,196,15,.3)">'
+        +'<div style="font-size:20px;margin-bottom:4px">📥</div>'
+        +'<div>导入</div>'
+      +'</button>'
+    +'</div>'
+    +'<div style="text-align:center">'
+      +'<button class="btn" onclick="closeModal()">关闭</button>'
+    +'</div>'
+  +'</div>';
   openModal(html);
 }
 
@@ -17713,23 +17709,21 @@ function showCheatEntryModal(){
     switchTab('cheats');
   } else {
     // 未解锁，弹窗提示
-    const html=`
-      <div style="max-width:360px">
-        <div style="text-align:center;margin-bottom:16px">
-          <div style="font-size:40px;margin-bottom:8px">🔒</div>
-          <div style="font-size:16px;font-weight:bold;color:var(--gold)">金手指系统</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:4px">请输入解锁密码</div>
-        </div>
-        <div style="display:flex;gap:8px;margin-bottom:12px">
-          <input type="password" id="modal-cheat-input" style="flex:1;padding:12px 14px;border:1px solid rgba(212,175,55,.5);background:var(--panel2);color:var(--text);border-radius:8px;font-size:14px;font-family:inherit;outline:none" placeholder="输入密码" autocomplete="off">
-          <button class="btn" onclick="unlockCheatFromModal()" style="padding:12px 24px;font-size:14px;background:rgba(212,175,55,.15);border-color:rgba(212,175,55,.4);color:var(--gold)">解锁</button>
-        </div>
-        <div id="modal-cheat-result" style="font-size:13px;text-align:center;min-height:20px"></div>
-        <div style="text-align:center;margin-top:16px">
-          <button class="btn" onclick="closeModal()">关闭</button>
-        </div>
-      </div>
-    `;
+    var html='<div style="max-width:360px">'
+      +'<div style="text-align:center;margin-bottom:16px">'
+        +'<div style="font-size:40px;margin-bottom:8px">🔒</div>'
+        +'<div style="font-size:16px;font-weight:bold;color:var(--gold)">金手指系统</div>'
+        +'<div style="font-size:12px;color:var(--text3);margin-top:4px">请输入解锁密码</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:12px">'
+        +'<input type="password" id="modal-cheat-input" style="flex:1;padding:12px 14px;border:1px solid rgba(212,175,55,.5);background:var(--panel2);color:var(--text);border-radius:8px;font-size:14px;font-family:inherit;outline:none" placeholder="输入密码" autocomplete="off">'
+        +'<button class="btn" onclick="unlockCheatFromModal()" style="padding:12px 24px;font-size:14px;background:rgba(212,175,55,.15);border-color:rgba(212,175,55,.4);color:var(--gold)">解锁</button>'
+      +'</div>'
+      +'<div id="modal-cheat-result" style="font-size:13px;text-align:center;min-height:20px"></div>'
+      +'<div style="text-align:center;margin-top:16px">'
+        +'<button class="btn" onclick="closeModal()">关闭</button>'
+      +'</div>'
+    +'</div>';
     openModal(html);
     setTimeout(function(){
       var input = document.getElementById('modal-cheat-input');
