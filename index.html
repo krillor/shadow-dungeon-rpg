@@ -8820,6 +8820,7 @@ function recordMonsterCodex(enemies){
 }
 
 function getHeroStats(hero){
+  if(!hero) return {hp:0,maxHP:1,atk:0,def:0,spd:0,mp:0,maxMP:1};
   var s={
     hp: Number(hero.hp) || 0,
     maxHP: Number(hero.maxHP) || 1,
@@ -8830,6 +8831,7 @@ function getHeroStats(hero){
     maxMP: Number(hero.maxMP) || 1
   };
   // 装备加成（含强化加成）
+  if(!hero.equipment) hero.equipment={weapon:null,armor:null,accessory:null};
   var slots=['weapon','armor','accessory'];
   for(var si=0;si<slots.length;si++){
     var slot=slots[si];
@@ -16229,6 +16231,7 @@ function recruitHero(templateId){
 let currentTab='town';
 
 function switchTab(tab){
+  try {
   if(G_isH5Package&&tab==='cheats'){showToast('📦 H5版已禁用金手指');return;}
   currentTab=tab;
   document.querySelectorAll('.nav-btn').forEach(b=>{
@@ -16239,13 +16242,22 @@ function switchTab(tab){
   if(tab==='merge' && G.tutorialPhase==='guide' && G.tutorialStep===6){
     onGuideMergeClick();
   }
+  } catch(e) {
+    console.error('[switchTab] 切换标签出错 ('+tab+'):', e);
+    // 降级：至少切换标签高亮
+    currentTab = tab;
+    document.querySelectorAll('.nav-btn').forEach(b=>{
+      b.classList.toggle('active',b.dataset.tab===tab);
+    });
+  }
 }
 
 function renderCurrentTab(){
   var contentEl=document.getElementById('content');
   var battlePanel=document.getElementById('battle-panel');
-  if(!contentEl) return; // DOM未就绪
+  if(!contentEl) return;
   
+  try {
   if(G_battleRunning && currentTab==='battle'){
     contentEl.style.display='none';
     battlePanel.style.display='';
@@ -16273,6 +16285,12 @@ function renderCurrentTab(){
     case 'breakthrough': contentEl.innerHTML=renderBreakthroughUI();break;
     case 'cheats': renderCheats(contentEl);break;
     case 'zodiac': renderZodiac(contentEl);break;
+  }
+  } catch(e) {
+    console.error('[renderCurrentTab] 渲染出错 ('+currentTab+'):', e);
+    contentEl.innerHTML = '<div class="panel"><div class="panel-title">⚠️ 页面渲染异常</div>'
+      + '<div style="padding:8px;font-size:12px;color:var(--text2)">标签: ' + currentTab + '<br>错误: ' + e.message + '</div>'
+      + '<button class="btn btn-primary" onclick="switchTab('town')" style="margin-top:8px">返回城镇</button></div>';
   }
 }
 
@@ -16674,6 +16692,32 @@ function resetMergeState(){
 }
 
 function renderHeroes(el){
+  // 数据防御：确保英雄数据完整
+  if(!G.heroes) G.heroes=[];
+  G.heroes.forEach(function(h){
+    if(!h) return;
+    if(!h.equipment) h.equipment={weapon:null,armor:null,accessory:null};
+    if(!h.skills) h.skills=[];
+    if(!h.bonusSkills) h.bonusSkills=[];
+    if(!h.mutatedSkills) h.mutatedSkills=[];
+    if(!h.traits) h.traits=[];
+    if(!h.talents) h.talents={};
+    if(typeof h.quality==='undefined'||!h.quality) h.quality='common';
+    if(typeof h.role==='undefined'||!h.role) h.role='warrior';
+    if(typeof h.level!=='number'||h.level<1) h.level=1;
+    if(typeof h.maxHP!=='number') h.maxHP=100;
+    if(typeof h.atk!=='number') h.atk=10;
+    if(typeof h.def!=='number') h.def=5;
+    if(typeof h.spd!=='number') h.spd=10;
+    if(typeof h.maxMP!=='number') h.maxMP=50;
+    if(typeof h.hp!=='number'||h.hp<=0) h.hp=h.maxHP;
+    if(typeof h.mp!=='number') h.mp=h.maxMP;
+    if(typeof h.exp!=='number') h.exp=0;
+    if(!h.name) h.name='未知英雄';
+    if(!h.icon) h.icon='❓';
+    if(!h.lore) h.lore='';
+    if(h.locked===undefined) h.locked=false;
+  });
   if(G.heroes.length===0){
     el.innerHTML=`<div class="panel"><div class="panel-title"><span class="icon">⚔️</span> 英雄列表</div><div class="text-dim">还没有英雄，去酒馆招募吧！</div><div class="btn-group mt-8"><button class="btn btn-primary" onclick="renderTavernRecruit()">🍺 前往酒馆</button></div></div>`;
     return;
@@ -16700,9 +16744,10 @@ function renderHeroes(el){
 }
 
 function renderHeroCard(h){
+  if(!h) return '<div class="hero-card" style="padding:10px;color:var(--text3)">⚠️ 英雄数据异常</div>';
   // 未知英雄特殊处理
   const isUnknown = h.isUnknown && !h.isUnlocked;
-  const role = isUnknown ? {icon:'❓',name:'未知'} : ROLES[h.role];
+  const role = isUnknown ? {icon:'❓',name:'未知'} : (ROLES[h.role] || ROLES['warrior']);
   const stats = isUnknown ? {maxHP:'???',atk:'???',def:'???',spd:'???',maxMP:'???'} : getHeroStats(h);
   const expNeed = getExpToLevel(h.level);
   const allSkills = isUnknown ? [] : [...h.skills,...h.bonusSkills];
@@ -18283,6 +18328,10 @@ function getTalentEffects(hero){
 }
 
 function renderTeam(el){
+  // 数据防御
+  if(!G.team) G.team=[null,null,null,null,null,null];
+  while(G.team.length<6) G.team.push(null);
+  if(!G.heroes) G.heroes=[];
   // 过滤可用英雄：未解锁的未知英雄不能上阵
   var available=G.heroes.filter(function(h){
     if(G.team.some(function(t){return t&&t.uid===h.uid;})) return false;
@@ -18755,6 +18804,15 @@ function quickClear(stageId){
 }
 
 function renderMerge(el){
+  // 数据防御
+  if(!G.heroes) G.heroes=[];
+  if(!G.mergeHistory) G.mergeHistory=[];
+  if(!G.mergeLucky) G.mergeLucky=0;
+  if(!G.mergePity) G.mergePity=0;
+  if(!G.mergeFragments) G.mergeFragments=0;
+  if(!G.mergeScrolls) G.mergeScrolls=[];
+  if(!G.resources) G.resources={gold:0,gems:0};
+  if(!G.autoDecompose) G.autoDecompose={enabled:false,maxQuality:'common'};
   var heroCount=G.heroes.length;
   // 清理无效的融合槽位引用（英雄已被移除的情况）
   // 注意：使用 Array.some 进行宽松类型比较，避免字符串/数字 uid 不匹配
@@ -19705,6 +19763,9 @@ function updateMergeButtonState(){
 }
 
 function renderEquip(el){
+  // 数据防御
+  if(!G.equipment) G.equipment=[];
+  if(!G.heroes) G.heroes=[];
   if(!window._bpQFilter) window._bpQFilter='all';
   if(!window._bpTFilter) window._bpTFilter='all';
   if(!window._bpTab) window._bpTab='bag';
