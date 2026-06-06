@@ -8740,7 +8740,7 @@ const HERO_TRAITS = [
 ];
 function assignTraits(hero){
   // 品质高的英雄获得更多特质
-  const tCount = hero.quality==='mythic'?2:hero.quality==='legendary'?2:hero.quality==='epic'?rand(1,2):rand(0,1);
+  const tCount = hero.quality==='unknown'?3:hero.quality==='mythic'?2:hero.quality==='legendary'?2:hero.quality==='epic'?rand(1,2):rand(0,1);
   const assigned = [];
   const pool = [...HERO_TRAITS];
   for(let i=0;i<tCount&&pool.length>0;i++){
@@ -13183,8 +13183,10 @@ var STAT_CAP_BASE = {
 function getHeroStatCap(hero) {
   var capMult = 1.0;
   
+  // 未知品质突破上限（最高品质，突破最多）
+  if (hero.quality === 'unknown') capMult += 0.8;
   // 隐藏品质突破上限
-  if (hero.isHidden) capMult += 0.5;
+  else if (hero.isHidden) capMult += 0.5;
   // 异变英雄突破
   else if (hero.isMutation) capMult += 0.3;
   
