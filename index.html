@@ -17875,21 +17875,34 @@ function quickAutoEquipHero(heroUid){
   var hero=G.heroes.find(function(h){return h.uid===heroUid || h.uid==heroUid;});
   if(!hero)return;
   var qo={mythic:5,legendary:4,epic:3,rare:2,common:1};
+  // 计算装备评分（品质权重 + 强化等级）
+  function getEquipScore(eq){
+    var tpl=EQUIP_TEMPLATES.find(function(t){return t.id===eq.id;});
+    if(!tpl)return 0;
+    return (qo[tpl.quality]||0)*100 + (eq.enhance||0);
+  }
   ['weapon','armor','accessory'].forEach(function(slot){
+    // 获取所有未装备的该类型装备
     var avail=G.equipment.filter(function(e){
-      if(e.heroUid!==null && e.heroUid!==heroUid)return false; // only unequipped or own
       var t=EQUIP_TEMPLATES.find(function(t){return t.id===e.id;});
       return t&&t.type===slot&&e.heroUid===null;
     });
     if(avail.length===0)return;
-    avail.sort(function(a,b){
-      var ta=EQUIP_TEMPLATES.find(function(t){return t.id===a.id;}); var tb=EQUIP_TEMPLATES.find(function(t){return t.id===b.id;});
-      if(!ta||!tb)return 0;
-      return (qo[tb.quality]||0)-(qo[ta.quality]||0)||(b.enhance||0)-(a.enhance||0);
-    });
+    // 按评分排序
+    avail.sort(function(a,b){return getEquipScore(b)-getEquipScore(a);});
     var best=avail[0];
+    var bestScore=getEquipScore(best);
+    // 检查当前已装备的是否更好
     var oldUid=hero.equipment[slot];
-    if(oldUid!=null){var oldEq=G.equipment.find(function(e){return e.uid===oldUid;});if(oldEq)oldEq.heroUid=null;}
+    if(oldUid!=null){
+      var oldEq=G.equipment.find(function(e){return e.uid===oldUid;});
+      if(oldEq){
+        var oldScore=getEquipScore(oldEq);
+        if(oldScore>=bestScore)return; // 当前装备更好或持平，不替换
+        oldEq.heroUid=null; // 卸下旧装备
+      }
+    }
+    // 穿戴新装备
     hero.equipment[slot]=best.uid; best.heroUid=heroUid;
   });
   saveGame();updateResUI();
