@@ -15252,6 +15252,110 @@ function pickRandomScroll(excludeIds) {
 }
 
 // 购买卷轴
+// ── 职业融合选择回调 ──
+window._rlRoleInheritPick = function(idx) {
+  var opt = window._rlRoleInheritOptions[idx];
+  var hero = window._rlRoleInheritHero;
+  if(!opt || !hero) return;
+  hero.role = opt.role;
+  hero._pendingRoleInherit = false;
+  hero._scrollTag = '⚔️职业融合（'+(ROLES[opt.role]||{}).name+'）';
+  var role = ROLES[hero.role] || ROLES.warrior;
+  var qm = QUALITY_MULT[hero.quality] || 1;
+  var lv = hero.level;
+  hero.maxHP = Math.max(hero.maxHP, calcStat(role.baseHP, qm, lv));
+  hero.atk   = Math.max(hero.atk,   calcStat(role.baseATK, qm, lv));
+  hero.def   = Math.max(hero.def,   calcStat(role.baseDEF, qm, lv));
+  hideModal();
+  showToast('⚔️ 职业融合完成！继承了 '+(ROLES[opt.role]||{}).name+' 的职业');
+  // 刷新合成界面
+  if(currentTab === 'merge') renderMerge(document.getElementById('content'));
+};
+
+// ── 技能铸造选择回调 ──
+window._rlForgeToggle = function(idx) {
+  var pool = window._rlForgePool;
+  var count = window._rlForgeCount;
+  var selected = window._rlForgeSelected;
+  var el = document.getElementById('forge-skill-'+idx);
+  var check = document.getElementById('forge-check-'+idx);
+  if(!el || !pool) return;
+  var isSelected = el.getAttribute('data-selected') === 'true';
+  if(isSelected) {
+    // 取消选择
+    el.setAttribute('data-selected','false');
+    el.style.borderColor = 'rgba(255,255,255,.1)';
+    el.style.background = 'rgba(255,255,255,.03)';
+    check.textContent = ' ';
+    check.style.background = 'transparent';
+    check.style.borderColor = 'rgba(255,255,255,.2)';
+    selected = selected.filter(function(s){return s!==idx;});
+  } else {
+    if(selected.length >= count) {
+      showToast('最多只能选 '+count+' 个技能');
+      return;
+    }
+    el.setAttribute('data-selected','true');
+    el.style.borderColor = 'rgba(168,85,247,.6)';
+    el.style.background = 'rgba(168,85,247,.1)';
+    check.textContent = '✓';
+    check.style.background = 'rgba(168,85,247,.3)';
+    check.style.borderColor = 'rgba(168,85,247,.6)';
+    selected.push(idx);
+  }
+  window._rlForgeSelected = selected;
+  // 更新确认按钮
+  var btn = document.getElementById('forge-do-btn');
+  if(btn){
+    if(selected.length === count){
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+      btn.onclick = function(){ window._rlForgeConfirm(); };
+    } else {
+      btn.disabled = true;
+      btn.style.opacity = '0.4';
+      btn.style.pointerEvents = 'none';
+    }
+    btn.textContent = '确认铸造（已选 '+selected.length+'/'+count+'）';
+  }
+};
+
+window._rlForgeConfirm = function() {
+  var pool = window._rlForgePool;
+  var selected = window._rlForgeSelected;
+  var hero = window._rlForgeHero;
+  var heroes = window._rlForgeHeroes;
+  if(!pool || !selected || !hero || selected.length === 0) return;
+  var forged = selected.map(function(i){return pool[i];});
+  // 铸造：以第一个为基础，其余标记为融合来源
+  hero.skills = [forged[0]];
+  if(!hero.bonusSkills) hero.bonusSkills = [];
+  // 未选的技能作为额外技能保留
+  pool.forEach(function(sId, i){
+    if(selected.indexOf(i)===-1) hero.bonusSkills.push(sId);
+  });
+  hero.isMutation = true;
+  hero.mutatedSkills = [0];
+  hero.forgedSkills = forged;
+  hero._pendingForge = false;
+  hero._scrollTag = '🔨技能铸造（'+forged.length+'个）';
+  // 属性：材料平均值 × 1.3
+  var totalHP=0, totalATK=0, totalDEF=0, totalSPD=0, totalMP=0;
+  heroes.forEach(function(h){ var s=getHeroStats(h); totalHP+=s.maxHP; totalATK+=s.atk; totalDEF+=s.def; totalSPD+=s.spd; totalMP+=s.maxMP; });
+  var n = heroes.length;
+  hero.maxHP = Math.floor(Math.max(hero.maxHP, totalHP/n*1.3));
+  hero.hp    = hero.maxHP;
+  hero.atk   = Math.floor(Math.max(hero.atk,   totalATK/n*1.3));
+  hero.def   = Math.floor(Math.max(hero.def,   totalDEF/n*1.3));
+  hero.spd   = Math.floor(Math.max(hero.spd,   totalSPD/n*1.3));
+  hero.maxMP = Math.floor(Math.max(hero.maxMP,  totalMP/n*1.3));
+  hero.mp    = hero.maxMP;
+  hideModal();
+  showToast('🔨 技能铸造完成！融合了 '+forged.length+' 个技能');
+  if(currentTab === 'merge') renderMerge(document.getElementById('content'));
+};
+
 function buyScroll(shopIndex) {
   if (!G.dailyScrollShop || !G.dailyScrollShop[shopIndex]) return;
   var item = G.dailyScrollShop[shopIndex];
@@ -15729,25 +15833,45 @@ function executeMerge(heroUids){
         break;
 
       case 'roleInherit':
-        // 职业融合：让玩家选择继承哪个材料的职业（这里自动选最强职业）
+        // 职业融合：让玩家选择继承哪个材料的职业
         (function(){
-          var bestHero = heroes.reduce(function(best, h){
-            var bs = getHeroStats(best);
-            var hs = getHeroStats(h);
-            return (hs.atk+hs.def+hs.maxHP+hs.spd) > (bs.atk+bs.def+bs.maxHP+bs.spd) ? h : best;
-          }, heroes[0]);
-          if(bestHero && bestHero.role !== newHero.role){
-            newHero.role = bestHero.role;
-            // 重新计算基础属性（职业基础值不同）
-            var role = ROLES[newHero.role] || ROLES.warrior;
-            var qm = QUALITY_MULT[newHero.quality] || 1;
-            var lv = newHero.level;
-            newHero.maxHP = Math.max(newHero.maxHP, calcStat(role.baseHP, qm, lv));
-            newHero.atk   = Math.max(newHero.atk,   calcStat(role.baseATK, qm, lv));
-            newHero.def   = Math.max(newHero.def,   calcStat(role.baseDEF, qm, lv));
+          // 收集所有材料的职业选项
+          var roleOptions = [];
+          heroes.forEach(function(h){
+            var r = ROLES[h.role];
+            if(r && roleOptions.every(function(o){return o.role!==h.role;})){
+              roleOptions.push({ role:h.role, name:h.name, icon:h.icon||r.icon, desc:r.passive||r.desc||'' });
+            }
+          });
+          if(roleOptions.length <= 1){
+            // 只有一个职业可选，自动选择
+            if(roleOptions.length===1 && roleOptions[0].role !== newHero.role){
+              newHero.role = roleOptions[0].role;
+              var role0 = ROLES[newHero.role] || ROLES.warrior;
+              var qm0 = QUALITY_MULT[newHero.quality] || 1;
+              var lv0 = newHero.level;
+              newHero.maxHP = Math.max(newHero.maxHP, calcStat(role0.baseHP, qm0, lv0));
+              newHero.atk   = Math.max(newHero.atk,   calcStat(role0.baseATK, qm0, lv0));
+              newHero.def   = Math.max(newHero.def,   calcStat(role0.baseDEF, qm0, lv0));
+            }
+          } else {
+            // 多个职业可选，弹出选择UI
+            var html = '<div style="text-align:center;margin-bottom:12px"><b>⚔️ 选择要继承的职业</b></div>';
+            roleOptions.forEach(function(opt, i){
+              var rData = ROLES[opt.role] || {};
+              html += '<div onclick="_rlRoleInheritPick('+i+')" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:10px;margin-bottom:6px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor=\'rgba(168,85,247,.6)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,.15)\'">'
+                + '<div style="font-size:14px;font-weight:bold">'+opt.icon+' '+rData.name+' <span style="font-size:11px;color:var(--text3)">（来自'+opt.name+'）</span></div>'
+                + '<div style="font-size:11px;color:var(--text3);margin-top:2px">'+(opt.desc||'')+'</div>'
+                + '</div>';
+            });
+            window._rlRoleInheritOptions = roleOptions;
+            window._rlRoleInheritHero = newHero;
+            showModal('⚔️ 职业融合 — 选择继承职业', html);
+            newHero._scrollTag = '⚔️职业融合';
+            newHero._pendingRoleInherit = true; // 标记等待选择
           }
         })();
-        newHero._scrollTag = '⚔️职业融合';
+        if(!newHero._pendingRoleInherit) newHero._scrollTag = '⚔️职业融合';
         break;
 
       case 'statBoostMajor':
@@ -15874,7 +15998,7 @@ function executeMerge(heroUids){
         break;
 
       case 'skillForge':
-        // 技能铸造：从材料技能中选4个，"铸造"成1个强化技能（以第一个为基础，剩余属性叠加）
+        // 技能铸造：从材料技能中选4个，"铸造"成1个强化技能
         (function(){
           var allPool = [];
           heroes.forEach(function(h){
@@ -15882,31 +16006,57 @@ function executeMerge(heroUids){
               if(allPool.indexOf(s)===-1) allPool.push(s);
             });
           });
-          var forgeCount = Math.min(activeScroll.value, allPool.length);
-          var forged = allPool.slice(0, forgeCount);
-          // 用第一个技能作为基底，其余标记为已融合（视觉用）
-          if(forged.length > 0){
-            newHero.skills = [forged[0]]; // 铸造后只保留1个核心技能
-            if(!newHero.bonusSkills) newHero.bonusSkills=[];
-            // 额外补充其余未选技能
-            allPool.slice(forgeCount).forEach(function(s){ newHero.bonusSkills.push(s); });
-            newHero.isMutation = true;
-            newHero.mutatedSkills = [0]; // 铸造技能必定是变异状态
-            newHero.forgedSkills = forged; // 记录铸造来源
-            // 属性：材料平均值 × 1.3（铸造加成）
-            var totalHP=0, totalATK=0, totalDEF=0, totalSPD=0, totalMP=0;
-            heroes.forEach(function(h){ var s=getHeroStats(h); totalHP+=s.maxHP; totalATK+=s.atk; totalDEF+=s.def; totalSPD+=s.spd; totalMP+=s.maxMP; });
-            var n = heroes.length;
-            newHero.maxHP = Math.floor(Math.max(newHero.maxHP, totalHP/n*1.3));
-            newHero.hp    = newHero.maxHP;
-            newHero.atk   = Math.floor(Math.max(newHero.atk,   totalATK/n*1.3));
-            newHero.def   = Math.floor(Math.max(newHero.def,   totalDEF/n*1.3));
-            newHero.spd   = Math.floor(Math.max(newHero.spd,   totalSPD/n*1.3));
-            newHero.maxMP = Math.floor(Math.max(newHero.maxMP,  totalMP/n*1.3));
-            newHero.mp    = newHero.maxMP;
+          var forgeCount = Math.min(activeScroll.value || 4, allPool.length);
+          if(allPool.length <= forgeCount){
+            // 技能数不够4个，直接全部铸造
+            var forged = allPool.slice();
+            if(forged.length > 0){
+              newHero.skills = [forged[0]];
+              if(!newHero.bonusSkills) newHero.bonusSkills=[];
+              newHero.isMutation = true;
+              newHero.mutatedSkills = [0];
+              newHero.forgedSkills = forged;
+              var totalHP=0, totalATK=0, totalDEF=0, totalSPD=0, totalMP=0;
+              heroes.forEach(function(h){ var s=getHeroStats(h); totalHP+=s.maxHP; totalATK+=s.atk; totalDEF+=s.def; totalSPD+=s.spd; totalMP+=s.maxMP; });
+              var n = heroes.length;
+              newHero.maxHP = Math.floor(Math.max(newHero.maxHP, totalHP/n*1.3));
+              newHero.hp    = newHero.maxHP;
+              newHero.atk   = Math.floor(Math.max(newHero.atk,   totalATK/n*1.3));
+              newHero.def   = Math.floor(Math.max(newHero.def,   totalDEF/n*1.3));
+              newHero.spd   = Math.floor(Math.max(newHero.spd,   totalSPD/n*1.3));
+              newHero.maxMP = Math.floor(Math.max(newHero.maxMP,  totalMP/n*1.3));
+              newHero.mp    = newHero.maxMP;
+            }
+          } else {
+            // 技能数>4，弹出选择UI让玩家选取
+            var html = '<div style="text-align:center;margin-bottom:8px"><b>🔨 选取 '+forgeCount+' 个技能进行铸造</b></div>'
+              + '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">选中的技能将融合为1个强化技能（属性为总和的80%）</div>'
+              + '<div id="forge-skill-list">';
+            allPool.forEach(function(sId, i){
+              var sk = SKILLS[sId];
+              if(!sk) return;
+              var typeLabel = {damage:'攻击',heal:'治疗',shield:'护盾',buff:'增益',cleanse:'净化',revive:'复活',dot:'持续'}[sk.type]||sk.type;
+              var typeColor = {damage:'#ef4444',heal:'#22c55e',shield:'#3b82f6',buff:'#a855f7',cleanse:'#eab308',revive:'#ec4899',dot:'#f97316'}[sk.type]||'#9ca3af';
+              html += '<div id="forge-skill-'+i+'" onclick="_rlForgeToggle('+i+')" data-sid="'+sId+'" data-selected="false" style="background:rgba(255,255,255,.03);border:2px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px">'
+                + '<div style="width:24px;height:24px;border-radius:4px;border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:12px" id="forge-check-'+i+'"> </div>'
+                + '<div style="flex:1">'
+                + '<div style="font-size:13px;font-weight:bold">'+(sk.icon||'❓')+' '+(sk.name||sId)+' <span style="font-size:10px;color:'+typeColor+'">['+typeLabel+']</span></div>'
+                + '<div style="font-size:10px;color:var(--text3)">'+(sk.desc||'')+'</div>'
+                + '</div></div>';
+            });
+            html += '</div>'
+              + '<div id="forge-confirm-btn" style="margin-top:10px;text-align:center"><button class="btn btn-primary" style="padding:8px 24px;opacity:0.4;pointer-events:none" id="forge-do-btn" disabled>确认铸造（已选 0/'+forgeCount+'）</button></div>';
+            window._rlForgePool = allPool;
+            window._rlForgeCount = forgeCount;
+            window._rlForgeSelected = [];
+            window._rlForgeHero = newHero;
+            window._rlForgeHeroes = heroes;
+            showModal('🔨 技能铸造 — 选取技能', html);
+            newHero._scrollTag = '🔨技能铸造';
+            newHero._pendingForge = true;
           }
         })();
-        newHero._scrollTag = '🔨技能铸造';
+        if(!newHero._pendingForge) newHero._scrollTag = '🔨技能铸造';
         break;
 
       case 'transcendence':
