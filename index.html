@@ -15300,7 +15300,7 @@ window._rlRoleInheritPick = function(idx) {
   hero.maxHP = Math.max(hero.maxHP, calcStat(role.baseHP, qm, lv));
   hero.atk   = Math.max(hero.atk,   calcStat(role.baseATK, qm, lv));
   hero.def   = Math.max(hero.def,   calcStat(role.baseDEF, qm, lv));
-  hideModal();
+  closeModal();
   showToast('⚔️ 职业融合完成！继承了 '+(ROLES[opt.role]||{}).name+' 的职业');
   // 刷新合成界面
   if(currentTab === 'merge') renderMerge(document.getElementById('content'));
@@ -15385,7 +15385,7 @@ window._rlForgeConfirm = function() {
   hero.spd   = Math.floor(Math.max(hero.spd,   totalSPD/n*1.3));
   hero.maxMP = Math.floor(Math.max(hero.maxMP,  totalMP/n*1.3));
   hero.mp    = hero.maxMP;
-  hideModal();
+  closeModal();
   showToast('🔨 技能铸造完成！融合了 '+forged.length+' 个技能');
   if(currentTab === 'merge') renderMerge(document.getElementById('content'));
 };
