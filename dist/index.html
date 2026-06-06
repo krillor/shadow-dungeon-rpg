@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="x5-orientation" content="portrait">
+<meta name="screen-orientation" content="portrait">
+<meta name="theme-color" content="#0a0a12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="暗影地牢">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<meta name="msapplication-TileColor" content="#0a0a12">
+<meta name="description" content="暗影地牢 - 一款文字策略RPG，招募英雄、组建队伍、探索地牢、挑战竞技场">
+<link rel="manifest" href="manifest.json">
+<title>暗影地牢 - 文字策略RPG</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/pako@2/dist/pako.min.js"></script>
+<style>
+
+/* ===== ui/styles/base.css ===== */
+/**
+ * 基础样式
+ */
+:root {
+  --bg: #0a0a12;
+  --bg2: #12121e;
+  --bg3: #1a1a2e;
+  --card: #1e1e32;
+  --card2: #252538;
+  --border: rgba(255,255,255,0.06);
+  --text: #e0e0e0;
+  --text2: #888;
+  --gold: #c9a227;
+  --danger: #ff6b6b;
+  --success: #4ade80;
+  --primary: #6366f1;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#app {
+  max-width: 600px;
+  margin: 0 auto;
+  padding-bottom: 80px;
+}
+
+
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="content"></div>
+</div>
+<div id="modal-overlay" class="modal-overlay" onclick="if(event.target===this)closeModal()"></div>
+<div id="modal-content" class="modal-content"></div>
+<div id="toast-container"></div>
+<script>
+
+// ===== core/constants.js =====
+/**
+ * 核心常量定义
+ */
+window.SD = window.SD || {};
+
+SD.Constants = {
+  // 存档版本
+  SAVE_VERSION: 5,
+  
+  // 资源上限
+  RESOURCE_LIMITS: {
+    gold: 9999999,
+    gems: 999999,
+    food: 99999,
+    stone: 99999,
+    iron: 99999,
+    expPotion: 9999
+  },
+  
+  // 装备上限
+  MAX_EQUIPMENT_COUNT: 200,
+  
+  // 强化上限
+  MAX_ENHANCE_LEVEL: 10,
+  
+  // 英雄等级上限
+  MAX_HERO_LEVEL: 200,
+  
+  // 存档槽位数
+  MAX_SLOTS: 3,
+  
+  // 自动备份保留数
+  MAX_AUTO_BACKUPS: 2,
+  
+  // 手动备份保留数
+  MAX_MANUAL_BACKUPS: 5,
+  
+  // 队伍最大人数
+  MAX_TEAM_SIZE: 6,
+  
+  // 战斗最大回合
+  MAX_BATTLE_ROUNDS: 50,
+  
+  // 品质排序权重
+  QUALITY_ORDER: {
+    common: 1,
+    rare: 2,
+    epic: 3,
+    legendary: 4,
+    mythic: 5
+  }
+};
+
+// 存档键名
+SD.Constants.META_KEY = 'shadow_dungeon_meta_v5';
+SD.Constants.SLOT_PREFIX = 'sd_slot_';
+
+
+// ===== core/utils.js =====
+/**
+ * 工具函数库
+ */
+window.SD = window.SD || {};
+
+SD.Utils = {
+  // 随机选择数组元素
+  pick: function(arr) {
+    if (!arr || arr.length === 0) return null;
+    return arr[Math.floor(Math.random() * arr.length)];
+  },
+  
+  // 随机整数 [min, max]
+  randInt: function(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  },
+  
+  // 限制数值范围
+  clamp: function(v, min, max) {
+    return Math.max(min, Math.min(max, v));
+  },
+  
+  // 深拷贝
+  deepClone: function(obj) {
+    try {
+      return JSON.parse(JSON.stringify(obj));
+    } catch (e) {
+      return obj;
+    }
+  },
+  
+  // 生成唯一ID
+  generateUid: function(prefix) {
+    return (prefix || 'id') + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  },
+  
+  // 格式化数字（K/M/B/T）
+  formatNumber: function(n) {
+    if (n < 1000) return n.toString();
+    var units = ['K', 'M', 'B', 'T', 'aa', 'ab', 'ac', 'ad', 'ae'];
+    var unitIndex = 0;
+    while (n >= 1000 && unitIndex < units.length - 1) {
+      n /= 1000;
+      unitIndex++;
+    }
+    return n.toFixed(1) + units[unitIndex];
+  },
+  
+  // 防抖
+  debounce: function(fn, delay) {
+    var timer;
+    return function() {
+      var args = arguments;
+      clearTimeout(timer);
+      timer = setTimeout(function() { fn.apply(null, args); }, delay);
+    };
+  },
+  
+  // 节流
+  throttle: function(fn, limit) {
+    var inThrottle;
+    return function() {
+      var args = arguments;
+      if (!inThrottle) {
+        fn.apply(null, args);
+        inThrottle = true;
+        setTimeout(function() { inThrottle = false; }, limit);
+      }
+    };
+  }
+};
+
+// BigNumber 工具
+SD.BigNumber = {
+  toBig: function(v) {
+    if (typeof v === 'bigint') return v;
+    if (typeof v === 'string') return BigInt(v);
+    return BigInt(Math.floor(v || 0));
+  },
+  add: function(a, b) { return this.toBig(a) + this.toBig(b); },
+  sub: function(a, b) { return this.toBig(a) - this.toBig(b); },
+  mul: function(a, b) { return this.toBig(a) * this.toBig(b); },
+  div: function(a, b) {
+    if (this.toBig(b) === 0n) return 0n;
+    return this.toBig(a) / this.toBig(b);
+  },
+  gt: function(a, b) { return this.toBig(a) > this.toBig(b); },
+  format: function(v) {
+    var n = Number(this.toBig(v));
+    if (n < 1000) return n.toString();
+    var units = ['K', 'M', 'B', 'T', 'aa', 'ab', 'ac', 'ad', 'ae', 'af'];
+    var unitIndex = 0;
+    while (n >= 1000 && unitIndex < units.length - 1) {
+      n /= 1000;
+      unitIndex++;
+    }
+    return n.toFixed(1) + units[unitIndex];
+  }
+};
+
+// 对数压缩
+SD.LogScale = {
+  compress: function(v) {
+    if (v <= 0) return 0;
+    if (v < 1000000) return v;
+    return Math.log10(v) * 1000000;
+  },
+  decompress: function(v) {
+    if (v <= 0) return 0;
+    if (v < 1000000) return v;
+    return Math.pow(10, v / 1000000);
+  }
+};
+
+
+// ===== core/events.js =====
+/**
+ * 事件总线 - 模块间解耦通信
+ * 
+ * 使用示例:
+ *   SD.EventBus.on('battle:end', function(data) { ... });
+ *   SD.EventBus.emit('battle:end', { victory: true });
+ */
+window.SD = window.SD || {};
+
+SD.EventBus = {
+  _handlers: {},
+  _onceHandlers: {},
+  
+  // 订阅事件
+  on: function(event, handler) {
+    (this._handlers[event] = this._handlers[event] || []).push(handler);
+    return this; // 链式调用
+  },
+  
+  // 订阅一次性事件
+  once: function(event, handler) {
+    (this._onceHandlers[event] = this._onceHandlers[event] || []).push(handler);
+    return this;
+  },
+  
+  // 取消订阅
+  off: function(event, handler) {
+    if (!this._handlers[event]) return this;
+    this._handlers[event] = this._handlers[event].filter(function(h) {
+      return h !== handler;
+    });
+    return this;
+  },
+  
+  // 触发事件
+  emit: function(event, data) {
+    var self = this;
+    
+    // 触发普通处理器
+    (this._handlers[event] || []).forEach(function(handler) {
+      try {
+        handler(data);
+      } catch (e) {
+        console.error('[EventBus] 处理器错误:', event, e);
+      }
+    });
+    
+    // 触发一次性处理器
+    var onceList = this._onceHandlers[event] || [];
+    if (onceList.length > 0) {
+      onceList.forEach(function(handler) {
+        try {
+          handler(data);
+        } catch (e) {
+          console.error('[EventBus] 一次性处理器错误:', event, e);
+        }
+      });
+      delete this._onceHandlers[event];
+    }
+    
+    return this;
+  },
+  
+  // 获取事件监听器数量
+  listenerCount: function(event) {
+    return (this._handlers[event] || []).length + 
+           (this._onceHandlers[event] || []).length;
+  }
+};
+
+// 预定义事件名称（避免拼写错误）
+SD.Events = {
+  // 游戏生命周期
+  GAME_INIT: 'game:init',
+  GAME_SAVE: 'game:save',
+  GAME_LOAD: 'game:load',
+  
+  // 战斗
+  BATTLE_START: 'battle:start',
+  BATTLE_END: 'battle:end',
+  BATTLE_ROUND: 'battle:round',
+  
+  // 英雄
+  HERO_CREATE: 'hero:create',
+  HERO_LEVEL_UP: 'hero:levelUp',
+  HERO_EQUIP: 'hero:equip',
+  HERO_UNEQUIP: 'hero:unequip',
+  
+  // 资源
+  RESOURCE_CHANGE: 'resource:change',
+  
+  // UI
+  TAB_SWITCH: 'ui:tabSwitch',
+  MODAL_OPEN: 'ui:modalOpen',
+  MODAL_CLOSE: 'ui:modalClose',
+  TOAST_SHOW: 'ui:toastShow'
+};
+
+
+// ===== app.js =====
+/**
+ * 应用入口
+ * 初始化游戏并启动
+ */
+window.SD = window.SD || {};
+
+// 游戏状态（将在系统模块中初始化）
+window.G = window.G || {};
+window.G_RL = window.G_RL || null;
+
+SD.App = {
+  version: '1.0.0',
+  
+  init: function() {
+    console.log('🎮 暗影地牢 RPG v' + this.version);
+    
+    // 初始化各系统
+    this._initSystems();
+    
+    // 触发初始化完成事件
+    SD.EventBus.emit(SD.Events.GAME_INIT, { version: this.version });
+    
+    // 渲染初始页面
+    if (typeof switchTab === 'function') {
+      switchTab('town');
+    }
+  },
+  
+  _initSystems: function() {
+    // 按依赖顺序初始化
+    // 注意：实际初始化逻辑在各自的系统模块中
+    
+    // 存档系统初始化
+    if (SD.SaveSystem && SD.SaveSystem.init) {
+      SD.SaveSystem.init();
+    }
+    
+    // 英雄系统初始化
+    if (SD.HeroSystem && SD.HeroSystem.init) {
+      SD.HeroSystem.init();
+    }
+    
+    // 战斗系统初始化
+    if (SD.BattleSystem && SD.BattleSystem.init) {
+      SD.BattleSystem.init();
+    }
+    
+    // UI 系统初始化
+    if (SD.UISystem && SD.UISystem.init) {
+      SD.UISystem.init();
+    }
+  }
+};
+
+// DOM 加载完成后启动
+document.addEventListener('DOMContentLoaded', function() {
+  SD.App.init();
+});
+
+
+</script>
+</body>
+</html>

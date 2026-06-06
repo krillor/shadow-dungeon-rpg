@@ -1,0 +1,33 @@
+/**
+ * 基础样式
+ */
+:root {
+  --bg: #0a0a12;
+  --bg2: #12121e;
+  --bg3: #1a1a2e;
+  --card: #1e1e32;
+  --card2: #252538;
+  --border: rgba(255,255,255,0.06);
+  --text: #e0e0e0;
+  --text2: #888;
+  --gold: #c9a227;
+  --danger: #ff6b6b;
+  --success: #4ade80;
+  --primary: #6366f1;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#app {
+  max-width: 600px;
+  margin: 0 auto;
+  padding-bottom: 80px;
+}
