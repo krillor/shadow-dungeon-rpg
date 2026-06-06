@@ -6739,10 +6739,25 @@ function restoreSaveData(data) {
 
   // ===== 4. 英雄字段补全（每个英雄向前兼容） =====
   var heroIdMax = data.heroIdCounter || saved.heroIdCounter || 0;
+  // 防御：如果 heroIdCounter 是 NaN，重置为 0
+  if (typeof heroIdMax !== 'number' || isNaN(heroIdMax)) {
+    debugLog('[RS] ⚠️ heroIdCounter 是 NaN，重置为 0');
+    heroIdMax = 0;
+  }
+  var nanUidCount = 0;
   saved.heroes.forEach(function(h) {
     if (!h) return;
+    // 修复 NaN uid（会导致 Math.max 返回 NaN）
+    if (typeof h.uid !== 'number' || isNaN(h.uid)) {
+      if (typeof h.uid === 'string' && h.uid) {
+        // string uid 保留（如 r1_xxx）
+      } else {
+        h.uid = ++heroIdMax;
+        nanUidCount++;
+      }
+    }
     if (h.uid === undefined || h.uid === null) h.uid = ++heroIdMax;
-    else heroIdMax = Math.max(heroIdMax, h.uid);
+    else if (typeof h.uid === 'number') heroIdMax = Math.max(heroIdMax, h.uid);
     // 必要字段
     if (!h.role) h.role = 'warrior';
     if (!h.quality) h.quality = 'common';
@@ -6885,12 +6900,16 @@ function restoreSaveData(data) {
 
   // ===== 12. heroIdCounter 修复 =====
   var finalHeroIdCounter = Math.max(
-    data.heroIdCounter || 0,
-    saved.heroIdCounter || 0,
+    (data.heroIdCounter && !isNaN(data.heroIdCounter)) ? data.heroIdCounter : 0,
+    (saved.heroIdCounter && !isNaN(saved.heroIdCounter)) ? saved.heroIdCounter : 0,
     heroIdMax,
-    saved.heroes.reduce(function(m,h) { return h&&h.uid>m?h.uid:m; }, 0),
-    (saved.equipment||[]).reduce(function(m,e) { return e&&e.uid>m?e.uid:m; }, 0)
+    saved.heroes.reduce(function(m,h) { return h && typeof h.uid === 'number' && !isNaN(h.uid) && h.uid > m ? h.uid : m; }, 0),
+    (saved.equipment||[]).reduce(function(m,e) { return e && typeof e.uid === 'number' && !isNaN(e.uid) && e.uid > m ? e.uid : m; }, 0)
   );
+  if (isNaN(finalHeroIdCounter)) {
+    debugLog('[RS] ⚠️ finalHeroIdCounter 仍是 NaN，强制设为 heroes.length=' + saved.heroes.length);
+    finalHeroIdCounter = saved.heroes.length;
+  }
 
   // ===== 13. 写入 G 对象（白名单方式，防止旧字段污染）=====
   var safeKeys = ['playerName','resources','heroes','team','equipment','buildings',
