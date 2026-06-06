@@ -22758,7 +22758,6 @@ function rlOnBattleWin(savedTeam, savedHeroes, floorData) {
     G_RL.heroes.forEach(function(h){if(h.hp>0)h.atk=Math.floor(h.atk*1.20);});
     showToast('🗡️ 回响之刃：全队攻击+20%！（'+G_RL._echoStacks+'/'+RL_BALANCE.MAX_ECHO_STACKS+'）');
   }
-  }
 
   // 决定下一步：事件 → 遗物（每10层）→ 祝福
   var hasExtraEvent = (G_RL.relics||[]).some(function(r){return r.id==='relic_old_map';});
