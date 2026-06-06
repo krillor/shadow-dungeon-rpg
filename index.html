@@ -6592,7 +6592,7 @@ function decompressSaveV3V4(compressed) {
     for (var uid in heroMap) {
       var h = heroMap[uid];
       var hero = {
-        uid: parseInt(uid),
+        uid: String(uid),
         name: h.n,
         icon: h.i,
         role: h.r,
@@ -16307,7 +16307,7 @@ function rerollAllAffixes(equipUid){
 }
 
 function equipItem(heroUid,equipUid){
-  const hero=G.heroes.find(h=>h.uid===heroUid);
+  const hero=G.heroes.find(h=>h.uid===heroUid || h.uid==heroUid);
   const equip=G.equipment.find(e=>e.uid===equipUid);
   if(!hero||!equip)return;
   const tpl=EQUIP_TEMPLATES.find(t=>t.id===equip.id);
@@ -16326,7 +16326,7 @@ function equipItem(heroUid,equipUid){
 }
 
 function unequipItem(heroUid,slot){
-  const hero=G.heroes.find(h=>h.uid===heroUid);
+  const hero=G.heroes.find(h=>h.uid===heroUid || h.uid==heroUid);
   if(!hero)return;
   const equipUid=hero.equipment[slot];
   if(equipUid==null)return;
@@ -17378,7 +17378,7 @@ function renderHeroCard(h){
   var stats = isUnknown ? {maxHP:'???',atk:'???',def:'???',spd:'???',maxMP:'???'} : getHeroStats(h);
   var expNeed = getExpToLevel(h.level);
   var allSkills = isUnknown ? [] : h.skills.concat(h.bonusSkills||[]);
-  var inTeam = G.team.some(function(t){return t&&t.uid===h.uid});
+  var inTeam = G.team.some(function(t){return t&&t.uid==h.uid});
   // 职业特性描述
   var roleTraits={
     warrior:'近战输出，擅长AOE和爆发',
@@ -17407,10 +17407,11 @@ function renderHeroCard(h){
   var displayQuality = isUnknown ? 'unknown' : h.quality;
   var displayRole = isUnknown ? 'unknown' : h.role;
   
-  return '<div class="hero-card quality-'+displayQuality+'" data-role="'+displayRole+'" data-quality="'+displayQuality+'" data-uid="'+h.uid+'" onclick="showHeroDetail('+h.uid+')" style="cursor:pointer">'
+  var _uidJson = JSON.stringify(h.uid);
+  return '<div class="hero-card quality-'+displayQuality+'" data-role="'+displayRole+'" data-quality="'+displayQuality+'" data-uid="'+h.uid+'" onclick="showHeroDetail('+_uidJson+')" style="cursor:pointer">'
     +(inTeam?'<div class="hero-team-badge">🛡️ 队伍中</div>':'')
     +(isUnknown?'<div class="hero-team-badge" style="background:linear-gradient(90deg,#ff00ff,#ff00cc)">🔒 未解锁</div>':'')
-    +'<button class="hero-lock-btn'+(h.locked?' hero-lock-btn-locked':'')+'" onclick="event.stopPropagation();toggleHeroLock('+h.uid+')" title="'+(h.locked?'解锁':'锁定')+'">'+(h.locked?'🔒':'🔓')+'</button>'
+    +'<button class="hero-lock-btn'+(h.locked?' hero-lock-btn-locked':'')+'" onclick="event.stopPropagation();toggleHeroLock('+_uidJson+')" title="'+(h.locked?'解锁':'锁定')+'">'+(h.locked?'🔒':'🔓')+'</button>'
     +'<div class="hero-avatar" style="background:rgba('+(isUnknown?'255,0,255':h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':'220,50,50')+',.2)">'
     +displayIcon
     +'</div>'
@@ -17440,7 +17441,7 @@ var _heroDetailList = [];
 var _heroDetailIdx = -1;
 
 function showHeroDetail(uid){
-  uid = Number(uid); // 统一转为数字，防止类型不匹配
+  // 支持数字和字符串uid
   var h=G.heroes.find(function(x){return x.uid===uid || x.uid==uid;});
   if(!h)return;
   
@@ -17449,11 +17450,12 @@ function showHeroDetail(uid){
   var cards = activeFilter ? activeFilter.querySelectorAll('.hero-card') : [];
   _heroDetailList = [];
   cards.forEach(function(card) {
-    var cardUid = parseInt(card.getAttribute('data-uid'));
-    var hero = G.heroes.find(function(x){return x.uid===cardUid;});
+    var cardUid = card.getAttribute('data-uid');
+    // 尝试数字匹配，失败则字符串匹配
+    var hero = G.heroes.find(function(x){return x.uid==cardUid || x.uid===cardUid;});
     if (hero) _heroDetailList.push(hero);
   });
-  _heroDetailIdx = _heroDetailList.findIndex(function(x){return x.uid===uid;});
+  _heroDetailIdx = _heroDetailList.findIndex(function(x){return x.uid===uid || x.uid==uid;});
   if (_heroDetailIdx < 0) _heroDetailIdx = 0;
 
   _renderHeroDetail(h);
@@ -17461,11 +17463,12 @@ function showHeroDetail(uid){
 
 
 function _renderHeroDetail(h){
+  var _uidJson = JSON.stringify(h.uid);
   var isLockedUnknown = h.isUnknown && !h.isUnlocked;
   var role = isLockedUnknown ? ROLES.unknown : (ROLES[h.role] || ROLES.unknown);
   var stats = isLockedUnknown ? {maxHP:'???',atk:'???',def:'???',spd:'???',maxMP:'???'} : getHeroStats(h);
   var allSkills = isLockedUnknown ? [] : [].concat(h.skills||[],h.bonusSkills||[]);
-  var inTeam=G.team.some(function(t){return t&&t.uid===h.uid;});
+  var inTeam=G.team.some(function(t){return t&&t.uid==h.uid;});
   var power = isLockedUnknown ? '???' : calcHeroPower(h);
   var levelCap=getHeroLevelCap();
   var qualityColors={common:'#aaa',rare:'#5b9bd5',epic:'#b06ce6',legendary:'#e8c840',mythic:'#ff6b6b',hidden:'#00ffcc',unknown:'#ff00ff'};
@@ -17553,11 +17556,11 @@ function _renderHeroDetail(h){
       potionHtml='<div class="hd-section" style="background:rgba(142,68,173,.06)">'
         +'<div class="hd-section-title">🧪 经验药水 <span style="font-size:11px;color:var(--text3);font-weight:400">库存: <b style="color:var(--purple)">'+(G.resources.expPotion||0)+'</b></span></div>'
         +(h.level<levelCap?'<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:6px">'
-          +'<button class="btn btn-sm" onclick="useExpPotion('+h.uid+',1)" '+(((G.resources.expPotion||0)<100)?'disabled':'')+'>×1</button>'
-          +'<button class="btn btn-sm" onclick="useExpPotion('+h.uid+',5)" '+(((G.resources.expPotion||0)<500)?'disabled':'')+'>×5</button>'
-          +'<button class="btn btn-sm" onclick="useExpPotion('+h.uid+',10)" '+(((G.resources.expPotion||0)<1000)?'disabled':'')+'>×10</button>'
-          +'<button class="btn btn-sm" onclick="useExpPotion('+h.uid+',50)" '+(((G.resources.expPotion||0)<5000)?'disabled':'')+'>×50</button>'
-          +'<button class="btn btn-sm" style="background:rgba(201,162,39,.15);border-color:var(--gold);color:var(--gold)" onclick="useExpPotion('+h.uid+',-1)">全部</button>'
+          +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',1)" '+(((G.resources.expPotion||0)<100)?'disabled':'')+'>×1</button>'
+          +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',5)" '+(((G.resources.expPotion||0)<500)?'disabled':'')+'>×5</button>'
+          +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',10)" '+(((G.resources.expPotion||0)<1000)?'disabled':'')+'>×10</button>'
+          +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',50)" '+(((G.resources.expPotion||0)<5000)?'disabled':'')+'>×50</button>'
+          +'<button class="btn btn-sm" style="background:rgba(201,162,39,.15);border-color:var(--gold);color:var(--gold)" onclick="useExpPotion('+_uidJson+',-1)">全部</button>'
           +'</div><div style="font-size:10px;color:var(--text3)">每100药水 → +'+getPotionExpPerUnit(h.level)+'经验（Lv.'+h.level+'）</div>'
           :'<div style="font-size:12px;color:var(--red)">✋ 已达等级上限，请升级神殿</div>')
         +'</div>';
@@ -17640,7 +17643,7 @@ function _renderHeroDetail(h){
           +'<div style="font-size:11px;color:var(--text3)">未装备'+slotNames[slot]+'</div>'
           +(avail.length>0?'<div style="font-size:10px;color:var(--gold);margin-top:2px">🎒 背包中有 '+avail.length+' 件可用</div>':'<div style="font-size:10px;color:var(--text3);margin-top:2px">背包无可用装备</div>')
           +'</div>'
-          +(avail.length>0?'<button class="btn btn-primary btn-sm" style="font-size:10px;padding:4px 10px" onclick="openSlotPicker('+h.uid+',\''+slot+'\')">装备</button>':'')
+          +(avail.length>0?'<button class="btn btn-primary btn-sm" style="font-size:10px;padding:4px 10px" onclick="openSlotPicker('+_uidJson+',\''+slot+'\')">装备</button>':'')
           +'</div>';
       }
     }
@@ -17650,8 +17653,8 @@ function _renderHeroDetail(h){
       +'<div class="hd-section-title" style="margin-bottom:8px">🗡️ 装备槽</div>'
       +'<div style="display:flex;flex-direction:column;gap:6px">'+slotsHtml+'</div>'
       +'<div style="margin-top:10px;display:flex;gap:6px">'
-      +'<button class="btn btn-primary btn-sm" style="flex:1" onclick="quickAutoEquipHero('+h.uid+')">🤖 自动最优穿戴</button>'
-      +'<button class="btn btn-sm" style="flex:1" onclick="quickUnequipAllHero('+h.uid+')">📤 全部卸下</button>'
+      +'<button class="btn btn-primary btn-sm" style="flex:1" onclick="quickAutoEquipHero('+_uidJson+')">🤖 自动最优穿戴</button>'
+      +'<button class="btn btn-sm" style="flex:1" onclick="quickUnequipAllHero('+_uidJson+')">📤 全部卸下</button>'
       +'</div>'
       +'</div>'
       +'<div class="hd-section" style="background:rgba(0,0,0,.15)">'
@@ -17681,7 +17684,7 @@ function _renderHeroDetail(h){
       +'<div class="hd-section-title" style="margin-bottom:0">🌟 天赋</div>'
       +'<div style="font-size:12px;color:'+(availPts>0?'var(--gold)':'var(--text3)')+'">可用点数: <b>'+availPts+'</b></div>'
       +'</div>'
-      +'<button class="btn btn-primary" style="width:100%" onclick="showTalentTree('+h.uid+')">🌳 打开完整天赋树</button>'
+      +'<button class="btn btn-primary" style="width:100%" onclick="showTalentTree('+_uidJson+')">🌳 打开完整天赋树</button>'
       +(Object.keys(h.talents||{}).length>0?'<div style="margin-top:10px;font-size:11px;color:var(--text3)">'+Object.entries(h.talents||{}).filter(function(kv){return kv[1]>0;}).map(function(kv){return '<span style="margin-right:8px">'+kv[0]+': '+kv[1]+'</span>';}).join('')+'</div>':'<div style="margin-top:10px;font-size:11px;color:var(--text3)">尚未分配天赋点</div>')
       +'</div></div>';
   }
@@ -17698,11 +17701,11 @@ function _renderHeroDetail(h){
       +'<div class="hd-section-title">⚡ 英雄操作</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
       +'<button class="btn btn-primary" onclick="closeModal();switchTab(\'team\')">🛡️ 编队管理</button>'
-      +'<button class="btn" onclick="showRenameHero('+h.uid+')" style="background:rgba(52,152,219,.1);border-color:rgba(52,152,219,.3)">✏️ 改名</button>'
-      +'<button class="btn" onclick="toggleHeroLock('+h.uid+');_reRenderHDTab('+h.uid+',\'actions\')" style="background:rgba('+(h.locked?'201,162,39':'100,100,100')+',.1);border-color:rgba('+(h.locked?'201,162,39':'100,100,100')+',.3);color:'+(h.locked?'var(--gold)':'var(--text2)')+'">'+( h.locked?'🔒 解锁英雄':'🔓 锁定英雄')+'</button>'
-      +'<button class="btn" onclick="showTalentTree('+h.uid+')" style="background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.3);color:#b86eff">🌟 天赋'+(talentPts>0?' <span style="background:#ff6b6b;color:#fff;border-radius:10px;padding:0 5px;font-size:10px">'+talentPts+'</span>':'')+'</button>'
-      +(matKey&&mat?'<button class="btn '+(canBreak?'btn-primary':'')+'" onclick="performBreakthroughById('+h.uid+')" '+(canBreak?'':'disabled')+' style="'+(canBreak?'':'opacity:.5')+'">⚡ 品质突破<br><span style="font-size:9px">'+mat.icon+'×'+mat.cost.material+' 💰'+mat.cost.gold+'</span></button>':'')
-      +'<button class="btn btn-danger" onclick="dismissHero('+h.uid+')" '+(h.locked?'disabled':'')+' style="'+(h.locked?'opacity:.4':'')+'">🗑️ 遣散英雄</button>'
+      +'<button class="btn" onclick="showRenameHero('+_uidJson+')" style="background:rgba(52,152,219,.1);border-color:rgba(52,152,219,.3)">✏️ 改名</button>'
+      +'<button class="btn" onclick="toggleHeroLock('+_uidJson+');_reRenderHDTab('+_uidJson+',\'actions\')" style="background:rgba('+(h.locked?'201,162,39':'100,100,100')+',.1);border-color:rgba('+(h.locked?'201,162,39':'100,100,100')+',.3);color:'+(h.locked?'var(--gold)':'var(--text2)')+'">'+( h.locked?'🔒 解锁英雄':'🔓 锁定英雄')+'</button>'
+      +'<button class="btn" onclick="showTalentTree('+_uidJson+')" style="background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.3);color:#b86eff">🌟 天赋'+(talentPts>0?' <span style="background:#ff6b6b;color:#fff;border-radius:10px;padding:0 5px;font-size:10px">'+talentPts+'</span>':'')+'</button>'
+      +(matKey&&mat?'<button class="btn '+(canBreak?'btn-primary':'')+'" onclick="performBreakthroughById('+_uidJson+')" '+(canBreak?'':'disabled')+' style="'+(canBreak?'':'opacity:.5')+'">⚡ 品质突破<br><span style="font-size:9px">'+mat.icon+'×'+mat.cost.material+' 💰'+mat.cost.gold+'</span></button>':'')
+      +'<button class="btn btn-danger" onclick="dismissHero('+_uidJson+')" '+(h.locked?'disabled':'')+' style="'+(h.locked?'opacity:.4':'')+'">🗑️ 遣散英雄</button>'
       +'</div>'
       +'</div>'
       +'<div class="hd-section" style="background:rgba(142,68,173,.06)">'
@@ -17720,11 +17723,11 @@ function _renderHeroDetail(h){
       +'<div class="hd-section" style="background:rgba(142,68,173,.06)">'
       +'<div class="hd-section-title">🧪 经验药水 <span style="font-size:11px;color:var(--text3);font-weight:400">库存: <b style="color:var(--purple)">'+(G.resources.expPotion||0)+'</b></span></div>'
       +(h.level<levelCap?'<div style="display:flex;gap:5px;flex-wrap:wrap">'
-        +'<button class="btn btn-sm" onclick="useExpPotion('+h.uid+',1);_reRenderHDTab('+h.uid+',\'actions\')" '+(((G.resources.expPotion||0)<100)?'disabled':'')+'>×1</button>'
-        +'<button class="btn btn-sm" onclick="useExpPotion('+h.uid+',5);_reRenderHDTab('+h.uid+',\'actions\')" '+(((G.resources.expPotion||0)<500)?'disabled':'')+'>×5</button>'
-        +'<button class="btn btn-sm" onclick="useExpPotion('+h.uid+',10);_reRenderHDTab('+h.uid+',\'actions\')" '+(((G.resources.expPotion||0)<1000)?'disabled':'')+'>×10</button>'
-        +'<button class="btn btn-sm" onclick="useExpPotion('+h.uid+',50);_reRenderHDTab('+h.uid+',\'actions\')" '+(((G.resources.expPotion||0)<5000)?'disabled':'')+'>×50</button>'
-        +'<button class="btn btn-sm" style="background:rgba(201,162,39,.15);border-color:var(--gold);color:var(--gold)" onclick="useExpPotion('+h.uid+',-1);_reRenderHDTab('+h.uid+',\'actions\')">全部</button>'
+        +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',1);_reRenderHDTab('+_uidJson+',\'actions\')" '+(((G.resources.expPotion||0)<100)?'disabled':'')+'>×1</button>'
+        +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',5);_reRenderHDTab('+_uidJson+',\'actions\')" '+(((G.resources.expPotion||0)<500)?'disabled':'')+'>×5</button>'
+        +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',10);_reRenderHDTab('+_uidJson+',\'actions\')" '+(((G.resources.expPotion||0)<1000)?'disabled':'')+'>×10</button>'
+        +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',50);_reRenderHDTab('+_uidJson+',\'actions\')" '+(((G.resources.expPotion||0)<5000)?'disabled':'')+'>×50</button>'
+        +'<button class="btn btn-sm" style="background:rgba(201,162,39,.15);border-color:var(--gold);color:var(--gold)" onclick="useExpPotion('+_uidJson+',-1);_reRenderHDTab('+_uidJson+',\'actions\')">全部</button>'
         +'</div><div style="font-size:10px;color:var(--text3);margin-top:4px">每100药水 → +'+getPotionExpPerUnit(h.level)+'经验</div>'
         :'<div style="font-size:12px;color:var(--red)">✋ 已达等级上限</div>')
       +'</div>'
@@ -17745,7 +17748,7 @@ function _renderHeroDetail(h){
   var tabs=[{id:'info',label:'📊 属性'},{id:'equip',label:'⚔️ 装备'},{id:'talent',label:'🌟 天赋'},{id:'actions',label:'⚙️ 操作'}];
   var tabBar=isLockedUnknown?''
     :'<div class="hd-tab-bar">'+tabs.map(function(t){
-      return '<button class="hd-tab '+(activeTab===t.id?'active':'')+'" onclick="_switchHDTab('+h.uid+',\''+t.id+'\')">'+t.label+'</button>';
+      return '<button class="hd-tab '+(activeTab===t.id?'active':'')+'" onclick="_switchHDTab('+_uidJson+',\''+t.id+'\')">'+t.label+'</button>';
     }).join('')+'</div>';
 
   var html='<div class="hero-detail-overlay" id="hero-detail-overlay" onclick="if(event.target===this)closeModal()">'
@@ -17817,7 +17820,7 @@ function unequipInHeroView(heroUid, slot){
 
 // 打开槽位选择器（从背包给英雄装备）
 function openSlotPicker(heroUid, slot){
-  var hero=G.heroes.find(function(h){return h.uid===heroUid;});
+  var hero=G.heroes.find(function(h){return h.uid===heroUid || h.uid==heroUid;});
   if(!hero)return;
   var avail=G.equipment.filter(function(e){
     if(e.heroUid!==null)return false;
@@ -17869,7 +17872,7 @@ function doEquipInHeroView(heroUid, slot, equipUid){
 
 // 自动最优穿戴（单英雄）
 function quickAutoEquipHero(heroUid){
-  var hero=G.heroes.find(function(h){return h.uid===heroUid;});
+  var hero=G.heroes.find(function(h){return h.uid===heroUid || h.uid==heroUid;});
   if(!hero)return;
   var qo={mythic:5,legendary:4,epic:3,rare:2,common:1};
   ['weapon','armor','accessory'].forEach(function(slot){
@@ -17897,7 +17900,7 @@ function quickAutoEquipHero(heroUid){
 
 // 全部卸下（单英雄）
 function quickUnequipAllHero(heroUid){
-  var hero=G.heroes.find(function(h){return h.uid===heroUid;});
+  var hero=G.heroes.find(function(h){return h.uid===heroUid || h.uid==heroUid;});
   if(!hero)return;
   ['weapon','armor','accessory'].forEach(function(slot){
     var uid=hero.equipment[slot];
@@ -18037,7 +18040,7 @@ function getPotionExpPerUnit(heroLevel){
 }
 
 function useExpPotion(heroUid,mult=1){
-  const hero=G.heroes.find(h=>h.uid===heroUid);
+  const hero=G.heroes.find(h=>h.uid===heroUid || h.uid==heroUid);
   if(!hero)return;
 
   const levelCap=getHeroLevelCap();
@@ -18385,8 +18388,9 @@ function checkDailyHelp(){
 
 // 显示英雄改名弹窗
 function showRenameHero(uid){
-  const h=G.heroes.find(x=>x.uid===uid);
+  const h=G.heroes.find(x=>x.uid===uid || x.uid==uid);
   if(!h)return;
+  var _uidJson=JSON.stringify(uid);
   
   const html=`
     <div style="text-align:center">
@@ -18394,8 +18398,8 @@ function showRenameHero(uid){
       <div style="font-size:14px;color:var(--text2);margin-bottom:12px">为英雄设置新名字</div>
       <input type="text" id="rename-input" value="${h.name}" maxlength="12" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--panel2);color:var(--text);font-size:14px;text-align:center;margin-bottom:16px" placeholder="输入新名字（最多12字）">
       <div style="display:flex;gap:8px">
-        <button class="btn" style="flex:1" onclick="closeModal();showHeroDetail(${uid})">取消</button>
-        <button class="btn btn-primary" style="flex:1" onclick="confirmRenameHero(${uid})">确认改名</button>
+        <button class="btn" style="flex:1" onclick="closeModal();showHeroDetail(${_uidJson})">取消</button>
+        <button class="btn btn-primary" style="flex:1" onclick="confirmRenameHero(${_uidJson})">确认改名</button>
       </div>
     </div>
   `;
@@ -18423,21 +18427,21 @@ function confirmRenameHero(uid){
     showToast('名字不能超过12个字符！');
     return;
   }
-  const h=G.heroes.find(x=>x.uid===uid);
+  const h=G.heroes.find(x=>x.uid===uid || x.uid==uid);
   if(!h)return;
   const oldName=h.name;
   h.name=newName;
   h.isRenamed=true; // 标记为已改名
   saveGame();
   closeModal();
-  showToast(`${h.icon} ${oldName} 改名为 ${newName}`);
+  showToast(h.icon+' '+oldName+' 改名为 '+newName);
   // 刷新详情弹窗
   setTimeout(()=>showHeroDetail(uid),200);
 }
 
 // 切换英雄锁定状态
 function toggleHeroLock(uid){
-  const h=G.heroes.find(x=>x.uid===uid);
+  const h=G.heroes.find(x=>x.uid===uid || x.uid==uid);
   if(!h)return;
   h.locked=!h.locked;
   saveGame();
@@ -18448,9 +18452,9 @@ function toggleHeroLock(uid){
 
 // 更新英雄卡片上的锁定按钮状态
 function updateHeroLockBtn(uid){
-  const h=G.heroes.find(x=>x.uid===uid);
+  const h=G.heroes.find(x=>x.uid===uid || x.uid==uid);
   if(!h)return;
-  var cards=document.querySelectorAll(`.hero-card[data-uid="${uid}"]`);
+  var cards=document.querySelectorAll('.hero-card[data-uid="'+uid+'"]');
   cards.forEach(function(card){
     var btn=card.querySelector('.hero-lock-btn');
     if(btn){
@@ -18467,7 +18471,7 @@ function updateHeroLockBtn(uid){
 
 // 遣散英雄（先显示确认，返回资源）
 function dismissHero(uid){
-  var idx=G.heroes.findIndex(h=>h.uid===uid);
+  var idx=G.heroes.findIndex(h=>h.uid===uid || h.uid==uid);
   if(idx<0)return;
   var h=G.heroes[idx];
   
@@ -18560,7 +18564,7 @@ function filterHeroes(filter,btn){
   document.querySelectorAll('#hero-list .hero-card').forEach(card=>{
     var show=true;
     if(filter==='all')show=true;
-    else if(filter==='team')show=G.team.some(t=>t&&t.uid===parseInt(card.dataset.uid));
+    else if(filter==='team')show=G.team.some(t=>t&&t.uid==card.dataset.uid);
     else if(['rare','epic','legendary','mythic'].includes(filter))show=card.dataset.quality===filter;
     else show=card.dataset.role===filter;
     card.style.display=show?'':'none';
@@ -18571,8 +18575,9 @@ function filterHeroes(filter,btn){
 
 // 显示天赋树界面
 function showTalentTree(heroUid){
-  const hero=G.heroes.find(h=>h.uid===heroUid);
+  const hero=G.heroes.find(h=>h.uid===heroUid || h.uid==heroUid);
   if(!hero)return;
+  var _huidJson=JSON.stringify(heroUid);
   
   const tree=TALENT_TREES[hero.role];
   if(!tree)return;
@@ -18751,8 +18756,8 @@ function showTalentTree(heroUid){
       <div class="tt-tabs">${branchTabs}</div>
       ${branchKeys.map((key,i)=>`<div class="tt-branch ${i===0?'active':''}" id="tt-branch-${key}">${renderBranch(key)}</div>`).join('')}
       <div class="tt-actions">
-        <button class="btn" onclick="closeModal();showHeroDetail(${heroUid})">← 返回</button>
-        <button class="btn" style="background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.3);color:#ff6b6b" onclick="resetTalents(${heroUid})">🔄 重置</button>
+        <button class="btn" onclick="closeModal();showHeroDetail(${_huidJson})">← 返回</button>
+        <button class="btn" style="background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.3);color:#ff6b6b" onclick="resetTalents(${_huidJson})">🔄 重置</button>
       </div>
     </div>
   `;
@@ -18830,7 +18835,7 @@ function addTalentPoint(heroUid,talentId){
 
 // 重置天赋
 function resetTalents(heroUid){
-  const hero=G.heroes.find(h=>h.uid===heroUid);
+  const hero=G.heroes.find(h=>h.uid===heroUid || h.uid==heroUid);
   if(!hero)return;
   
   // 检查资源
@@ -19179,7 +19184,8 @@ function showTeamPicker(slotIdx){
   }
   const html=available.map(h=>{
     var role=ROLES[h.role]||ROLES.unknown;
-    return `<div class="hero-card quality-${h.quality}" onclick="addToTeam(${slotIdx},${h.uid});closeModal()" style="cursor:pointer">
+    var _uj=JSON.stringify(h.uid);
+    return `<div class="hero-card quality-${h.quality}" onclick="addToTeam(${slotIdx},${_uj});closeModal()" style="cursor:pointer">
       <div class="hero-avatar">${h.icon}</div>
       <div class="hero-info">
         <div class="hero-name"><span class="q-${h.quality}">${h.name}</span></div>
@@ -19192,7 +19198,7 @@ function showTeamPicker(slotIdx){
 
 function addToTeam(slotIdx,heroUid){
   debugLog('[AT] addToTeam slotIdx=' + slotIdx + ' heroUid=' + heroUid + '(类型' + typeof heroUid + ')');
-  const hero=G.heroes.find(h=>h.uid===heroUid);
+  const hero=G.heroes.find(h=>h.uid===heroUid || h.uid==heroUid);
   if(!hero){
     // 尝试宽松匹配
     var hero2 = G.heroes.find(h=>h.uid==heroUid);
@@ -19218,7 +19224,7 @@ function addToTeam(slotIdx,heroUid){
 function quickAddToTeam(heroUid){
   const idx=G.team.indexOf(null);
   if(idx===-1){showToast('队伍已满！');return}
-  G.team[idx]=G.heroes.find(h=>h.uid===heroUid);
+  G.team[idx]=G.heroes.find(h=>h.uid===heroUid || h.uid==heroUid);
   saveGame();
   if(onGuideQuickAdd()){
     // 引导模式下：先渲染当前界面给用户视觉反馈，再跳转城镇
@@ -19988,9 +19994,8 @@ function quickAddMergeHeroes(mode){
 }
 
 function addMergeHero(heroUid){
-  heroUid = Number(heroUid);
-  debugLog('[AMH] addMergeHero heroUid=' + heroUid + '(原始类型已转为Number)');
-  // 已在槽位中，忽略
+  debugLog('[AMH] addMergeHero heroUid=' + heroUid + '(类型' + typeof heroUid + ')');
+  // 已在槽位中，忽略（使用 == 宽松比较）
   for(var i=0;i<3;i++){
     if(window._mergeSlots[i]!=null && window._mergeSlots[i]==heroUid){
       debugLog('[AMH] 已在槽位' + i + '中，忽略');
@@ -20068,21 +20073,20 @@ function showMergePicker(slotIdx){
     }
     return;
   }
-  const html=available.map(h=>`
-    <div class="hero-card quality-${h.quality}" onclick="pickMergeHero(${slotIdx},${h.uid})" style="cursor:pointer">
+  const html=available.map(h=>{
+    var _uj=JSON.stringify(h.uid);
+    return `<div class="hero-card quality-${h.quality}" onclick="pickMergeHero(${slotIdx},${_uj})" style="cursor:pointer">
       <div class="hero-avatar">${h.icon}</div>
       <div class="hero-info">
         <div class="hero-name"><span class="q-${h.quality}">${h.name}</span></div>
         <div class="hero-meta">${ROLES[h.role].icon} ${ROLES[h.role].name} · Lv.${h.level}</div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
   showModal('选择合成材料',html);
 }
 
 function pickMergeHero(slotIdx,heroUid){
-  // 将uid转换为数字类型，避免字符串/数字类型不匹配问题
-  heroUid = Number(heroUid);
   // 如果该槽位已有英雄，先取消选中状态
   var oldHeroUid = window._mergeSlots[slotIdx];
   if(oldHeroUid){
@@ -20532,6 +20536,7 @@ function renderEquip(el){
 
   function buildHeroEquipRow(h){
     var qc3={common:'#aaa',rare:'#5b9bd5',epic:'#b06ce6',legendary:'#e8c840',mythic:'#ff6b6b'};
+    var _huidJson=JSON.stringify(h.uid);
     var slots=['weapon','armor','accessory'];
     var slotsHtml=slots.map(function(slot){
       var uid=h.equipment[slot]; var eq=uid!=null?G.equipment.find(function(e){return e.uid===uid;}):null;
@@ -20541,7 +20546,7 @@ function renderEquip(el){
         return '<div style="display:flex;align-items:center;gap:3px;padding:3px 7px;background:rgba(0,0,0,.25);border-radius:5px;cursor:pointer;border:1px solid '+(qc3[tpl.quality]||'#aaa')+'33" onclick="showEquipDetail('+eq.uid+')">'
           +tpl.icon+'<span style="font-size:10px;color:'+(qc3[tpl.quality]||'#aaa')+'">'+tpl.name+(enh>0?' +'+enh:'')+'</span></div>';
       }else{
-        return '<div style="display:flex;align-items:center;gap:3px;padding:3px 7px;background:rgba(0,0,0,.12);border-radius:5px;cursor:pointer;border:1px dashed rgba(255,255,255,.08)" onclick="openSlotPickerBag('+h.uid+',\''+slot+'\')">'
+        return '<div style="display:flex;align-items:center;gap:3px;padding:3px 7px;background:rgba(0,0,0,.12);border-radius:5px;cursor:pointer;border:1px dashed rgba(255,255,255,.08)" onclick="openSlotPickerBag('+_huidJson+',\''+slot+'\')">'
           +slotIcons[slot]+'<span style="font-size:10px;color:var(--text3)">空</span></div>';
       }
     }).join('');
@@ -20550,7 +20555,7 @@ function renderEquip(el){
       +'<span style="font-size:22px">'+h.icon+'</span>'
       +'<div style="flex:1"><div style="font-size:12px;font-weight:bold;color:'+(qc3[h.quality]||'#aaa')+'">'+h.name+'</div>'
       +'<div style="font-size:10px;color:var(--text3)">'+(ROLES[h.role]?ROLES[h.role].name:'')+' Lv.'+h.level+'</div></div>'
-      +'<button class="btn btn-sm" style="font-size:10px;padding:4px 8px" onclick="window._heroDetailTab=\'equip\';showHeroDetail('+h.uid+')">⚔️管理</button>'
+      +'<button class="btn btn-sm" style="font-size:10px;padding:4px 8px" onclick="window._heroDetailTab=\'equip\';showHeroDetail('+_huidJson+')">⚔️管理</button>'
       +'</div>'
       +'<div style="display:flex;gap:5px;flex-wrap:wrap">'+slotsHtml+'</div>'
       +'</div>';
@@ -20752,8 +20757,9 @@ function showEquipDetail(equipUid){
   
   // 操作按钮
   let actionButtons='';
+  var _heroUidJson = hero ? JSON.stringify(hero.uid) : null;
   if(hero){
-    actionButtons='<button class="btn btn-danger" onclick="closeModal();unequipFromHero('+hero.uid+',\''+tpl.type+'\');" style="flex:1">卸下装备</button>';
+    actionButtons='<button class="btn btn-danger" onclick="closeModal();unequipFromHero('+_heroUidJson+',\''+tpl.type+'\');" style="flex:1">卸下装备</button>';
   }else{
     actionButtons='<button class="btn btn-primary" onclick="closeModal();showEquipToHero('+equipUid+');" style="flex:1">装备给英雄</button>'
       +'<button class="btn" onclick="closeModal();enhanceEquipment('+equipUid+');" style="flex:1;background:rgba(255,215,0,.15);border-color:var(--gold);color:var(--gold)">强化</button>'
@@ -20781,15 +20787,16 @@ function showEquipDetail(equipUid){
 function showEquipToHero(equipUid){
   const heroes=G.heroes;
   if(heroes.length===0){showToast('没有英雄');return}
-  const html=heroes.map(h=>`
-    <div class="hero-card quality-${h.quality}" onclick="equipItem(${h.uid},${equipUid});closeModal();renderCurrentTab()" style="cursor:pointer">
+  const html=heroes.map(h=>{
+    var _uj=JSON.stringify(h.uid);
+    return `<div class="hero-card quality-${h.quality}" onclick="equipItem(${_uj},${equipUid});closeModal();renderCurrentTab()" style="cursor:pointer">
       <div class="hero-avatar">${h.icon}</div>
       <div class="hero-info">
         <div class="hero-name"><span class="q-${h.quality}">${h.name}</span></div>
         <div class="hero-meta">${ROLES[h.role].icon} ${ROLES[h.role].name} · Lv.${h.level}</div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
   showModal('选择装备对象',html);
 }
 
@@ -25990,7 +25997,7 @@ function renderBreakthroughUI(){
 }
 
 function performBreakthroughById(uid){
-  var hero=G.heroes.find(function(h){return h.uid===uid;});
+  var hero=G.heroes.find(function(h){return h.uid===uid || h.uid==uid;});
   if(hero){performBreakthrough(hero);renderCurrentTab();}
 }
 
