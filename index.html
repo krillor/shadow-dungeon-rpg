@@ -15555,27 +15555,20 @@ function executeMerge(heroUids){
     return false;
   }
   
-  // === 检测并使用合成卷轴 ===
+  // === 检测合成卷轴（暂不扣除，等前置检查通过后再扣） ===
   var activeScroll = getActiveScrollEffect();
   var scrollUsed = false;
-  if (activeScroll) {
-    // 使用卷轴（从背包扣除）
-    scrollUsed = useMergeScroll(activeScroll.id);
-    if (scrollUsed) {
-      showToast('📜 使用了 ' + activeScroll.icon + ' ' + activeScroll.name);
-    }
-  }
-  
+
   // === 合成消耗：金币 = 材料最高品质 × 200（已降低）===
   var qualities=heroes.map(function(h){return QUALITIES.indexOf(h.quality)});
   var maxQIdx=Math.max.apply(null,qualities);
   var mergeCost = (maxQIdx+1) * 200;
-  
+
   // === 卷轴：合成折扣（归零） ===
-  if (scrollUsed && activeScroll && activeScroll.effect === 'goldDiscount') {
+  if (activeScroll && activeScroll.effect === 'goldDiscount') {
     mergeCost = 0;
   }
-  
+
   // === 赌局费用前置检查 ===
   var gambleInfo = getGambleInfo();
   var gambleCost = 0;
@@ -15602,6 +15595,14 @@ function executeMerge(heroUids){
     return false;
   }
   G.resources.gold -= mergeCost;
+
+  // === 所有前置检查通过，现在扣除卷轴 ===
+  if (activeScroll) {
+    scrollUsed = useMergeScroll(activeScroll.id);
+    if (scrollUsed) {
+      showToast('📜 使用了 ' + activeScroll.icon + ' ' + activeScroll.name);
+    }
+  }
   // 扣除赌局费用
   if (G_mergeGamble !== 'normal' && gambleCost > 0) {
     if (gambleCostType === 'gems') {
