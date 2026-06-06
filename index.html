@@ -6885,13 +6885,14 @@ function restoreSaveData(data) {
     saved.team = saved.team.map(function(item) {
       if (!item) return null;
       if (typeof item === 'object' && item.uid !== undefined) {
-        var found = G.heroes.find(function(h) { return h && h.uid === item.uid; });
+        var found = G.heroes.find(function(h) { return h && (h.uid === item.uid || h.uid == item.uid); });
         debugLog('[RS] team对象重建: uid=' + item.uid + ' 找到=' + !!found);
         return found || null;
       }
-      var uid = typeof item === 'number' ? item : parseInt(item);
-      var found = G.heroes.find(function(h) { return h && h.uid === uid; });
-      debugLog('[RS] team值重建: 原值=' + item + '(类型' + typeof item + ') 解析uid=' + uid + ' 找到=' + !!found);
+      // 支持字符串uid和数字uid
+      var uid = item;
+      var found = G.heroes.find(function(h) { return h && (h.uid === uid || h.uid == uid); });
+      debugLog('[RS] team值重建: 原值=' + item + '(类型' + typeof item + ') 找到=' + !!found);
       return found || null;
     }).filter(function(x,i) { return i < 6; }); // 最多6个
   }
@@ -7272,7 +7273,7 @@ function initGameAfterLoad() {
     G.team = G.team.map(function(item) {
       if (!item) return null;
       if (typeof item === 'object' && item.uid !== undefined) {
-        var found = G.heroes.find(function(h) { return h && h.uid === item.uid; });
+        var found = G.heroes.find(function(h) { return h && (h.uid === item.uid || h.uid == item.uid); });
         if (!found) debugLog('[IGAL] ⚠️ team对象重建失败: uid=' + item.uid);
         return found || null;
       }
@@ -8041,7 +8042,7 @@ function calculateTeamPower(){
   var power=0;
   G.team.forEach(function(slot){
     if(slot){
-      var h=G.heroes.find(function(x){return x.uid===slot.uid});
+      var h=G.heroes.find(function(x){return x.uid===slot.uid || x.uid==slot.uid});
       if(h){
         power+=h.atk*2+h.def*1.5+h.maxHP*0.5+h.spd*3;
       }
@@ -8977,7 +8978,7 @@ function getHeroStats(hero){
     var slot=slots[si];
     var eid=hero.equipment[slot];
     if(eid!=null){
-      var eq=G.equipment.find(function(e){return e.uid===eid});
+      var eq=G.equipment.find(function(e){return e.uid===eid || e.uid==eid});
       if(eq){
         var tpl=EQUIP_TEMPLATES.find(function(t){return t.id===eq.id});
         if(tpl){
@@ -9002,7 +9003,7 @@ function getHeroStats(hero){
     var slot2=slots[si2];
     var eId=hero.equipment[slot2];
     if(eId!=null){
-      var eq2=G.equipment.find(function(e){return e.uid===eId});
+      var eq2=G.equipment.find(function(e){return e.uid===eId || e.uid==eId});
       if(eq2){
         var tpl2=EQUIP_TEMPLATES.find(function(t){return t.id===eq2.id});
         if(tpl2 && tpl2.setId && EQUIP_SETS[tpl2.setId]){
@@ -9030,7 +9031,7 @@ function getHeroStats(hero){
     var aslot=slots[ai];
     var aeid=hero.equipment[aslot];
     if(aeid!=null){
-      var aeq=G.equipment.find(function(e){return e.uid===aeid});
+      var aeq=G.equipment.find(function(e){return e.uid===aeid || e.uid==aeid});
       if(aeq && aeq.affixes && aeq.affixes.length>0){
         for(var aj=0;aj<aeq.affixes.length;aj++){
           var affix=aeq.affixes[aj];
@@ -9076,7 +9077,7 @@ function getHeroStats(hero){
 var _equipCache = {};
 function _getEquipByUid(uid) {
   if (_equipCache[uid] !== undefined) return _equipCache[uid];
-  var eq = G.equipment.find(function(e){ return e.uid === uid; });
+  var eq = G.equipment.find(function(e){ return e.uid === uid || e.uid == uid; });
   _equipCache[uid] = eq || null;
   return _equipCache[uid];
 }
@@ -16206,7 +16207,7 @@ function checkAffixSynergies(affixes){
 
 // 洗练词缀（替换指定槽位的词缀）
 function rerollAffix(equipUid, slotIndex){
-  var eq = G.equipment.find(function(e){ return e.uid === equipUid; });
+  var eq = G.equipment.find(function(e){ return e.uid === equipUid || e.uid == equipUid; });
   if(!eq){ showToast('装备不存在'); return false; }
   if(eq.heroUid){ showToast('请先卸下装备再洗练'); return false; }
   
@@ -16282,7 +16283,7 @@ function generateSingleAffix(quality, existingAffixes, excludeIndex){
 
 // 一键洗练全部词缀
 function rerollAllAffixes(equipUid){
-  var eq = G.equipment.find(function(e){ return e.uid === equipUid; });
+  var eq = G.equipment.find(function(e){ return e.uid === equipUid || e.uid == equipUid; });
   if(!eq){ showToast('装备不存在'); return false; }
   if(eq.heroUid){ showToast('请先卸下装备再洗练'); return false; }
   
@@ -16308,7 +16309,7 @@ function rerollAllAffixes(equipUid){
 
 function equipItem(heroUid,equipUid){
   const hero=G.heroes.find(h=>h.uid===heroUid || h.uid==heroUid);
-  const equip=G.equipment.find(e=>e.uid===equipUid);
+  const equip=G.equipment.find(e=>e.uid===equipUid || e.uid==equipUid);
   if(!hero||!equip)return;
   const tpl=EQUIP_TEMPLATES.find(t=>t.id===equip.id);
   if(!tpl)return;
@@ -16316,7 +16317,7 @@ function equipItem(heroUid,equipUid){
   const slot=tpl.type==='weapon'?'weapon':tpl.type==='armor'?'armor':'accessory';
   const oldEquipUid=hero.equipment[slot];
   if(oldEquipUid!=null){
-    const oldEq=G.equipment.find(e=>e.uid===oldEquipUid);
+    const oldEq=G.equipment.find(e=>e.uid===oldEquipUid || e.uid==oldEquipUid);
     if(oldEq)oldEq.heroUid=null;
   }
   // 装上新的
@@ -16330,7 +16331,7 @@ function unequipItem(heroUid,slot){
   if(!hero)return;
   const equipUid=hero.equipment[slot];
   if(equipUid==null)return;
-  const equip=G.equipment.find(e=>e.uid===equipUid);
+  const equip=G.equipment.find(e=>e.uid===equipUid || e.uid==equipUid);
   if(equip)equip.heroUid=null;
   hero.equipment[slot]=null;
 }
