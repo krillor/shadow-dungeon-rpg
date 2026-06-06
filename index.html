@@ -10321,6 +10321,11 @@ function createBattleUnit(hero,isEnemy=false){
       u.spd = Math.floor(u.spd * 1.15);
     }
   }
+  // ── 肉鸽奇观Boss：深渊领主技能 ──
+  if(isEnemy && hero._rlBossAbility){
+    u._rlBossAbility = hero._rlBossAbility;
+    u._rlBossAbilityDesc = hero._rlBossAbilityDesc;
+  }
 
   return u;
 }
@@ -12512,6 +12517,35 @@ async function runBattle(stageOrId){
               if(unit.hp<=0){unit.alive=false;log(unit.icon+' '+unit.name+' 倒下了...','death');animUnit(unit,'dying',700)}
             }
             if(target.hp<=0){
+              // ── 厄运翻盘检查：玩家英雄受到致命伤害时触发 ──
+              if(!target.isEnemy && G_RL && G_RL._currentMisfortune && !G_RL._misfortuneFlipped){
+                var mf = G_RL._currentMisfortune;
+                G_RL._misfortuneFlipped = true;
+                mf.flipApply(G_RL.heroes);
+                showToast('✨ '+mf.flipDesc);
+                // 根据厄运类型应用翻盘效果
+                if(mf.id==='storm'){
+                  log('⚡ 暴风雨翻盘！所有攻击必定暴击！','buff');
+                } else if(mf.id==='blood_moon'){
+                  log('🩸 血月翻盘！击杀敌人永久偷取10%攻击力！','buff');
+                } else if(mf.id==='silence'){
+                  log('🔇 寂静翻盘！沉默解除，普攻伤害×3！','buff');
+                  target._rlSilenced = false;
+                  target._rlMuteBoost = true;
+                } else if(mf.id==='death_stare'){
+                  log('💀 死神凝视翻盘！濒死英雄获得不死金身！','buff');
+                  target._rlUndying = true;
+                  target.hp = 1;
+                  target.alive = true;
+                  showFloat(target,'不死金身！','buff');
+                  animUnit(target,'heal',500);
+                  return; // 不继续死亡处理
+                } else if(mf.id==='thorns'){
+                  log('🌵 荆棘翻盘！反弹伤害变为生命吸收！','buff');
+                } else if(mf.id==='fog'){
+                  log('🌫️ 迷雾翻盘！所有攻击无视闪避！','buff');
+                }
+              }
               // 凤凰涅槃：死亡时自动复活一次
               if(!target.isEnemy && target.hero && target.hero.isPhoenix && !target.hero.phoenixUsed){
                 target.hero.phoenixUsed = true;
