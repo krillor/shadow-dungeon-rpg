@@ -17408,10 +17408,10 @@ function renderHeroCard(h){
   var displayRole = isUnknown ? 'unknown' : h.role;
   
   var _uidJson = JSON.stringify(h.uid);
-  return '<div class="hero-card quality-'+displayQuality+'" data-role="'+displayRole+'" data-quality="'+displayQuality+'" data-uid="'+h.uid+'" onclick="showHeroDetail('+_uidJson+')" style="cursor:pointer">'
+  return '<div class="hero-card quality-'+displayQuality+'" data-role="'+displayRole+'" data-quality="'+displayQuality+'" data-uid="'+h.uid+'" onclick=\'showHeroDetail('+_uidJson+')\' style="cursor:pointer">'
     +(inTeam?'<div class="hero-team-badge">🛡️ 队伍中</div>':'')
     +(isUnknown?'<div class="hero-team-badge" style="background:linear-gradient(90deg,#ff00ff,#ff00cc)">🔒 未解锁</div>':'')
-    +'<button class="hero-lock-btn'+(h.locked?' hero-lock-btn-locked':'')+'" onclick="event.stopPropagation();toggleHeroLock('+_uidJson+')" title="'+(h.locked?'解锁':'锁定')+'">'+(h.locked?'🔒':'🔓')+'</button>'
+    +'<button class="hero-lock-btn'+(h.locked?' hero-lock-btn-locked':'')+'" onclick=\'event.stopPropagation();toggleHeroLock('+_uidJson+')\' title="'+(h.locked?'解锁':'锁定')+'">'+(h.locked?'🔒':'🔓')+'</button>'
     +'<div class="hero-avatar" style="background:rgba('+(isUnknown?'255,0,255':h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':'220,50,50')+',.2)">'
     +displayIcon
     +'</div>'
@@ -17556,11 +17556,11 @@ function _renderHeroDetail(h){
       potionHtml='<div class="hd-section" style="background:rgba(142,68,173,.06)">'
         +'<div class="hd-section-title">🧪 经验药水 <span style="font-size:11px;color:var(--text3);font-weight:400">库存: <b style="color:var(--purple)">'+(G.resources.expPotion||0)+'</b></span></div>'
         +(h.level<levelCap?'<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:6px">'
-          +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',1)" '+(((G.resources.expPotion||0)<100)?'disabled':'')+'>×1</button>'
-          +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',5)" '+(((G.resources.expPotion||0)<500)?'disabled':'')+'>×5</button>'
-          +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',10)" '+(((G.resources.expPotion||0)<1000)?'disabled':'')+'>×10</button>'
-          +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',50)" '+(((G.resources.expPotion||0)<5000)?'disabled':'')+'>×50</button>'
-          +'<button class="btn btn-sm" style="background:rgba(201,162,39,.15);border-color:var(--gold);color:var(--gold)" onclick="useExpPotion('+_uidJson+',-1)">全部</button>'
+          +'<button class="btn btn-sm" onclick=\'useExpPotion('+_uidJson+',1)\' '+(((G.resources.expPotion||0)<100)?'disabled':'')+'>×1</button>'
+          +'<button class="btn btn-sm" onclick=\'useExpPotion('+_uidJson+',5)\' '+(((G.resources.expPotion||0)<500)?'disabled':'')+'>×5</button>'
+          +'<button class="btn btn-sm" onclick=\'useExpPotion('+_uidJson+',10)\' '+(((G.resources.expPotion||0)<1000)?'disabled':'')+'>×10</button>'
+          +'<button class="btn btn-sm" onclick=\'useExpPotion('+_uidJson+',50)\' '+(((G.resources.expPotion||0)<5000)?'disabled':'')+'>×50</button>'
+          +'<button class="btn btn-sm" style="background:rgba(201,162,39,.15);border-color:var(--gold);color:var(--gold)" onclick=\'useExpPotion('+_uidJson+',-1)\'>全部</button>'
           +'</div><div style="font-size:10px;color:var(--text3)">每100药水 → +'+getPotionExpPerUnit(h.level)+'经验（Lv.'+h.level+'）</div>'
           :'<div style="font-size:12px;color:var(--red)">✋ 已达等级上限，请升级神殿</div>')
         +'</div>';
@@ -17643,7 +17643,7 @@ function _renderHeroDetail(h){
           +'<div style="font-size:11px;color:var(--text3)">未装备'+slotNames[slot]+'</div>'
           +(avail.length>0?'<div style="font-size:10px;color:var(--gold);margin-top:2px">🎒 背包中有 '+avail.length+' 件可用</div>':'<div style="font-size:10px;color:var(--text3);margin-top:2px">背包无可用装备</div>')
           +'</div>'
-          +(avail.length>0?'<button class="btn btn-primary btn-sm" style="font-size:10px;padding:4px 10px" onclick="openSlotPicker('+_uidJson+',\''+slot+'\')">装备</button>':'')
+          +(avail.length>0?'<button class="btn btn-primary btn-sm" style="font-size:10px;padding:4px 10px" onclick=\'openSlotPicker('+_uidJson+',"'+slot+'")\'>装备</button>':'')
           +'</div>';
       }
     }
@@ -17653,8 +17653,8 @@ function _renderHeroDetail(h){
       +'<div class="hd-section-title" style="margin-bottom:8px">🗡️ 装备槽</div>'
       +'<div style="display:flex;flex-direction:column;gap:6px">'+slotsHtml+'</div>'
       +'<div style="margin-top:10px;display:flex;gap:6px">'
-      +'<button class="btn btn-primary btn-sm" style="flex:1" onclick="quickAutoEquipHero('+_uidJson+')">🤖 自动最优穿戴</button>'
-      +'<button class="btn btn-sm" style="flex:1" onclick="quickUnequipAllHero('+_uidJson+')">📤 全部卸下</button>'
+      +'<button class="btn btn-primary btn-sm" style="flex:1" onclick=\'quickAutoEquipHero('+_uidJson+')\'>🤖 自动最优穿戴</button>'
+      +'<button class="btn btn-sm" style="flex:1" onclick=\'quickUnequipAllHero('+_uidJson+')\'>📤 全部卸下</button>'
       +'</div>'
       +'</div>'
       +'<div class="hd-section" style="background:rgba(0,0,0,.15)">'
@@ -17684,7 +17684,7 @@ function _renderHeroDetail(h){
       +'<div class="hd-section-title" style="margin-bottom:0">🌟 天赋</div>'
       +'<div style="font-size:12px;color:'+(availPts>0?'var(--gold)':'var(--text3)')+'">可用点数: <b>'+availPts+'</b></div>'
       +'</div>'
-      +'<button class="btn btn-primary" style="width:100%" onclick="showTalentTree('+_uidJson+')">🌳 打开完整天赋树</button>'
+      +'<button class="btn btn-primary" style="width:100%" onclick=\'showTalentTree('+_uidJson+')\'>🌳 打开完整天赋树</button>'
       +(Object.keys(h.talents||{}).length>0?'<div style="margin-top:10px;font-size:11px;color:var(--text3)">'+Object.entries(h.talents||{}).filter(function(kv){return kv[1]>0;}).map(function(kv){return '<span style="margin-right:8px">'+kv[0]+': '+kv[1]+'</span>';}).join('')+'</div>':'<div style="margin-top:10px;font-size:11px;color:var(--text3)">尚未分配天赋点</div>')
       +'</div></div>';
   }
@@ -17701,11 +17701,11 @@ function _renderHeroDetail(h){
       +'<div class="hd-section-title">⚡ 英雄操作</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
       +'<button class="btn btn-primary" onclick="closeModal();switchTab(\'team\')">🛡️ 编队管理</button>'
-      +'<button class="btn" onclick="showRenameHero('+_uidJson+')" style="background:rgba(52,152,219,.1);border-color:rgba(52,152,219,.3)">✏️ 改名</button>'
-      +'<button class="btn" onclick="toggleHeroLock('+_uidJson+');_reRenderHDTab('+_uidJson+',\'actions\')" style="background:rgba('+(h.locked?'201,162,39':'100,100,100')+',.1);border-color:rgba('+(h.locked?'201,162,39':'100,100,100')+',.3);color:'+(h.locked?'var(--gold)':'var(--text2)')+'">'+( h.locked?'🔒 解锁英雄':'🔓 锁定英雄')+'</button>'
-      +'<button class="btn" onclick="showTalentTree('+_uidJson+')" style="background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.3);color:#b86eff">🌟 天赋'+(talentPts>0?' <span style="background:#ff6b6b;color:#fff;border-radius:10px;padding:0 5px;font-size:10px">'+talentPts+'</span>':'')+'</button>'
-      +(matKey&&mat?'<button class="btn '+(canBreak?'btn-primary':'')+'" onclick="performBreakthroughById('+_uidJson+')" '+(canBreak?'':'disabled')+' style="'+(canBreak?'':'opacity:.5')+'">⚡ 品质突破<br><span style="font-size:9px">'+mat.icon+'×'+mat.cost.material+' 💰'+mat.cost.gold+'</span></button>':'')
-      +'<button class="btn btn-danger" onclick="dismissHero('+_uidJson+')" '+(h.locked?'disabled':'')+' style="'+(h.locked?'opacity:.4':'')+'">🗑️ 遣散英雄</button>'
+      +'<button class="btn" onclick=\'showRenameHero('+_uidJson+')\' style="background:rgba(52,152,219,.1);border-color:rgba(52,152,219,.3)">✏️ 改名</button>'
+      +'<button class="btn" onclick=\'toggleHeroLock('+_uidJson+');_reRenderHDTab('+_uidJson+',"actions")\' style="background:rgba('+(h.locked?'201,162,39':'100,100,100')+',.1);border-color:rgba('+(h.locked?'201,162,39':'100,100,100')+',.3);color:'+(h.locked?'var(--gold)':'var(--text2)')+'">'+( h.locked?'🔒 解锁英雄':'🔓 锁定英雄')+'</button>'
+      +'<button class="btn" onclick=\'showTalentTree('+_uidJson+')\' style="background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.3);color:#b86eff">🌟 天赋'+(talentPts>0?' <span style="background:#ff6b6b;color:#fff;border-radius:10px;padding:0 5px;font-size:10px">'+talentPts+'</span>':'')+'</button>'
+      +(matKey&&mat?'<button class="btn '+(canBreak?'btn-primary':'')+'" onclick=\'performBreakthroughById('+_uidJson+')\' '+(canBreak?'':'disabled')+' style="'+(canBreak?'':'opacity:.5')+'">⚡ 品质突破<br><span style="font-size:9px">'+mat.icon+'×'+mat.cost.material+' 💰'+mat.cost.gold+'</span></button>':'')
+      +'<button class="btn btn-danger" onclick=\'dismissHero('+_uidJson+')\' '+(h.locked?'disabled':'')+' style="'+(h.locked?'opacity:.4':'')+'">🗑️ 遣散英雄</button>'
       +'</div>'
       +'</div>'
       +'<div class="hd-section" style="background:rgba(142,68,173,.06)">'
@@ -17723,11 +17723,11 @@ function _renderHeroDetail(h){
       +'<div class="hd-section" style="background:rgba(142,68,173,.06)">'
       +'<div class="hd-section-title">🧪 经验药水 <span style="font-size:11px;color:var(--text3);font-weight:400">库存: <b style="color:var(--purple)">'+(G.resources.expPotion||0)+'</b></span></div>'
       +(h.level<levelCap?'<div style="display:flex;gap:5px;flex-wrap:wrap">'
-        +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',1);_reRenderHDTab('+_uidJson+',\'actions\')" '+(((G.resources.expPotion||0)<100)?'disabled':'')+'>×1</button>'
-        +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',5);_reRenderHDTab('+_uidJson+',\'actions\')" '+(((G.resources.expPotion||0)<500)?'disabled':'')+'>×5</button>'
-        +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',10);_reRenderHDTab('+_uidJson+',\'actions\')" '+(((G.resources.expPotion||0)<1000)?'disabled':'')+'>×10</button>'
-        +'<button class="btn btn-sm" onclick="useExpPotion('+_uidJson+',50);_reRenderHDTab('+_uidJson+',\'actions\')" '+(((G.resources.expPotion||0)<5000)?'disabled':'')+'>×50</button>'
-        +'<button class="btn btn-sm" style="background:rgba(201,162,39,.15);border-color:var(--gold);color:var(--gold)" onclick="useExpPotion('+_uidJson+',-1);_reRenderHDTab('+_uidJson+',\'actions\')">全部</button>'
+        +'<button class="btn btn-sm" onclick=\'useExpPotion('+_uidJson+',1);_reRenderHDTab('+_uidJson+',"actions")\' '+(((G.resources.expPotion||0)<100)?'disabled':'')+'>×1</button>'
+        +'<button class="btn btn-sm" onclick=\'useExpPotion('+_uidJson+',5);_reRenderHDTab('+_uidJson+',"actions")\' '+(((G.resources.expPotion||0)<500)?'disabled':'')+'>×5</button>'
+        +'<button class="btn btn-sm" onclick=\'useExpPotion('+_uidJson+',10);_reRenderHDTab('+_uidJson+',"actions")\' '+(((G.resources.expPotion||0)<1000)?'disabled':'')+'>×10</button>'
+        +'<button class="btn btn-sm" onclick=\'useExpPotion('+_uidJson+',50);_reRenderHDTab('+_uidJson+',"actions")\' '+(((G.resources.expPotion||0)<5000)?'disabled':'')+'>×50</button>'
+        +'<button class="btn btn-sm" style="background:rgba(201,162,39,.15);border-color:var(--gold);color:var(--gold)" onclick=\'useExpPotion('+_uidJson+',-1);_reRenderHDTab('+_uidJson+',"actions")\'>全部</button>'
         +'</div><div style="font-size:10px;color:var(--text3);margin-top:4px">每100药水 → +'+getPotionExpPerUnit(h.level)+'经验</div>'
         :'<div style="font-size:12px;color:var(--red)">✋ 已达等级上限</div>')
       +'</div>'
@@ -17748,7 +17748,7 @@ function _renderHeroDetail(h){
   var tabs=[{id:'info',label:'📊 属性'},{id:'equip',label:'⚔️ 装备'},{id:'talent',label:'🌟 天赋'},{id:'actions',label:'⚙️ 操作'}];
   var tabBar=isLockedUnknown?''
     :'<div class="hd-tab-bar">'+tabs.map(function(t){
-      return '<button class="hd-tab '+(activeTab===t.id?'active':'')+'" onclick="_switchHDTab('+_uidJson+',\''+t.id+'\')">'+t.label+'</button>';
+      return '<button class="hd-tab '+(activeTab===t.id?'active':'')+'" onclick=\'_switchHDTab('+_uidJson+',"'+t.id+'")\'>'+t.label+'</button>';
     }).join('')+'</div>';
 
   var html='<div class="hero-detail-overlay" id="hero-detail-overlay" onclick="if(event.target===this)closeModal()">'
@@ -18398,8 +18398,8 @@ function showRenameHero(uid){
       <div style="font-size:14px;color:var(--text2);margin-bottom:12px">为英雄设置新名字</div>
       <input type="text" id="rename-input" value="${h.name}" maxlength="12" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--panel2);color:var(--text);font-size:14px;text-align:center;margin-bottom:16px" placeholder="输入新名字（最多12字）">
       <div style="display:flex;gap:8px">
-        <button class="btn" style="flex:1" onclick="closeModal();showHeroDetail(${_uidJson})">取消</button>
-        <button class="btn btn-primary" style="flex:1" onclick="confirmRenameHero(${_uidJson})">确认改名</button>
+        <button class="btn" style="flex:1" onclick='closeModal();showHeroDetail(${_uidJson})'>取消</button>
+        <button class="btn btn-primary" style="flex:1" onclick='confirmRenameHero(${_uidJson})'>确认改名</button>
       </div>
     </div>
   `;
@@ -18756,8 +18756,8 @@ function showTalentTree(heroUid){
       <div class="tt-tabs">${branchTabs}</div>
       ${branchKeys.map((key,i)=>`<div class="tt-branch ${i===0?'active':''}" id="tt-branch-${key}">${renderBranch(key)}</div>`).join('')}
       <div class="tt-actions">
-        <button class="btn" onclick="closeModal();showHeroDetail(${_huidJson})">← 返回</button>
-        <button class="btn" style="background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.3);color:#ff6b6b" onclick="resetTalents(${_huidJson})">🔄 重置</button>
+        <button class="btn" onclick='closeModal();showHeroDetail(${_huidJson})'>← 返回</button>
+        <button class="btn" style="background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.3);color:#ff6b6b" onclick='resetTalents(${_huidJson})'>🔄 重置</button>
       </div>
     </div>
   `;
@@ -19185,7 +19185,7 @@ function showTeamPicker(slotIdx){
   const html=available.map(h=>{
     var role=ROLES[h.role]||ROLES.unknown;
     var _uj=JSON.stringify(h.uid);
-    return `<div class="hero-card quality-${h.quality}" onclick="addToTeam(${slotIdx},${_uj});closeModal()" style="cursor:pointer">
+    return `<div class="hero-card quality-${h.quality}" onclick='addToTeam(${slotIdx},${_uj});closeModal()' style="cursor:pointer">
       <div class="hero-avatar">${h.icon}</div>
       <div class="hero-info">
         <div class="hero-name"><span class="q-${h.quality}">${h.name}</span></div>
@@ -20075,7 +20075,7 @@ function showMergePicker(slotIdx){
   }
   const html=available.map(h=>{
     var _uj=JSON.stringify(h.uid);
-    return `<div class="hero-card quality-${h.quality}" onclick="pickMergeHero(${slotIdx},${_uj})" style="cursor:pointer">
+    return `<div class="hero-card quality-${h.quality}" onclick='pickMergeHero(${slotIdx},${_uj})' style="cursor:pointer">
       <div class="hero-avatar">${h.icon}</div>
       <div class="hero-info">
         <div class="hero-name"><span class="q-${h.quality}">${h.name}</span></div>
@@ -20546,7 +20546,7 @@ function renderEquip(el){
         return '<div style="display:flex;align-items:center;gap:3px;padding:3px 7px;background:rgba(0,0,0,.25);border-radius:5px;cursor:pointer;border:1px solid '+(qc3[tpl.quality]||'#aaa')+'33" onclick="showEquipDetail('+eq.uid+')">'
           +tpl.icon+'<span style="font-size:10px;color:'+(qc3[tpl.quality]||'#aaa')+'">'+tpl.name+(enh>0?' +'+enh:'')+'</span></div>';
       }else{
-        return '<div style="display:flex;align-items:center;gap:3px;padding:3px 7px;background:rgba(0,0,0,.12);border-radius:5px;cursor:pointer;border:1px dashed rgba(255,255,255,.08)" onclick="openSlotPickerBag('+_huidJson+',\''+slot+'\')">'
+        return '<div style="display:flex;align-items:center;gap:3px;padding:3px 7px;background:rgba(0,0,0,.12);border-radius:5px;cursor:pointer;border:1px dashed rgba(255,255,255,.08)" onclick=\'openSlotPickerBag('+_huidJson+',"'+slot+'")\'>'
           +slotIcons[slot]+'<span style="font-size:10px;color:var(--text3)">空</span></div>';
       }
     }).join('');
@@ -20555,7 +20555,7 @@ function renderEquip(el){
       +'<span style="font-size:22px">'+h.icon+'</span>'
       +'<div style="flex:1"><div style="font-size:12px;font-weight:bold;color:'+(qc3[h.quality]||'#aaa')+'">'+h.name+'</div>'
       +'<div style="font-size:10px;color:var(--text3)">'+(ROLES[h.role]?ROLES[h.role].name:'')+' Lv.'+h.level+'</div></div>'
-      +'<button class="btn btn-sm" style="font-size:10px;padding:4px 8px" onclick="window._heroDetailTab=\'equip\';showHeroDetail('+_huidJson+')">⚔️管理</button>'
+      +'<button class="btn btn-sm" style="font-size:10px;padding:4px 8px" onclick=\'window._heroDetailTab="equip";showHeroDetail('+_huidJson+')\'>⚔️管理</button>'
       +'</div>'
       +'<div style="display:flex;gap:5px;flex-wrap:wrap">'+slotsHtml+'</div>'
       +'</div>';
@@ -20789,7 +20789,7 @@ function showEquipToHero(equipUid){
   if(heroes.length===0){showToast('没有英雄');return}
   const html=heroes.map(h=>{
     var _uj=JSON.stringify(h.uid);
-    return `<div class="hero-card quality-${h.quality}" onclick="equipItem(${_uj},${equipUid});closeModal();renderCurrentTab()" style="cursor:pointer">
+    return `<div class="hero-card quality-${h.quality}" onclick='equipItem(${_uj},${equipUid});closeModal();renderCurrentTab()' style="cursor:pointer">
       <div class="hero-avatar">${h.icon}</div>
       <div class="hero-info">
         <div class="hero-name"><span class="q-${h.quality}">${h.name}</span></div>
