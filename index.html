@@ -2737,11 +2737,13 @@ if(!Array.prototype.concat){Array.prototype.concat=function(){var arr=[],i=0;for
     <div class="nav-btn" data-tab="zodiac" title="生肖Boss">🐉<div class="nav-label">生肖</div></div>
   </div>
   <div id="main">
-    <!-- 顶部快捷工具栏（兑换码/存档/修复状态） -->
+    <!-- 顶部快捷工具栏（兑换码/存档/修复状态/调试） -->
     <div id="top-toolbar" style="display:flex;gap:6px;padding:6px 8px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto">
       <button class="btn btn-sm" style="flex:none;font-size:11px;padding:5px 10px;white-space:nowrap" onclick="showRedeemModal()">🎁 兑换码</button>
       <button class="btn btn-sm" style="flex:none;font-size:11px;padding:5px 10px;white-space:nowrap" onclick="showSaveManageModal()">💾 存档</button>
       <button class="btn btn-sm" style="flex:none;font-size:11px;padding:5px 10px;white-space:nowrap;border-color:rgba(52,152,219,.4);color:var(--blue)" onclick="repairRuntimeState()">🔧 修复状态</button>
+      <button class="btn btn-sm" style="flex:none;font-size:11px;padding:5px 10px;white-space:nowrap;border-color:rgba(46,204,113,.4);color:var(--green)" onclick="toggleDebugPanel()">🐛 调试</button>
+      <button class="btn btn-sm" style="flex:none;font-size:11px;padding:5px 10px;white-space:nowrap;border-color:rgba(155,89,182,.4);color:#9b59b6" onclick="debugDiagnose()">🔍 诊断</button>
     </div>
     <div id="content"></div>
     <div id="battle-panel" style="display:none">
@@ -23646,14 +23648,7 @@ function renderCheats(el){
         <div id="redeem-result2" class="text-sm mt-8" style="display:none"></div>
       </div>
     </div>
-    <div class="panel" style="margin-top:12px;background:rgba(142,68,173,.1);border-color:rgba(142,68,173,.3)">
-      <div class="panel-title">🔧 调试</div>
-      <div class="btn-group">
-        <button class="btn" onclick="toggleDebugPanel()" style="font-size:12px">🐛 调试面板 ${_debugPanelVisible?'（关闭）':'（开启）'}</button>
-        <button class="btn" onclick="debugDiagnose()" style="font-size:12px">🔍 一键诊断</button>
-      </div>
-      <div style="margin-top:8px;font-size:11px;color:var(--text3)">显示游戏内部调试日志 / 一键诊断英雄和队伍状态</div>
-    </div>
+    <!-- 调试按钮已移至顶部工具栏，无需金手指解锁即可使用 -->
     <div class="panel">
       <button class="btn" style="width:100%;color:#ff6b6b;border-color:rgba(255,107,107,.3);background:rgba(255,107,107,.05)" onclick="showConfirm('⚠️ 重置游戏','确定要重置游戏吗？\\n\\n所有数据将被清除且不可恢复！',resetGame,'确认重置','取消')">⚠️ 重置游戏</button>
       <div style="margin-top:8px;font-size:11px;color:var(--text3)">清除所有游戏数据，重新开始</div>
