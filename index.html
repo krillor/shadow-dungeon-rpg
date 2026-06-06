@@ -21737,14 +21737,17 @@ var RL_RELICS = [
     passive:true, effect:'death_shield'},
   // 史诗遗物
   { id:'relic_chaos_core',  name:'混沌核心',icon:'🌀', rarity:'epic',
-    desc:'每层通关后随机强化一位英雄某项属性+50%',
+    desc:'每层通关后随机强化一位英雄某项属性+50%（效果随层数衰减）',
     trigger:'floor_clear', apply:function(rl){
       var alive=rl.heroes.filter(function(h){return h.hp>0;});
       if(!alive.length)return;
       var h=alive[Math.floor(Math.random()*alive.length)];
       var attrs=['maxHP','atk','def','spd'];
       var attr=attrs[Math.floor(Math.random()*attrs.length)];
-      h[attr]=Math.floor(h[attr]*1.5);
+      // 衰减：层数越深，+50%效果越弱，最低降至+5%
+      var floor = rl.floor || 1;
+      var decayMult = Math.max(RL_BALANCE.CHAOS_CORE_MIN_MULT, 1.5 - floor * RL_BALANCE.CHAOS_CORE_DECAY);
+      h[attr]=Math.floor(h[attr]*decayMult);
       if(attr==='maxHP'){h.hp=h.maxHP;}
       showToast('🌀 混沌核心强化了 '+h.name+' 的 '+{maxHP:'HP',atk:'攻击',def:'防御',spd:'速度'}[attr]+'！');
     }},
@@ -21755,7 +21758,7 @@ var RL_RELICS = [
       showToast('⏳ 时沙漏：进入Boss层，全队满状态+10%！');
     }},
   { id:'relic_echo_blade',  name:'回响之刃',icon:'🗡️', rarity:'epic',
-    desc:'每赢得5层，全队攻击永久+20%（可叠加无上限）',
+    desc:'每赢得5层，全队攻击永久+20%（最多叠加'+RL_BALANCE.MAX_ECHO_STACKS+'次）',
     passive:true, effect:'win_streak_atk', value:5},
   // 传说遗物
   { id:'relic_death_defier',name:'不死之志',icon:'💎', rarity:'legendary',
@@ -21896,40 +21899,106 @@ var RL_EVENTS = [
   },
 ];
 
+// ==================== 肉鸽数值平衡系统 ====================
+// 核心问题：祝福/遗物乘法叠加无上限，深层指数膨胀
+// 解决方案：衰减系数 + 硬上限 + 敌人缩放加强
+
+var RL_BALANCE = {
+  // 祝福衰减：已获得祝福越多，新祝福效果越弱
+  // 公式：effectMult = 1 / (1 + blessingCount * decayRate)
+  BLESSING_DECAY_RATE: 0.025,    // 每10个祝福效果降低约20%
+  BLESSING_MIN_EFFECT: 0.30,      // 祝福效果最低降至原始的30%
+  
+  // 祝福属性硬上限（相对于初始值的倍率）
+  MAX_HP_MULT: 200,     // HP最多膨胀到初始的200倍
+  MAX_ATK_MULT: 150,    // 攻击最多膨胀到初始的150倍
+  MAX_DEF_MULT: 150,    // 防御最多膨胀到初始的150倍
+  MAX_SPD_MULT: 80,     // 速度最多膨胀到初始的80倍
+  MAX_MP_MULT: 100,     // MP最多膨胀到初始的100倍
+  
+  // 裂隙之力成长上限
+  MAX_RIFT_GROWTH: 0.15,  // 最多每层+15%（原始为无上限叠加）
+  
+  // 回响之刃叠加上限
+  MAX_ECHO_STACKS: 8,     // 最多叠加8次（原始为无上限）
+  
+  // 混沌核心衰减
+  CHAOS_CORE_DECAY: 0.03,  // 每层混沌核心效果衰减3%
+  CHAOS_CORE_MIN_MULT: 1.05, // 最低效果降至+5%
+  
+  // 吸血率硬上限
+  MAX_LIFE_STEAL: 0.60,  // 吸血率最高60%
+  
+  // 敌人缩放加强系数（深层敌人更强）
+  ENEMY_DEEP_SCALE_BOOST: 0.35,  // 深层（50层+）额外缩放
+  ENEMY_POWER_SCALE_CAP: 4.0,    // 战力感知上限提高到4.0
+};
+
+// 计算祝福衰减系数
+function rlBlessingDecay(rl) {
+  var count = (rl && rl.blessings) ? rl.blessings.length : 0;
+  var decay = 1 / (1 + count * RL_BALANCE.BLESSING_DECAY_RATE);
+  return Math.max(RL_BALANCE.BLESSING_MIN_EFFECT, decay);
+}
+
+// 应用祝福属性修改（带衰减和上限检查）
+function rlApplyStat(rl, hero, stat, rawMult) {
+  var decay = rlBlessingDecay(rl);
+  // 衰减后的实际倍率：rawMult 越大，衰减越多
+  // 使用对数插值：让大倍率衰减更多，小倍率几乎不受影响
+  var bonusRate = rawMult - 1; // 提取增益部分（如1.18→0.18）
+  var decayedBonus = bonusRate * decay;
+  var actualMult = 1 + decayedBonus;
+  
+  var oldVal = hero[stat];
+  hero[stat] = Math.max(1, Math.floor(hero[stat] * actualMult));
+  
+  // 硬上限检查（基于初始值）
+  if (hero._rlBaseStats && hero._rlBaseStats[stat]) {
+    var base = hero._rlBaseStats[stat];
+    var maxMult = RL_BALANCE['MAX_' + stat.toUpperCase() + '_MULT'];
+    if (maxMult && hero[stat] > base * maxMult) {
+      hero[stat] = Math.floor(base * maxMult);
+    }
+  }
+  
+  return hero[stat] !== oldVal;
+}
+
 // ==================== 强化祝福系统（5档 + 诅咒选项） ====================
 var RL_BLESSINGS = [
   // ── 普通 ──
   { id:'hp_up',    name:'生命涌现',   icon:'❤️',  rarity:'common',
     desc:'全队最大HP +18%',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.18); h.hp=Math.min(h.hp+Math.floor(h.maxHP*0.1),h.maxHP); }); } },
+    apply: function(rl){ rl.heroes.forEach(function(h){ rlApplyStat(rl,h,'maxHP',1.18); h.hp=Math.min(h.hp+Math.floor(h.maxHP*0.1),h.maxHP); }); } },
   { id:'atk_up',   name:'锋芒毕露',   icon:'⚔️',  rarity:'common',
     desc:'全队攻击 +18%',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.atk=Math.floor(h.atk*1.18); }); } },
+    apply: function(rl){ rl.heroes.forEach(function(h){ rlApplyStat(rl,h,'atk',1.18); }); } },
   { id:'def_up',   name:'坚若磐石',   icon:'🛡️',  rarity:'common',
     desc:'全队防御 +22%',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.def=Math.floor(h.def*1.22); }); } },
+    apply: function(rl){ rl.heroes.forEach(function(h){ rlApplyStat(rl,h,'def',1.22); }); } },
   { id:'spd_up',   name:'疾风步伐',   icon:'💨',  rarity:'common',
     desc:'全队速度 +18%',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.spd=Math.floor(h.spd*1.18); }); } },
+    apply: function(rl){ rl.heroes.forEach(function(h){ rlApplyStat(rl,h,'spd',1.18); }); } },
   { id:'mp_up',    name:'魔力充盈',   icon:'💎',  rarity:'common',
     desc:'全队MP +30%，下场战斗必定先手',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxMP=Math.floor(h.maxMP*1.3); h.mp=h.maxMP; }); } },
+    apply: function(rl){ rl.heroes.forEach(function(h){ rlApplyStat(rl,h,'maxMP',1.3); h.mp=h.maxMP; }); } },
   { id:'full_heal',name:'圣泉沐浴',   icon:'💧',  rarity:'common',
     desc:'全队HP完全恢复 + 额外+8%maxHP',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.08); h.hp=h.maxHP; }); } },
+    apply: function(rl){ rl.heroes.forEach(function(h){ rlApplyStat(rl,h,'maxHP',1.08); h.hp=h.maxHP; }); } },
   // ── 稀有 ──
   { id:'double_atk',name:'双刃狂潮',  icon:'⚡',  rarity:'rare',
     desc:'全队攻击 +35%，防御 -8%（收益大于代价）',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.atk=Math.floor(h.atk*1.35); h.def=Math.floor(h.def*0.92); }); } },
+    apply: function(rl){ rl.heroes.forEach(function(h){ rlApplyStat(rl,h,'atk',1.35); rlApplyStat(rl,h,'def',0.92); }); } },
   { id:'ironhide',  name:'不破金身',  icon:'🏰',  rarity:'rare',
     desc:'全队防御 +45%，HP +15%',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.def=Math.floor(h.def*1.45); h.maxHP=Math.floor(h.maxHP*1.15); h.hp=Math.min(h.hp,h.maxHP); }); } },
+    apply: function(rl){ rl.heroes.forEach(function(h){ rlApplyStat(rl,h,'def',1.45); rlApplyStat(rl,h,'maxHP',1.15); h.hp=Math.min(h.hp,h.maxHP); }); } },
   { id:'vampiric',  name:'吸血契约',  icon:'🧛',  rarity:'rare',
     desc:'全队攻击附带20%吸血，HP+10%',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h._rlLifeSteal=(h._rlLifeSteal||0)+0.20; h.maxHP=Math.floor(h.maxHP*1.1); h.hp=Math.min(h.hp+Math.floor(h.maxHP*0.1),h.maxHP); }); } },
+    apply: function(rl){ rl.heroes.forEach(function(h){ h._rlLifeSteal=Math.min(RL_BALANCE.MAX_LIFE_STEAL,(h._rlLifeSteal||0)+0.20); rlApplyStat(rl,h,'maxHP',1.1); h.hp=Math.min(h.hp+Math.floor(h.maxHP*0.1),h.maxHP); }); } },
   { id:'berserker_mode',name:'破釜沉舟',icon:'🔥',rarity:'rare',
     desc:'全队HP上限-15%但攻击+45%（赌徒之选）',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*0.85); h.hp=Math.min(h.hp,h.maxHP); h.atk=Math.floor(h.atk*1.45); }); } },
+    apply: function(rl){ rl.heroes.forEach(function(h){ rlApplyStat(rl,h,'maxHP',0.85); h.hp=Math.min(h.hp,h.maxHP); rlApplyStat(rl,h,'atk',1.45); }); } },
   { id:'recruit_random',name:'流亡英雄',icon:'🤝',rarity:'rare',
     desc:'招募一位随机职业的英雄加入队伍（上限6人）',
     apply: function(rl){
@@ -21962,13 +22031,15 @@ var RL_BLESSINGS = [
   // ── 史诗 ──
   { id:'all_boost',  name:'众神庇佑', icon:'✨',  rarity:'epic',
     desc:'全队全属性 +22%',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.22); h.hp=Math.floor(h.hp*1.15); h.atk=Math.floor(h.atk*1.22); h.def=Math.floor(h.def*1.22); h.spd=Math.floor(h.spd*1.22); h.maxMP=Math.floor(h.maxMP*1.22); }); } },
+    apply: function(rl){ rl.heroes.forEach(function(h){ rlApplyStat(rl,h,'maxHP',1.22); h.hp=Math.floor(h.hp*1.15); rlApplyStat(rl,h,'atk',1.22); rlApplyStat(rl,h,'def',1.22); rlApplyStat(rl,h,'spd',1.22); rlApplyStat(rl,h,'maxMP',1.22); }); } },
   { id:'soul_bond',  name:'灵魂共鸣', icon:'💞',  rarity:'epic',
     desc:'全队攻击取队伍平均值×1.5（拉平强弱，整体暴涨）',
     apply: function(rl){
       var alive=rl.heroes.filter(function(h){return h.hp>0;});
       var avgAtk=alive.reduce(function(s,h){return s+h.atk;},0)/(alive.length||1);
-      alive.forEach(function(h){h.atk=Math.floor(avgAtk*1.5);});
+      var decay = rlBlessingDecay(rl);
+      var targetAtk = Math.floor(avgAtk * (1 + 0.5 * decay));
+      alive.forEach(function(h){h.atk=targetAtk;});
     }},
   { id:'phoenix_flame',name:'凤凰重生',icon:'🔥', rarity:'epic',
     desc:'战斗中每位英雄首次HP归零时自动复活（本局永久）',
@@ -21984,10 +22055,10 @@ var RL_BLESSINGS = [
   // ── 传说 ──
   { id:'godly_power', name:'神圣降临', icon:'👑',  rarity:'legendary',
     desc:'全队攻击和HP各 +55%，额外恢复满HP',
-    apply: function(rl){ rl.heroes.forEach(function(h){ h.maxHP=Math.floor(h.maxHP*1.55); h.hp=h.maxHP; h.atk=Math.floor(h.atk*1.55); }); } },
+    apply: function(rl){ rl.heroes.forEach(function(h){ rlApplyStat(rl,h,'maxHP',1.55); h.hp=h.maxHP; rlApplyStat(rl,h,'atk',1.55); }); } },
   { id:'rift_power',  name:'裂隙之力', icon:'🌌', rarity:'legendary',
     desc:'全队全属性 +35%，且此后每层通关后额外+3%（永久叠加）',
-    apply: function(rl){ rl.heroes.forEach(function(h){h.maxHP=Math.floor(h.maxHP*1.35);h.hp=h.maxHP;h.atk=Math.floor(h.atk*1.35);h.def=Math.floor(h.def*1.35);h.spd=Math.floor(h.spd*1.35);h.maxMP=Math.floor(h.maxMP*1.35);}); rl._riftGrowth=(rl._riftGrowth||0)+0.03; }},
+    apply: function(rl){ rl.heroes.forEach(function(h){rlApplyStat(rl,h,'maxHP',1.35);h.hp=h.maxHP;rlApplyStat(rl,h,'atk',1.35);rlApplyStat(rl,h,'def',1.35);rlApplyStat(rl,h,'spd',1.35);rlApplyStat(rl,h,'maxMP',1.35);}); rl._riftGrowth=Math.min(RL_BALANCE.MAX_RIFT_GROWTH,(rl._riftGrowth||0)+0.03); }},
   // ── 诅咒（高收益高风险） ──
   { id:'curse_power', name:'⚠️ 魔王诅咒',icon:'💀', rarity:'curse',
     desc:'【风险】全队HP减半，但攻击、防御、速度各×2',
@@ -22044,6 +22115,8 @@ function rlClonePlayerHero(playerHero, floorScale) {
   h.spd = Math.max(1, Math.floor(h.spd * scale));
   h.maxMP = Math.max(1, Math.floor(h.maxMP * scale));
   h.mp = h.maxMP;
+  // 记录初始属性（用于硬上限检查）
+  h._rlBaseStats = { maxHP: h.maxHP, atk: h.atk, def: h.def, spd: h.spd, maxMP: h.maxMP };
   if(!h.skills) h.skills = [];
   if(!h.bonusSkills) h.bonusSkills = [];
   if(!h.traits) h.traits = [];
@@ -22068,7 +22141,8 @@ function rlCreateHero(role, quality, level) {
     maxHP: cs(r.baseHP), atk: cs(r.baseATK), def: cs(r.baseDEF), spd: cs(r.baseSPD), maxMP: cs(r.baseMP),
     hp: cs(r.baseHP), mp: cs(r.baseMP),
     skills: skills, bonusSkills: [], equipment:{weapon:null,armor:null,accessory:null},
-    traits:[], isMutation:false
+    traits:[], isMutation:false,
+    _rlBaseStats: null // 临时英雄不设上限（属性较低）
   };
 }
 
@@ -22080,11 +22154,16 @@ function rlGenerateEnemies(floor) {
   var playerPower = G_RL ? G_RL.heroes.filter(function(h){return h.hp>0;}).reduce(function(s,h){
     return s + h.maxHP*0.5 + h.atk*3 + h.def*2 + h.spd*1;
   }, 0) : 0;
-  // 基础缩放：层数决定基础，玩家战力决定浮动（防止碾压或被碾压）
+  // 基础缩放：层数决定基础，深层加速增长
   var baseScale = 1 + (floor - 1) * 0.22;
-  var powerScale = playerPower > 0 ? Math.min(Math.max(playerPower / Math.max(1, G_RL && G_RL._baselinePower || playerPower), 0.5), 2.5) : 1;
-  // 混合缩放：70%层数基础 + 30%战力感知
-  var scaleMult = baseScale * (0.7 + powerScale * 0.3);
+  // 深层（50层+）额外加速缩放，匹配玩家衰减后的数值曲线
+  if (floor > 50) {
+    baseScale *= 1 + (floor - 50) * RL_BALANCE.ENEMY_DEEP_SCALE_BOOST * 0.01;
+  }
+  var powerScale = playerPower > 0 ? Math.min(Math.max(playerPower / Math.max(1, G_RL && G_RL._baselinePower || playerPower), 0.5), RL_BALANCE.ENEMY_POWER_SCALE_CAP) : 1;
+  // 混合缩放：60%层数基础 + 40%战力感知（深层更依赖战力感知）
+  var powerWeight = floor > 50 ? 0.45 : 0.30;
+  var scaleMult = baseScale * (1 - powerWeight + powerScale * powerWeight);
   var enemies = [];
 
   if (isBoss) {
@@ -22528,7 +22607,7 @@ function rlOnBattleWin(savedTeam, savedHeroes, floorData) {
   G.team = savedTeam;
   G.heroes = savedHeroes;
 
-  // 应用裂隙之力成长
+  // 应用裂隙之力成长（已在上限设置中限制 _riftGrowth 最大值）
   if(G_RL._riftGrowth && G_RL._riftGrowth > 0){
     var rg = G_RL._riftGrowth;
     G_RL.heroes.forEach(function(h){
@@ -22669,11 +22748,14 @@ function rlOnBattleWin(savedTeam, savedHeroes, floorData) {
 
   G_RL.floor++;
   G_RL._winsCount = (G_RL._winsCount||0) + 1;
-  // 裂隙之力效果统计
+  // 回响之刃效果（带硬上限）
   var echoBladeRelic = (G_RL.relics||[]).find(function(r){return r.id==='relic_echo_blade';});
-  if(echoBladeRelic && G_RL._winsCount % echoBladeRelic.value === 0){
+  var echoStacks = G_RL._echoStacks || 0;
+  if(echoBladeRelic && G_RL._winsCount % echoBladeRelic.value === 0 && echoStacks < RL_BALANCE.MAX_ECHO_STACKS){
+    G_RL._echoStacks = echoStacks + 1;
     G_RL.heroes.forEach(function(h){if(h.hp>0)h.atk=Math.floor(h.atk*1.20);});
-    showToast('🗡️ 回响之刃：全队攻击+20%！（第'+G_RL._winsCount+'场胜利）');
+    showToast('🗡️ 回响之刃：全队攻击+20%！（'+G_RL._echoStacks+'/'+RL_BALANCE.MAX_ECHO_STACKS+'）');
+  }
   }
 
   // 决定下一步：事件 → 遗物（每10层）→ 祝福
