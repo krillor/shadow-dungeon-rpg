@@ -15302,6 +15302,16 @@ window._rlRoleInheritPick = function(idx) {
   hero.def   = Math.max(hero.def,   calcStat(role.baseDEF, qm, lv));
   closeModal();
   showToast('⚔️ 职业融合完成！继承了 '+(ROLES[opt.role]||{}).name+' 的职业');
+  // 如果有延迟的合成结果，现在显示
+  if(window._rlPendingMergeResult && window._rlPendingMergeResult.newHero === hero){
+    var pmr = window._rlPendingMergeResult;
+    showMergeResult(pmr.newHero, pmr.isQualityUp, pmr.oldQuality, pmr.heroes, null);
+    if(pmr.newHero._gambleResult){
+      setTimeout(function(){ showToast(getGambleResultText(pmr.newHero._gambleResult)); }, 500);
+    }
+    showToast('融合成功！获得 '+QUALITY_NAMES[pmr.newHero.quality]+' 英雄：'+pmr.newHero.icon+' '+pmr.newHero.name);
+    window._rlPendingMergeResult = null;
+  }
   // 刷新合成界面
   if(currentTab === 'merge') renderMerge(document.getElementById('content'));
 };
@@ -15387,6 +15397,16 @@ window._rlForgeConfirm = function() {
   hero.mp    = hero.maxMP;
   closeModal();
   showToast('🔨 技能铸造完成！融合了 '+forged.length+' 个技能');
+  // 如果有延迟的合成结果，现在显示
+  if(window._rlPendingMergeResult && window._rlPendingMergeResult.newHero === hero){
+    var pmr = window._rlPendingMergeResult;
+    showMergeResult(pmr.newHero, pmr.isQualityUp, pmr.oldQuality, pmr.heroes, null);
+    if(pmr.newHero._gambleResult){
+      setTimeout(function(){ showToast(getGambleResultText(pmr.newHero._gambleResult)); }, 500);
+    }
+    showToast('融合成功！获得 '+QUALITY_NAMES[pmr.newHero.quality]+' 英雄：'+pmr.newHero.icon+' '+pmr.newHero.name);
+    window._rlPendingMergeResult = null;
+  }
   if(currentTab === 'merge') renderMerge(document.getElementById('content'));
 };
 
@@ -16307,8 +16327,19 @@ function executeMerge(heroUids){
   // === 合成挑战检测 ===
   checkMergeChallenge(accident ? accident.hero : newHero, accident);
   
-  // 显示合成结果
-  if (isExplosion) {
+  // 显示合成结果（如果有_pending选择，延迟显示）
+  if (newHero._pendingForge || newHero._pendingRoleInherit) {
+    // 技能铸造/职业融合：等待玩家选择后再显示合成结果
+    window._rlPendingMergeResult = {
+      newHero: newHero,
+      isQualityUp: isQualityUp,
+      oldQuality: oldQuality,
+      heroes: heroes,
+      accident: accident,
+      isExplosion: isExplosion
+    };
+    showToast('融合成功！请完成卷轴选择');
+  } else if (isExplosion) {
     // 爆炸事件：不显示合成结果弹窗，只显示事件弹窗
     showToast(accident.message);
     setTimeout(function(){ showAccidentResult(accident); }, 300);
