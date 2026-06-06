@@ -15459,10 +15459,19 @@ function useMergeScroll(scrollId) {
   return true;
 }
 
-// 获取当前激活的卷轴效果（合成前调用，返回第一个可用的卷轴效果）
+// 获取当前激活的卷轴效果（合成前调用）
+// 优先使用玩家手动选择的卷轴，否则自动选择最高品质卷轴
 function getActiveScrollEffect() {
   if (!G.mergeScrolls || G.mergeScrolls.length === 0) return null;
-  // 优先使用高品质卷轴
+  // 优先使用玩家手动选择的卷轴
+  if (window._selectedMergeScroll) {
+    var selItem = G.mergeScrolls.find(function(s){ return s.id === window._selectedMergeScroll; });
+    if (selItem) {
+      var selDef = MERGE_SCROLL_DEFS.find(function(d){ return d.id === selItem.id; });
+      if (selDef) return selDef;
+    }
+  }
+  // 未手动选择时，自动选择最高品质卷轴
   var rarityOrder = ['mythic','legendary','epic','rare','common'];
   for (var ri = 0; ri < rarityOrder.length; ri++) {
     for (var si = 0; si < G.mergeScrolls.length; si++) {
@@ -15474,6 +15483,74 @@ function getActiveScrollEffect() {
     }
   }
   return null;
+}
+
+// 玩家手动选择合成卷轴
+function selectMergeScroll(scrollId) {
+  if (!scrollId) {
+    window._selectedMergeScroll = null;
+  } else {
+    var item = G.mergeScrolls.find(function(s){ return s.id === scrollId; });
+    if (!item) { showToast('卷轴不存在！'); return; }
+    window._selectedMergeScroll = scrollId;
+    var def = MERGE_SCROLL_DEFS.find(function(d){ return d.id === scrollId; });
+    if (def) showToast('📜 已选择 ' + def.icon + ' ' + def.name);
+  }
+  updateMergeScrollUI();
+}
+
+// 清除卷轴选择（恢复自动模式）
+function clearMergeScrollSelection() {
+  window._selectedMergeScroll = null;
+  updateMergeScrollUI();
+}
+
+// 更新合成页面卷轴选择UI
+function updateMergeScrollUI() {
+  var container = document.getElementById('merge-scroll-selector');
+  if (!container) return;
+  container.innerHTML = renderMergeScrollSelectorHTML();
+}
+
+// 渲染卷轴选择器HTML
+function renderMergeScrollSelectorHTML() {
+  if (!G.mergeScrolls || G.mergeScrolls.length === 0) {
+    return '<div style="text-align:center;padding:12px;color:var(--text3);font-size:12px">📦 背包中没有合成卷轴<br><span style="font-size:10px">可在每日商店购买或击败生肖Boss获取</span></div>';
+  }
+  var html = '';
+  var rarityOrder = ['mythic','legendary','epic','rare','common'];
+
+  // 自动模式选项
+  var isAuto = !window._selectedMergeScroll;
+  html += '<div onclick="clearMergeScrollSelection()" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:6px;border:1.5px solid ' + (isAuto ? 'var(--gold)' : 'rgba(255,255,255,.08)') + ';background:' + (isAuto ? 'rgba(255,215,0,.1)' : 'transparent') + ';transition:all .2s">';
+  html += '<span style="font-size:16px">🔄</span>';
+  html += '<div style="flex:1"><div style="font-size:12px;font-weight:bold;color:' + (isAuto ? 'var(--gold)' : 'var(--text)') + '">自动选择</div>';
+  html += '<div style="font-size:10px;color:var(--text3)">使用品质最高的卷轴</div></div>';
+  if (isAuto) html += '<span style="font-size:11px;color:var(--gold)">✓ 已选</span>';
+  html += '</div>';
+
+  // 按稀有度排序显示所有卷轴
+  for (var ri = 0; ri < rarityOrder.length; ri++) {
+    for (var si = 0; si < G.mergeScrolls.length; si++) {
+      var s = G.mergeScrolls[si];
+      var def = MERGE_SCROLL_DEFS.find(function(d){ return d.id === s.id; });
+      if (!def || def.rarity !== rarityOrder[ri]) continue;
+      var rc = SCROLL_RARITY_CONFIG[def.rarity] || SCROLL_RARITY_CONFIG.common;
+      var isSelected = window._selectedMergeScroll === s.id;
+      var stars = {common:'★', rare:'★★', epic:'★★★', legendary:'★★★★', mythic:'★★★★★'}[def.rarity] || '';
+      html += '<div onclick="selectMergeScroll(\'' + s.id + '\')" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:4px;border:1.5px solid ' + (isSelected ? rc.color : 'rgba(255,255,255,.06)') + ';background:' + (isSelected ? rc.bg : 'transparent') + ';transition:all .2s">';
+      html += '<span style="font-size:18px">' + def.icon + '</span>';
+      html += '<div style="flex:1"><div style="display:flex;align-items:center;gap:4px">';
+      html += '<span style="font-size:12px;font-weight:bold;color:' + rc.color + '">' + def.name + '</span>';
+      html += '<span style="font-size:9px;color:' + rc.color + '">' + stars + '</span>';
+      html += '</div>';
+      html += '<div style="font-size:10px;color:var(--text3)">' + def.desc + '</div></div>';
+      html += '<div style="text-align:right"><div style="font-size:12px;font-weight:bold;color:var(--text)">x' + (s.count || 1) + '</div>';
+      if (isSelected) html += '<div style="font-size:10px;color:' + rc.color + '">✓ 已选</div>';
+      html += '</div></div>';
+    }
+  }
+  return html;
 }
 
 // 渲染每日卷轴商店HTML
@@ -15589,6 +15666,20 @@ function toggleScrollShop(){
     container.style.padding = '14px';
     if(hint) hint.textContent = '👆 点击收起';
     container.dataset.collapsed = 'false';
+  }
+}
+
+// ==================== 合成卷轴选择面板展开/收起 ====================
+function toggleMergeScrollPanel(){
+  var panel = document.getElementById('merge-scroll-panel');
+  var hint = document.getElementById('merge-scroll-toggle-hint');
+  if(!panel) return;
+  if(panel.style.display === 'none'){
+    panel.style.display = 'block';
+    if(hint) hint.textContent = '👆 点击收起';
+  }else{
+    panel.style.display = 'none';
+    if(hint) hint.textContent = '👆 点击展开选择';
   }
 }
 
@@ -15759,6 +15850,8 @@ function executeMerge(heroUids){
     scrollUsed = useMergeScroll(activeScroll.id);
     if (scrollUsed) {
       showToast('📜 使用了 ' + activeScroll.icon + ' ' + activeScroll.name);
+      // 清除手动选择状态（卷轴已消耗）
+      window._selectedMergeScroll = null;
     }
   }
   // 扣除赌局费用
@@ -17570,6 +17663,8 @@ function resetMergeState(){
   window._pendingMergeResult=false;
   window._accidentHero=null;
   window._accidentMats=null;
+  // 清除卷轴手动选择
+  window._selectedMergeScroll=null;
   // 清除特效元素
   var flashes=document.querySelectorAll('.merge-mythic-flash,.merge-legendary-flash,.merge-quality-up-flash,.merge-mutation-flash,.merge-mythic-text,.merge-legendary-text,.merge-mythic-particles,.merge-bond-flash,.merge-streak-flash,.merge-upset-flash,.merge-enhance-flash,.merge-result-overlay');
   flashes.forEach(function(f){f.remove()});
@@ -20059,22 +20154,32 @@ function renderMerge(el){
         </div>
       </div>
       
-      <!-- 当前激活卷轴提示 -->
-      ${(() => {
-        var activeS = getActiveScrollEffect();
-        if (!activeS) return '';
-        var arc = SCROLL_RARITY_CONFIG[activeS.rarity];
-        var stars = {common:'★', rare:'★★', epic:'★★★', legendary:'★★★★', mythic:'★★★★★'}[activeS.rarity] || '';
-        return '<div style="background:' + arc.bg + ';border:1px solid ' + arc.color + ';border-radius:10px;padding:10px 14px;margin-bottom:12px;position:relative;overflow:hidden">'
-          + '<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:' + arc.color + '"></div>'
-          + '<div style="margin-left:8px">'
-          + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">'
-          + '<span style="font-size:12px;font-weight:bold;color:' + arc.color + '">' + activeS.icon + ' ' + activeS.name + '</span>'
-          + '<span style="font-size:10px;color:' + arc.color + '">' + stars + ' ' + arc.name + '</span>'
-          + '</div>'
-          + '<div style="font-size:11px;color:var(--text2)">' + activeS.desc + '</div>'
-          + '</div></div>';
-      })()}
+      <!-- 合成卷轴选择器 -->
+      <div style="background:linear-gradient(135deg,rgba(255,215,0,.05),rgba(79,195,247,.03));border:1px solid rgba(255,215,0,.15);border-radius:12px;padding:8px 14px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;cursor:pointer" onclick="toggleMergeScrollPanel()">
+          <div style="font-size:13px;color:var(--gold);font-weight:bold">📜 合成卷轴</div>
+          <div style="font-size:11px;color:var(--text3)" id="merge-scroll-toggle-hint">👆 点击展开选择</div>
+        </div>
+        <div id="merge-scroll-panel" style="display:none;max-height:260px;overflow-y:auto">
+          ${(() => {
+            var activeS = getActiveScrollEffect();
+            if (activeS) {
+              var arc = SCROLL_RARITY_CONFIG[activeS.rarity];
+              var isManual = !!window._selectedMergeScroll;
+              return '<div style="background:' + arc.bg + ';border:1px solid ' + arc.color + ';border-radius:8px;padding:8px 12px;margin-bottom:8px;position:relative;overflow:hidden">'
+                + '<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:' + arc.color + '"></div>'
+                + '<div style="margin-left:8px;display:flex;align-items:center;justify-content:space-between">'
+                + '<div>'
+                + '<div style="font-size:11px;color:var(--text3);margin-bottom:2px">' + (isManual ? '🎯 手动选择' : '🔄 自动选择') + '</div>'
+                + '<span style="font-size:12px;font-weight:bold;color:' + arc.color + '">' + activeS.icon + ' ' + activeS.name + '</span>'
+                + '<span style="font-size:10px;color:' + arc.color + ';margin-left:4px">（本次合成生效）</span>'
+                + '</div></div></div>';
+            }
+            return '';
+          })()}
+          <div id="merge-scroll-selector">${renderMergeScrollSelectorHTML()}</div>
+        </div>
+      </div>
       
       <!-- 融合操作区 -->
       <div style="background:linear-gradient(135deg,rgba(255,215,0,.05),rgba(255,107,0,.03));border:1px solid rgba(255,215,0,.15);border-radius:12px;padding:16px;margin-bottom:12px">
