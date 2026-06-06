@@ -9774,6 +9774,29 @@ async function runArenaBattle(teamHeroes,opponents,difficulty){
       }
       // 装备特殊技能触发 - 回合开始 turnStart
       checkEquipSpecialSkill(u,'turnStart',null,allUnits);
+
+      // ── 肉鸽厄运翻盘效果：无敌回合递减 ──
+      if(u._rlInvincible && u._rlInvincible > 0){
+        u._rlInvincible--;
+        if(u._rlInvincible <= 0){
+          showFloat(u,'无敌消失','debuff');
+        }
+      }
+
+      // ── 肉鸽深渊领主Boss技：每3回合AOE ──
+      if(u.isEnemy && u._rlBossAbility === '深渊咆哮' && round % 3 === 0){
+        var aoeTargets = allUnits.filter(function(t){ return t.alive && !t.isEnemy; });
+        aoeTargets.forEach(function(t){
+          var aoeDmg = Math.floor(t.maxHP * 0.20);
+          if(t._rlInvincible && t._rlInvincible > 0) aoeDmg = 0;
+          if(aoeDmg > 0){
+            t.hp = Math.max(0, t.hp - aoeDmg);
+            showFloat(t,'-'+aoeDmg+' 深渊咆哮','damage');
+            if(t.hp <= 0){ t.alive = false; log(t.icon+t.name+' 倒下了...','death'); }
+          }
+        });
+        log(u.icon+u.name+' 发动了深渊咆哮！','debuff');
+      }
       // ===== 合成事件战斗效果 =====
       // 暗影侵蚀：每回合20%概率失控攻击队友
       if(!u.isEnemy && u.hero && u.hero.isShadowCursed && Math.random() < (u.hero.shadowCurseChance || 0.2)){
@@ -22086,6 +22109,238 @@ var RL_FLOOR_THEMES = [
   { name:'时间裂缝',  icon:'⏳', flavor:'过去与未来在此交汇。',    enemies:[{role:'mage',quality:'legendary'},{role:'healer',quality:'rare'}],  modifier:'regen' },
 ];
 
+// ==================== 肉鸽增强系统：关卡修饰器 + 厄运翻盘 + 遗物共鸣 + 层数奇观 ====================
+
+// ── 1. 厄运系统（每层随机厄运，有隐藏翻盘方式） ──
+var RL_MISFORTUNES = [
+  { id:'storm',      name:'⚡ 暴风雨',    icon:'⚡', desc:'全队速度降低30%',
+    hint:'闪电从不击中同一个地方两次……',
+    applyEnemy: function(enemies){}, // 无敌人加成
+    applyPlayer: function(heroes){ heroes.forEach(function(h){ if(h.hp>0) h.spd=Math.floor(h.spd*0.7); }); },
+    flipApply: function(heroes){ heroes.forEach(function(h){ if(h.hp>0) h._rlStormCrit=true; }); }, // 翻盘：必定暴击
+    flipDesc:'⚡ 暴风雨翻盘！所有攻击必定暴击！' },
+  { id:'blood_moon', name:'🩸 血月',      icon:'🩸', desc:'敌人攻击力提升50%',
+    hint:'血月之下……也许敌人的力量可以为你所用……',
+    applyEnemy: function(enemies){ enemies.forEach(function(e){ e.atk=Math.floor(e.atk*1.5); }); },
+    applyPlayer: function(heroes){},
+    flipApply: function(heroes){ heroes.forEach(function(h){ if(h.hp>0) h._rlBloodSteal=true; }); }, // 翻盘：击杀偷取ATK
+    flipDesc:'🩸 血月翻盘！击杀敌人永久偷取10%攻击力！' },
+  { id:'silence',    name:'🔇 寂静领域',  icon:'🔇', desc:'本层无法释放技能',
+    hint:'当言语失效……力量将以另一种形式觉醒……',
+    applyEnemy: function(enemies){},
+    applyPlayer: function(heroes){ heroes.forEach(function(h){ if(h.hp>0) h._rlSilenced=true; }); },
+    flipApply: function(heroes){ heroes.forEach(function(h){ if(h.hp>0){ h._rlSilenced=false; h._rlMuteBoost=true; } }); }, // 翻盘：普攻×3
+    flipDesc:'🔇 寂静翻盘！沉默解除，普攻伤害×3！' },
+  { id:'death_stare',name:'💀 死神凝视',  icon:'💀', desc:'HP最低的英雄开局只剩1HP',
+    hint:'凝视深渊的人……深渊也在凝视你……',
+    applyEnemy: function(enemies){},
+    applyPlayer: function(heroes){
+      var sorted = heroes.filter(function(h){return h.hp>0;}).sort(function(a,b){return a.hp-b.hp;});
+      if(sorted.length>0){ sorted[0].hp=1; sorted[0]._rlDeathStare=true; }
+    },
+    flipApply: function(heroes){ heroes.forEach(function(h){ if(h.hp>0 && h._rlDeathStare){ h._rlUndying=true; h._rlDeathStare=false; } }); }, // 翻盘：不死金身
+    flipDesc:'💀 死神凝视翻盘！濒死英雄获得不死金身，击杀任意敌人后恢复满血！' },
+  { id:'thorns',     name:'🌵 荆棘之地',  icon:'🌵', desc:'所有攻击反弹15%伤害',
+    hint:'最锋利的刺……往往藏在最柔软的花中……',
+    applyEnemy: function(enemies){ enemies.forEach(function(e){ e._rlThorns=true; }); },
+    applyPlayer: function(heroes){ heroes.forEach(function(h){ if(h.hp>0) h._rlThorns=true; }); },
+    flipApply: function(heroes){ heroes.forEach(function(h){ if(h.hp>0){ h._rlThorns=false; h._rlThornAbsorb=true; } }); }, // 翻盘：吸收反弹
+    flipDesc:'🌵 荆棘翻盘！反弹伤害变为生命吸收！' },
+  { id:'fog',        name:'🌫️ 迷雾森林',  icon:'🌫️', desc:'敌人闪避率+40%',
+    hint:'迷雾中……唯有直觉不会欺骗你……',
+    applyEnemy: function(enemies){ enemies.forEach(function(e){ e._rlFogDodge=true; }); },
+    applyPlayer: function(heroes){},
+    flipApply: function(heroes){ heroes.forEach(function(h){ if(h.hp>0) h._rlTrueStrike=true; }); }, // 翻盘：必中
+    flipDesc:'🌫️ 迷雾翻盘！所有攻击无视闪避！' },
+];
+
+// ── 2. 遗物共鸣组合 ──
+var RL_RELIC_SYNERGIES = [
+  { id:'chaos_echo',    name:'混沌回响',   icon:'🌀🗡️', relics:['relic_chaos_core','relic_echo_blade'],
+    desc:'混沌核心+回响之刃：每次回响之刃触发时，额外随机强化另一属性+15%',
+    trigger:'echo_blade', apply:function(rl){
+      rl.heroes.filter(function(h){return h.hp>0;}).forEach(function(h){
+        var attrs=['maxHP','atk','def','spd'];
+        var attr=attrs[Math.floor(Math.random()*attrs.length)];
+        h[attr]=Math.floor(h[attr]*1.15);
+        if(attr==='maxHP') h.hp=Math.min(h.hp,h.maxHP);
+      });
+      showToast('🌀🗡️ 混沌回响！回响之刃触发时额外强化了全队！');
+    }},
+  { id:'mirror_death',  name:'绝对防御',   icon:'🛡️💀', relics:['relic_mirror_shield','relic_death_defier'],
+    desc:'镜盾+不死之志：免死触发后获得3回合无敌',
+    trigger:'death_defy', apply:function(rl){
+      rl.heroes.filter(function(h){return h.hp>0;}).forEach(function(h){ h._rlInvincible=3; });
+      showToast('🛡️💀 绝对防御！免死后全队获得3回合无敌！');
+    }},
+  { id:'drum_pact',     name:'狂战之魂',   icon:'🥁🩸', relics:['relic_war_drum','relic_blood_pact'],
+    desc:'战鼓+血誓契约：Boss层死亡英雄30%概率自动复活',
+    trigger:'boss_clear', apply:function(rl){
+      // 在Boss通关时检查
+    }},
+  { id:'map_coin',      name:'命运探索',   icon:'🗺️🪙', relics:['relic_old_map','relic_lucky_coin'],
+    desc:'残旧地图+幸运硬币：事件必定出现最优选项',
+    trigger:'passive', apply:function(rl){ /* 影响事件选择逻辑 */ }},
+  { id:'time_abyss',    name:'时空裂缝',   icon:'⏳🌀', relics:['relic_time_glass','relic_endless_abyss'],
+    desc:'时沙漏+无尽深渊：Boss层全队属性额外+10%',
+    trigger:'boss_entry', apply:function(rl){
+      rl.heroes.filter(function(h){return h.hp>0;}).forEach(function(h){
+        h.maxHP=Math.floor(h.maxHP*1.1); h.hp=Math.min(h.hp,h.maxHP);
+        h.atk=Math.floor(h.atk*1.1); h.def=Math.floor(h.def*1.1); h.spd=Math.floor(h.spd*1.1);
+      });
+      showToast('⏳🌀 时空裂缝！Boss层全队属性+10%！');
+    }},
+];
+
+// ── 3. 层数奇观系统（每10层特殊玩法） ──
+var RL_WONDERS = {
+  10: { id:'arena',     name:'⚔️ 竞技场',     icon:'⚔️', desc:'与其他冒险者的灵魂对战！',
+       flavor:'观众席上传来阵阵欢呼……你将面对一位与你实力相当的对手。',
+       type:'mirror' },
+  20: { id:'maze',      name:'🏰 迷宫',       icon:'🏰', desc:'三条道路，三种命运。',
+       flavor:'岔路出现在眼前……每条路都通向不同的未知。',
+       type:'choice' },
+  30: { id:'judgment',  name:'⚖️ 命运审判',   icon:'⚖️', desc:'审判你的旅途……',
+       flavor:'一双无形的眼睛注视着你，审视你一路上的选择……',
+       type:'judgment' },
+  40: { id:'mirror',    name:'🪞 镜像之战',   icon:'🪞', desc:'面对你自己的复制体！',
+       flavor:'镜中映出的不是你的倒影，而是你的敌人……',
+       type:'clone' },
+  50: { id:'void',      name:'🌌 虚空裂缝',   icon:'🌌', desc:'现实与虚幻的边界崩塌。',
+       flavor:'空间在扭曲……敌友的界限变得模糊……',
+       type:'chaos' },
+  60: { id:'abyss',     name:'🕳️ 深渊试炼',   icon:'🕳️', desc:'无尽的深渊在等待……',
+       flavor:'这是最终试炼……只有最强者才能生还。',
+       type:'endless' },
+};
+
+// 检查是否触发奇观层
+function rlCheckWonder(floor) {
+  return RL_WONDERS[floor] || null;
+}
+
+// 生成奇观层敌人
+function rlGenerateWonderEnemies(floor, wonder) {
+  var playerPower = G_RL.heroes.filter(function(h){return h.hp>0;}).reduce(function(s,h){
+    return s + h.maxHP*0.5 + h.atk*3 + h.def*2 + h.spd*1;
+  }, 0);
+  var scale = 1 + (floor-1)*0.22;
+  if(floor>50) scale *= 1 + (floor-50)*0.0035;
+
+  if(wonder.type === 'mirror' || wonder.type === 'clone') {
+    // 镜像/克隆：复制玩家队伍
+    return G_RL.heroes.filter(function(h){return h.hp>0;}).map(function(h){
+      var mult = wonder.type==='clone' ? 0.8 : 1.0;
+      return {
+        name:'镜像·'+h.name, icon:h.icon, role:h.role, quality:h.quality||'epic',
+        level:h.level||1, skills:(h.skills||[]).slice(), bonusSkills:[],
+        maxHP:Math.floor(h.maxHP*mult), atk:Math.floor(h.atk*mult),
+        def:Math.floor(h.def*mult), spd:Math.floor(h.spd*mult),
+        maxMP:Math.floor(h.maxMP*mult), hp:Math.floor(h.hp*mult), mp:0,
+        equipment:{weapon:null,armor:null,accessory:null},
+        _isClone:true
+      };
+    });
+  }
+  if(wonder.type === 'arena') {
+    // 竞技场：生成一个与玩家战力相当的精英敌人
+    var r = ROLES['warrior'] || ROLES['warrior'];
+    var lv = Math.max(1, Math.min(99, floor*2));
+    var cs = function(base){ return Math.max(1, Math.floor(base * scale * (1+(lv-1)*0.08))); };
+    return [{
+      name:'竞技场冠军', icon:'🏆', role:'warrior', quality:'legendary',
+      level:lv, skills:(ROLE_SKILLS.warrior||[]).slice(0,3), bonusSkills:[],
+      maxHP:cs(r.baseHP*1.5), atk:cs(r.baseATK*1.5), def:cs(r.baseDEF*1.5),
+      spd:cs(r.baseSPD*1.5), maxMP:cs(r.baseMP), hp:cs(r.baseHP*1.5), mp:0,
+      equipment:{weapon:null,armor:null,accessory:null}
+    }];
+  }
+  if(wonder.type === 'judgment') {
+    // 审判：3个精英敌人
+    var enemies = [];
+    var roles = ['warrior','mage','assassin'];
+    roles.forEach(function(role){
+      var r2 = ROLES[role] || ROLES.warrior;
+      var lv2 = Math.max(1, Math.min(99, floor*2));
+      var cs2 = function(base){ return Math.max(1, Math.floor(base * scale * 1.3 * (1+(lv2-1)*0.08))); };
+      enemies.push({
+        name:'审判者·'+r2.name, icon:r2.icon, role:role, quality:'epic',
+        level:lv2, skills:(ROLE_SKILLS[role]||[]).slice(0,2), bonusSkills:[],
+        maxHP:cs2(r2.baseHP), atk:cs2(r2.baseATK), def:cs2(r2.baseDEF),
+        spd:cs2(r2.baseSPD), maxMP:cs2(r2.baseMP), hp:cs2(r2.baseHP), mp:0,
+        equipment:{weapon:null,armor:null,accessory:null}
+      });
+    });
+    return enemies;
+  }
+  if(wonder.type === 'chaos') {
+    // 虚空裂缝：随机生成4个敌人
+    var enemies2 = [];
+    var allRoles = Object.keys(ROLES);
+    for(var i=0;i<4;i++){
+      var role2 = allRoles[Math.floor(Math.random()*allRoles.length)];
+      var r3 = ROLES[role2] || ROLES.warrior;
+      var lv3 = Math.max(1, Math.min(99, floor*2));
+      var cs3 = function(base){ return Math.max(1, Math.floor(base * scale * (1+(lv3-1)*0.08))); };
+      enemies2.push({
+        name:'虚空生物', icon:'👾', role:role2, quality:'legendary',
+        level:lv3, skills:(ROLE_SKILLS[role2]||[]).slice(0,2), bonusSkills:[],
+        maxHP:cs3(r3.baseHP), atk:cs3(r3.baseATK), def:cs3(r3.baseDEF),
+        spd:cs3(r3.baseSPD), maxMP:cs3(r3.baseMP), hp:cs3(r3.baseHP), mp:0,
+        equipment:{weapon:null,armor:null,accessory:null}
+      });
+    }
+    return enemies2;
+  }
+  if(wonder.type === 'endless') {
+    // 深渊试炼：1个超强Boss
+    var r4 = ROLES['paladin'] || ROLES.warrior;
+    var lv4 = Math.max(1, Math.min(99, floor*3));
+    var cs4 = function(base){ return Math.max(1, Math.floor(base * scale * 2.5 * (1+(lv4-1)*0.08))); };
+    return [{
+      name:'深渊领主', icon:'👹', role:'paladin', quality:'mythic',
+      level:lv4, skills:(ROLE_SKILLS.paladin||[]).concat(ROLE_SKILLS.warrior||[]).slice(0,4), bonusSkills:[],
+      maxHP:cs4(r4.baseHP), atk:cs4(r4.baseATK), def:cs4(r4.baseDEF),
+      spd:cs4(r4.baseSPD), maxMP:cs4(r4.baseMP), hp:cs4(r4.baseHP), mp:0,
+      equipment:{weapon:null,armor:null,accessory:null},
+      _rlBossAbility:'深渊咆哮', _rlBossAbilityDesc:'每3回合对全队造成最大HP20%伤害'
+    }];
+  }
+  // 默认（maze类型不战斗，返回空）
+  return [];
+}
+
+// 检查遗物共鸣
+function rlCheckSynergies(rl) {
+  var active = [];
+  var relicIds = (rl.relics||[]).map(function(r){return r.id;});
+  RL_RELIC_SYNERGIES.forEach(function(syn){
+    if(syn._active) return; // 已激活
+    var hasAll = syn.relics.every(function(rid){ return relicIds.indexOf(rid)>=0; });
+    if(hasAll){
+      syn._active = true;
+      active.push(syn);
+    }
+  });
+  return active;
+}
+
+// 为当前层生成厄运
+function rlGenerateMisfortune(floor) {
+  // 前3层无厄运，Boss层无厄运
+  if(floor <= 3 || floor % 5 === 0) return null;
+  // 30%概率触发厄运
+  if(Math.random() > 0.30) return null;
+  var pool = RL_MISFORTUNES.filter(function(m){
+    // 深层解锁更多厄运
+    if(floor < 15 && (m.id==='death_stare'||m.id==='silence')) return false;
+    if(floor < 25 && m.id==='thorns') return false;
+    return true;
+  });
+  if(pool.length === 0) return null;
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
 var RL_BOSS_THEMES = [
   { name:'矿坑领主 · 铁甲蜘蛛', icon:'🕷️', role:'guardian', quality:'legendary', mult:2.8, skills:['taunt','iron_wall','fortify','ground_slam'],
     ability:'【护甲再生】每回合恢复10%防御值', abilityEffect:'regen_def', flavor:'八条铁腿踏破岩石，毒液侵蚀一切……' },
@@ -22202,6 +22457,23 @@ function rlGenerateEnemies(floor) {
         hp:cs(r.baseHP), mp:0, equipment:{weapon:null,armor:null,accessory:null} });
     });
   }
+  // 检查层数奇观
+  var wonder = rlCheckWonder(floor);
+  if(wonder && wonder.type !== 'choice') {
+    var wonderEnemies = rlGenerateWonderEnemies(floor, wonder);
+    if(wonderEnemies.length > 0) {
+      return { enemies:wonderEnemies, isBoss:wonder.type==='endless', isMidBoss:false,
+        theme:{ name:wonder.name, icon:wonder.icon, flavor:wonder.flavor },
+        modifier:null, _isWonder:true, _wonderType:wonder.type, _wonderData:wonder };
+    }
+  }
+  // 迷宫奇观：不战斗，返回空层
+  if(wonder && wonder.type === 'choice') {
+    return { enemies:[], isBoss:false, isMidBoss:false,
+      theme:{ name:wonder.name, icon:wonder.icon, flavor:wonder.flavor },
+      modifier:null, _isWonder:true, _wonderType:'choice', _wonderData:wonder };
+  }
+
   return { enemies:enemies, isBoss:isBoss, isMidBoss:isMidBoss,
     theme: isBoss ? RL_BOSS_THEMES[Math.min(Math.floor((floor/5)-1),RL_BOSS_THEMES.length-1)] : RL_FLOOR_THEMES[(floor-1)%RL_FLOOR_THEMES.length],
     modifier: isBoss ? null : (RL_FLOOR_THEMES[(floor-1)%RL_FLOOR_THEMES.length].modifier || null) };
@@ -22266,6 +22538,7 @@ function renderRoguelike(el) {
   if (G_RL && G_RL.phase === 'blessing') { renderRLBlessingChoose(el); return; }
   if (G_RL && G_RL.phase === 'event')    { renderRLEvent(el); return; }
   if (G_RL && G_RL.phase === 'relic')    { renderRLRelicChoose(el); return; }
+  if (G_RL && G_RL.phase === 'wonder_maze') { renderRLMazeWonder(el); return; }
   if (G_RL && G_RL.phase === 'active')   { renderRLActive(el); return; }
 
   var bestFloor = parseInt(localStorage.getItem('_rl_best_floor') || '0', 10);
@@ -22436,6 +22709,10 @@ function rlPickHero(idx) {
     _winsCount: 0,       // 连胜计数（用于裂隙之力等效果）
     _riftGrowth: 0,      // 裂隙成长率
     _goldPool: 50,       // 肉鸽内金币
+    _currentMisfortune: null,  // 当前层厄运
+    _misfortuneFlipped: false, // 厄运是否已翻盘
+    _activeSynergies: [],      // 已激活的遗物共鸣
+    _wonderCompleted: {},      // 已完成的奇观
   };
   renderRLActive(document.getElementById('content'));
 }
@@ -22533,6 +22810,15 @@ function renderRLActive(el) {
       + (floorData.modifier && STAGE_MODIFIERS && STAGE_MODIFIERS[floorData.modifier]
         ? '<div style="font-size:10px;color:#f59e0b;margin-top:4px">⚠️ '+STAGE_MODIFIERS[floorData.modifier].name+'：'+STAGE_MODIFIERS[floorData.modifier].desc+'</div>'
         : '')
+      + (floorData._isWonder
+        ? '<div style="font-size:11px;color:#c084fc;margin-top:4px;background:rgba(192,132,252,.1);border-radius:4px;padding:4px 6px">🌟 奇观层：'+floorData.theme.name+' — '+floorData._wonderData.desc+'</div>'
+        : '')
+      + (G_RL._currentMisfortune
+        ? '<div style="font-size:11px;color:#ef4444;margin-top:4px;background:rgba(239,68,68,.1);border-radius:4px;padding:4px 6px">⚠️ 厄运：'+G_RL._currentMisfortune.name+' — '+G_RL._currentMisfortune.desc+'<br><span style="font-size:9px;color:#9ca3af;font-style:italic">「'+G_RL._currentMisfortune.hint+'」</span></div>'
+        : '')
+      + (G_RL._activeSynergies && G_RL._activeSynergies.length > 0
+        ? '<div style="font-size:10px;color:#22d3ee;margin-top:4px">✨ 共鸣：'+G_RL._activeSynergies.join('、')+'</div>'
+        : '')
       + (isBoss && floorData.theme.ability
         ? '<div style="font-size:10px;color:#ef4444;margin-top:4px;background:rgba(239,68,68,.1);border-radius:4px;padding:3px 6px">💀 Boss技：'+floorData.theme.ability+'</div>'
         : '')
@@ -22554,12 +22840,33 @@ function renderRLActive(el) {
 function rlStartFight() {
   if(!G_RL) return;
   var floorData = G_RL.currentFloorData;
+
+  // ── 迷宫奇观：不战斗，直接进入选择 ──
+  if(floorData._isWonder && floorData._wonderType === 'choice') {
+    rlHandleMazeWonder(floorData);
+    return;
+  }
+
   var aliveHeroes = G_RL.heroes.filter(function(h){ return h.hp > 0; });
   if(aliveHeroes.length === 0) { rlGameOver(false); return; }
 
-  // ── 进入Boss层：触发 boss_entry 遗物 ──
+  // ── 应用厄运效果 ──
+  if(G_RL._currentMisfortune) {
+    var mf = G_RL._currentMisfortune;
+    mf.applyPlayer(G_RL.heroes);
+    if(floorData.enemies) mf.applyEnemy(floorData.enemies);
+    showToast(mf.name+'降临！'+mf.desc);
+    // 厄运翻盘：战斗中首次受到致命伤害时触发
+    G_RL._misfortuneFlipped = false;
+  }
+
+  // ── 进入Boss层：触发 boss_entry 遗物 + 共鸣 ──
   if(floorData.isBoss){
     (G_RL.relics||[]).forEach(function(r){ if(r.trigger==='boss_entry' && r.apply) r.apply(G_RL); });
+    // 检查遗物共鸣（boss_entry触发型）
+    rlCheckSynergies(G_RL).forEach(function(syn){
+      if(syn.trigger==='boss_entry') syn.apply(G_RL);
+    });
   }
   // ── 遗物：镜盾——每层重置（给英雄加标记）──
   var hasMirrorShield = (G_RL.relics||[]).some(function(r){return r.id==='relic_mirror_shield';});
@@ -22608,6 +22915,30 @@ function rlStartFight() {
 function rlOnBattleWin(savedTeam, savedHeroes, floorData) {
   G.team = savedTeam;
   G.heroes = savedHeroes;
+
+  // ── 清理当前层厄运标记 ──
+  G_RL.heroes.forEach(function(h){
+    h._rlStormCrit=false; h._rlBloodSteal=false; h._rlSilenced=false;
+    h._rlMuteBoost=false; h._rlDeathStare=false; h._rlUndying=false;
+    h._rlThorns=false; h._rlThornAbsorb=false; h._rlFogDodge=false;
+    h._rlTrueStrike=false; h._rlInvincible=false;
+  });
+  G_RL._currentMisfortune = null;
+  G_RL._misfortuneFlipped = false;
+
+  // ── 检查遗物共鸣（通关触发型） ──
+  var newSynergies = rlCheckSynergies(G_RL);
+  newSynergies.forEach(function(syn){
+    if(syn.trigger==='boss_clear' && floorData.isBoss) syn.apply(G_RL);
+    G_RL._activeSynergies.push(syn.id);
+    showToast('✨ 遗物共鸣激活：'+syn.name+'！'+syn.desc);
+  });
+
+  // ── 奇观层完成记录 ──
+  if(floorData._isWonder) {
+    G_RL._wonderCompleted[G_RL.floor] = true;
+    showToast('🏆 奇观完成：'+floorData.theme.name+'！');
+  }
 
   // 应用裂隙之力成长（已在上限设置中限制 _riftGrowth 最大值）
   if(G_RL._riftGrowth && G_RL._riftGrowth > 0){
@@ -22750,6 +23081,18 @@ function rlOnBattleWin(savedTeam, savedHeroes, floorData) {
 
   G_RL.floor++;
   G_RL._winsCount = (G_RL._winsCount||0) + 1;
+
+  // ── 为下一层生成厄运 ──
+  G_RL._currentMisfortune = rlGenerateMisfortune(G_RL.floor);
+
+  // ── 为下一层预生成floorData ──
+  G_RL.currentFloorData = rlGenerateEnemies(G_RL.floor);
+
+  // ── 检查遗物共鸣（echo_blade触发型） ──
+  rlCheckSynergies(G_RL).forEach(function(syn){
+    if(syn.trigger==='echo_blade') G_RL._echoBladeSynActive = true;
+  });
+
   // 回响之刃效果（带硬上限）
   var echoBladeRelic = (G_RL.relics||[]).find(function(r){return r.id==='relic_echo_blade';});
   var echoStacks = G_RL._echoStacks || 0;
@@ -22779,6 +23122,65 @@ function rlOnBattleWin(savedTeam, savedHeroes, floorData) {
   }
 
   switchTab('roguelike');
+}
+
+// ── 迷宫奇观处理 ──
+function rlHandleMazeWonder(floorData) {
+  G_RL.phase = 'wonder_maze';
+  var choices = [
+    { id:'danger', name:'🔥 危险之路', desc:'敌人强大但奖励丰厚（全属性+15%）', icon:'🔥',
+      apply:function(){
+        G_RL.heroes.forEach(function(h){ if(h.hp>0){
+          h.maxHP=Math.floor(h.maxHP*1.15); h.hp=Math.min(h.hp,h.maxHP);
+          h.atk=Math.floor(h.atk*1.15); h.def=Math.floor(h.def*1.15); h.spd=Math.floor(h.spd*1.15);
+        }});
+        showToast('🔥 危险之路：全属性+15%！');
+      }},
+    { id:'balance', name:'⚖️ 平衡之路', desc:'适中难度，适中奖励（金币+100）', icon:'⚖️',
+      apply:function(){
+        G_RL._goldPool = (G_RL._goldPool||0) + 100;
+        showToast('⚖️ 平衡之路：获得100金币！');
+      }},
+    { id:'safe', name:'🛡️ 安全之路', desc:'安全但奖励较少（全队恢复30%HP）', icon:'🛡️',
+      apply:function(){
+        G_RL.heroes.forEach(function(h){ if(h.hp>0){
+          var heal=Math.floor(h.maxHP*0.3);
+          h.hp=Math.min(h.maxHP,h.hp+heal);
+        }});
+        showToast('🛡️ 安全之路：全队恢复30%HP！');
+      }},
+  ];
+  G_RL._mazeChoices = choices;
+  renderRLMazeWonder(document.getElementById('content'));
+}
+
+// 迷宫奇观UI
+function renderRLMazeWonder(el) {
+  if(!G_RL || !G_RL._mazeChoices) return;
+  var html = '<div style="max-width:600px;margin:0 auto;padding:16px">'
+    + '<div style="text-align:center;margin-bottom:16px">'
+    + '<div style="font-size:20px;font-weight:bold">🏰 迷宫</div>'
+    + '<div style="font-size:12px;color:var(--text3);margin-top:4px">三条道路，三种命运……</div>'
+    + '</div>';
+  G_RL._mazeChoices.forEach(function(c, i){
+    html += '<div onclick="rlPickMazeChoice('+i+')" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:12px;margin-bottom:8px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor=\'rgba(168,85,247,.5)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,.1)\'">'
+      + '<div style="font-size:15px;font-weight:bold">'+c.icon+' '+c.name+'</div>'
+      + '<div style="font-size:11px;color:var(--text3);margin-top:4px">'+c.desc+'</div>'
+      + '</div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function rlPickMazeChoice(idx) {
+  var choice = G_RL._mazeChoices[idx];
+  if(choice && choice.apply) choice.apply();
+  G_RL._wonderCompleted[G_RL.floor] = true;
+  G_RL._mazeChoices = null;
+  // 迷宫算作通关，进入下一层
+  var savedTeam = G.team.slice();
+  var savedHeroes = G.heroes.slice();
+  rlOnBattleWin(savedTeam, savedHeroes, G_RL.currentFloorData);
 }
 
 function rlOnBattleLose(savedTeam, savedHeroes) {
