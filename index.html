@@ -154,9 +154,9 @@ var HeroDataShard = {
   clear: function() {
     var shards = parseInt(lsGet(this.KEY_PREFIX + 'count') || '0', 10);
     for (var i = 0; i < shards; i++) {
-      localStorage.removeItem(this.KEY_PREFIX + i);
+      lsRemove(this.KEY_PREFIX + i);
     }
-    localStorage.removeItem(this.KEY_PREFIX + 'count');
+    lsRemove(this.KEY_PREFIX + 'count');
   }
 };
 
@@ -6852,19 +6852,36 @@ function restoreSaveData(data) {
   if (typeof saved.maxStageReached !== 'number') saved.maxStageReached = saved.stageProgress || 1;
   if (!saved.exploreStats || typeof saved.exploreStats !== 'object') saved.exploreStats = {totalBattles:0,totalEvents:0,totalChests:0,totalShrines:0};
   if (!saved.zodiacDailyScrollShopDate) saved.zodiacDailyScrollShopDate = '';
+  if (!saved.redeemedCodes || typeof saved.redeemedCodes !== 'object') saved.redeemedCodes = {};
 
   // ===== 11. 队伍重建 =====
   G.heroes = saved.heroes;
+  debugLog('[RS] 队伍重建前: saved.team类型=' + typeof saved.team + ' 长度=' + (Array.isArray(saved.team) ? saved.team.length : 'N/A'));
+  if (Array.isArray(saved.team)) {
+    saved.team.forEach(function(item, idx) {
+      if (item !== null) {
+        debugLog('[RS] team[' + idx + '] 原始值类型=' + typeof item + ' 值=' + JSON.stringify(item).substring(0, 80));
+      }
+    });
+  }
   if (Array.isArray(saved.team)) {
     saved.team = saved.team.map(function(item) {
       if (!item) return null;
       if (typeof item === 'object' && item.uid !== undefined) {
-        return G.heroes.find(function(h) { return h && h.uid === item.uid; }) || null;
+        var found = G.heroes.find(function(h) { return h && h.uid === item.uid; });
+        debugLog('[RS] team对象重建: uid=' + item.uid + ' 找到=' + !!found);
+        return found || null;
       }
       var uid = typeof item === 'number' ? item : parseInt(item);
-      return G.heroes.find(function(h) { return h && h.uid === uid; }) || null;
+      var found = G.heroes.find(function(h) { return h && h.uid === uid; });
+      debugLog('[RS] team值重建: 原值=' + item + '(类型' + typeof item + ') 解析uid=' + uid + ' 找到=' + !!found);
+      return found || null;
     }).filter(function(x,i) { return i < 6; }); // 最多6个
   }
+  debugLog('[RS] 队伍重建后: G.team长度=' + G.team.length + ' 非null数=' + G.team.filter(function(t){return t!==null}).length);
+  G.team.forEach(function(t, idx) {
+    if (t) debugLog('[RS] G.team[' + idx + ']=' + t.name + '(uid=' + t.uid + ' 类型' + typeof t.uid + ')');
+  });
 
   // ===== 12. heroIdCounter 修复 =====
   var finalHeroIdCounter = Math.max(
@@ -6886,7 +6903,7 @@ function restoreSaveData(data) {
     'dailyScrollShopDate','autoDecompose','mergeLucky','mergePity','mergeFragments',
     'mergeHistory','breakthroughMaterials','heroBreakthrough','oracleBonus',
     'maxStageReached','tutorialDone','tutorialPhase','tutorialStep','chapter2Done',
-    'totalPlayTime','playerName','saveVersion'];
+    'totalPlayTime','playerName','saveVersion','redeemedCodes','zodiacDailyScrollShopDate'];
   safeKeys.forEach(function(k) {
     if (saved[k] !== undefined) G[k] = saved[k];
   });
@@ -7167,17 +7184,82 @@ async function initStorageSystem() {
 }
 
 // ===== 加载后初始化 =====
+// ===== 读档后运行时状态净化（兼容任意存档状态，避免读档后UI卡死/错乱）=====
+// 无论存档是在战斗中、弹窗未关、自动战斗开启等何种状态下保存的，
+// 读档后都强制回到一个干净一致的运行时状态，从根本上消除“部分UI不响应/各种bug”。
+function _postLoadUIReset() {
+  try {
+    // 1) 清除残留战斗运行时状态（战斗不从存档续战，避免英雄引用错乱）
+    G.battleState = null;
+    try { G_battleRunning = false; } catch(e) {}
+    try { G_battlePaused = false; } catch(e) {}
+    // 关闭自动推图，防止上一次会话的战斗循环继续在后台运行
+    try {
+      if (typeof G_autoBattle !== 'undefined' && G_autoBattle) {
+        G_autoBattle = false;
+        if (typeof updateAutoBattleButtons === 'function') updateAutoBattleButtons(false);
+      }
+    } catch(e) {}
+
+    // 2) 强制隐藏战斗面板、恢复主内容区（防止战斗界面遮挡导致点不动）
+    var _bp = document.getElementById('battle-panel');
+    if (_bp) _bp.style.display = 'none';
+    var _ct = document.getElementById('content');
+    if (_ct) _ct.style.display = '';
+
+    // 3) 关闭所有弹窗/遮罩（残留遮罩会拦截点击，是“UI不响应”的常见根因）
+    var _mr = document.getElementById('modal-root');
+    if (_mr) _mr.innerHTML = '';
+    var _ov = document.getElementById('tutorial-overlay');
+    if (_ov) { _ov.style.display = 'none'; _ov.classList.remove('active','fade-out'); }
+
+    // 4) 重启自动生产定时器（startAutoProduction 内部已先清旧定时器，幂等安全）
+    if (typeof startAutoProduction === 'function') startAutoProduction();
+
+    // 5) 同步顶部资源条 + 底部导航高亮，并强制重渲染当前页（保证UI与最新存档一致）
+    if (typeof updateResUI === 'function') updateResUI();
+    var _tab = (typeof currentTab !== 'undefined' && currentTab) ? currentTab : 'town';
+    try { currentTab = _tab; } catch(e) {}
+    try {
+      document.querySelectorAll('.nav-btn').forEach(function(b){
+        b.classList.toggle('active', b.dataset.tab === _tab);
+      });
+    } catch(e) {}
+    if (typeof renderCurrentTab === 'function') renderCurrentTab();
+  } catch(e) {
+    console.error('[_postLoadUIReset] 读档后UI净化失败:', e);
+    // 兜底：至少把内容区显示出来，避免黑屏
+    try {
+      var _c = document.getElementById('content');
+      if (_c) { _c.style.display = ''; }
+      var _b = document.getElementById('battle-panel');
+      if (_b) _b.style.display = 'none';
+    } catch(e2) {}
+  }
+}
+
 function initGameAfterLoad() {
   try {
   // 重建队伍引用（兼容 uid 和英雄对象两种格式）
   if (G.team && G.heroes) {
+    debugLog('[IGAL] 队伍二次重建前: team长度=' + G.team.length + ' heroes长度=' + G.heroes.length);
+    G.team.forEach(function(item, idx) {
+      if (item !== null) {
+        debugLog('[IGAL] team[' + idx + '] 类型=' + typeof item + (typeof item === 'object' ? ' uid=' + item.uid + ' name=' + item.name : ' 值=' + item));
+      }
+    });
     G.team = G.team.map(function(item) {
       if (!item) return null;
       if (typeof item === 'object' && item.uid !== undefined) {
-        return G.heroes.find(function(h) { return h && h.uid === item.uid; }) || null;
+        var found = G.heroes.find(function(h) { return h && h.uid === item.uid; });
+        if (!found) debugLog('[IGAL] ⚠️ team对象重建失败: uid=' + item.uid);
+        return found || null;
       }
-      return G.heroes.find(function(h) { return h && (h.uid === item || h.uid == item); }) || null;
+      var found = G.heroes.find(function(h) { return h && (h.uid === item || h.uid == item); });
+      if (!found) debugLog('[IGAL] ⚠️ team值重建失败: 原值=' + item + '(类型' + typeof item + ')');
+      return found || null;
     });
+    debugLog('[IGAL] 队伍二次重建后: 非null数=' + G.team.filter(function(t){return t!==null}).length);
   }
 
   // ===== 新版字段补丁（所有旧存档加载后执行）=====
@@ -7269,6 +7351,9 @@ function initGameAfterLoad() {
   if (G.chapter2Done === undefined) G.chapter2Done = (G.stageProgress || 1) > 100;
 
   setTimeout(function() { checkAllAchievements && checkAllAchievements(); }, 1000);
+
+  // 读档后统一净化运行时状态 + 强制刷新UI（兼容任意存档状态）
+  _postLoadUIReset();
   } catch(e) {
     console.error('[initGameAfterLoad] 初始化后处理出错:', e);
     // 确保关键字段存在，防止UI崩溃
@@ -7310,6 +7395,8 @@ function initGameAfterLoad() {
     } catch(e2) {
       console.error('[initGameAfterLoad] 错误恢复也失败:', e2);
     }
+    // 即使初始化出错，也执行UI净化，确保界面可交互
+    try { _postLoadUIReset(); } catch(e3) {}
   }
 }
 
@@ -12504,21 +12591,21 @@ async function runBattle(stageOrId){
       if(!G.zodiacClearCount[zodiacBossIndex]) G.zodiacClearCount[zodiacBossIndex]=0;
       G.zodiacClearCount[zodiacBossIndex] += 1;
       // Boss 战胜奖励：大量金币+宝石（金币随Boss等级递增）
-      var bossBaseReward = 200000 + zodiacBossIndex * 100000 + G.zodiacClearCount[zodiacBossIndex] * 50000;
+      var bossBaseReward = 100000 + zodiacBossIndex * 50000 + G.zodiacClearCount[zodiacBossIndex] * 20000;
       G.resources.gold = Math.min((G.resources.gold||0) + bossBaseReward, RESOURCE_LIMITS.gold);
-      G.resources.gems = Math.min((G.resources.gems||0) + 20 + zodiacBossIndex * 5, RESOURCE_LIMITS.gems);
+      G.resources.gems = Math.min((G.resources.gems||0) + 10 + zodiacBossIndex * 2, RESOURCE_LIMITS.gems);
       // === 生肖币掉落（每次击败Boss获得） ===
-      var tokenDrop = 50 + zodiacBossIndex * 20; // 鼠50→猪270
+      var tokenDrop = 15 + zodiacBossIndex * 5; // 基础15，每Boss+5（鼠15→猪70）
       var newZodiacTokens = Math.min((G.zodiacTokens||0) + tokenDrop, RESOURCE_LIMITS.zodiacTokens);
       G.zodiacTokens = newZodiacTokens;
       if(G.resources) G.resources.zodiacTokens = newZodiacTokens;
       log('🐉 生肖币 +' + tokenDrop, 'info');
-      // === 概率掉落卷轴（30%基础概率，随Boss等级提升，可掉神话） ===
-      var scrollDropChance = 0.30 + zodiacBossIndex * 0.03; // 鼠30%→猪63%
+      // === 概率掉落卷轴（20%基础概率，随Boss等级提升） ===
+      var scrollDropChance = 0.20 + zodiacBossIndex * 0.02; // 鼠20%→猪42%
       if (Math.random() < scrollDropChance) {
-        // 按Boss等级决定掉落卷轴稀有度上限（高Boss可掉神话）
-        var maxRarity = zodiacBossIndex < 3 ? 'common' : (zodiacBossIndex < 6 ? 'rare' : (zodiacBossIndex < 9 ? 'epic' : (zodiacBossIndex < 11 ? 'legendary' : 'mythic')));
-        var rarityOrder = ['common','rare','epic','legendary','mythic'];
+        // 按Boss等级决定掉落卷轴稀有度上限
+        var maxRarity = zodiacBossIndex < 4 ? 'common' : (zodiacBossIndex < 8 ? 'rare' : (zodiacBossIndex < 10 ? 'epic' : 'legendary'));
+        var rarityOrder = ['common','rare','epic','legendary'];
         var maxRIdx = rarityOrder.indexOf(maxRarity);
         var dropPool = MERGE_SCROLL_DEFS.filter(function(s){ return rarityOrder.indexOf(s.rarity) <= maxRIdx; });
         if (dropPool.length > 0) {
@@ -19057,13 +19144,18 @@ function renderBondPreview(team){
 }
 
 function showTeamPicker(slotIdx){
+  debugLog('[STP] showTeamPicker slotIdx=' + slotIdx + ' heroes总数=' + (G.heroes ? G.heroes.length : 0) + ' team非null=' + (G.team ? G.team.filter(function(t){return t!==null}).length : 0));
   // 过滤可用英雄：未解锁的未知英雄不能上阵
   const available=G.heroes.filter(h=>{
     if(G.team.some(t=>t&&t.uid===h.uid)) return false;
     if(h.isUnknown && !h.isUnlocked) return false;
     return true;
   });
-  if(available.length===0){showToast('没有可用英雄');return}
+  debugLog('[STP] 可用英雄数=' + available.length + ' (过滤掉已上阵+未解锁未知)');
+  if(available.length===0){
+    debugLog('[STP] ⚠️ 没有可用英雄! heroes总数=' + G.heroes.length + ' team已占=' + G.team.filter(function(t){return t!==null}).length);
+    showToast('没有可用英雄');return
+  }
   const html=available.map(h=>{
     var role=ROLES[h.role]||ROLES.unknown;
     return `<div class="hero-card quality-${h.quality}" onclick="addToTeam(${slotIdx},${h.uid});closeModal()" style="cursor:pointer">
@@ -19078,14 +19170,24 @@ function showTeamPicker(slotIdx){
 }
 
 function addToTeam(slotIdx,heroUid){
+  debugLog('[AT] addToTeam slotIdx=' + slotIdx + ' heroUid=' + heroUid + '(类型' + typeof heroUid + ')');
   const hero=G.heroes.find(h=>h.uid===heroUid);
-  if(!hero)return;
+  if(!hero){
+    // 尝试宽松匹配
+    var hero2 = G.heroes.find(h=>h.uid==heroUid);
+    debugLog('[AT] ⚠️ 严格匹配失败，宽松匹配=' + !!hero2);
+    if(hero2) hero = hero2;
+    else { debugLog('[AT] ❌ 找不到英雄! uid=' + heroUid); return; }
+  }
+  debugLog('[AT] 找到英雄: ' + hero.name + ' uid=' + hero.uid + '(类型' + typeof hero.uid + ') isUnknown=' + hero.isUnknown + ' isUnlocked=' + hero.isUnlocked);
   // 未解锁的未知英雄不能上阵
   if(hero.isUnknown && !hero.isUnlocked){
+    debugLog('[AT] ❌ 未解锁未知英雄，无法上阵');
     showToast('🔒 该未知英雄未解锁，无法上阵！');
     return;
   }
   G.team[slotIdx]=hero;
+  debugLog('[AT] ✅ 上阵成功: G.team[' + slotIdx + ']=' + hero.name);
   if(onGuideQuickAdd()){
     return;
   }
@@ -19350,6 +19452,15 @@ function renderMerge(el){
   
   // 获取已上阵英雄UID列表
   const teamUids=G.team.filter(h=>h!==null).map(h=>h.uid);
+  debugLog('[RM] renderMerge: heroes总数=' + G.heroes.length + ' team非null=' + teamUids.length + ' teamUids类型=' + (teamUids.length > 0 ? typeof teamUids[0] : 'N/A'));
+  // 检查uid类型一致性
+  if (G.heroes.length > 0) {
+    var sampleHero = G.heroes[0];
+    debugLog('[RM] 英雄uid样本: uid=' + sampleHero.uid + ' 类型=' + typeof sampleHero.uid);
+  }
+  if (teamUids.length > 0) {
+    debugLog('[RM] teamUid样本: uid=' + teamUids[0] + ' 类型=' + typeof teamUids[0]);
+  }
   
   // 品质筛选状态
   if(!window._mergeQualityFilter) window._mergeQualityFilter='all';
@@ -19857,9 +19968,11 @@ function quickAddMergeHeroes(mode){
 
 function addMergeHero(heroUid){
   heroUid = Number(heroUid);
+  debugLog('[AMH] addMergeHero heroUid=' + heroUid + '(原始类型已转为Number)');
   // 已在槽位中，忽略
   for(var i=0;i<3;i++){
     if(window._mergeSlots[i]!=null && window._mergeSlots[i]==heroUid){
+      debugLog('[AMH] 已在槽位' + i + '中，忽略');
       return;
     }
   }
@@ -19907,12 +20020,24 @@ function showMergePicker(slotIdx){
   const usedUids=window._mergeSlots.filter(Boolean);
   // 获取已上阵英雄UID列表
   const teamUids=G.team.filter(h=>h!==null).map(h=>h.uid);
+  debugLog('[SMP] showMergePicker slotIdx=' + slotIdx + ' heroes总数=' + G.heroes.length + ' teamUids=' + JSON.stringify(teamUids) + ' usedUids=' + JSON.stringify(usedUids));
   // 过滤：已使用的 + 已上阵的 + 已锁定的（使用 == 宽松比较）
   const available=G.heroes.filter(h=>!usedUids.some(function(u){return u==h.uid})&&!teamUids.some(function(u){return u==h.uid})&&!h.locked);
+  debugLog('[SMP] 可用英雄数=' + available.length);
   if(available.length===0){
     // 检查是否因为全部上阵或锁定了
     const allInTeam=G.heroes.length>0&&G.heroes.every(h=>teamUids.some(function(u){return u==h.uid}));
     const allLocked=G.heroes.length>0&&G.heroes.every(h=>h.locked||teamUids.some(function(u){return u==h.uid}));
+    debugLog('[SMP] ⚠️ 无可用英雄! allInTeam=' + allInTeam + ' allLocked=' + allLocked + ' heroes总数=' + G.heroes.length);
+    // 输出每个英雄的过滤原因
+    G.heroes.forEach(function(h) {
+      var inUsed = usedUids.some(function(u){return u==h.uid});
+      var inTeam = teamUids.some(function(u){return u==h.uid});
+      var isLocked = h.locked;
+      if (inUsed || inTeam || isLocked) {
+        debugLog('[SMP] 过滤掉: ' + h.name + '(uid=' + h.uid + ' 类型' + typeof h.uid + ') used=' + inUsed + ' team=' + inTeam + ' locked=' + isLocked);
+      }
+    });
     if(allInTeam){
       showToast('所有英雄都已上阵，无法合成');
     }else if(allLocked){
@@ -23506,8 +23631,9 @@ function renderCheats(el){
       <div class="panel-title">🔧 调试</div>
       <div class="btn-group">
         <button class="btn" onclick="toggleDebugPanel()" style="font-size:12px">🐛 调试面板 ${_debugPanelVisible?'（关闭）':'（开启）'}</button>
+        <button class="btn" onclick="debugDiagnose()" style="font-size:12px">🔍 一键诊断</button>
       </div>
-      <div style="margin-top:8px;font-size:11px;color:var(--text3)">显示游戏内部调试日志</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text3)">显示游戏内部调试日志 / 一键诊断英雄和队伍状态</div>
     </div>
     <div class="panel">
       <button class="btn" style="width:100%;color:#ff6b6b;border-color:rgba(255,107,107,.3);background:rgba(255,107,107,.05)" onclick="showConfirm('⚠️ 重置游戏','确定要重置游戏吗？\\n\\n所有数据将被清除且不可恢复！',resetGame,'确认重置','取消')">⚠️ 重置游戏</button>
@@ -25085,7 +25211,7 @@ function showPlayerNameInput() {
   overlay.id = 'player-name-overlay';
   overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)';
   
-  overlay.innerHTML = '<div style="background:linear-gradient(180deg,#1a1a35,#141428);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.5)}' +
+  overlay.innerHTML = '<div style="background:linear-gradient(180deg,#1a1a35,#141428);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.5)">' +
     '<div style="text-align:center;margin-bottom:16px">' +
       '<div style="font-size:32px;margin-bottom:8px">👤</div>' +
       '<div style="color:var(--gold);font-weight:bold;font-size:16px">首次上传</div>' +
@@ -25316,6 +25442,88 @@ function toggleDebugPanel() {
   }
 }
 
+// 一键诊断函数：输出当前英雄/队伍/合成状态快照
+function debugDiagnose() {
+  debugLog('========== 诊断快照 ==========');
+  debugLog('[DIA] G.heroes.length=' + (G.heroes ? G.heroes.length : 'undefined'));
+  debugLog('[DIA] G.team.length=' + (G.team ? G.team.length : 'undefined'));
+  debugLog('[DIA] G.heroIdCounter=' + G.heroIdCounter);
+  
+  // 英雄uid类型检查
+  if (G.heroes && G.heroes.length > 0) {
+    var typeCounts = {};
+    G.heroes.forEach(function(h) {
+      if (!h) return;
+      var t = typeof h.uid;
+      typeCounts[t] = (typeCounts[t] || 0) + 1;
+    });
+    debugLog('[DIA] 英雄uid类型分布: ' + JSON.stringify(typeCounts));
+    // 前3个英雄样本
+    for (var i = 0; i < Math.min(3, G.heroes.length); i++) {
+      var h = G.heroes[i];
+      if (h) debugLog('[DIA] 英雄[' + i + ']: uid=' + h.uid + '(' + typeof h.uid + ') name=' + h.name + ' quality=' + h.quality + ' locked=' + h.locked);
+    }
+  }
+  
+  // 队伍状态检查
+  if (G.team) {
+    var teamNull = 0, teamObj = 0;
+    G.team.forEach(function(t, idx) {
+      if (!t) { teamNull++; }
+      else {
+        teamObj++;
+        var match = G.heroes ? G.heroes.some(function(h) { return h && h.uid === t.uid; }) : false;
+        var matchLoose = G.heroes ? G.heroes.some(function(h) { return h && h.uid == t.uid; }) : false;
+        debugLog('[DIA] team[' + idx + ']: ' + (t.name || '?') + ' uid=' + t.uid + '(' + typeof t.uid + ') 严格匹配=' + match + ' 宽松匹配=' + matchLoose);
+        if (!match && !matchLoose) debugLog('[DIA] ⚠️ team[' + idx + '] 在heroes中找不到匹配!');
+      }
+    });
+    debugLog('[DIA] 队伍: ' + teamObj + '个英雄, ' + teamNull + '个空位');
+  }
+  
+  // 合成槽位检查
+  if (window._mergeSlots) {
+    debugLog('[DIA] _mergeSlots: ' + JSON.stringify(window._mergeSlots));
+    window._mergeSlots.forEach(function(uid, idx) {
+      if (uid !== null) {
+        var match = G.heroes ? G.heroes.some(function(h) { return h && h.uid == uid; }) : false;
+        debugLog('[DIA] mergeSlot[' + idx + ']: uid=' + uid + '(' + typeof uid + ') 在heroes中=' + match);
+      }
+    });
+  }
+  
+  // 模拟上阵过滤
+  if (G.heroes && G.team) {
+    var teamUids = G.team.filter(function(h) { return h !== null; }).map(function(h) { return h.uid; });
+    var availableForTeam = G.heroes.filter(function(h) {
+      if (G.team.some(function(t) { return t && t.uid === h.uid; })) return false;
+      if (h.isUnknown && !h.isUnlocked) return false;
+      return true;
+    });
+    debugLog('[DIA] 上阵可用英雄: ' + availableForTeam.length + '/' + G.heroes.length);
+  }
+  
+  // 模拟合成过滤
+  if (G.heroes && G.team && window._mergeSlots) {
+    var usedUids = window._mergeSlots.filter(Boolean);
+    var teamUids2 = G.team.filter(function(h) { return h !== null; }).map(function(h) { return h.uid; });
+    var availableForMerge = G.heroes.filter(function(h) {
+      return !usedUids.some(function(u) { return u == h.uid; }) && !teamUids2.some(function(u) { return u == h.uid; }) && !h.locked;
+    });
+    debugLog('[DIA] 合成可用英雄: ' + availableForMerge.length + '/' + G.heroes.length);
+  }
+  
+  debugLog('========== 诊断结束 ==========');
+  // 自动显示调试面板
+  if (!_debugPanelVisible) toggleDebugPanel();
+  var el = document.getElementById('debug-panel');
+  if (el) {
+    el.textContent = _debugLog.join('\n');
+    el.scrollTop = el.scrollHeight;
+  }
+  showToast('🔍 诊断信息已输出到调试面板');
+}
+
 async function initGame(){
   // 获取并显示当前槽位
   var meta = getMeta();
@@ -25450,6 +25658,8 @@ function resetGToDefaults(){
   G.chapter2Done = false;
   G.totalPlayTime = 0;
   G.playerName = '';
+  G.redeemedCodes = {};
+  G.zodiacDailyScrollShopDate = '';
   // 清理可能残留的旧字段
   delete G.gold; delete G.gems; delete G.food; delete G.stone; delete G.iron; delete G.fame;
   delete G.materials;
@@ -25644,9 +25854,9 @@ var STAT_QUALITY_CAP={
   mythic:{maxHP:9999,atk:999,def:999,spd:900,maxMP:999},
   hidden:{maxHP:14999,atk:1499,def:1499,spd:1300,maxMP:1499},
   unknown:{maxHP:19999,atk:1999,def:1999,spd:1666,maxMP:1999},
-  cosmic:{maxHP:'50000',atk:'5000',def:'5000',spd:'3000',maxMP:'5000'},
-  eternal:{maxHP:'100000',atk:'10000',def:'10000',spd:'5000',maxMP:'10000'},
-  infinite:{maxHP:'1000000',atk:'100000',def:'100000',spd:'20000',maxMP:'100000'}
+  cosmic:{maxHP:50000,atk:5000,def:5000,spd:3000,maxMP:5000},
+  eternal:{maxHP:100000,atk:10000,def:10000,spd:5000,maxMP:10000},
+  infinite:{maxHP:1000000,atk:100000,def:100000,spd:20000,maxMP:100000}
 };
 
 // 突破材料配置
