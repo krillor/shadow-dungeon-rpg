@@ -10454,6 +10454,8 @@ function calcDamage(attacker,defender,skill=null,skillIdx=-1){
   let mult=skill?skill.mult:1.0;
   // 变异技能伤害增幅 +50%
   if(isMutatedSkill) mult*=1.5;
+  // 合成卷轴：变异催化效果翻倍（+50% → +75%）
+  if(isMutatedSkill && attacker.hero && attacker.hero._mutationBoost) mult*=1.1667;
   let dmg=Math.max(1,Math.floor((atk*mult-def*0.5)*(0.9+Math.random()*0.2)));
   
   // 暴击计算（考虑职业暴击率 + 英雄特质暴击率 + 天赋暴击率 + 全队暴击率）
@@ -13067,9 +13069,20 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
       break;
     case 'heal':
       var totalHeal=0;
-      var healMult=isMutated?1.4:1.0;
+      // 合成卷轴：变异催化效果翻倍（+40% → +70%）
+      var healMult=isMutated?(user.hero&&user.hero._mutationBoost?1.7:1.4):1.0;
       var hasAntiHeal=allUnits.some(function(e){return e.isEnemy&&e._antiHeal&&e.alive});
       if(hasAntiHeal)healMult*=0.5;
+      // ── 合成卷轴：技能精通（精通技能治疗效果+30%） ──
+      if(user._masteredSkills && user._masteredSkills.length > 0){
+        var allSIdsHeal=[].concat(user.hero.skills||[],user.bonusSkills||[]);
+        for(var mskHeal=0;mskHeal<allSIdsHeal.length;mskHeal++){
+          if(allSIdsHeal[mskHeal]===skill.id && user._masteredSkills.indexOf(allSIdsHeal[mskHeal])>=0){
+            healMult *= 1.30;
+            break;
+          }
+        }
+      }
       targets.forEach(t=>{
         if(!t.alive)return;
         const heal=Math.floor(t.maxHP*skill.healPct*healMult);
@@ -13090,7 +13103,8 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
         showFloat(t,'↑'+skill.name,'buff-text');animUnit(t,'heal-target',500);
       });break;
     case 'shield':
-      var shieldMult=isMutated?1.4:1.0;
+      // 合成卷轴：变异催化效果翻倍（+40% → +70%）
+      var shieldMult=isMutated?(user.hero&&user.hero._mutationBoost?1.7:1.4):1.0;
       targets.forEach(t=>{
         if(!t.alive)return;
         var sBoost = 1.0;
@@ -13396,7 +13410,9 @@ function generateFusedHero(heroes){
   
   // === 幸运值系统：影响异变概率 ===
   var luckyBonus = (G.mergeLucky||0) * 0.005; // 每点幸运+0.5%
-  var effectiveMutationRate = Math.min(0.50, G_MUTATION_RATE + luckyBonus);
+  // 合成卷轴：幸运共鸣加成
+  var scrollLuckyBonus = (G.mergeLuckyBonus||0) * 0.005; // 卷轴幸运值（如+20 = +10%）
+  var effectiveMutationRate = Math.min(0.50, G_MUTATION_RATE + luckyBonus + scrollLuckyBonus);
   
   // === 连击×10：必定异变（触发后进入5分钟冷却） ===
   var streakCount = (G.mergeStreak && G.mergeStreak.count) || 0;
@@ -15648,7 +15664,7 @@ function executeMerge(heroUids){
         break;
 
       case 'mutationBoost':
-        // 变异催化：+25%概率触发变异，已变异则追加1个变异技能
+        // 变异催化：+25%概率触发变异，已变异则追加1个变异技能，变异效果翻倍
         if (!newHero.isMutation && Math.random() < activeScroll.value) {
           newHero.isMutation = true;
           newHero.mutatedSkills = newHero.mutatedSkills || [];
@@ -15664,6 +15680,8 @@ function executeMerge(heroUids){
           }
           if(unmutated.length > 0) newHero.mutatedSkills.push(unmutated[Math.floor(Math.random()*unmutated.length)]);
         }
+        // 变异效果翻倍：变异倍率从1.4提升到1.7（+70%）
+        newHero._mutationBoost = true;
         newHero._scrollTag = '🧬强化变异';
         break;
 
