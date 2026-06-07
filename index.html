@@ -1370,7 +1370,7 @@ body{
 .hero-team-badge{
   position:absolute;
   top:8px;
-  right:8px;
+  left:8px;
   background:linear-gradient(135deg,var(--green-soft),rgba(46,213,115,0.05));
   color:var(--green);
   font-size:10px;
@@ -1379,6 +1379,7 @@ body{
   border:1px solid rgba(46,213,115,0.3);
   font-weight:600;
   box-shadow:0 2px 8px rgba(0,0,0,0.2);
+  z-index:2;
 }
 .hero-level-badge{
   position:absolute;
@@ -7445,6 +7446,8 @@ function initGameAfterLoad() {
       if (!found) debugLog('[IGAL] ⚠️ team值重建失败: 原值=' + item + '(类型' + typeof item + ')');
       return found || null;
     });
+    // 清理队伍中的重复英雄
+    cleanTeamDuplicates();
     debugLog('[IGAL] 队伍二次重建后: 非null数=' + G.team.filter(function(t){return t!==null}).length);
   }
 
@@ -18517,9 +18520,10 @@ function renderHeroCard(h){
   var displayRole = isUnknown ? 'unknown' : h.role;
   
   var _uidJson = JSON.stringify(h.uid);
+  var unknownBadgeStyle = isUnknown ? 'background:linear-gradient(90deg,#ff00ff,#ff00cc);' + (inTeam ? 'top:38px;left:8px;' : '') : '';
   return '<div class="hero-card quality-'+displayQuality+'" data-role="'+displayRole+'" data-quality="'+displayQuality+'" data-uid="'+h.uid+'" onclick=\'showHeroDetail('+_uidJson+')\' style="cursor:pointer">'
     +(inTeam?'<div class="hero-team-badge">🛡️ 队伍中</div>':'')
-    +(isUnknown?'<div class="hero-team-badge" style="background:linear-gradient(90deg,#ff00ff,#ff00cc)">🔒 未解锁</div>':'')
+    +(isUnknown?'<div class="hero-team-badge" style="'+unknownBadgeStyle+'">🔒 未解锁</div>':'')
     +'<button class="hero-lock-btn'+(h.locked?' hero-lock-btn-locked':'')+'" onclick=\'event.stopPropagation();toggleHeroLock('+_uidJson+')\' title="'+(h.locked?'解锁':'锁定')+'">'+(h.locked?'🔒':'🔓')+'</button>'
     +'<div class="hero-avatar" style="background:rgba('+(isUnknown?'255,0,255':h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':'220,50,50')+',.2)">'
     +displayIcon
@@ -20111,12 +20115,29 @@ function getTalentEffects(hero){
   return effects;
 }
 
+function cleanTeamDuplicates(){
+  if(!G.team) return;
+  var seenUids=new Set();
+  for(var i=0;i<G.team.length;i++){
+    if(G.team[i]){
+      var uid=G.team[i].uid;
+      if(seenUids.has(uid)){
+        G.team[i]=null; // 移除重复
+      }else{
+        seenUids.add(uid);
+      }
+    }
+  }
+}
+
 function renderTeam(el){
   if(!el) el = document.getElementById('content');
   if(!el) return;
   // 数据防御
   if(!G.team) G.team=[null,null,null,null,null,null];
   while(G.team.length<6) G.team.push(null);
+  // 清理队伍中的重复
+  cleanTeamDuplicates();
   if(!G.heroes) G.heroes=[];
   // 过滤可用英雄：未解锁的未知英雄不能上阵
   var available=G.heroes.filter(function(h){
@@ -20469,8 +20490,15 @@ function addToTeam(slotIdx,heroUid){
     showToast('🔒 该未知英雄未解锁，无法上阵！');
     return;
   }
+  // 先移除该英雄在队伍中的其他位置，避免重复
+  for(var i=0;i<G.team.length;i++){
+    if(G.team[i] && (G.team[i].uid===hero.uid || G.team[i].uid==hero.uid)){
+      G.team[i]=null;
+    }
+  }
   G.team[slotIdx]=hero;
   debugLog('[AT] ✅ 上阵成功: G.team[' + slotIdx + ']=' + hero.name);
+  saveGame();
   if(onGuideQuickAdd()){
     return;
   }
@@ -20478,9 +20506,17 @@ function addToTeam(slotIdx,heroUid){
 }
 
 function quickAddToTeam(heroUid){
+  const hero=G.heroes.find(h=>h.uid===heroUid || h.uid==heroUid);
+  if(!hero){return;}
+  // 先移除该英雄在队伍中的其他位置，避免重复
+  for(var i=0;i<G.team.length;i++){
+    if(G.team[i] && (G.team[i].uid===hero.uid || G.team[i].uid==hero.uid)){
+      G.team[i]=null;
+    }
+  }
   const idx=G.team.indexOf(null);
   if(idx===-1){showToast('队伍已满！');return}
-  G.team[idx]=G.heroes.find(h=>h.uid===heroUid || h.uid==heroUid);
+  G.team[idx]=hero;
   saveGame();
   if(onGuideQuickAdd()){
     // 引导模式下：先渲染当前界面给用户视觉反馈，再跳转城镇
