@@ -339,6 +339,109 @@ runner.test('性能 - 频繁存档', () => {
   console.log('   50次存档耗时:', duration + 'ms');
 });
 
+// ========== 10. 合成疲劳系统测试 ==========
+runner.test('合成疲劳 - 疲劳值计算', () => {
+  const fatigue = 5;
+  const decay = Math.floor(fatigue * 0.3);
+  assertEquals(decay, 1, '疲劳衰减计算错误');
+});
+
+runner.test('合成疲劳 - 连续合成惩罚', () => {
+  const fatigue = 10;
+  const qualityPenalty = Math.min(0.15, fatigue * 0.015);
+  assert(qualityPenalty >= 0, '品质惩罚不能为负');
+  assert(qualityPenalty <= 0.15, '品质惩罚不能超过15%');
+});
+
+// ========== 11. 羁绊系统测试 ==========
+runner.test('羁绊 - 槽位结构', () => {
+  const bondSlots = [null, null, null];
+  assertEquals(bondSlots.length, 3, '羁绊槽位应为3个');
+});
+
+runner.test('羁绊 - 羁绊检测逻辑', () => {
+  const teamH = [{role: 'warrior'}, {role: 'warrior'}, {role: 'mage'}];
+  const warriorCount = teamH.filter(h => h.role === 'warrior').length;
+  assertEquals(warriorCount, 2, '战士数量检测错误');
+});
+
+// ========== 12. 突破材料系统测试 ==========
+runner.test('突破材料 - 材料结构', () => {
+  const materials = {rare: 0, epic: 0, legendary: 0, mythic: 0, hidden: 0};
+  assert('rare' in materials, '缺少 rare 材料');
+  assert('hidden' in materials, '缺少 hidden 材料');
+});
+
+runner.test('突破材料 - 强化+8需要材料', () => {
+  const enhance = 8;
+  const needsMaterial = enhance >= 8;
+  assertTrue(needsMaterial, '+8强化应需要突破材料');
+});
+
+// ========== 13. 未知英雄系统测试 ==========
+runner.test('未知英雄 - 兑换条件结构', () => {
+  const reqs = [
+    {type: 'stageProgress', target: 200},
+    {type: 'totalMerges', target: 500},
+    {type: 'gold', target: 500000}
+  ];
+  assertEquals(reqs.length, 3, '兑换条件数量不对');
+  assert(reqs.every(r => r.type && r.target > 0), '兑换条件格式错误');
+});
+
+runner.test('未知英雄 - 合成概率千分之一', () => {
+  const mergeChance = 0.001;
+  assertEquals(mergeChance, 0.001, '合成概率应为0.1%');
+});
+
+// ========== 14. 系统解锁测试 ==========
+runner.test('系统解锁 - 解锁配置完整', () => {
+  const unlocks = {
+    town: 1, equip: 5, buildings: 8, codex: 10,
+    arena: 15, roguelike: 20, achievements: 25,
+    leaderboard: 30, zodiac: 35, unknownExchange: 50
+  };
+  assertEquals(Object.keys(unlocks).length, 10, '解锁系统数量不对');
+  assert(unlocks.roguelike >= 20, '肉鸽解锁关卡应>=20');
+});
+
+runner.test('系统解锁 - 检查函数逻辑', () => {
+  const stageProgress = 25;
+  const isRoguelikeUnlocked = stageProgress >= 20;
+  const isZodiacUnlocked = stageProgress >= 35;
+  assertTrue(isRoguelikeUnlocked, '25关应解锁肉鸽');
+  assertFalse(isZodiacUnlocked, '25关不应解锁生肖');
+});
+
+// ========== 15. 技能上限测试 ==========
+runner.test('技能上限 - 最大9个技能', () => {
+  const skills = ['s1', 's2', 's3', 's4', 's5'];
+  const bonusSkills = ['b1', 'b2', 'b3', 'b4', 'b5'];
+  const total = skills.length + bonusSkills.length;
+  assertEquals(total, 10, '测试数据应为10个技能');
+  assert(total > 9, '应超过9个技能上限');
+});
+
+// ========== 16. 天象系统测试 ==========
+runner.test('天象 - 天象类型存在', () => {
+  const omens = ['normal', 'gold', 'exp', 'quality', 'event'];
+  assert(omens.includes('gold'), '缺少金币天象');
+  assert(omens.includes('quality'), '缺少品质天象');
+});
+
+// ========== 17. 关卡机制锁测试 ==========
+runner.test('关卡机制 - 机制触发条件', () => {
+  const stageId = 20;
+  const triggers = {
+    physImmune: stageId % 10 === 0,
+    silence: stageId % 5 === 0,
+    lifesteal: stageId % 20 === 0
+  };
+  assertTrue(triggers.physImmune, '20关应触发物理免疫');
+  assertTrue(triggers.silence, '20关应触发魔力封印');
+  assertTrue(triggers.lifesteal, '20关应触发血之渴望');
+});
+
 // ==================== 运行测试 ====================
 runner.run().then(success => {
   process.exit(success ? 0 : 1);

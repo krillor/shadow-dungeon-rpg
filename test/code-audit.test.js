@@ -219,22 +219,53 @@ runner.test('HTML - onclick 使用单引号包裹', () => {
   assert(badCount === 0, `发现 ${badCount} 处未使用单引号的 _uidJson onclick`);
 });
 
-// ========== 7. 严格比较检查 ==========
-runner.test('JS - uid 查找使用宽松比较', () => {
-  // 检查 find 函数中是否使用了 === 比较 uid
-  const findPatterns = [
-    /\.find\([^)]*=>[^}]*uid\s*===/,
-    /\.find\(function[^}]*uid\s*===/
-  ];
-  
-  let strictCompareCount = 0;
-  findPatterns.forEach(pattern => {
-    const matches = gameCode.match(pattern) || [];
-    strictCompareCount += matches.length;
-  });
-  
-  // 注意：有些 === 可能是正确的（比如比较数字），我们只检查英雄/装备查找
-  console.log(`   发现 ${strictCompareCount} 处 find 中的严格比较（需人工确认）`);
+// ========== 7. 新增系统函数检查 ==========
+runner.test('函数 - 合成疲劳相关函数', () => {
+  assert(/function getMergeFatiguePenalty/.test(gameCode), '缺少 getMergeFatiguePenalty 函数');
+  assert(/function recoverMergeFatigue/.test(gameCode), '缺少 recoverMergeFatigue 函数');
+  assert(/function getMergeFatigueDesc/.test(gameCode), '缺少 getMergeFatigueDesc 函数');
+});
+
+runner.test('函数 - 羁绊系统相关函数', () => {
+  assert(/function detectActiveBonds/.test(gameCode), '缺少 detectActiveBonds 函数');
+  assert(/function renderBondPreview/.test(gameCode), '缺少 renderBondPreview 函数');
+  assert(/function toggleBondSlot/.test(gameCode), '缺少 toggleBondSlot 函数');
+});
+
+runner.test('函数 - 突破材料相关函数', () => {
+  assert(/function initBreakthroughSystem/.test(gameCode), '缺少 initBreakthroughSystem 函数');
+  assert(/function performBreakthrough/.test(gameCode), '缺少 performBreakthrough 函数');
+  assert(/function renderBreakthroughUI/.test(gameCode), '缺少 renderBreakthroughUI 函数');
+});
+
+runner.test('函数 - 未知英雄兑换函数', () => {
+  assert(/function getUnknownExchangeProgress/.test(gameCode), '缺少 getUnknownExchangeProgress 函数');
+  assert(/function exchangeUnknownHero/.test(gameCode), '缺少 exchangeUnknownHero 函数');
+  assert(/function openUnknownExchangePanel/.test(gameCode), '缺少 openUnknownExchangePanel 函数');
+});
+
+runner.test('函数 - 系统解锁函数', () => {
+  assert(/function isSystemUnlocked/.test(gameCode), '缺少 isSystemUnlocked 函数');
+  assert(/function updateNavLockState/.test(gameCode), '缺少 updateNavLockState 函数');
+});
+
+runner.test('函数 - 技能选择函数', () => {
+  assert(/function getTotalSkillCount/.test(gameCode), '缺少 getTotalSkillCount 函数');
+  assert(/function openSkillSelectPanel/.test(gameCode), '缺少 openSkillSelectPanel 函数');
+});
+
+runner.test('函数 - 天象战斗效果函数', () => {
+  assert(/function getCurrentOmen/.test(gameCode), '缺少 getCurrentOmen 函数');
+  assert(/function getOmenRemainingTime/.test(gameCode), '缺少 getOmenRemainingTime 函数');
+  assert(/function formatOmenTime/.test(gameCode), '缺少 formatOmenTime 函数');
+});
+
+runner.test('变量 - 系统解锁配置', () => {
+  assert(/const SYSTEM_UNLOCKS/.test(gameCode) || /var SYSTEM_UNLOCKS/.test(gameCode), '缺少 SYSTEM_UNLOCKS 定义');
+});
+
+runner.test('变量 - 羁绊配置', () => {
+  assert(/const HERO_BONDS/.test(gameCode) || /var HERO_BONDS/.test(gameCode), '缺少 HERO_BONDS 定义');
 });
 
 // ========== 8. 数据完整性检查 ==========
