@@ -8800,50 +8800,50 @@ function openUnknownExchangePanel(){
     var done = r.completed;
     var barColor = done ? '#00ff88' : (pct > 50 ? '#f59e0b' : '#ff6b6b');
     var statusIcon = done ? '✅' : (pct > 0 ? '🔥' : '⏳');
-    var bgBorder = done ? 'border-left:3px solid #00ff88' : (pct > 0 ? 'border-left:3px solid #f59e0b' : 'border-left:3px solid rgba(255,255,255,.1)');
-    return '<div style="padding:8px 10px;background:rgba(255,255,255,.02);border-radius:6px;'+bgBorder+'">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'
-      +'<span style="font-size:12px;color:'+(done?'#00ff88':'var(--text2)')+';font-weight:'+(done?'bold':'normal')+'">'+statusIcon+' '+r.desc+'</span>'
-      +'<span style="font-size:11px;font-weight:bold;color:'+(done?'#00ff88':'var(--text3)')+'">'+formatResource(r.current)+'/'+formatResource(r.target)+'</span>'
+    var bgBorder = done ? 'border-left:2px solid #00ff88' : (pct > 0 ? 'border-left:2px solid #f59e0b' : 'border-left:2px solid rgba(255,255,255,.08)');
+    return '<div style="padding:5px 8px;background:rgba(255,255,255,.02);border-radius:4px;'+bgBorder+'">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'
+      +'<span style="font-size:11px;color:'+(done?'#00ff88':'var(--text2)')+';font-weight:'+(done?'bold':'normal')+'">'+statusIcon+' '+r.desc+'</span>'
+      +'<span style="font-size:10px;font-weight:bold;color:'+(done?'#00ff88':'var(--text3)')+'">'+formatResource(r.current)+'/'+formatResource(r.target)+'</span>'
       +'</div>'
-      +'<div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden">'
-      +'<div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,'+barColor+','+barColor+'cc);border-radius:3px;transition:width .3s;box-shadow:0 0 6px '+barColor+'44"></div>'
+      +'<div style="height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">'
+      +'<div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:2px;transition:width .3s"></div>'
       +'</div>'
       +'</div>';
   }
 
-  var progressHtml = progressReqs.map(renderReqItem).join('<div style="height:4px"></div>');
-  var resourceHtml = resourceReqs.map(renderReqItem).join('<div style="height:4px"></div>');
+  var progressHtml = progressReqs.map(renderReqItem).join('<div style="height:3px"></div>');
+  var resourceHtml = resourceReqs.map(renderReqItem).join('<div style="height:3px"></div>');
 
   var canExchange = progress.allCompleted && !progress.onCooldown;
-  var cooldownText = progress.onCooldown ? '<div style="margin-top:8px;padding:10px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);border-radius:8px;color:#ff6b6b;font-size:12px;text-align:center">⏳ 兑换冷却中，还剩 <b>'+progress.cooldownRemaining+'</b> 天</div>' : '';
+  var cooldownText = progress.onCooldown ? '<div style="margin-top:6px;padding:6px 8px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);border-radius:6px;color:#ff6b6b;font-size:11px;text-align:center">⏳ 冷却中，还剩 <b>'+progress.cooldownRemaining+'</b> 天</div>' : '';
 
-  openModal('<div class="panel" style="max-width:360px">'
-    // 标题区
-    +'<div style="text-align:center;margin-bottom:14px">'
-    +'<div style="font-size:28px;margin-bottom:4px">🌌</div>'
-    +'<div style="font-size:16px;font-weight:bold;color:#ff00ff">未知英雄兑换</div>'
-    +'<div style="font-size:11px;color:var(--text3);margin-top:4px">合成概率仅0.1% · 兑换冷却7天</div>'
+  openModal('<div style="max-width:100%">'
+    // 标题
+    +'<div style="text-align:center;margin-bottom:8px">'
+    +'<div style="font-size:22px;margin-bottom:2px">🌌</div>'
+    +'<div style="font-size:14px;font-weight:bold;color:#ff00ff">未知英雄兑换</div>'
+    +'<div style="font-size:10px;color:var(--text3);margin-top:2px">合成0.1% · 冷却7天</div>'
     +'</div>'
     // 总进度
-    +'<div style="padding:10px;background:rgba(255,0,255,.06);border:1px solid rgba(255,0,255,.15);border-radius:8px;margin-bottom:12px;text-align:center">'
-    +'<div style="font-size:13px;font-weight:bold;color:#ff00ff">总进度 '+completedCount+'/'+totalCount+'</div>'
-    +'<div style="height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;margin-top:6px">'
-    +'<div style="height:100%;width:'+Math.floor(completedCount/totalCount*100)+'%;background:linear-gradient(90deg,#ff00ff,#a855f7);border-radius:4px;transition:width .3s"></div>'
+    +'<div style="padding:6px 8px;background:rgba(255,0,255,.06);border:1px solid rgba(255,0,255,.12);border-radius:6px;margin-bottom:8px;text-align:center">'
+    +'<div style="font-size:12px;font-weight:bold;color:#ff00ff">总进度 '+completedCount+'/'+totalCount+'</div>'
+    +'<div style="height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-top:4px">'
+    +'<div style="height:100%;width:'+Math.floor(completedCount/totalCount*100)+'%;background:linear-gradient(90deg,#ff00ff,#a855f7);border-radius:3px;transition:width .3s"></div>'
     +'</div>'
     +'</div>'
     // 进度条件组
-    +'<div style="font-size:11px;font-weight:bold;color:#60a5fa;margin-bottom:6px">📊 战斗成就（'+progressReqs.filter(function(r){return r.completed}).length+'/'+progressReqs.length+'）</div>'
-    +'<div style="display:flex;flex-direction:column;gap:0;margin-bottom:12px">'+progressHtml+'</div>'
+    +'<div style="font-size:10px;font-weight:bold;color:#60a5fa;margin-bottom:4px">📊 战斗成就（'+progressReqs.filter(function(r){return r.completed}).length+'/'+progressReqs.length+'）</div>'
+    +'<div style="display:flex;flex-direction:column;gap:0;margin-bottom:8px">'+progressHtml+'</div>'
     // 资源消耗组
-    +'<div style="font-size:11px;font-weight:bold;color:#f59e0b;margin-bottom:6px">💰 资源消耗（'+resourceReqs.filter(function(r){return r.completed}).length+'/'+resourceReqs.length+'）</div>'
-    +'<div style="display:flex;flex-direction:column;gap:0;margin-bottom:12px">'+resourceHtml+'</div>'
+    +'<div style="font-size:10px;font-weight:bold;color:#f59e0b;margin-bottom:4px">💰 资源消耗（'+resourceReqs.filter(function(r){return r.completed}).length+'/'+resourceReqs.length+'）</div>'
+    +'<div style="display:flex;flex-direction:column;gap:0;margin-bottom:8px">'+resourceHtml+'</div>'
     // 冷却和统计
     +cooldownText
-    +'<div style="margin-top:6px;font-size:11px;color:var(--text3);text-align:center">已累计兑换 <b style="color:var(--gold)">'+progress.exchangeCount+'</b> 个未知英雄</div>'
+    +'<div style="margin-top:4px;font-size:10px;color:var(--text3);text-align:center">已兑换 <b style="color:var(--gold)">'+progress.exchangeCount+'</b> 个</div>'
     // 兑换按钮
-    +'<div style="margin-top:12px">'
-    +'<button class="btn '+(canExchange?'btn-primary':'')+'" style="width:100%;padding:12px;font-size:14px;'+(canExchange?'background:linear-gradient(135deg,#a855f7,#7c3aed);border-color:#a855f7;':'opacity:.5;cursor:not-allowed')+'" onclick="'+(canExchange?'exchangeUnknownHero()':'')+'" '+(canExchange?'':'disabled')+'>'+(canExchange?'🌌 立即兑换':'⏳ 条件未满足 ('+completedCount+'/'+totalCount+')')+'</button>'
+    +'<div style="margin-top:8px">'
+    +'<button class="btn '+(canExchange?'btn-primary':'')+'" style="width:100%;padding:10px;font-size:13px;'+(canExchange?'background:linear-gradient(135deg,#a855f7,#7c3aed);border-color:#a855f7;':'opacity:.5;cursor:not-allowed')+'" onclick="'+(canExchange?'exchangeUnknownHero()':'')+'" '+(canExchange?'':'disabled')+'>'+(canExchange?'🌌 立即兑换':'⏳ 未满足('+completedCount+'/'+totalCount+')')+'</button>'
     +'</div>'
     +'</div>');
 }
@@ -9017,7 +9017,11 @@ function showConfirm(title,message,onConfirm,confirmText,cancelText){
 
 // openModal: 直接将HTML渲染到modal-root（用于showHeroDetail等）
 function openModal(html){
-  document.getElementById('modal-root').innerHTML='<div class="modal-overlay" onclick="if(event.target===this)closeModal()">'+html+'</div>';
+  document.getElementById('modal-root').innerHTML='<div class="modal-overlay" onclick="if(event.target===this)closeModal()">' +
+    '<div class="modal" style="animation:cardPop .3s ease;max-width:420px;padding:16px">' +
+    '<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn btn-sm" onclick="closeModal()" style="padding:4px 10px;font-size:14px;color:var(--text3);min-width:30px;min-height:30px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)">✕</button></div>' +
+    html +
+    '</div></div>';
 }
 
 // ==================== 英雄特质系统 ====================
