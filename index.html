@@ -17809,12 +17809,17 @@ var isAdLoaded = false; // 广告是否已加载就绪
 
 // 初始化广告系统
 function initAdSystem() {
-  console.log('========================================');
+  var divider = '========================================';
+  console.log(divider);
+  debugLog(divider);
   console.log('[AdSystem] 开始初始化广告系统');
+  debugLog('[AdSystem] 开始初始化广告系统');
   console.log('[AdSystem] window.tap 存在:', !!window.tap);
+  debugLog('[AdSystem] window.tap 存在: ' + (!!window.tap));
   if (window.tap) {
     console.log('[AdSystem] window.tap 对象:', window.tap);
     console.log('[AdSystem] createRewardedVideoAd 函数:', typeof window.tap.createRewardedVideoAd);
+    debugLog('[AdSystem] createRewardedVideoAd: ' + typeof window.tap.createRewardedVideoAd);
   }
 
   // 重置每日数据
@@ -17830,12 +17835,14 @@ function initAdSystem() {
     var result = !!window.tap && 
            typeof window.tap.createRewardedVideoAd === 'function';
     console.log('[AdSystem] isRealTapEnv 检测结果:', result);
+    debugLog('[AdSystem] isRealTapEnv: ' + result);
     return result;
   }
 
   // 兼容模式：没有tap环境时提供模拟
   if (!isRealTapEnv()) {
     console.log('[AdSystem] 检测到非 TapTap 环境，启用模拟模式');
+    debugLog('[AdSystem] 检测到非 TapTap 环境，启用模拟模式');
     
     // 防止重复设置
     if (!window.tap) {
@@ -17847,11 +17854,13 @@ function initAdSystem() {
     
     window.tap.createRewardedVideoAd = function (cfg) {
       console.log('[AdSystem] 创建模拟激励广告, adUnitId:', cfg.adUnitId);
+      debugLog('[AdSystem] 创建模拟广告, adUnitId: ' + cfg.adUnitId);
       return {
         onLoad: function (cb) { 
           console.log('[AdSystem] 模拟广告: 注册 onLoad 回调');
           setTimeout(function() {
             console.log('[AdSystem] 模拟广告: 触发 onLoad');
+            debugLog('[AdSystem] 模拟广告 onLoad');
             isAdLoaded = true;
             cb();
           }, 200); 
@@ -17865,6 +17874,7 @@ function initAdSystem() {
         },
         load: function () { 
           console.log('[AdSystem] 模拟广告: 调用 load()');
+          debugLog('[AdSystem] 模拟广告 load()');
           return new Promise(function(resolve) {
             setTimeout(function() {
               console.log('[AdSystem] 模拟广告: load() 完成');
@@ -17875,14 +17885,17 @@ function initAdSystem() {
         },
         show: function () {
           console.log('[AdSystem] 模拟广告: 调用 show()');
+          debugLog('[AdSystem] 模拟广告 show()');
           const self = this;
           return new Promise(function (resolve, reject) {
             setTimeout(function () {
               if (confirm('📺 模拟：观看完整广告？\n\n（是=获得奖励，否=中途退出）')) {
                 console.log('[AdSystem] 模拟广告: 用户确认观看完整');
+                debugLog('[AdSystem] 模拟广告: 用户确认观看');
                 self.closeCb && self.closeCb({ isEnded: true });
               } else {
                 console.log('[AdSystem] 模拟广告: 用户中途退出');
+                debugLog('[AdSystem] 模拟广告: 用户中途退出');
                 self.closeCb && self.closeCb({ isEnded: false });
               }
               resolve();
@@ -17897,13 +17910,16 @@ function initAdSystem() {
 
   // 创建激励视频广告实例
   console.log('[AdSystem] 开始创建广告实例, adUnitId: 1057287');
+  debugLog('[AdSystem] 开始创建广告实例, adUnitId: 1057287');
   try {
     rewardedVideoAd = window.tap.createRewardedVideoAd({
       adUnitId: '1057287'
     });
     console.log('[AdSystem] 广告实例创建成功:', rewardedVideoAd);
+    debugLog('[AdSystem] 广告实例创建成功');
   } catch (e) {
     console.error('[AdSystem] 创建广告实例时发生异常:', e);
+    debugLog('[AdSystem] ❌ 创建实例异常: ' + e.message);
     showToast('创建广告实例失败: ' + e.message);
     return;
   }
@@ -17911,6 +17927,7 @@ function initAdSystem() {
   // 监听广告加载成功
   rewardedVideoAd.onLoad(function () {
     console.log('[AdSystem] ✅ 激励视频广告加载成功回调触发');
+    debugLog('[AdSystem] ✅ 广告加载成功');
     isAdLoaded = true;
     isAdLoading = false;
     showToast('广告加载成功！');
@@ -17919,12 +17936,19 @@ function initAdSystem() {
   // 监听广告加载失败
   rewardedVideoAd.onError(function (err) {
     console.error('[AdSystem] ❌ 激励视频广告加载失败回调触发');
+    debugLog('[AdSystem] ❌ 广告加载失败');
     console.error('[AdSystem] 错误详情:', err);
     console.error('[AdSystem] 错误类型:', typeof err);
+    
+    var errDetail = '';
     if (err && typeof err === 'object') {
       Object.keys(err).forEach(function(key) {
         console.error('[AdSystem] 错误字段 ' + key + ':', err[key]);
+        errDetail += ' ' + key + '=' + err[key];
       });
+    }
+    if (errDetail) {
+      debugLog('[AdSystem] 错误详情: ' + errDetail);
     }
     
     isAdLoaded = false;
@@ -17949,6 +17973,7 @@ function initAdSystem() {
       errMsg = '请在 TapTap H5 环境中运行';
     }
     
+    debugLog('[AdSystem] ' + errMsg);
     showToast(errMsg);
   });
 
@@ -17956,6 +17981,7 @@ function initAdSystem() {
   rewardedVideoAd.onClose(function (res) {
     console.log('[AdSystem] 广告关闭回调触发');
     console.log('[AdSystem] 关闭结果:', res);
+    debugLog('[AdSystem] 广告关闭, isEnded: ' + (res && res.isEnded));
     isAdLoading = false;
     if (res && res.isEnded) {
       giveRecruitAdReward();
@@ -17966,34 +17992,44 @@ function initAdSystem() {
 
   // 自动预加载广告
   console.log('[AdSystem] 开始预加载广告...');
+  debugLog('[AdSystem] 开始预加载广告');
   if (window.tap && window.tap.isSimulated) {
     console.log('[AdSystem] 模拟模式，无需预加载真实广告');
+    debugLog('[AdSystem] 模拟模式，无需预加载');
   } else {
     try {
       console.log('[AdSystem] 调用 rewardedVideoAd.load()');
       rewardedVideoAd.load()
         .then(function() {
           console.log('[AdSystem] ✅ load() Promise 成功');
+          debugLog('[AdSystem] ✅ load() 成功');
         })
         .catch(function(err) {
           console.error('[AdSystem] ❌ load() Promise 失败:', err);
+          debugLog('[AdSystem] ❌ load() 失败: ' + (err ? err.message || JSON.stringify(err) : ''));
           // 预加载失败不显示 toast，避免打扰用户
         });
     } catch (e) {
       console.error('[AdSystem] ❌ 调用 load() 时发生异常:', e);
+      debugLog('[AdSystem] ❌ load() 异常: ' + e.message);
     }
   }
-  console.log('========================================');
+  console.log(divider);
+  debugLog(divider);
 }
 
 // 播放激励视频广告获取一键招募使用次数
 function showRewardedVideoAd() {
-  console.log('----------------------------------------');
+  var divider = '----------------------------------------';
+  console.log(divider);
+  debugLog(divider);
   console.log('[AdSystem] 开始调用 showRewardedVideoAd');
+  debugLog('[AdSystem] 开始调用 showRewardedVideoAd');
   
   // 防止重复点击
   if (isAdLoading) {
     console.log('[AdSystem] ⚠️ 广告正在加载中，阻止重复点击');
+    debugLog('[AdSystem] ⚠️ 广告正在加载中');
     showToast('广告正在加载中，请稍候...');
     return;
   }
@@ -18003,26 +18039,34 @@ function showRewardedVideoAd() {
 
   // 尝试展示广告
   console.log('[AdSystem] 调用 rewardedVideoAd.show()');
+  debugLog('[AdSystem] 调用 rewardedVideoAd.show()');
   rewardedVideoAd.show()
     .then(function() {
       console.log('[AdSystem] ✅ show() Promise 成功 - 广告应该开始展示了');
+      debugLog('[AdSystem] ✅ show() 成功');
     })
     .catch(function (err) {
       console.error('[AdSystem] ❌ show() Promise 失败:', err);
+      debugLog('[AdSystem] ❌ show() 失败: ' + (err ? err.message || JSON.stringify(err) : ''));
       console.log('[AdSystem] 尝试重新加载广告...');
+      debugLog('[AdSystem] 尝试重新加载广告...');
       
       // 广告未加载完成，尝试加载后再播放
       rewardedVideoAd.load()
         .then(function () { 
           console.log('[AdSystem] ✅ reload() 成功，再次调用 show()');
+          debugLog('[AdSystem] ✅ reload() 成功，再次调用 show()');
           return rewardedVideoAd.show(); 
         })
         .then(function() {
           console.log('[AdSystem] ✅ reload 后的 show() 成功');
+          debugLog('[AdSystem] ✅ reload 后的 show() 成功');
         })
         .catch(function (err) {
           console.error('[AdSystem] ❌ reload 或 show 失败:', err);
           console.error('[AdSystem] 最终失败，显示"暂无广告"');
+          debugLog('[AdSystem] ❌ 最终失败: ' + (err ? err.message || JSON.stringify(err) : ''));
+          debugLog('[AdSystem] 显示"暂无广告"');
           isAdLoading = false;
           
           // 恢复按钮状态
@@ -18036,11 +18080,15 @@ function showRewardedVideoAd() {
           showToast('暂无广告，请稍后再试');
         });
     });
-  console.log('----------------------------------------');
+  console.log(divider);
+  debugLog(divider);
 }
 
 // 发放奖励
 function giveRecruitAdReward() {
+  console.log('[AdSystem] giveRecruitAdReward 开始发放奖励');
+  debugLog('[AdSystem] 开始发放奖励');
+  
   const today = new Date().toDateString();
   G.recruitAdData.lastAdDate = today;
   G.recruitAdData.dailyWatchCount += 1;
@@ -18050,12 +18098,16 @@ function giveRecruitAdReward() {
   if (G.recruitAdData.dailyWatchCount >= 30 && !G.recruitAdData.todayIsUnlocked) {
     G.recruitAdData.todayIsUnlocked = true;
     shouldExecute = true;
+    console.log('[AdSystem] 🎉 今日已解锁无限使用');
+    debugLog('[AdSystem] 🎉 今日解锁无限使用');
     window.tap.showToast({
       title: '🎉 今日已免费解锁无限使用！',
       icon: 'success'
     });
   } else {
     shouldExecute = true;
+    console.log('[AdSystem] ✅ 获得 5 次使用次数');
+    debugLog('[AdSystem] ✅ 获得 5 次使用次数');
     window.tap.showToast({
       title: '✅ 获得 5 次一键招募使用次数！',
       icon: 'success'
