@@ -3562,7 +3562,8 @@ const OMENS = {
     color: '#888',
     weight: 70,
     desc: '无特殊效果',
-    effects: {}
+    effects: {},
+    battle: { playerBonus: 0, enemyBonus: 0, goldDrop: 0, expDrop: 0, desc: '无影响' }
   },
   silverMoon: {
     id: 'silverMoon',
@@ -3570,8 +3571,9 @@ const OMENS = {
     icon: '🌙',
     color: '#c0c0c0',
     weight: 20,
-    desc: '变异概率+5%',
-    effects: { mutationChance: 0.05 }
+    desc: '变异概率+5%，战斗经验+15%，金币掉落+10%',
+    effects: { mutationChance: 0.05 },
+    battle: { playerBonus: 0, enemyBonus: 0, goldDrop: 0.10, expDrop: 0.15, desc: '🌙 银月加成: 经验+15%, 金币+10%' }
   },
   bloodMoon: {
     id: 'bloodMoon',
@@ -3579,8 +3581,9 @@ const OMENS = {
     icon: '🔥',
     color: '#dc2626',
     weight: 9,
-    desc: '变异概率+15%，异变英雄攻击+10%',
-    effects: { mutationChance: 0.15, atkBonus: 0.10 }
+    desc: '变异概率+15%，敌人攻击+10%，但掉落+20%，暴击+5%',
+    effects: { mutationChance: 0.15, atkBonus: 0.10 },
+    battle: { playerBonus: 0.05, enemyBonus: 0.10, goldDrop: 0.20, expDrop: 0, critBonus: 0.05, desc: '🔥 血月: 敌人+10%, 掉落+20%, 暴击+5%' }
   },
   comet: {
     id: 'comet',
@@ -3588,8 +3591,9 @@ const OMENS = {
     icon: '☄️',
     color: '#f59e0b',
     weight: 1,
-    desc: '必定异变+技能变异，属性额外+15%',
-    effects: { forceMutation: true, forceSkillMutate: true, statBonus: 0.15 }
+    desc: '必定异变+技能变异，属性额外+15%，全属性+8%',
+    effects: { forceMutation: true, forceSkillMutate: true, statBonus: 0.15 },
+    battle: { playerBonus: 0.08, enemyBonus: 0.05, goldDrop: 0.30, expDrop: 0.25, desc: '☄️ 彗星: 全属性+8%, 掉落+30%, 经验+25%' }
   }
 };
 
@@ -5674,10 +5678,16 @@ const HERO_BONDS = [
 ];
 
 // 检测当前编队的激活羁绊
-function detectActiveBonds(teamHeroes){
+function detectActiveBonds(teamHeroes, useSlots){
   var activeBonds=[];
+  var slotFilter = null;
+  if(useSlots && G.bondSlots){
+    slotFilter = G.bondSlots.filter(function(s){return s !== null;});
+  }
   for(var i=0;i<HERO_BONDS.length;i++){
     var bond=HERO_BONDS[i];
+    // 如果使用槽位模式，只处理槽位中的羁绊
+    if(slotFilter && slotFilter.indexOf(bond.id) === -1) continue;
     var count=0;
     if(bond.check==='role'){
       count=teamHeroes.filter(function(h){return h.role===bond.key;}).length;
@@ -6393,6 +6403,8 @@ let G = {
   dailyScrollShopDate: '',       // 商店刷新日期
   // 自动分解系统
   autoDecompose: { enabled: false, maxQuality: 'common' }, // 自动分解设置
+  // 羁绊槽位系统
+  bondSlots: [null, null, null], // 3个羁绊激活槽位，存储 bond.id
 };
 
 // ==================== 存档系统 V5（无损序列化 + IndexedDB 为主存储） ====================
@@ -11843,11 +11855,27 @@ async function runBattle(stageOrId){
 
   // 羁绊系统（通关20关后才生效）
   window._battleBondEffects=[];
-  var activeBonds=detectActiveBonds(teamHeroes);
+  var activeBonds=detectActiveBonds(teamHeroes, true); // 使用槽位模式
   var bondUnlocked=G.stageProgress>20;
   if(bondUnlocked){
     applyBondEffects(playerUnits,activeBonds);
   }
+
+  // 天象战斗效果
+  var currentOmen = getCurrentOmen();
+  var omenBattle = currentOmen.battle || {};
+  if(omenBattle.playerBonus){
+    playerUnits.forEach(function(u){
+      u.maxHP=Math.floor(u.maxHP*(1+omenBattle.playerBonus));
+      u.hp=Math.floor(u.hp*(1+omenBattle.playerBonus));
+      u.atk=Math.floor(u.atk*(1+omenBattle.playerBonus));
+      u.def=Math.floor(u.def*(1+omenBattle.playerBonus));
+    });
+  }
+  if(omenBattle.critBonus){
+    playerUnits.forEach(function(u){ u.critChance=Math.min(0.95,(u.critChance||0)+omenBattle.critBonus); });
+  }
+  window._battleOmenBonus = omenBattle;
 
   // 敌方单位：若为生肖 Boss 战则使用预构造的 units，否则按 stage.enemies 构造
   let enemyUnits;
@@ -11898,6 +11926,15 @@ async function runBattle(stageOrId){
         unit._talentCount = Object.keys(et).length;
       }
       return unit;
+    });
+  }
+  // 天象对敌人的加成
+  if(omenBattle.enemyBonus){
+    enemyUnits.forEach(function(u){
+      u.maxHP=Math.floor(u.maxHP*(1+omenBattle.enemyBonus));
+      u.hp=Math.floor(u.hp*(1+omenBattle.enemyBonus));
+      u.atk=Math.floor(u.atk*(1+omenBattle.enemyBonus));
+      u.def=Math.floor(u.def*(1+omenBattle.enemyBonus));
     });
   }
   // 生肖战：对敌方单位也进行 team 天赋聚合（与玩家侧处理一致）
@@ -12191,6 +12228,9 @@ async function runBattle(stageOrId){
 
   renderTeams();
   log('⚔️ 战斗开始！','title');
+  if(currentOmen && currentOmen.id !== 'normal' && omenBattle.desc){
+    log('📢 天象加成: ' + omenBattle.desc, 'omen');
+  }
   await sleep(600);
 
   let round=0;
@@ -12760,7 +12800,9 @@ async function runBattle(stageOrId){
     teamHeroes.forEach(h=>{if(h.traits) h.traits.forEach(t=>{if(t.id==='lucky')luckyBonus+=0.15})});
     
     // 奖励受资源上限约束 + 连胜加成 + 幸运加成
-    var totalBonus=streakBonus*luckyBonus;
+    var omenDropBonus = 1 + (window._battleOmenBonus && window._battleOmenBonus.goldDrop ? window._battleOmenBonus.goldDrop : 0);
+    var omenExpBonus = 1 + (window._battleOmenBonus && window._battleOmenBonus.expDrop ? window._battleOmenBonus.expDrop : 0);
+    var totalBonus=streakBonus*luckyBonus*omenDropBonus;
     var finalGold=Math.floor((rw.gold||0)*totalBonus);
     var finalFood=Math.floor((rw.food||0)*totalBonus);
     var finalStone=Math.floor((rw.stone||0)*totalBonus);
@@ -12786,12 +12828,12 @@ async function runBattle(stageOrId){
     teamHeroes.forEach(h=>{
       var expBonus=1;
       if(h.traits) h.traits.forEach(t=>{if(t.id==='tactician')expBonus+=0.20});
-      addHeroExp(h,Math.floor((rw.exp||0)*expBonus));
+      addHeroExp(h,Math.floor((rw.exp||0)*expBonus*omenExpBonus));
     });
     
     // 经验药水掉落（概率随关卡提升）
     var potionDrop=0;
-    var potionChance=0.25+stage.id*0.03; // 基础25%，每关+3%
+    var potionChance=(0.25+stage.id*0.03)*omenExpBonus; // 基础25%，每关+3%
     if(Math.random()<potionChance){
       potionDrop=Math.floor((20+stage.id*5)*totalBonus);
       G.resources.expPotion=Math.min((G.resources.expPotion||0)+potionDrop,RESOURCE_LIMITS.expPotion);
@@ -19493,6 +19535,60 @@ function clearTeam(){
   showToast('队伍已清空');
 }
 
+// 切换羁绊槽位
+function toggleBondSlot(slotIndex){
+  var currentId = G.bondSlots[slotIndex];
+  var teamH = G.team.filter(function(t){return t!==null;});
+  var typeColors={role:'#4a9eff',theme:'#a855f7',fun:'#f59e0b'};
+  // 获取所有可用的羁绊（已满足条件的）
+  var availableBonds = [];
+  for(var i=0;i<HERO_BONDS.length;i++){
+    var bond=HERO_BONDS[i];
+    var count=0;
+    if(bond.check==='role'){
+      count=teamH.filter(function(h){return h.role===bond.key;}).length;
+    } else if(bond.checkFn){
+      count=bond.checkFn(teamH);
+    }
+    for(var t=0;t<bond.thresholds.length;t++){
+      if(count>=bond.thresholds[t].need){
+        availableBonds.push(bond);
+        break;
+      }
+    }
+  }
+  if(availableBonds.length===0){showToast('没有可用的羁绊');return;}
+
+  // 如果当前槽位有羁绊，先清空
+  if(currentId){
+    G.bondSlots[slotIndex]=null;
+    saveGame();
+    renderTeam();
+    return;
+  }
+
+  // 弹出选择菜单
+  var optionsHtml = availableBonds.map(function(b){
+    var typeColor = typeColors[b.type]||'#888';
+    var alreadySlotted = G.bondSlots.indexOf(b.id)>=0;
+    return '<div style="padding:8px 12px;border-radius:6px;cursor:'+(alreadySlotted?'not-allowed':'pointer')+';border:1px solid '+typeColor+'33;background:'+(alreadySlotted?'rgba(255,255,255,.02)':typeColor+'10')+';margin-bottom:4px;opacity:'+(alreadySlotted?'0.4':'1')+'" '+(alreadySlotted?'':'onclick="selectBondSlot('+slotIndex+',\''+b.id+'\')"')+'>'+b.icon+' '+b.name+(alreadySlotted?' (已装备)':'')+'</div>';
+  }).join('');
+
+  openModal('<div class="panel" style="max-width:300px">'
+    +'<div class="panel-title">选择羁绊 #'+(slotIndex+1)+'</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:8px">点击槽位可清空已装备的羁绊</div>'
+    +optionsHtml
+    +'</div>');
+}
+
+function selectBondSlot(slotIndex, bondId){
+  G.bondSlots[slotIndex] = bondId;
+  saveGame();
+  closeModal();
+  renderTeam();
+  showToast('已装备羁绊');
+}
+
 // 渲染羁绊预览面板
 function renderBondPreview(team){
   var teamH=team.filter(function(t){return t!==null;});
@@ -19525,6 +19621,23 @@ function renderBondPreview(team){
   var html='<div class="panel"><div class="panel-title"><span class="icon">🔗</span> 英雄羁绊'
     +(bonds.length>0?' <span style="font-size:11px;color:var(--green);font-weight:normal">('+bonds.length+'激活)</span>':'')
     +'</div>';
+
+  // 羁绊槽位选择UI
+  var activeSlotBonds = G.bondSlots.filter(function(s){return s!==null;});
+  html+='<div style="margin-bottom:10px;padding:8px;background:rgba(255,255,255,.03);border-radius:6px">';
+  html+='<div style="font-size:11px;color:var(--text2);margin-bottom:6px">🔗 羁绊槽位 ('+activeSlotBonds.length+'/3) — 战斗中激活的羁绊</div>';
+  html+='<div style="display:flex;gap:6px;margin-bottom:6px">';
+  for(var si=0;si<3;si++){
+    var slotBondId = G.bondSlots[si];
+    var slotBond = slotBondId ? HERO_BONDS.find(function(b){return b.id===slotBondId;}) : null;
+    var slotColor = slotBond ? (typeColors[slotBond.type]||'#888') : 'rgba(255,255,255,.15)';
+    html+='<div style="flex:1;padding:6px;border-radius:6px;border:1px dashed '+slotColor+';text-align:center;font-size:11px;color:'+(slotBond?slotColor:'var(--text3)')+';cursor:pointer;min-height:40px;display:flex;align-items:center;justify-content:center" onclick="toggleBondSlot('+si+')">'
+      +(slotBond ? slotBond.icon+' '+slotBond.name : '空槽位')
+      +'</div>';
+  }
+  html+='</div>';
+  html+='<div style="font-size:10px;color:var(--text3)">点击槽位切换羁绊，最多激活3个</div>';
+  html+='</div>';
 
   // 激活的羁绊高亮展示
   if(bonds.length>0){
@@ -19864,6 +19977,7 @@ function renderMerge(el){
   if(!G.mergeScrolls) G.mergeScrolls=[];
   if(!G.resources) G.resources={gold:0,gems:0};
   if(!G.autoDecompose) G.autoDecompose={enabled:false,maxQuality:'common'};
+  if(!G.bondSlots) G.bondSlots=[null,null,null];
   var heroCount=G.heroes.length;
   // 清理无效的融合槽位引用（英雄已被移除的情况）
   // 注意：使用 Array.some 进行宽松类型比较，避免字符串/数字 uid 不匹配
@@ -20150,6 +20264,7 @@ function renderMerge(el){
           +'<span style="font-size:11px;color:var(--text3);background:rgba(0,0,0,.3);padding:2px 8px;border-radius:10px">⏱️ '+formatOmenTime(remaining)+'</span>'
           +'</div>'
           +'<div style="font-size:12px;color:var(--text2)">'+omen.desc+'</div>'
+          +(omen.battle && omen.battle.desc && omen.id !== 'normal' ? '<div style="font-size:11px;color:'+omen.color+';margin-top:3px">'+omen.battle.desc+'</div>' : '')
           +'</div>'
           +'</div>'
           +'<div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,'+omen.color+',transparent);opacity:.5"></div>'
@@ -23359,11 +23474,25 @@ function rlOnBattleWin(savedTeam, savedHeroes, floorData) {
   if(gemReward > 0){
     G.resources.gems = Math.min((G.resources.gems||0) + gemReward, RESOURCE_LIMITS.gems||999999);
   }
-  updateResUI();
-  // Toast提示（避免每层都弹，只在有宝石或Boss时提示）
-  if(floorData.isBoss || gemReward > 0){
-    showToast('🎲 第'+floor+'层通关！获得 💰'+goldReward+(gemReward>0?' 💎'+gemReward:''));
+
+  // 经验药水奖励（每层都有，Boss层额外）
+  var potionReward = Math.floor((10 + floor * 3) * progressScale);
+  if(floorData.isBoss) potionReward = Math.floor(potionReward * 2);
+  G.resources.expPotion = Math.min((G.resources.expPotion||0) + potionReward, RESOURCE_LIMITS.expPotion||999999);
+
+  // 矿石奖励（每5层给一次）
+  var oreReward = 0;
+  if(floor % 5 === 0){
+    oreReward = Math.floor((5 + floor * 2) * progressScale);
+    G.resources.iron = Math.min((G.resources.iron||0) + oreReward, RESOURCE_LIMITS.iron||999999);
   }
+
+  updateResUI();
+  // Toast提示
+  var rewardText = '💰'+goldReward + ' 🧪'+potionReward;
+  if(gemReward > 0) rewardText += ' 💎'+gemReward;
+  if(oreReward > 0) rewardText += ' ⛏️'+oreReward;
+  showToast('🎲 第'+floor+'层通关！获得 '+rewardText);
 
   // ── 肉鸽卷轴掉落（概率不高，深层品质更高） ──
   var scrollDropChance = 0.08 + floor * 0.004; // 基础8%，每层+0.4%，第30层约20%
