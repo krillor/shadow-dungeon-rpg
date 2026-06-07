@@ -14646,11 +14646,20 @@ function rollMergeAccident(hero, materials) {
   
   switch(type) {
     case 'explosion':
-      // 材料消失，获得碎片
-      if (!G.mergeFragments) G.mergeFragments = 0;
-      G.mergeFragments += materials.length;
+      // 材料消失，获得突破材料
+      if (!G.breakthroughMaterials) G.breakthroughMaterials = {rare:0,epic:0,legendary:0,mythic:0,hidden:0};
+      // 根据材料最高品质决定获得的突破材料品质
+      var maxQ = materials.reduce(function(best, h) {
+        var qi = QUALITIES.indexOf(h.quality);
+        return qi > best ? qi : best;
+      }, 0);
+      // 映射品质：common→rare, rare→epic, epic→legendary, legendary→mythic, mythic→hidden
+      var matKeys = ['rare','epic','legendary','mythic','hidden'];
+      var matKey = matKeys[Math.min(maxQ, matKeys.length - 1)];
+      var matCount = materials.length;
+      G.breakthroughMaterials[matKey] = (G.breakthroughMaterials[matKey] || 0) + matCount;
       result.hero = null; // 英雄消失
-      result.message = '💥 合成事件！材料炸裂，获得 ' + materials.length + ' 个碎片（共' + G.mergeFragments + '个）';
+      result.message = '💥 合成事件！材料炸裂，获得 ' + matCount + ' 个' + matKey + '突破材料';
       break;
     case 'timewarp':
       // ATK和DEF互换，HP和SPD互换
