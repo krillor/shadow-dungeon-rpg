@@ -17804,6 +17804,8 @@ function recruitAllHeroes(minQuality){
 // ==================== 激励视频广告系统（一键招募） ====================
 var rewardedVideoAd = null;
 var G_pendingRecruitQuality = null; // 待执行的品质筛选
+var isAdLoading = false; // 广告加载中状态（防止重复点击）
+var isAdLoaded = false; // 广告是否已加载就绪
 
 // 初始化广告系统
 function initAdSystem() {
@@ -17822,10 +17824,22 @@ function initAdSystem() {
       createRewardedVideoAd: function (cfg) {
         console.log('[AdSystem] 创建模拟激励广告:', cfg.adUnitId);
         return {
-          onLoad: function (cb) { setTimeout(cb, 200); },
+          onLoad: function (cb) { 
+            setTimeout(function() {
+              isAdLoaded = true;
+              cb();
+            }, 200); 
+          },
           onError: function (cb) { },
           onClose: function (cb) { this.closeCb = cb; },
-          load: function () { return Promise.resolve(); },
+          load: function () { 
+            return new Promise(function(resolve) {
+              setTimeout(function() {
+                isAdLoaded = true;
+                resolve();
+              }, 300);
+            }); 
+          },
           show: function () {
             const self = this;
             return new Promise(function (resolve, reject) {
@@ -17836,7 +17850,7 @@ function initAdSystem() {
                   self.closeCb && self.closeCb({ isEnded: false });
                 }
                 resolve();
-              }, 500);
+              }, 300);
             });
           }
         };
@@ -17853,38 +17867,64 @@ function initAdSystem() {
   // 监听广告加载成功
   rewardedVideoAd.onLoad(function () {
     console.log('[AdSystem] 激励视频广告加载成功');
+    isAdLoaded = true;
+    isAdLoading = false;
   });
 
   // 监听广告加载失败
   rewardedVideoAd.onError(function (err) {
     console.log('[AdSystem] 激励视频广告加载失败', err);
+    isAdLoaded = false;
+    isAdLoading = false;
+    showToast('广告加载失败，请稍后再试');
   });
 
   // 监听广告关闭
   rewardedVideoAd.onClose(function (res) {
+    isAdLoading = false;
     if (res && res.isEnded) {
       giveRecruitAdReward();
     } else {
-      window.tap.showToast({
-        title: '观看完整视频才能获得奖励哦',
-        icon: 'none'
-      });
+      showToast('观看完整视频才能获得奖励哦');
     }
+  });
+
+  // 自动预加载广告
+  console.log('[AdSystem] 开始预加载广告...');
+  rewardedVideoAd.load().catch(function(err) {
+    console.log('[AdSystem] 预加载广告失败', err);
   });
 }
 
 // 播放激励视频广告获取一键招募使用次数
 function showRewardedVideoAd() {
+  // 防止重复点击
+  if (isAdLoading) {
+    showToast('广告正在加载中，请稍候...');
+    return;
+  }
+
+  isAdLoading = true;
+  showToast('正在加载广告...');
+
+  // 尝试展示广告
   rewardedVideoAd.show()
+    .then(function() {
+      console.log('[AdSystem] 广告展示成功');
+    })
     .catch(function (err) {
+      console.log('[AdSystem] 广告展示失败，尝试重新加载', err);
+      
       // 广告未加载完成，尝试加载后再播放
       rewardedVideoAd.load()
-        .then(function () { return rewardedVideoAd.show(); })
+        .then(function () { 
+          console.log('[AdSystem] 广告重新加载成功，开始展示');
+          return rewardedVideoAd.show(); 
+        })
         .catch(function (err) {
-          window.tap.showToast({
-            title: '暂无广告，请稍后再试',
-            icon: 'none'
-          });
+          console.log('[AdSystem] 广告加载或展示失败', err);
+          isAdLoading = false;
+          showToast('暂无广告，请稍后再试');
         });
     });
 }
@@ -17972,10 +18012,21 @@ function showRecruitAdDialog(pendingQuality){
     html += '<div style="color:var(--purple)">' + (30 - G.recruitAdData.dailyWatchCount) + ' 次后解锁今日无限使用</div>';
   }
   html += '</div>';
-  html += '<button class="btn btn-primary" style="width:100%" onclick="showRewardedVideoAd()">📺 观看广告获取权限</button>';
+  html += '<button id="ad-watch-btn" class="btn btn-primary" style="width:100%" onclick="handleWatchAdClick()">📺 观看广告获取权限</button>';
   html += '<button class="btn" style="width:100%;margin-top:8px" onclick="closeModal()">取消</button>';
   html += '</div>';
   showModal('⚡ 一键招募', html);
+}
+
+// 处理观看广告按钮点击（防止重复点击+按钮状态）
+function handleWatchAdClick() {
+  var btn = document.getElementById('ad-watch-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ 广告加载中...';
+    btn.style.opacity = '0.7';
+  }
+  showRewardedVideoAd();
 }
 
 // 验证密码
