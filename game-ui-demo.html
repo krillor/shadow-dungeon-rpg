@@ -9,91 +9,169 @@
     
     body {
       font-family: 'Segoe UI', system-ui, sans-serif;
-      background: #1a1a2e;
+      background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
       color: #eee;
       min-height: 100vh;
     }
 
-    header {
-      background: linear-gradient(135deg, #16213e, #0f3460);
-      padding: 2rem;
-      text-align: center;
+    /* 背景纹理 */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      opacity: 0.03;
+      pointer-events: none;
+      z-index: 0;
     }
 
-    header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
-    header p { color: #94a3b8; }
+    header {
+      background: linear-gradient(180deg, #1e2a4a 0%, #151d33 100%);
+      padding: 2.5rem 2rem;
+      text-align: center;
+      border-bottom: 1px solid #2a3a5a;
+      position: relative;
+      z-index: 1;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(200,180,140,0.3), transparent);
+    }
+
+    header h1 { 
+      font-size: 2rem; 
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      letter-spacing: 0.05em;
+    }
+    header p { color: #8a9ab8; font-size: 0.95rem; }
 
     .demo-section {
       max-width: 1200px;
       margin: 2rem auto;
-      padding: 0 1rem;
+      padding: 0 1.5rem;
+      position: relative;
+      z-index: 1;
     }
 
     .section-title {
-      font-size: 1.25rem;
-      margin-bottom: 1rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 2px solid #e94560;
+      font-size: 1.1rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid #2a3a5a;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.75rem;
+      color: #c8b896;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
     }
 
     .section-title::before {
       content: '';
-      width: 4px;
-      height: 1.25rem;
-      background: #e94560;
+      width: 3px;
+      height: 1.1rem;
+      background: linear-gradient(180deg, #c8a96e, #8b7355);
       border-radius: 2px;
     }
 
     /* Kenney Assets Grid */
     .assets-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
       gap: 1rem;
       margin-bottom: 2rem;
     }
 
     .asset-card {
-      background: #16213e;
-      border-radius: 12px;
+      background: linear-gradient(145deg, #1e2a4a 0%, #162038 100%);
+      border-radius: 6px;
       padding: 1rem;
       text-align: center;
-      transition: transform 0.2s, box-shadow 0.2s;
+      border: 1px solid #2a3a5a;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .asset-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(200,169,110,0.2), transparent);
     }
 
     .asset-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 8px 24px rgba(233, 69, 96, 0.2);
+      transform: translateY(-3px);
+      border-color: #c8a96e;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(200,169,110,0.1);
     }
 
     .asset-icon {
-      width: 80px;
-      height: 80px;
+      width: 72px;
+      height: 72px;
       margin: 0 auto 0.75rem;
-      background: #0f3460;
-      border-radius: 8px;
+      background: linear-gradient(145deg, #0a1020, #151d33);
+      border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 2.5rem;
+      border: 1px solid #2a3a5a;
+      position: relative;
+      overflow: hidden;
     }
 
-    .asset-name { font-size: 0.875rem; color: #94a3b8; }
+    .asset-icon::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.05), transparent 60%);
+    }
+
+    .asset-icon svg {
+      width: 40px;
+      height: 40px;
+      fill: #c8a96e;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+
+    .asset-name { 
+      font-size: 0.85rem; 
+      color: #8a9ab8;
+      margin-bottom: 0.25rem;
+    }
     .asset-source { 
-      font-size: 0.75rem; 
-      color: #e94560; 
-      margin-top: 0.25rem;
+      font-size: 0.7rem; 
+      color: #c8a96e;
+      font-weight: 500;
+      letter-spacing: 0.05em;
     }
 
     /* Game UI Mockup */
     .ui-mockup {
-      background: #0f3460;
-      border-radius: 16px;
+      background: linear-gradient(145deg, #1a2235 0%, #141b2d 100%);
+      border-radius: 8px;
       padding: 1.5rem;
       position: relative;
-      overflow: hidden;
+      border: 1px solid #2a3a5a;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03);
     }
 
     .game-hud {
@@ -106,7 +184,7 @@
     .hud-left, .hud-right {
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: 0.4rem;
     }
 
     .hud-center {
@@ -117,78 +195,184 @@
     }
 
     .stat-bar {
-      background: #1a1a2e;
-      border-radius: 8px;
-      padding: 0.5rem 1rem;
+      background: linear-gradient(180deg, #0a0f18 0%, #121825 100%);
+      border-radius: 4px;
+      padding: 0.4rem 0.75rem;
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      min-width: 160px;
+      gap: 0.6rem;
+      min-width: 180px;
+      border: 1px solid #1e2a3a;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
     }
 
-    .stat-icon { font-size: 1.25rem; }
+    .stat-icon { 
+      width: 18px; 
+      height: 18px;
+      flex-shrink: 0;
+    }
+    .stat-icon svg {
+      width: 100%;
+      height: 100%;
+    }
 
     .stat-track {
       flex: 1;
-      height: 12px;
-      background: #16213e;
-      border-radius: 6px;
+      height: 8px;
+      background: linear-gradient(180deg, #0a0f18 0%, #151d2a 100%);
+      border-radius: 4px;
       overflow: hidden;
+      border: 1px solid #1a2535;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
     }
 
     .stat-fill {
       height: 100%;
-      border-radius: 6px;
-      transition: width 0.3s;
+      border-radius: 3px;
+      transition: width 0.5s ease;
+      position: relative;
+      box-shadow: inset 0 -2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
     }
 
-    .stat-fill.hp { background: linear-gradient(90deg, #e94560, #ff6b6b); width: 75%; }
-    .stat-fill.mp { background: linear-gradient(90deg, #4ecdc4, #44a3aa); width: 60%; }
-    .stat-fill.exp { background: linear-gradient(90deg, #f39c12, #f1c40f); width: 45%; }
+    .stat-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.15), transparent);
+      border-radius: 3px 3px 0 0;
+    }
+
+    .stat-fill.hp { 
+      background: linear-gradient(180deg, #e05555 0%, #b83838 50%, #8a2a2a 100%); 
+      width: 75%; 
+    }
+    .stat-fill.mp { 
+      background: linear-gradient(180deg, #4a9ec8 0%, #3888b0 50%, #286888 100%); 
+      width: 60%; 
+    }
+    .stat-fill.exp { 
+      background: linear-gradient(180deg, #c8a020 0%, #a88018 50%, #886010 100%); 
+      width: 45%; 
+    }
+
+    .stat-value {
+      font-size: 0.75rem;
+      color: #8a9ab8;
+      font-weight: 500;
+      min-width: 50px;
+      text-align: right;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
 
     .gold-display {
-      background: linear-gradient(135deg, #f39c12, #d68910);
-      border-radius: 8px;
-      padding: 0.5rem 1rem;
-      font-weight: bold;
+      background: linear-gradient(180deg, #c8a020 0%, #a88018 50%, #886010 100%);
+      border-radius: 4px;
+      padding: 0.4rem 1rem;
+      font-weight: 600;
+      font-size: 0.9rem;
       color: #1a1a2e;
+      border: 1px solid #e0b830;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .gold-display svg {
+      width: 16px;
+      height: 16px;
+      fill: #1a1a2e;
+    }
+
+    .time-display {
+      background: linear-gradient(180deg, #1e2a4a 0%, #162038 100%);
+      border-radius: 4px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.8rem;
+      color: #c8b896;
+      border: 1px solid #2a3a5a;
+      font-weight: 500;
+    }
+
+    .level-display {
+      background: linear-gradient(180deg, #2a3a5a 0%, #1e2a4a 100%);
+      border-radius: 4px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.8rem;
+      color: #c8a96e;
+      border: 1px solid #3a4a6a;
+      font-weight: 600;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
     }
 
     /* Action Buttons */
     .action-bar {
       display: flex;
       justify-content: center;
-      gap: 1rem;
+      gap: 0.75rem;
       flex-wrap: wrap;
     }
 
     .action-btn {
-      width: 64px;
-      height: 64px;
-      background: linear-gradient(145deg, #16213e, #1a1a2e);
-      border: 2px solid #4ecdc4;
-      border-radius: 12px;
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(145deg, #1e2a4a 0%, #151d33 100%);
+      border: 2px solid #2a3a5a;
+      border-radius: 6px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.75rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+
+    .action-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
+      pointer-events: none;
     }
 
     .action-btn:hover {
-      background: #4ecdc4;
-      transform: scale(1.1);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.5);
     }
 
     .action-btn:active {
-      transform: scale(0.95);
+      transform: translateY(0);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
     }
 
-    .action-btn.skill-1 { border-color: #e94560; }
-    .action-btn.skill-2 { border-color: #f39c12; }
-    .action-btn.skill-3 { border-color: #9b59b6; }
-    .action-btn.skill-4 { border-color: #3498db; }
+    .action-btn svg {
+      width: 28px;
+      height: 28px;
+      fill: #8a9ab8;
+      transition: fill 0.2s;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+    }
+
+    .action-btn:hover svg {
+      fill: #c8b896;
+    }
+
+    .action-btn.skill-1 { border-color: #8a3030; }
+    .action-btn.skill-1:hover { border-color: #b84040; box-shadow: 0 6px 16px rgba(180,60,60,0.3); }
+    .action-btn.skill-2 { border-color: #8a6030; }
+    .action-btn.skill-2:hover { border-color: #b88040; box-shadow: 0 6px 16px rgba(180,120,60,0.3); }
+    .action-btn.skill-3 { border-color: #304080; }
+    .action-btn.skill-3:hover { border-color: #4060b0; box-shadow: 0 6px 16px rgba(60,100,180,0.3); }
+    .action-btn.skill-4 { border-color: #505080; }
+    .action-btn.skill-4:hover { border-color: #7070b0; box-shadow: 0 6px 16px rgba(100,100,180,0.3); }
 
     /* Resource Links */
     .resource-links {
@@ -199,30 +383,62 @@
     }
 
     .resource-card {
-      background: #16213e;
-      border-radius: 12px;
-      padding: 1.5rem;
-      border-left: 4px solid;
+      background: linear-gradient(145deg, #1a2235 0%, #141b2d 100%);
+      border-radius: 6px;
+      padding: 1.25rem;
+      border: 1px solid #2a3a5a;
+      position: relative;
+      transition: border-color 0.3s;
     }
 
-    .resource-card.kenney { border-color: #4ecdc4; }
-    .resource-card.opengameart { border-color: #f39c12; }
-    .resource-card.others { border-color: #9b59b6; }
+    .resource-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3px;
+      height: 100%;
+      border-radius: 3px 0 0 3px;
+    }
 
-    .resource-card h3 { margin-bottom: 0.5rem; }
-    .resource-card p { color: #94a3b8; font-size: 0.875rem; margin-bottom: 0.75rem; }
+    .resource-card.kenney::before { background: linear-gradient(180deg, #4a9ec8, #286888); }
+    .resource-card.opengameart::before { background: linear-gradient(180deg, #c8a020, #886010); }
+    .resource-card.others::before { background: linear-gradient(180deg, #8060a0, #504070); }
+
+    .resource-card:hover { border-color: #3a4a6a; }
+
+    .resource-card h3 { 
+      margin-bottom: 0.5rem; 
+      font-size: 1rem;
+      font-weight: 600;
+      color: #c8b896;
+    }
+    .resource-card p { color: #6a7a9a; font-size: 0.85rem; margin-bottom: 0.75rem; line-height: 1.5; }
     .resource-card a {
-      color: #4ecdc4;
+      color: #6a9ac8;
       text-decoration: none;
-      font-size: 0.875rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      transition: color 0.2s;
     }
-    .resource-card a:hover { text-decoration: underline; }
+    .resource-card a:hover { color: #8abad8; }
+    .resource-card a::after {
+      content: '→';
+      font-size: 0.9em;
+    }
 
     footer {
       text-align: center;
-      padding: 2rem;
-      color: #64748b;
-      font-size: 0.875rem;
+      padding: 2.5rem;
+      color: #4a5a7a;
+      font-size: 0.8rem;
+      border-top: 1px solid #1e2a4a;
+      margin-top: 2rem;
+      position: relative;
+      z-index: 1;
     }
   </style>
 </head>
@@ -238,42 +454,58 @@
       <h2 class="section-title">Kenney Assets 素材预览</h2>
       <div class="assets-grid">
         <div class="asset-card">
-          <div class="asset-icon">⚔️</div>
+          <div class="asset-icon">
+            <svg viewBox="0 0 24 24"><path d="M6.92 5L5 7l6 6-6 6 1.92 2L14 14l2 2 1.92-2-2-2 2-2-2-2-2-2L6.92 5zM15 5l-2 2 2 2-2 2 2 2 2-2-2-2 2-2-2-2z"/></svg>
+          </div>
           <div class="asset-name">RPG Pack</div>
           <div class="asset-source">Kenney</div>
         </div>
         <div class="asset-card">
-          <div class="asset-icon">🏰</div>
+          <div class="asset-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18l6.9 3.45L12 11.09 5.1 7.63 12 4.18zM4 8.82l7 3.5v7.86l-7-3.5V8.82zm9 11.36v-7.86l7-3.5v7.86l-7 3.5z"/></svg>
+          </div>
           <div class="asset-name">Dungeon Pack</div>
           <div class="asset-source">Kenney</div>
         </div>
         <div class="asset-card">
-          <div class="asset-icon">🗡️</div>
+          <div class="asset-icon">
+            <svg viewBox="0 0 24 24"><path d="M14.5 2.5L12 5 9.5 2.5 8 4l3 3-8 8v5h5l8-8 3 3 1.5-1.5L14.5 2.5zM5 19v2h2v-2H5zm4 0v2h2v-2H9z"/></svg>
+          </div>
           <div class="asset-name">Weapons Pack</div>
           <div class="asset-source">Kenney</div>
         </div>
         <div class="asset-card">
-          <div class="asset-icon">👤</div>
+          <div class="asset-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 2C9.24 2 7 4.24 7 7c0 1.18.41 2.27 1.1 3.13L6 14h12l-2.1-3.87C16.59 9.27 17 8.18 17 7c0-2.76-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zM6 16v4h12v-4H6zm1 1h10v2H7v-2zm0 3h10v2H7v-2z"/></svg>
+          </div>
           <div class="asset-name">Character Sprites</div>
           <div class="asset-source">Kenney</div>
         </div>
         <div class="asset-card">
-          <div class="asset-icon">🛡️</div>
+          <div class="asset-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+          </div>
           <div class="asset-name">Armor Icons</div>
           <div class="asset-source">Kenney</div>
         </div>
         <div class="asset-card">
-          <div class="asset-icon">💎</div>
+          <div class="asset-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71L12 2zm0 3.79L16.21 18 12 16.25 7.79 18 12 5.79z"/></svg>
+          </div>
           <div class="asset-name">Gem Icons</div>
           <div class="asset-source">Kenney</div>
         </div>
         <div class="asset-card">
-          <div class="asset-icon">🗺️</div>
+          <div class="asset-icon">
+            <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
+          </div>
           <div class="asset-name">Tile Maps</div>
           <div class="asset-source">Kenney</div>
         </div>
         <div class="asset-card">
-          <div class="asset-icon">📦</div>
+          <div class="asset-icon">
+            <svg viewBox="0 0 24 24"><path d="M3 3v18h18V3H3zm8 16H5v-6h6v6zm0-8H5V5h6v6zm8 8h-6v-6h6v6zm0-8h-6V5h6v6z"/></svg>
+          </div>
           <div class="asset-name">UI Elements</div>
           <div class="asset-source">Kenney</div>
         </div>
@@ -287,45 +519,64 @@
         <div class="game-hud">
           <div class="hud-left">
             <div class="stat-bar">
-              <span class="stat-icon">❤️</span>
+              <span class="stat-icon">
+                <svg viewBox="0 0 24 24" fill="#e05555"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              </span>
               <div class="stat-track"><div class="stat-fill hp"></div></div>
-              <span>75/100</span>
+              <span class="stat-value">75/100</span>
             </div>
             <div class="stat-bar">
-              <span class="stat-icon">💧</span>
+              <span class="stat-icon">
+                <svg viewBox="0 0 24 24" fill="#4a9ec8"><path d="M12 2c-5.33 4.55-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2c0-3.32-2.67-7.25-8-11.8zm0 18c-3.35 0-6-2.57-6-6.2 0-2.34 1.95-5.44 6-9.14 4.05 3.7 6 6.79 6 9.14 0 3.63-2.65 6.2-6 6.2z"/></svg>
+              </span>
               <div class="stat-track"><div class="stat-fill mp"></div></div>
-              <span>60/100</span>
+              <span class="stat-value">60/100</span>
             </div>
             <div class="stat-bar">
-              <span class="stat-icon">✨</span>
+              <span class="stat-icon">
+                <svg viewBox="0 0 24 24" fill="#c8a020"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2z"/></svg>
+              </span>
               <div class="stat-track"><div class="stat-fill exp"></div></div>
-              <span>450/1000</span>
+              <span class="stat-value">450/1000</span>
             </div>
           </div>
           <div class="hud-center">
-            <div class="gold-display">💰 12,450</div>
+            <div class="gold-display">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+              12,450
+            </div>
           </div>
           <div class="hud-right">
-            <div class="stat-bar">
-              <span class="stat-icon">⏱️</span>
-              <span>02:34</span>
-            </div>
-            <div class="stat-bar">
-              <span class="stat-icon">🏆</span>
-              <span>Lv.24</span>
-            </div>
+            <div class="time-display">02:34</div>
+            <div class="level-display">Lv.24</div>
           </div>
         </div>
 
         <div class="action-bar">
-          <button class="action-btn skill-1">⚔️</button>
-          <button class="action-btn skill-2">🔥</button>
-          <button class="action-btn skill-3">❄️</button>
-          <button class="action-btn skill-4">⚡</button>
-          <button class="action-btn">🛡️</button>
-          <button class="action-btn">💊</button>
-          <button class="action-btn">🗺️</button>
-          <button class="action-btn">📋</button>
+          <button class="action-btn skill-1">
+            <svg viewBox="0 0 24 24"><path d="M6.92 5L5 7l6 6-6 6 1.92 2L14 14l2 2 1.92-2-2-2 2-2-2-2-2-2L6.92 5z"/></svg>
+          </button>
+          <button class="action-btn skill-2">
+            <svg viewBox="0 0 24 24"><path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>
+          </button>
+          <button class="action-btn skill-3">
+            <svg viewBox="0 0 24 24"><path d="M22 11h-4.17l3.24-3.24-1.41-1.42L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.42L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.42L17.83 13H22z"/></svg>
+          </button>
+          <button class="action-btn skill-4">
+            <svg viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+          </button>
+          <button class="action-btn">
+            <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+          </button>
+          <button class="action-btn">
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+          </button>
+          <button class="action-btn">
+            <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5z"/></svg>
+          </button>
+          <button class="action-btn">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+          </button>
         </div>
       </div>
     </section>
@@ -337,17 +588,17 @@
         <div class="resource-card kenney">
           <h3>Kenney.nl</h3>
           <p>超过 200 套免费游戏素材，包含 2D sprite、3D 模型、UI 元素、音频等。CC0 许可，可商用。</p>
-          <a href="https://kenney.nl/assets" target="_blank">访问 Kenney →</a>
+          <a href="https://kenney.nl/assets" target="_blank">访问 Kenney</a>
         </div>
         <div class="resource-card opengameart">
           <h3>OpenGameArt.org</h3>
           <p>开源游戏艺术资源社区，汇集全球开发者分享的 2D/3D 素材、音频、字体等。</p>
-          <a href="https://opengameart.org" target="_blank">访问 OpenGameArt →</a>
+          <a href="https://opengameart.org" target="_blank">访问 OpenGameArt</a>
         </div>
         <div class="resource-card others">
           <h3>其他推荐</h3>
           <p>Game-icons.net (图标)、Itch.io (独立游戏素材)、Libregamewiki (开源游戏合集)</p>
-          <a href="https://game-icons.net" target="_blank">Game-icons →</a>
+          <a href="https://game-icons.net" target="_blank">Game-icons</a>
         </div>
       </div>
     </section>
@@ -358,10 +609,10 @@
   </footer>
 
   <script>
-    // 简单的交互效果
+    // 按钮点击效果
     document.querySelectorAll('.action-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        btn.style.transform = 'scale(0.9)';
+        btn.style.transform = 'translateY(0) scale(0.95)';
         setTimeout(() => btn.style.transform = '', 100);
       });
     });
@@ -377,9 +628,9 @@
       document.querySelector('.stat-fill.mp').style.width = mp + '%';
       document.querySelector('.stat-fill.exp').style.width = exp + '%';
       
-      document.querySelectorAll('.stat-bar')[0].querySelector('span:last-child').textContent = Math.round(hp) + '/100';
-      document.querySelectorAll('.stat-bar')[1].querySelector('span:last-child').textContent = Math.round(mp) + '/100';
-      document.querySelectorAll('.stat-bar')[2].querySelector('span:last-child').textContent = Math.round(exp * 10) + '/1000';
+      document.querySelectorAll('.stat-value')[0].textContent = Math.round(hp) + '/100';
+      document.querySelectorAll('.stat-value')[1].textContent = Math.round(mp) + '/100';
+      document.querySelectorAll('.stat-value')[2].textContent = Math.round(exp * 10) + '/1000';
     }, 1000);
   </script>
 </body>
