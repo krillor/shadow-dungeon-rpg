@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>游戏 UI 素材 Demo - Kenney & OpenGameArt</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #16213e, #0f3460);
+      padding: 2rem;
+      text-align: center;
+    }
+
+    header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    header p { color: #94a3b8; }
+
+    .demo-section {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #e94560;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .section-title::before {
+      content: '';
+      width: 4px;
+      height: 1.25rem;
+      background: #e94560;
+      border-radius: 2px;
+    }
+
+    /* Kenney Assets Grid */
+    .assets-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .asset-card {
+      background: #16213e;
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .asset-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(233, 69, 96, 0.2);
+    }
+
+    .asset-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 0.75rem;
+      background: #0f3460;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+    }
+
+    .asset-name { font-size: 0.875rem; color: #94a3b8; }
+    .asset-source { 
+      font-size: 0.75rem; 
+      color: #e94560; 
+      margin-top: 0.25rem;
+    }
+
+    /* Game UI Mockup */
+    .ui-mockup {
+      background: #0f3460;
+      border-radius: 16px;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .game-hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+    }
+
+    .hud-left, .hud-right {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .hud-center {
+      position: absolute;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .stat-bar {
+      background: #1a1a2e;
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      min-width: 160px;
+    }
+
+    .stat-icon { font-size: 1.25rem; }
+
+    .stat-track {
+      flex: 1;
+      height: 12px;
+      background: #16213e;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .stat-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.3s;
+    }
+
+    .stat-fill.hp { background: linear-gradient(90deg, #e94560, #ff6b6b); width: 75%; }
+    .stat-fill.mp { background: linear-gradient(90deg, #4ecdc4, #44a3aa); width: 60%; }
+    .stat-fill.exp { background: linear-gradient(90deg, #f39c12, #f1c40f); width: 45%; }
+
+    .gold-display {
+      background: linear-gradient(135deg, #f39c12, #d68910);
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      font-weight: bold;
+      color: #1a1a2e;
+    }
+
+    /* Action Buttons */
+    .action-bar {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(145deg, #16213e, #1a1a2e);
+      border: 2px solid #4ecdc4;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+    }
+
+    .action-btn:hover {
+      background: #4ecdc4;
+      transform: scale(1.1);
+    }
+
+    .action-btn:active {
+      transform: scale(0.95);
+    }
+
+    .action-btn.skill-1 { border-color: #e94560; }
+    .action-btn.skill-2 { border-color: #f39c12; }
+    .action-btn.skill-3 { border-color: #9b59b6; }
+    .action-btn.skill-4 { border-color: #3498db; }
+
+    /* Resource Links */
+    .resource-links {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .resource-card {
+      background: #16213e;
+      border-radius: 12px;
+      padding: 1.5rem;
+      border-left: 4px solid;
+    }
+
+    .resource-card.kenney { border-color: #4ecdc4; }
+    .resource-card.opengameart { border-color: #f39c12; }
+    .resource-card.others { border-color: #9b59b6; }
+
+    .resource-card h3 { margin-bottom: 0.5rem; }
+    .resource-card p { color: #94a3b8; font-size: 0.875rem; margin-bottom: 0.75rem; }
+    .resource-card a {
+      color: #4ecdc4;
+      text-decoration: none;
+      font-size: 0.875rem;
+    }
+    .resource-card a:hover { text-decoration: underline; }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: #64748b;
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>游戏 UI 素材 Demo</h1>
+    <p>Kenney Assets + OpenGameArt 组合展示</p>
+  </header>
+
+  <main class="demo-section">
+    <!-- Kenney Assets Showcase -->
+    <section>
+      <h2 class="section-title">Kenney Assets 素材预览</h2>
+      <div class="assets-grid">
+        <div class="asset-card">
+          <div class="asset-icon">⚔️</div>
+          <div class="asset-name">RPG Pack</div>
+          <div class="asset-source">Kenney</div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-icon">🏰</div>
+          <div class="asset-name">Dungeon Pack</div>
+          <div class="asset-source">Kenney</div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-icon">🗡️</div>
+          <div class="asset-name">Weapons Pack</div>
+          <div class="asset-source">Kenney</div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-icon">👤</div>
+          <div class="asset-name">Character Sprites</div>
+          <div class="asset-source">Kenney</div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-icon">🛡️</div>
+          <div class="asset-name">Armor Icons</div>
+          <div class="asset-source">Kenney</div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-icon">💎</div>
+          <div class="asset-name">Gem Icons</div>
+          <div class="asset-source">Kenney</div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-icon">🗺️</div>
+          <div class="asset-name">Tile Maps</div>
+          <div class="asset-source">Kenney</div>
+        </div>
+        <div class="asset-card">
+          <div class="asset-icon">📦</div>
+          <div class="asset-name">UI Elements</div>
+          <div class="asset-source">Kenney</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Game UI Mockup -->
+    <section>
+      <h2 class="section-title">UI 组件示例</h2>
+      <div class="ui-mockup">
+        <div class="game-hud">
+          <div class="hud-left">
+            <div class="stat-bar">
+              <span class="stat-icon">❤️</span>
+              <div class="stat-track"><div class="stat-fill hp"></div></div>
+              <span>75/100</span>
+            </div>
+            <div class="stat-bar">
+              <span class="stat-icon">💧</span>
+              <div class="stat-track"><div class="stat-fill mp"></div></div>
+              <span>60/100</span>
+            </div>
+            <div class="stat-bar">
+              <span class="stat-icon">✨</span>
+              <div class="stat-track"><div class="stat-fill exp"></div></div>
+              <span>450/1000</span>
+            </div>
+          </div>
+          <div class="hud-center">
+            <div class="gold-display">💰 12,450</div>
+          </div>
+          <div class="hud-right">
+            <div class="stat-bar">
+              <span class="stat-icon">⏱️</span>
+              <span>02:34</span>
+            </div>
+            <div class="stat-bar">
+              <span class="stat-icon">🏆</span>
+              <span>Lv.24</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <button class="action-btn skill-1">⚔️</button>
+          <button class="action-btn skill-2">🔥</button>
+          <button class="action-btn skill-3">❄️</button>
+          <button class="action-btn skill-4">⚡</button>
+          <button class="action-btn">🛡️</button>
+          <button class="action-btn">💊</button>
+          <button class="action-btn">🗺️</button>
+          <button class="action-btn">📋</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Resource Links -->
+    <section>
+      <h2 class="section-title">免费素材资源</h2>
+      <div class="resource-links">
+        <div class="resource-card kenney">
+          <h3>Kenney.nl</h3>
+          <p>超过 200 套免费游戏素材，包含 2D sprite、3D 模型、UI 元素、音频等。CC0 许可，可商用。</p>
+          <a href="https://kenney.nl/assets" target="_blank">访问 Kenney →</a>
+        </div>
+        <div class="resource-card opengameart">
+          <h3>OpenGameArt.org</h3>
+          <p>开源游戏艺术资源社区，汇集全球开发者分享的 2D/3D 素材、音频、字体等。</p>
+          <a href="https://opengameart.org" target="_blank">访问 OpenGameArt →</a>
+        </div>
+        <div class="resource-card others">
+          <h3>其他推荐</h3>
+          <p>Game-icons.net (图标)、Itch.io (独立游戏素材)、Libregamewiki (开源游戏合集)</p>
+          <a href="https://game-icons.net" target="_blank">Game-icons →</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>游戏 UI 素材 Demo | Kenney Assets + OpenGameArt</p>
+  </footer>
+
+  <script>
+    // 简单的交互效果
+    document.querySelectorAll('.action-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        btn.style.transform = 'scale(0.9)';
+        setTimeout(() => btn.style.transform = '', 100);
+      });
+    });
+
+    // 属性条动画
+    let hp = 75, mp = 60, exp = 45;
+    setInterval(() => {
+      hp = Math.max(10, Math.min(100, hp + (Math.random() - 0.5) * 10));
+      mp = Math.max(10, Math.min(100, mp + (Math.random() - 0.5) * 15));
+      exp = Math.max(0, Math.min(100, exp + (Math.random() - 0.5) * 5));
+      
+      document.querySelector('.stat-fill.hp').style.width = hp + '%';
+      document.querySelector('.stat-fill.mp').style.width = mp + '%';
+      document.querySelector('.stat-fill.exp').style.width = exp + '%';
+      
+      document.querySelectorAll('.stat-bar')[0].querySelector('span:last-child').textContent = Math.round(hp) + '/100';
+      document.querySelectorAll('.stat-bar')[1].querySelector('span:last-child').textContent = Math.round(mp) + '/100';
+      document.querySelectorAll('.stat-bar')[2].querySelector('span:last-child').textContent = Math.round(exp * 10) + '/1000';
+    }, 1000);
+  </script>
+</body>
+</html>
