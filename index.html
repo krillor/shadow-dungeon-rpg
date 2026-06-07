@@ -17817,46 +17817,60 @@ function initAdSystem() {
     G.recruitAdData.lastAdDate = today;
   }
 
+  // 检测是否是真实的 TapTap 环境
+  function isRealTapEnv() {
+    return !!window.tap && 
+           typeof window.tap.createRewardedVideoAd === 'function';
+  }
+
   // 兼容模式：没有tap环境时提供模拟
-  if (!window.tap) {
-    console.log('[AdSystem] 模拟模式运行');
-    window.tap = {
-      createRewardedVideoAd: function (cfg) {
-        console.log('[AdSystem] 创建模拟激励广告:', cfg.adUnitId);
-        return {
-          onLoad: function (cb) { 
+  if (!isRealTapEnv()) {
+    console.log('[AdSystem] 检测到非 TapTap 环境，启用模拟模式');
+    
+    // 防止重复设置
+    if (!window.tap) {
+      window.tap = {};
+    }
+    
+    // 标记为模拟环境
+    window.tap.isSimulated = true;
+    
+    window.tap.createRewardedVideoAd = function (cfg) {
+      console.log('[AdSystem] 创建模拟激励广告:', cfg.adUnitId);
+      return {
+        onLoad: function (cb) { 
+          setTimeout(function() {
+            isAdLoaded = true;
+            cb();
+          }, 200); 
+        },
+        onError: function (cb) { },
+        onClose: function (cb) { this.closeCb = cb; },
+        load: function () { 
+          return new Promise(function(resolve) {
             setTimeout(function() {
               isAdLoaded = true;
-              cb();
-            }, 200); 
-          },
-          onError: function (cb) { },
-          onClose: function (cb) { this.closeCb = cb; },
-          load: function () { 
-            return new Promise(function(resolve) {
-              setTimeout(function() {
-                isAdLoaded = true;
-                resolve();
-              }, 300);
-            }); 
-          },
-          show: function () {
-            const self = this;
-            return new Promise(function (resolve, reject) {
-              setTimeout(function () {
-                if (confirm('模拟：观看完整广告？（是=获得奖励，否=中途退出）')) {
-                  self.closeCb && self.closeCb({ isEnded: true });
-                } else {
-                  self.closeCb && self.closeCb({ isEnded: false });
-                }
-                resolve();
-              }, 300);
-            });
-          }
-        };
-      },
-      showToast: function (obj) { showToast(obj.title); }
+              resolve();
+            }, 300);
+          }); 
+        },
+        show: function () {
+          const self = this;
+          return new Promise(function (resolve, reject) {
+            setTimeout(function () {
+              if (confirm('📺 模拟：观看完整广告？\n\n（是=获得奖励，否=中途退出）')) {
+                self.closeCb && self.closeCb({ isEnded: true });
+              } else {
+                self.closeCb && self.closeCb({ isEnded: false });
+              }
+              resolve();
+            }, 300);
+          });
+        }
+      };
     };
+    
+    window.tap.showToast = function (obj) { showToast(obj.title); };
   }
 
   // 创建激励视频广告实例
@@ -17873,10 +17887,26 @@ function initAdSystem() {
 
   // 监听广告加载失败
   rewardedVideoAd.onError(function (err) {
-    console.log('[AdSystem] 激励视频广告加载失败', err);
+    console.error('[AdSystem] 激励视频广告加载失败', err);
     isAdLoaded = false;
     isAdLoading = false;
-    showToast('广告加载失败，请稍后再试');
+    
+    // 增强错误提示，方便排查
+    var errMsg = '广告加载失败';
+    if (err && err.errMsg) {
+      errMsg += ': ' + err.errMsg;
+    } else if (typeof err === 'string') {
+      errMsg += ': ' + err;
+    }
+    
+    // 检查是否在正确的环境
+    if (window.tap && window.tap.isSimulated) {
+      // 模拟模式正常，不报错
+    } else if (!window.tap || typeof window.tap.createRewardedVideoAd !== 'function') {
+      errMsg = '请在 TapTap H5 环境中运行';
+    }
+    
+    showToast(errMsg);
   });
 
   // 监听广告关闭
@@ -17891,9 +17921,14 @@ function initAdSystem() {
 
   // 自动预加载广告
   console.log('[AdSystem] 开始预加载广告...');
-  rewardedVideoAd.load().catch(function(err) {
-    console.log('[AdSystem] 预加载广告失败', err);
-  });
+  if (window.tap && window.tap.isSimulated) {
+    console.log('[AdSystem] 模拟模式，无需预加载真实广告');
+  } else {
+    rewardedVideoAd.load().catch(function(err) {
+      console.error('[AdSystem] 预加载广告失败', err);
+      // 预加载失败不显示 toast，避免打扰用户
+    });
+  }
 }
 
 // 播放激励视频广告获取一键招募使用次数
