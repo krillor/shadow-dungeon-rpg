@@ -27155,6 +27155,20 @@ function resetGToDefaults(){
   G.playerName = '';
   G.redeemedCodes = {};
   G.zodiacDailyScrollShopDate = '';
+  // 羁绊系统
+  G.bondSlots = [null, null, null];
+  G.bondPanelCollapsed = false;
+  // 合成疲劳系统
+  G.mergeFatigue = 0;
+  G.mergeFatigueLastTime = 0;
+  G.totalMerges = 0;
+  // 未知英雄兑换系统
+  G.unknownExchangeProgress = {};
+  G.unknownExchangeCooldown = 0;
+  G.unknownExchangeCount = 0;
+  G.totalPotionsUsed = 0;
+  G.arenaTotalWins = 0;
+  G.rlBestFloor = 0;
   // 清理可能残留的旧字段
   delete G.gold; delete G.gems; delete G.food; delete G.stone; delete G.iron; delete G.fame;
   delete G.materials;
