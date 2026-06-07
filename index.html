@@ -19795,6 +19795,8 @@ function getTalentEffects(hero){
 }
 
 function renderTeam(el){
+  if(!el) el = document.getElementById('content');
+  if(!el) return;
   // 数据防御
   if(!G.team) G.team=[null,null,null,null,null,null];
   while(G.team.length<6) G.team.push(null);
