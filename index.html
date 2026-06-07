@@ -19914,14 +19914,14 @@ function renderTeam(el){
   }
   html+='</div>';
 
-  // 羁绊预览（通关20关后解锁，放到最下面）
+  // 羁绊预览（紧跟队伍，可折叠，通关20关后解锁）
   var bondUnlocked = (G.stageProgress||0) >= 20;
   if(bondUnlocked){
     html+=renderBondPreview(G.team);
   }else{
-    html+='<div class="panel" style="margin-top:12px">'
+    html+='<div class="panel" style="margin-top:8px">'
       +'<div class="panel-title"><span class="icon">🔗</span> 英雄羁绊</div>'
-      +'<div class="text-dim text-sm" style="text-align:center;padding:16px">🔒 通关第20关后解锁羁绊系统（当前进度：第'+(G.stageProgress||0)+'关）</div>'
+      +'<div class="text-dim text-sm" style="text-align:center;padding:12px">🔒 通关第20关后解锁（当前：第'+(G.stageProgress||0)+'关）</div>'
       +'</div>';
   }
 
@@ -19990,7 +19990,7 @@ function selectBondSlot(slotIndex, bondId){
   showToast('已装备羁绊');
 }
 
-// 渲染羁绊预览面板
+// 渲染羁绊预览面板（可折叠）
 function renderBondPreview(team){
   var teamH=team.filter(function(t){return t!==null;});
   var bonds=detectActiveBonds(teamH);
@@ -20019,34 +20019,43 @@ function renderBondPreview(team){
   var typeNames={role:'⚔️ 职业羁绊',theme:'🌟 主题羁绊',fun:'🎉 趣味羁绊'};
   var typeColors={role:'#4a9eff',theme:'#a855f7',fun:'#f59e0b'};
 
-  var html='<div class="panel"><div class="panel-title"><span class="icon">🔗</span> 英雄羁绊'
-    +(bonds.length>0?' <span style="font-size:11px;color:var(--green);font-weight:normal">('+bonds.length+'激活)</span>':'')
-    +'</div>';
+  var collapsed = G.bondPanelCollapsed;
+  var activeCount = bonds.length;
 
+  var html='<div class="panel" style="margin-top:8px">';
+  // 可折叠标题栏
+  html+='<div class="panel-title" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleBondPanel()">';
+  html+='<span><span class="icon">🔗</span> 英雄羁绊'
+    +(activeCount>0?' <span style="font-size:11px;color:var(--green);font-weight:normal">('+activeCount+'激活)</span>':'')
+    +'</span>';
+  html+='<span style="font-size:12px;color:var(--text3);transition:transform .2s;'+(collapsed?'transform:rotate(-90deg)':'')+'" id="bond-collapse-icon">▼</span>';
+  html+='</div>';
+
+  // 折叠内容区
+  if(!collapsed){
   // 羁绊槽位选择UI
   var activeSlotBonds = G.bondSlots.filter(function(s){return s!==null;});
-  html+='<div style="margin-bottom:10px;padding:8px;background:rgba(255,255,255,.03);border-radius:6px">';
-  html+='<div style="font-size:11px;color:var(--text2);margin-bottom:6px">🔗 羁绊槽位 ('+activeSlotBonds.length+'/3) — 战斗中激活的羁绊</div>';
-  html+='<div style="display:flex;gap:6px;margin-bottom:6px">';
+  html+='<div style="margin-bottom:8px;padding:6px 8px;background:rgba(255,255,255,.03);border-radius:6px">';
+  html+='<div style="font-size:10px;color:var(--text2);margin-bottom:4px">🔗 槽位 ('+activeSlotBonds.length+'/3) — 战斗中激活</div>';
+  html+='<div style="display:flex;gap:4px;margin-bottom:4px">';
   for(var si=0;si<3;si++){
     var slotBondId = G.bondSlots[si];
     var slotBond = slotBondId ? HERO_BONDS.find(function(b){return b.id===slotBondId;}) : null;
     var slotColor = slotBond ? (typeColors[slotBond.type]||'#888') : 'rgba(255,255,255,.15)';
-    html+='<div style="flex:1;padding:6px;border-radius:6px;border:1px dashed '+slotColor+';text-align:center;font-size:11px;color:'+(slotBond?slotColor:'var(--text3)')+';cursor:pointer;min-height:40px;display:flex;align-items:center;justify-content:center" onclick="toggleBondSlot('+si+')">'
+    html+='<div style="flex:1;padding:4px;border-radius:4px;border:1px dashed '+slotColor+';text-align:center;font-size:10px;color:'+(slotBond?slotColor:'var(--text3)')+';cursor:pointer;min-height:32px;display:flex;align-items:center;justify-content:center" onclick="toggleBondSlot('+si+')">'
       +(slotBond ? slotBond.icon+' '+slotBond.name : '空槽位')
       +'</div>';
   }
   html+='</div>';
-  html+='<div style="font-size:10px;color:var(--text3)">点击槽位切换羁绊，最多激活3个</div>';
   html+='</div>';
 
   // 激活的羁绊高亮展示
   if(bonds.length>0){
-    html+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">';
+    html+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px">';
     for(var bi=0;bi<bonds.length;bi++){
       var ab=bonds[bi];
       var bc=typeColors[ab.bond.type]||'#888';
-      html+='<span style="display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:bold;border:1px solid '+bc+';color:'+bc+';background:'+bc+'15">'+ab.bond.icon+' '+ab.bond.name+'</span>';
+      html+='<span style="display:inline-flex;align-items:center;gap:2px;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:bold;border:1px solid '+bc+';color:'+bc+';background:'+bc+'15">'+ab.bond.icon+' '+ab.bond.name+'</span>';
     }
     html+='</div>';
   }
@@ -20058,7 +20067,7 @@ function renderBondPreview(team){
     if(item.count===0 && !item.nextThreshold) continue;
     if(item.bond.type!==lastType){
       lastType=item.bond.type;
-      html+='<div style="color:'+typeColors[lastType]+';font-size:11px;font-weight:bold;margin:8px 0 4px;padding-top:6px;border-top:1px solid rgba(255,255,255,.05)">'+typeNames[lastType]+'</div>';
+      html+='<div style="color:'+typeColors[lastType]+';font-size:10px;font-weight:bold;margin:6px 0 3px;padding-top:4px;border-top:1px solid rgba(255,255,255,.05)">'+typeNames[lastType]+'</div>';
     }
     var tc=typeColors[item.bond.type];
     var maxNeed=item.bond.thresholds[item.bond.thresholds.length-1].need;
@@ -20070,23 +20079,32 @@ function renderBondPreview(team){
     var activeDesc='';
     if(item.isActive){
       var activeThreshold=item.bond.thresholds.filter(function(t){return item.count>=t.need;}).pop();
-      if(activeThreshold) activeDesc='<div style="font-size:10px;color:var(--green);margin-top:2px">✨ '+activeThreshold.desc+'</div>';
+      if(activeThreshold) activeDesc='<div style="font-size:9px;color:var(--green);margin-top:1px">✨ '+activeThreshold.desc+'</div>';
     }
-    var nextDesc=item.nextThreshold?'<div style="font-size:10px;color:var(--text3);margin-top:1px">→ '+item.nextThreshold.desc+'</div>':'<div style="font-size:10px;color:var(--gold);margin-top:1px">已满级!</div>';
+    var nextDesc=item.nextThreshold?'<div style="font-size:9px;color:var(--text3);margin-top:1px">→ '+item.nextThreshold.desc+'</div>':'<div style="font-size:9px;color:var(--gold);margin-top:1px">已满级!</div>';
 
-    html+='<div class="bond-preview-item" style="border-color:'+(item.isActive?tc:'var(--border)')+';'+(item.isActive?'background:linear-gradient(135deg,'+tc+'08,'+tc+'03)':'')+'">'
-      +'<div style="display:flex;align-items:center;gap:6px">'
-      +'<span style="font-size:16px">'+item.bond.icon+'</span>'
-      +'<span style="font-weight:bold;color:'+(item.isActive?tc:'var(--text)')+';font-size:12px;flex:1">'+item.bond.name+'</span>'
-      +'<span style="font-size:10px;color:'+(item.isActive?'var(--green)':'var(--text2)')+'">'+countText+'</span>'
+    html+='<div class="bond-preview-item" style="border-color:'+(item.isActive?tc:'var(--border)')+';'+(item.isActive?'background:linear-gradient(135deg,'+tc+'08,'+tc+'03)':'')+';padding:5px 8px">'
+      +'<div style="display:flex;align-items:center;gap:4px">'
+      +'<span style="font-size:14px">'+item.bond.icon+'</span>'
+      +'<span style="font-weight:bold;color:'+(item.isActive?tc:'var(--text)')+';font-size:11px;flex:1">'+item.bond.name+'</span>'
+      +'<span style="font-size:9px;color:'+(item.isActive?'var(--green)':'var(--text2)')+'">'+countText+'</span>'
       +'</div>'
-      +'<div style="height:3px;background:rgba(255,255,255,.06);border-radius:2px;margin-top:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:2px;transition:width .3s"></div></div>'
+      +'<div style="height:3px;background:rgba(255,255,255,.06);border-radius:2px;margin-top:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:2px;transition:width .3s"></div></div>'
       +activeDesc+nextDesc
       +'</div>';
   }
 
+  } // end if(!collapsed)
+
   html+='</div>';
   return html;
+}
+
+// 切换羁绊面板折叠
+function toggleBondPanel(){
+  G.bondPanelCollapsed = !G.bondPanelCollapsed;
+  saveGame();
+  renderTeam();
 }
 
 function showTeamPicker(slotIdx){
@@ -20385,6 +20403,7 @@ function renderMerge(el){
   if(!G.resources) G.resources={gold:0,gems:0};
   if(!G.autoDecompose) G.autoDecompose={enabled:false,maxQuality:'common'};
   if(!G.bondSlots) G.bondSlots=[null,null,null];
+  if(typeof G.bondPanelCollapsed !== 'boolean') G.bondPanelCollapsed = false;
   var heroCount=G.heroes.length;
   // 清理无效的融合槽位引用（英雄已被移除的情况）
   // 注意：使用 Array.some 进行宽松类型比较，避免字符串/数字 uid 不匹配
