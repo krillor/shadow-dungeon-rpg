@@ -20691,6 +20691,8 @@ function renderMerge(el){
       ${(function(){
         var omen=getCurrentOmen();
         var remaining=getOmenRemainingTime();
+        // 合并描述：普通天象只显示desc，其他显示battle.desc（更简洁）
+        var displayDesc = omen.id === 'normal' ? omen.desc : (omen.battle && omen.battle.desc ? omen.battle.desc : omen.desc);
         return '<div style="background:linear-gradient(135deg,rgba(0,0,0,.2),rgba('+omen.color.replace('#','').match(/.{2}/g).map(x=>parseInt(x,16)).join(',')+',.1));border:1px solid '+omen.color+';border-radius:12px;padding:12px;margin-bottom:12px;position:relative;overflow:hidden">'
           +'<div style="display:flex;align-items:center;gap:12px">'
           +'<div style="font-size:36px;filter:drop-shadow(0 0 8px '+omen.color+')">'+omen.icon+'</div>'
@@ -20699,8 +20701,7 @@ function renderMerge(el){
           +'<span style="font-size:14px;font-weight:bold;color:'+omen.color+'">'+omen.name+'天象</span>'
           +'<span style="font-size:11px;color:var(--text3);background:rgba(0,0,0,.3);padding:2px 8px;border-radius:10px">⏱️ '+formatOmenTime(remaining)+'</span>'
           +'</div>'
-          +'<div style="font-size:12px;color:var(--text2)">'+omen.desc+'</div>'
-          +(omen.battle && omen.battle.desc && omen.id !== 'normal' ? '<div style="font-size:11px;color:'+omen.color+';margin-top:3px">'+omen.battle.desc+'</div>' : '')
+          +'<div style="font-size:12px;color:var(--text2)">'+displayDesc+'</div>'
           +'</div>'
           +'</div>'
           +'<div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,'+omen.color+',transparent);opacity:.5"></div>'
@@ -20732,41 +20733,48 @@ function renderMerge(el){
         </div>
       </details> -->
       
-      <!-- 每日合成卷轴商店 -->
+      <!-- 合成卷轴面板（商店+选择 合一） -->
       <div id="scroll-shop-container" data-collapsed="true" style="background:linear-gradient(135deg,rgba(255,215,0,.05),rgba(79,195,247,.03));border:1px solid rgba(255,215,0,.15);border-radius:12px;padding:8px 14px;margin-bottom:12px;transition:all .3s ease;overflow:hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0px;cursor:pointer" onclick="toggleScrollShop()">
-          <div style="font-size:13px;color:var(--gold);font-weight:bold">📜 每日合成卷轴</div>
-          <div style="font-size:11px;color:var(--text3)">🐉 生肖币: <b style="color:var(--gold)">${G.zodiacTokens||0}</b> <span id="scroll-shop-toggle-hint">👆 点击展开</span></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:13px;color:var(--gold);font-weight:bold">📜 合成卷轴</span>
+            ${(() => {
+              var activeS = getActiveScrollEffect();
+              if (activeS) {
+                var arc = SCROLL_RARITY_CONFIG[activeS.rarity];
+                return '<span style="font-size:10px;color:' + arc.color + ';background:' + arc.bg + ';padding:2px 8px;border-radius:10px;border:1px solid ' + arc.color + '">' + activeS.icon + ' ' + activeS.name + '</span>';
+              }
+              return '<span style="font-size:10px;color:var(--text3)">未选择</span>';
+            })()}
+          </div>
+          <div style="font-size:11px;color:var(--text3)">🐉 <b style="color:var(--gold)">${G.zodiacTokens||0}</b> <span id="scroll-shop-toggle-hint">👆 展开</span></div>
         </div>
         <div id="scroll-shop-content" style="display:none">
-          ${renderScrollShopHTML()}
-        </div>
-      </div>
-      
-      <!-- 合成卷轴选择器 -->
-      <div style="background:linear-gradient(135deg,rgba(255,215,0,.05),rgba(79,195,247,.03));border:1px solid rgba(255,215,0,.15);border-radius:12px;padding:8px 14px;margin-bottom:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;cursor:pointer" onclick="toggleMergeScrollPanel()">
-          <div style="font-size:13px;color:var(--gold);font-weight:bold">📜 合成卷轴</div>
-          <div style="font-size:11px;color:var(--text3)" id="merge-scroll-toggle-hint">👆 点击展开选择</div>
-        </div>
-        <div id="merge-scroll-panel" style="display:none;max-height:260px;overflow-y:auto">
+          <!-- 当前生效卷轴提示 -->
           ${(() => {
             var activeS = getActiveScrollEffect();
             if (activeS) {
               var arc = SCROLL_RARITY_CONFIG[activeS.rarity];
               var isManual = !!window._selectedMergeScroll;
-              return '<div style="background:' + arc.bg + ';border:1px solid ' + arc.color + ';border-radius:8px;padding:8px 12px;margin-bottom:8px;position:relative;overflow:hidden">'
+              return '<div style="background:' + arc.bg + ';border:1px solid ' + arc.color + ';border-radius:8px;padding:6px 10px;margin-bottom:8px;position:relative;overflow:hidden">'
                 + '<div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:' + arc.color + '"></div>'
-                + '<div style="margin-left:8px;display:flex;align-items:center;justify-content:space-between">'
-                + '<div>'
-                + '<div style="font-size:11px;color:var(--text3);margin-bottom:2px">' + (isManual ? '🎯 手动选择' : '🔄 自动选择') + '</div>'
-                + '<span style="font-size:12px;font-weight:bold;color:' + arc.color + '">' + activeS.icon + ' ' + activeS.name + '</span>'
-                + '<span style="font-size:10px;color:' + arc.color + ';margin-left:4px">（本次合成生效）</span>'
-                + '</div></div></div>';
+                + '<div style="margin-left:6px;display:flex;align-items:center;justify-content:space-between">'
+                + '<div><span style="font-size:11px;font-weight:bold;color:' + arc.color + '">' + activeS.icon + ' ' + activeS.name + '</span><span style="font-size:10px;color:var(--text3);margin-left:4px">' + (isManual ? '🎯 手动' : '🔄 自动') + ' · 本次合成生效</span></div>'
+                + '<button class="btn btn-sm" style="font-size:10px;padding:2px 8px;min-height:24px" onclick="event.stopPropagation();clearMergeScrollSelection();renderMerge(document.getElementById(\'content\'))">❌ 取消</button>'
+                + '</div></div>';
             }
             return '';
           })()}
-          <div id="merge-scroll-selector">${renderMergeScrollSelectorHTML()}</div>
+          <!-- 卷轴选择 -->
+          <div style="margin-bottom:10px">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:6px">🎒 选择要使用的卷轴</div>
+            <div id="merge-scroll-selector">${renderMergeScrollSelectorHTML()}</div>
+          </div>
+          <!-- 分隔线 -->
+          <div style="border-top:1px solid rgba(255,255,255,.08);margin:10px 0"></div>
+          <!-- 每日商店 -->
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px">🏪 每日商店（生肖币购买）</div>
+          ${renderScrollShopHTML()}
         </div>
       </div>
       
