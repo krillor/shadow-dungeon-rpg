@@ -12229,6 +12229,10 @@ async function runBattle(stageOrId){
   if(stage && stage.modifiers && stage.modifiers.length > 0){
     battleInfoEl.innerHTML+='<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">'+stage.modifiers.map(function(m){return '<span class="stage-modifier-tag" style="font-size:11px;padding:2px 8px">'+(m.name||'')+' '+(m.desc||'')+'</span>'}).join('')+'</div>';
   }
+  // 显示关卡机制锁
+  if(stage && stage.mechanics && stage.mechanics.length > 0){
+    battleInfoEl.innerHTML+='<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">'+stage.mechanics.map(function(m){return '<span class="stage-modifier-tag" style="font-size:11px;padding:2px 8px;background:rgba(220,38,38,.15);color:#ff6b6b;border:1px solid rgba(220,38,38,.3)">'+m.icon+' '+m.name+': '+(m.desc||'')+'</span>'}).join('')+'</div>';
+  }
 
   // 显示激活的羁绊
   if(bondUnlocked&&activeBonds.length>0){
@@ -17608,7 +17612,7 @@ function renderTown(el){
           +'<div class="town-res-item" title="经验药水"><span class="town-res-icon">🧪</span><span class="town-res-val potion" id="res-expPotion">'+expPotion+'</span></div>'
           +'<div class="town-res-item" title="铁矿"><span class="town-res-icon">⛏️</span><span class="town-res-val iron" id="res-iron">'+iron+'</span></div>'
           +'<div class="town-res-item" title="生肖币"><span class="town-res-icon">🐉</span><span class="town-res-val gold" id="res-zodiacTokens" style="color:#ffa500">'+(G.zodiacTokens||0)+'</span></div>'
-          +'<div class="town-res-item" title="突破材料"><span class="town-res-icon">🔮</span><span class="town-res-val gold" id="res-breakthrough" style="color:#a855f7">'+(G.breakthroughMaterials||0)+'</span></div>'
+          +'<div class="town-res-item" title="突破材料"><span class="town-res-icon">🔮</span><span class="town-res-val gold" id="res-breakthrough" style="color:#a855f7">'+(function(){var b=G.breakthroughMaterials||{};return (b.rare||0)+(b.epic||0)+(b.legendary||0)+(b.mythic||0)+(b.hidden||0)})()+'</span></div>'
         +'</div>'
       +'</div>'
       // 英雄统计摘要（带图标）
@@ -20029,6 +20033,7 @@ function renderBattle(el){
             +(s.isBoss?'<span class="stage-boss-tag">★'+(s.bossType==='final'?'★':'')+'Boss</span>':'')
             +'<span class="stage-level">Lv.'+stageLevel+'</span>'
             +(s.modifiers&&s.modifiers.length>0?'<div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;margin-top:2px">'+s.modifiers.map(function(m){return '<span class="stage-modifier-tag">'+(m.name||'')+'</span>'}).join('')+'</div>':'')
+            +(s.mechanics&&s.mechanics.length>0?'<div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;margin-top:2px">'+s.mechanics.map(function(m){return '<span class="stage-modifier-tag" style="background:rgba(220,38,38,.15);color:#ff6b6b;border-color:rgba(220,38,38,.3)">'+m.icon+(m.name||'')+'</span>'}).join('')+'</div>':'')
             +(cleared?'<span class="stage-cleared-mark">✓ 已通关</span>':'')
             +(isCurrent?'<span class="stage-current-mark">▶ 当前</span>':'')
             +'</div>';
