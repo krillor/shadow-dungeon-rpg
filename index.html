@@ -5431,8 +5431,6 @@ function generateStage(id){
       }
     }
   }
-  stage.mechanics = activeMechanics;
-
   // 关卡特性
   var modifiers=getStageModifiers(id,posInCycle);
   if(modifiers.length>0){
@@ -5460,7 +5458,8 @@ function generateStage(id){
     enemies:enemies,
     rewards:{gold:goldR,exp:expR,food:foodR,stone:stoneR,iron:ironR,gems:gemsR},
     difficultyMult: DYNAMIC_DIFFICULTY.getDifficultyMult(),
-    modifiers:modifiers
+    modifiers:modifiers,
+    mechanics:activeMechanics
   };
 }
 
