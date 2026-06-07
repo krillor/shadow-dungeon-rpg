@@ -7006,6 +7006,21 @@ function restoreSaveData(data) {
   if (!saved.exploreStats || typeof saved.exploreStats !== 'object') saved.exploreStats = {totalBattles:0,totalEvents:0,totalChests:0,totalShrines:0};
   if (!saved.zodiacDailyScrollShopDate) saved.zodiacDailyScrollShopDate = '';
   if (!saved.redeemedCodes || typeof saved.redeemedCodes !== 'object') saved.redeemedCodes = {};
+  // 合成疲劳
+  if (typeof saved.mergeFatigue !== 'number') saved.mergeFatigue = 0;
+  if (typeof saved.mergeFatigueLastTime !== 'number') saved.mergeFatigueLastTime = 0;
+  if (typeof saved.totalMerges !== 'number') saved.totalMerges = 0;
+  if (typeof saved.totalPotionsUsed !== 'number') saved.totalPotionsUsed = 0;
+  // 未知英雄兑换
+  if (!saved.unknownExchangeProgress || typeof saved.unknownExchangeProgress !== 'object') saved.unknownExchangeProgress = {};
+  if (typeof saved.unknownExchangeCooldown !== 'number') saved.unknownExchangeCooldown = 0;
+  if (typeof saved.unknownExchangeCount !== 'number') saved.unknownExchangeCount = 0;
+  // 羁绊系统
+  if (!saved.bondSlots || !Array.isArray(saved.bondSlots)) saved.bondSlots = [null, null, null];
+  if (typeof saved.bondPanelCollapsed !== 'boolean') saved.bondPanelCollapsed = false;
+  // 竞技场/肉鸽/药水统计
+  if (typeof saved.arenaTotalWins !== 'number') saved.arenaTotalWins = 0;
+  if (typeof saved.rlBestFloor !== 'number') saved.rlBestFloor = 0;
 
   // ===== 11. 队伍重建 =====
   G.heroes = saved.heroes;
@@ -7061,7 +7076,10 @@ function restoreSaveData(data) {
     'dailyScrollShopDate','autoDecompose','mergeLucky','mergePity','mergeFragments',
     'mergeHistory','breakthroughMaterials','heroBreakthrough','oracleBonus',
     'maxStageReached','tutorialDone','tutorialPhase','tutorialStep','chapter2Done',
-    'totalPlayTime','playerName','saveVersion','redeemedCodes','zodiacDailyScrollShopDate'];
+    'totalPlayTime','playerName','saveVersion','redeemedCodes','zodiacDailyScrollShopDate',
+    'mergeFatigue','mergeFatigueLastTime','totalMerges','totalPotionsUsed',
+    'unknownExchangeProgress','unknownExchangeCooldown','unknownExchangeCount',
+    'arenaTotalWins','rlBestFloor','bondSlots','bondPanelCollapsed'];
   safeKeys.forEach(function(k) {
     if (saved[k] !== undefined) G[k] = saved[k];
   });
@@ -7467,6 +7485,12 @@ function initGameAfterLoad() {
   if(!G.unknownExchangeCooldown) G.unknownExchangeCooldown = 0;
   if(!G.unknownExchangeCount) G.unknownExchangeCount = 0;
   if(!G.breakthroughMaterials || typeof G.breakthroughMaterials !== 'object') G.breakthroughMaterials = {rare:0,epic:0,legendary:0,mythic:0,hidden:0};
+  // 羁绊系统
+  if(!G.bondSlots || !Array.isArray(G.bondSlots)) G.bondSlots = [null, null, null];
+  if(typeof G.bondPanelCollapsed !== 'boolean') G.bondPanelCollapsed = false;
+  // 竞技场/肉鸽统计
+  if(typeof G.arenaTotalWins !== 'number') G.arenaTotalWins = 0;
+  if(typeof G.rlBestFloor !== 'number') G.rlBestFloor = 0;
   // 英雄per-field补丁
   if (G.heroes) G.heroes.forEach(function(h) {
     if (!h) return;
@@ -7538,6 +7562,17 @@ function initGameAfterLoad() {
       if (!G.heroBreakthrough) G.heroBreakthrough = {};
       if (!G.codex) G.codex = {heroes:{},equipment:{},monsters:{}};
       if (!G.stats) G.stats = {totalKills:0,totalHeroesRecruited:0,maxStageReached:1,maxHeroLevel:0};
+      if (typeof G.mergeFatigue !== 'number') G.mergeFatigue = 0;
+      if (typeof G.mergeFatigueLastTime !== 'number') G.mergeFatigueLastTime = 0;
+      if (typeof G.totalMerges !== 'number') G.totalMerges = 0;
+      if (typeof G.totalPotionsUsed !== 'number') G.totalPotionsUsed = 0;
+      if (!G.unknownExchangeProgress) G.unknownExchangeProgress = {};
+      if (typeof G.unknownExchangeCooldown !== 'number') G.unknownExchangeCooldown = 0;
+      if (typeof G.unknownExchangeCount !== 'number') G.unknownExchangeCount = 0;
+      if (!G.bondSlots) G.bondSlots = [null, null, null];
+      if (typeof G.bondPanelCollapsed !== 'boolean') G.bondPanelCollapsed = false;
+      if (typeof G.arenaTotalWins !== 'number') G.arenaTotalWins = 0;
+      if (typeof G.rlBestFloor !== 'number') G.rlBestFloor = 0;
       // 修复英雄数据
       if (G.heroes) G.heroes.forEach(function(h) {
         if (!h) return;
