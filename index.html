@@ -9310,7 +9310,7 @@ function generateArenaOpponent(difficulty){
   if(!G.heroBreakthrough)G.heroBreakthrough={};
   
   var config=ARENA_CONFIG_V2;
-  var teamHeroes=G.team.filter(function(h){return h!==null});
+  var teamHeroes=G.team.filter(function(h){return h!==null && !(h.isUnknown && !h.isUnlocked)});
   var teamSize=teamHeroes.length||1;
   
   // 分析玩家队伍
@@ -11836,7 +11836,7 @@ async function runBattle(stageOrId){
   var zodiacBossIndex = isZodiac ? stage._zodiacBossIndex : -1;
   var preBuiltEnemies = isZodiac ? (stage._enemyUnits || null) : null;
 
-  const teamHeroes=G.team.filter(h=>h!==null);
+  const teamHeroes=G.team.filter(h=>h!==null && !(h.isUnknown && !h.isUnlocked));
   if(teamHeroes.length===0){showToast('请先编队！');G_battleRunning=false;return;}
 
   let playerUnits=teamHeroes.map(h=>createBattleUnit(h,false));
@@ -17785,6 +17785,7 @@ function renderHeroCard(h){
     +'<div class="text-xs text-dim">EXP: '+h.exp+'/'+expNeed+'</div>'
     +'<div class="hero-power">⚡战力: <b>'+power+'</b></div>'
     +'<div class="hero-skills">'+(isUnknown?'<span class="skill-tag" style="background:rgba(255,0,255,0.2);color:#ff00ff">❓ 技能未知</span>':allSkills.map(function(sid){var sk=SKILLS[sid];return sk?'<span class="skill-tag" title="'+sk.desc+'">'+sk.icon+sk.name+'</span>':''}).join(''))+'</div>'
+    +(isUnknown&&!h.isUnlocked?(function(){var qp=getUnknownHeroQuestProgress(h);if(!qp)return '';var doneCount=qp.conditions.filter(function(c){return c.current>=c.target}).length;return '<div style="margin-top:4px;padding:4px 6px;background:rgba(255,0,255,.06);border-radius:4px;font-size:10px;color:#ff00ff">🔓 解锁任务: '+doneCount+'/'+qp.conditions.length+' 条件已达成</div>';})():'')
     +(h.traits&&h.traits.length>0?'<div class="mt-4" style="display:flex;flex-wrap:wrap;gap:2px">'+h.traits.map(function(t){return '<span class="trait-tag" title="'+t.desc+'">'+t.icon+t.name+'</span>'}).join('')+'</div>':'')
     +'<div class="text-xs text-dim mt-4" style="font-style:italic">"'+h.lore+'"</div>'
     +'</div>'
@@ -17901,6 +17902,34 @@ function _renderHeroDetail(h){
           +'</div></div>';
       }).join('');
 
+    // 未解锁未知英雄：展示解锁任务进度
+    var unlockQuestHtml = '';
+    if(isLockedUnknown){
+      var questProgress = getUnknownHeroQuestProgress(h);
+      if(questProgress){
+        var conditionsHtml = questProgress.conditions.map(function(c){
+          var done = c.current >= c.target;
+          var pct = Math.min(100, Math.floor((c.current / c.target) * 100));
+          var barColor = done ? '#00ff88' : '#ff00ff';
+          var statusIcon = done ? '✅' : '⏳';
+          return '<div style="margin-bottom:6px">'
+            +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">'
+            +'<span style="font-size:11px;color:var(--text2)">'+statusIcon+' '+c.name+'</span>'
+            +'<span style="font-size:11px;color:'+(done?'#00ff88':'var(--text3)')+'">'+c.current+'/'+c.target+'</span>'
+            +'</div>'
+            +'<div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden">'
+            +'<div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:2px;transition:width .3s"></div>'
+            +'</div></div>';
+        }).join('');
+        var allDone = questProgress.conditions.every(function(c){return c.current >= c.target;});
+        unlockQuestHtml = '<div style="margin-top:10px;padding:12px;background:rgba(255,0,255,.06);border:1px solid rgba(255,0,255,.15);border-radius:8px">'
+          +'<div style="font-size:12px;font-weight:bold;color:#ff00ff;margin-bottom:8px">🔓 解锁任务' + (allDone ? ' <span style="color:#00ff88">— 已完成！</span>' : '') + '</div>'
+          +'<div style="font-size:11px;color:var(--text3);margin-bottom:8px">'+questProgress.name+'</div>'
+          +conditionsHtml
+          +'</div>';
+      }
+    }
+
     var traitsHtml='';
     if(!isLockedUnknown && h.traits&&h.traits.length>0){
       traitsHtml='<div class="hd-section"><div class="hd-section-title">🌟 英雄特质</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+h.traits.map(function(t){return '<div class="hd-trait-tag">'+t.icon+' <b>'+t.name+'</b> - '+t.desc+'</div>';}).join('')+'</div></div>';
@@ -17937,6 +17966,7 @@ function _renderHeroDetail(h){
       +'<div class="hd-section">'
       +'<div class="hd-section-title">⚔️ 技能 ('+allSkills.length+')</div>'
       +skillsHtml
+      +unlockQuestHtml
       +'</div>'
       +traitsHtml
       +potionHtml
@@ -19385,12 +19415,20 @@ function renderTeam(el){
       +'<div style="font-size:11px;color:var(--text3)">未解锁的未知英雄无法上阵，需要完成任务解锁后才能使用</div>'
       +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">';
     lockedUnknowns.forEach(function(h){
-      html+='<div class="hero-card quality-unknown" style="opacity:0.5;cursor:not-allowed;min-width:120px">'
+      var qp=getUnknownHeroQuestProgress(h);
+      var questInfo='';
+      if(qp){
+        var doneCount=qp.conditions.filter(function(c){return c.current>=c.target}).length;
+        questInfo='<div style="font-size:9px;color:rgba(255,0,255,.7);margin-top:2px">🔓 任务进度: '+doneCount+'/'+qp.conditions.length+'</div>';
+      }
+      html+='<div class="hero-card quality-unknown" style="opacity:0.5;cursor:not-allowed;min-width:120px"'
+        +' onclick=\'event.stopPropagation();showHeroDetail('+JSON.stringify(h.uid)+')\'>'
         +'<div class="hero-avatar" style="background:rgba(255,0,255,.1)">'+(h.displayIcon||'❓')+'</div>'
         +'<div class="hero-info">'
         +'<div class="hero-name"><span class="q-unknown">'+(h.displayName||'???')+'</span></div>'
         +'<div class="hero-meta">❓ 未知 · '+QUALITY_NAMES[h.quality]+'</div>'
         +'<div class="text-xs" style="color:rgba(255,0,255,.6)">🔒 未解锁</div>'
+        +questInfo
         +'</div></div>';
     });
     html+='</div></div>';
@@ -22917,7 +22955,7 @@ function startRoguelike() {
 
   // 从玩家英雄池中随机选取3个候选
   var playerHeroes = (G.heroes || []).filter(function(h) {
-    return h && !h.locked && h.level >= 1;
+    return h && !h.locked && h.level >= 1 && !(h.isUnknown && !h.isUnlocked);
   });
 
   // 如果玩家英雄不足3个，用预设模板补充
