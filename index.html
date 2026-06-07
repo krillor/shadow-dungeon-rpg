@@ -5239,7 +5239,7 @@ const STAGE_MECHANICS = {
   },
   // 试炼关（每30关）
   trial: {
-    id: 'trial', name: '英雄试炼', icon: '⚔️', desc: '只能上阵1-2名英雄',
+    id: 'trial', name: '英雄试炼', icon: '⚔️', desc: '只能上阵1-2名英雄（敌人已削弱）',
     trigger: function(stageId){ return stageId % 30 === 0 && stageId > 30; },
     apply: function(){}
   },
@@ -5581,14 +5581,40 @@ function generateStage(id){
 
   // 应用特殊关卡机制
   var activeMechanics = [];
+  var isTrial = false;
   for(var mk in STAGE_MECHANICS){
     var mech = STAGE_MECHANICS[mk];
     if(mech.trigger && mech.trigger(id)){
       activeMechanics.push(mech);
+      if(mech.id === 'trial') isTrial = true;
       if(mech.apply){
         enemies.forEach(function(e){ mech.apply(e); });
       }
     }
+  }
+
+  // ===== 试炼关平衡性调整 =====
+  // 试炼关限制玩家只能上阵2名英雄，因此需要相应减少敌人数和属性
+  if(isTrial){
+    // 敌人数量上限：最多3个（原本可能6个），确保2v3的合理比例
+    if(enemies.length > 3){
+      // 保留Boss（如果有）+ 优先保留高威胁敌人
+      enemies.sort(function(a, b){
+        // Boss优先保留
+        var aIsBoss = a.quality === 'mythic' ? 2 : (a.quality === 'legendary' ? 1 : 0);
+        var bIsBoss = b.quality === 'mythic' ? 2 : (b.quality === 'legendary' ? 1 : 0);
+        return bIsBoss - aIsBoss;
+      });
+      enemies = enemies.slice(0, 3);
+    }
+    // 敌人属性削弱30%，弥补人数优势
+    enemies = enemies.map(function(enemy){
+      enemy.maxHP = Math.floor((enemy.maxHP || 100) * 0.7);
+      enemy.hp = enemy.maxHP;
+      enemy.atk = Math.floor((enemy.atk || 10) * 0.7);
+      enemy.def = Math.floor((enemy.def || 5) * 0.7);
+      return enemy;
+    });
   }
   // 关卡特性
   var modifiers=getStageModifiers(id,posInCycle);
@@ -11792,7 +11818,8 @@ function clearUnitElCache() { _unitElCache = {}; _currentHighlight = null; }
 
 function showFloat(unit, text, cls) {
   // 高倍速时跳过浮动数字，减少DOM压力（自动推图正常显示）
-  if (G_battleSpeed >= 4) return;
+  // 自动推图时也跳过，减少DOM操作和手机发热
+  if (G_battleSpeed >= 4 || G_autoBattle) return;
   var el = getUnitEl(unit);
   if (!el) return;
   var num;
@@ -11818,7 +11845,8 @@ function showFloat(unit, text, cls) {
 var _skillEffectPool = [];
 function showSkillEffect(skillIcon, skillName, elementClass) {
   // 高倍速时跳过技能特效，减少DOM操作（自动推图正常显示）
-  if (!_battleScene || G_battleSpeed >= 4) return;
+  // 自动推图时也跳过，减少DOM操作和手机发热
+  if (!_battleScene || G_battleSpeed >= 4 || G_autoBattle) return;
   var overlay;
   if (_skillEffectPool.length > 0) {
     overlay = _skillEffectPool.pop();
@@ -11840,7 +11868,8 @@ function showSkillEffect(skillIcon, skillName, elementClass) {
 
 function animUnit(unit, cls, duration) {
   // 高倍速时跳过动画（自动推图正常显示）
-  if (G_battleSpeed >= 4) return;
+  // 自动推图时也跳过动画，减少CSS重绘和手机发热
+  if (G_battleSpeed >= 4 || G_autoBattle) return;
   var el = getUnitEl(unit);
   if (!el) return;
   el.classList.add(cls);
@@ -11849,6 +11878,8 @@ function animUnit(unit, cls, duration) {
 
 function highlightUnit(unit) {
   if (_currentHighlight) { _currentHighlight.classList.remove('acting'); _currentHighlight = null; }
+  // 自动推图时跳过高亮，减少DOM操作
+  if(G_autoBattle) return;
   var el = getUnitEl(unit);
   if (el) { el.classList.add('acting'); _currentHighlight = el; }
 }
@@ -12611,6 +12642,11 @@ async function runBattle(stageOrId){
   
   function log(msg,cls){
     cls=cls||'info';
+    // 自动推图时大幅减少日志量，只保留关键信息，减少DOM压力
+    if(G_autoBattle){
+      // 只记录关键事件：回合开始、死亡、战斗结束
+      if(cls!=='title'&&cls!=='death'&&cls!=='crit') return;
+    }
     var line=document.createElement('div');
     line.className='log-line log-'+cls;
     line.textContent=msg;
@@ -12626,8 +12662,8 @@ async function runBattle(stageOrId){
       }
     }
     
-    // 高倍速时减少滚动操作（每5条才滚动一次）
-    if(G_battleSpeed<4 || _logCount%5===0) logEl.scrollTop=logEl.scrollHeight;
+    // 高倍速或自动推图时减少滚动操作（每10条才滚动一次）
+    if(G_battleSpeed<4 && !G_autoBattle || _logCount%10===0) logEl.scrollTop=logEl.scrollHeight;
   }
 
   // ===== renderTeams：首次全量渲染，后续增量更新 =====
@@ -12751,7 +12787,8 @@ async function runBattle(stageOrId){
     }
 
     // 更新 buff/dot 显示（高倍速时跳过小幅更新）
-    if (dc.buffsDiv) {
+    // 自动推图时也跳过buff渲染，减少innerHTML操作
+    if (dc.buffsDiv && !G_autoBattle) {
       var buffsHTML = u.buffs.map(function(b) {
         var isPos = b.mult > 1 || b.stat === 'taunt' || b.stat === 'dodge' || b.stat === 'reflect' || b.stat === 'stun';
         return '<span class="buff-tag ' + (isPos ? 'buff-positive' : 'buff-negative') + '">' + (b.name || b.stat) + (b.duration > 0 ? '(' + b.duration + ')' : '') + '</span>';
@@ -12784,7 +12821,8 @@ async function runBattle(stageOrId){
       }
     }
     // 每3回合有概率触发探索事件（地下城堡风格）
-    if(round%3===0 && round<maxRounds-2){
+    // 自动推图时跳过探索事件，减少延迟
+    if(round%3===0 && round<maxRounds-2 && !G_autoBattle){
       triggerExploreEvent(log);
       await sleep(200);
     }
@@ -13174,7 +13212,8 @@ async function runBattle(stageOrId){
               checkEquipSpecialSkill(target,'onHit',unit,allUnits);
             }
           }
-          markStatsDirty();
+          // 自动推图时跳过统计面板更新，减少DOM操作
+          if(!G_autoBattle) markStatsDirty();
         }
       }
 
@@ -13183,7 +13222,8 @@ async function runBattle(stageOrId){
       for(let sid in unit.cooldowns){unit.cooldowns[sid] -= (1 + cdReduceExtra);}
       clearHighlight();
       // 高倍速时跳过每个单位的渲染，只在回合结束时统一渲染
-      if(G_battleSpeed < 4) renderTeams();
+      // 自动推图时也跳过，减少DOM操作和手机发热
+      if(G_battleSpeed < 4 && !G_autoBattle) renderTeams();
       await sleep(250);
 
       if(!playerUnits.some(u=>u.alive)){break}
@@ -13824,7 +13864,14 @@ function sleep(ms){
       }else{
         var delay=ms/G_battleSpeed;
         // 4倍速时最小延迟降至0，减少定时器压力
-        setTimeout(r, G_battleSpeed>=4 ? 0 : Math.max(16,delay));
+        // 自动推图时进一步降低延迟（最低0ms），减少CPU占用和发热
+        var finalDelay = delay;
+        if(G_autoBattle){
+          finalDelay = G_battleSpeed >= 4 ? 0 : Math.max(0, Math.floor(delay * 0.3));
+        }else{
+          finalDelay = G_battleSpeed >= 4 ? 0 : Math.max(16, delay);
+        }
+        setTimeout(r, finalDelay);
       }
     };
     checkPause();
