@@ -5067,15 +5067,9 @@ const STAGE_MECHANICS = {
   mirror: {
     id: 'mirror', name: '镜像迷宫', icon: '🪞', desc: '复制玩家队伍属性',
     trigger: function(stageId){ return stageId % 25 === 0 && stageId > 25; },
-    apply: function(enemy, playerUnits){ 
-      if(playerUnits && playerUnits.length > 0){
-        var target = playerUnits[Math.floor(Math.random()*playerUnits.length)];
-        enemy.maxHP = Math.floor(target.maxHP * 0.8);
-        enemy.hp = enemy.maxHP;
-        enemy.atk = Math.floor(target.atk * 0.8);
-        enemy.def = Math.floor(target.def * 0.8);
-        enemy.spd = Math.floor(target.spd * 0.9);
-      }
+    apply: function(enemy){ 
+      // 属性复制在runBattle中执行（需要playerUnits）
+      enemy._mirrorPending = true;
     }
   },
   // 试炼关（每30关）
@@ -10410,10 +10404,16 @@ function createBattleUnit(hero,isEnemy=false){
   const stats=getHeroStats(hero);
   G_battleUnitIdCounter++;
   const talentEffects = getTalentEffects(hero);
+  // 根据role分配元素属性（用于元素弱点机制）
+  var roleElementMap = {
+    warrior: 'fire', guardian: 'nature', mage: 'ice', healer: 'holy',
+    assassin: 'shadow', ranger: 'nature', warlock: 'undead', paladin: 'holy'
+  };
   var u = {
     hero:hero, isEnemy:isEnemy,
     name:hero.name||'未知', icon:hero.icon||'❓',
     role: hero.role || 'unknown',
+    element: hero.element || roleElementMap[hero.role] || 'fire',
     battleId:(isEnemy?'E':'P')+'_'+G_battleUnitIdCounter,
     hp:stats.maxHP, maxHP:stats.maxHP,
     mp:stats.maxMP, maxMP:stats.maxMP,
@@ -12074,6 +12074,25 @@ async function runBattle(stageOrId){
       return unit;
     });
   }
+  // 关卡机制：镜像迷宫（复制玩家属性）
+  if(stage.mechanics){
+    var mirrorMech = stage.mechanics.find(function(m){return m.id==='mirror';});
+    if(mirrorMech && playerUnits.length > 0){
+      enemyUnits.forEach(function(u){
+        if(u._mirrorPending){
+          var target = playerUnits[Math.floor(Math.random()*playerUnits.length)];
+          u.maxHP = Math.floor(target.maxHP * 0.8);
+          u.hp = u.maxHP;
+          u.atk = Math.floor(target.atk * 0.8);
+          u.def = Math.floor(target.def * 0.8);
+          u.spd = Math.floor(target.spd * 0.9);
+          delete u._mirrorPending;
+          log('🪞 镜像迷宫：'+u.name+' 复制了 '+target.name+' 的属性！','system');
+        }
+      });
+    }
+  }
+
   // 天象对敌人的加成
   if(omenBattle.enemyBonus){
     enemyUnits.forEach(function(u){
@@ -13259,6 +13278,16 @@ async function executeSkillV2(user,target,skill,allUnits,logFn){
             showFloat(user,'💚+'+lsHeal,'heal');
           }
         }
+        // 关卡机制：血之渴望（敌人吸血）
+        if(user.isEnemy && user.lifesteal && dmg>0){
+          var lsAmt=Math.floor(dmg*user.lifesteal);
+          if(lsAmt>0){
+            user.hp=Math.min(user.maxHP,user.hp+lsAmt);
+            logFn(user.icon+' '+user.name+' 血之渴望吸取了 '+lsAmt+' 生命','heal');
+            showFloat(user,'🩸+'+lsAmt,'heal');
+          }
+        }
+
         if(t.hp<=0){
           t.alive=false;
           logFn(t.icon+' '+t.name+' 倒下了...','death');
