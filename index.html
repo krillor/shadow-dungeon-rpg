@@ -18128,22 +18128,14 @@ function giveRecruitAdReward() {
   renderTavernRecruit(); // 刷新招募界面
 }
 
-// 检查是否可以使用一键招募
+// 检查是否可以使用一键招募（已跳过广告逻辑）
 function canUseQuickRecruit() {
-  if (G.recruitAdData.todayIsUnlocked) return true;
-  if (G.recruitAdData.remainingUses > 0) return true;
-  return false;
+  return true;
 }
 
-// 使用一键招募（扣除次数）
+// 使用一键招募（扣除次数）（已跳过广告逻辑）
 function consumeQuickRecruitUse() {
-  if (G.recruitAdData.todayIsUnlocked) return true;
-  if (G.recruitAdData.remainingUses > 0) {
-    G.recruitAdData.remainingUses -= 1;
-    saveGame();
-    return true;
-  }
-  return false;
+  return true;
 }
 
 // ==================== 一键招募功能 ====================
