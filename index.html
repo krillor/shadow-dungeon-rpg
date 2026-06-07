@@ -3341,7 +3341,7 @@ const QUALITY_COLORS = {common:'#888',rare:'#4a9eff',epic:'#a855f7',legendary:'#
 // 未知英雄配置 - 属性、职业、技能全部隐藏，需要完成任务解锁
 const UNKNOWN_HERO_CONFIG = {
   // 融合获得未知英雄的概率
-  mergeChance: 0.01, // 1%
+  mergeChance: 0.001, // 0.1%
   // 未知英雄显示名称
   displayName: '???',
   displayIcon: '❓',
@@ -3352,6 +3352,24 @@ const UNKNOWN_HERO_CONFIG = {
     maxStages: 5,      // 最多关卡数
     baseDifficulty: 1.5 // 基础难度系数
   }
+};
+
+// 未知英雄兑换条件（非常苛刻）
+const UNKNOWN_HERO_EXCHANGE = {
+  // 兑换一个未知英雄需要的条件
+  requirements: [
+    { type: 'stageProgress', target: 200, desc: '通关关卡达到200关', icon: '🗺️' },
+    { type: 'totalMerges', target: 500, desc: '累计合成500次', icon: '⚗️' },
+    { type: 'zodiacBosses', target: 12, desc: '击败全部12生肖Boss', icon: '🐉' },
+    { type: 'arenaWins', target: 100, desc: '竞技场累计胜利100场', icon: '🏆' },
+    { type: 'rlBestFloor', target: 50, desc: '肉鸽模式达到50层', icon: '🎲' },
+    { type: 'hiddenHeroes', target: 5, desc: '拥有5个隐藏品质英雄', icon: '✨' },
+    { type: 'gold', target: 500000, desc: '消耗500000金币', icon: '💰' },
+    { type: 'gems', target: 500, desc: '消耗500宝石', icon: '💎' },
+    { type: 'zodiacTokens', target: 200, desc: '消耗200生肖币', icon: '🐉' }
+  ],
+  // 兑换后冷却时间（7天）
+  cooldownDays: 7
 };
 
 // 专属未知英雄模板（解锁后显示的真实数据）
@@ -7444,6 +7462,10 @@ function initGameAfterLoad() {
   if(typeof G.mergeFatigueLastTime !== 'number') G.mergeFatigueLastTime = 0;
   if(typeof G.totalMerges !== 'number') G.totalMerges = 0;
   if(typeof G.totalPotionsUsed !== 'number') G.totalPotionsUsed = 0;
+  // 未知英雄兑换进度
+  if(!G.unknownExchangeProgress) G.unknownExchangeProgress = {};
+  if(!G.unknownExchangeCooldown) G.unknownExchangeCooldown = 0;
+  if(!G.unknownExchangeCount) G.unknownExchangeCount = 0;
   if(!G.breakthroughMaterials || typeof G.breakthroughMaterials !== 'object') G.breakthroughMaterials = {rare:0,epic:0,legendary:0,mythic:0,hidden:0};
   // 英雄per-field补丁
   if (G.heroes) G.heroes.forEach(function(h) {
@@ -8648,7 +8670,7 @@ function showUnknownHeroUnlockEffect(hero){
 // 获取未知英雄解锁进度
 function getUnknownHeroQuestProgress(hero){
   if(!hero || !hero.isUnknown || !hero.unknownTemplate || !hero.unknownTemplate.unlockQuest) return null;
-  
+
   var quest = hero.unknownTemplate.unlockQuest;
   var conditions = quest.conditions.map(function(cond){
     var current = (G.unknownQuestProgress && G.unknownQuestProgress[cond.type]) || 0;
@@ -8660,10 +8682,10 @@ function getUnknownHeroQuestProgress(hero){
       completed: current >= cond.target
     };
   });
-  
+
   var completed = conditions.every(function(c){return c.completed;});
   var progress = conditions.reduce(function(sum, c){return sum + (c.completed ? 1 : 0);}, 0);
-  
+
   return {
     name: quest.name,
     desc: quest.desc,
@@ -8672,6 +8694,131 @@ function getUnknownHeroQuestProgress(hero){
     progress: progress,
     total: conditions.length
   };
+}
+
+// 获取未知英雄兑换进度
+function getUnknownExchangeProgress(){
+  var reqs = UNKNOWN_HERO_EXCHANGE.requirements;
+  var progress = [];
+  var allCompleted = true;
+
+  for(var i=0;i<reqs.length;i++){
+    var r = reqs[i];
+    var current = 0;
+    switch(r.type){
+      case 'stageProgress': current = G.stageProgress || 1; break;
+      case 'totalMerges': current = G.totalMerges || 0; break;
+      case 'zodiacBosses': current = G.zodiacProgress ? Object.keys(G.zodiacProgress).length : 0; break;
+      case 'arenaWins': current = G.arenaTotalWins || 0; break;
+      case 'rlBestFloor': current = G.rlBestFloor || 0; break;
+      case 'hiddenHeroes': current = G.heroes ? G.heroes.filter(function(h){return h.quality==='hidden'}).length : 0; break;
+      case 'gold': current = G.resources && G.resources.gold ? G.resources.gold : 0; break;
+      case 'gems': current = G.resources && G.resources.gems ? G.resources.gems : 0; break;
+      case 'zodiacTokens': current = G.zodiacTokens || 0; break;
+    }
+    var completed = current >= r.target;
+    if(!completed) allCompleted = false;
+    progress.push({
+      type: r.type,
+      target: r.target,
+      current: Math.min(current, r.target),
+      desc: r.desc,
+      icon: r.icon,
+      completed: completed
+    });
+  }
+
+  // 检查冷却时间
+  var now = Date.now();
+  var onCooldown = G.unknownExchangeCooldown && now < G.unknownExchangeCooldown;
+  var cooldownRemaining = onCooldown ? Math.ceil((G.unknownExchangeCooldown - now) / (24*60*60*1000)) : 0;
+
+  return {
+    requirements: progress,
+    allCompleted: allCompleted,
+    onCooldown: onCooldown,
+    cooldownRemaining: cooldownRemaining,
+    exchangeCount: G.unknownExchangeCount || 0
+  };
+}
+
+// 执行未知英雄兑换
+function exchangeUnknownHero(){
+  var progress = getUnknownExchangeProgress();
+  if(!progress.allCompleted){
+    showToast('❌ 兑换条件未满足！');
+    return;
+  }
+  if(progress.onCooldown){
+    showToast('⏳ 兑换冷却中，还剩 '+progress.cooldownRemaining+' 天');
+    return;
+  }
+
+  // 扣除资源
+  var reqs = UNKNOWN_HERO_EXCHANGE.requirements;
+  for(var i=0;i<reqs.length;i++){
+    var r = reqs[i];
+    if(r.type==='gold') G.resources.gold = Math.max(0, (G.resources.gold||0) - r.target);
+    if(r.type==='gems') G.resources.gems = Math.max(0, (G.resources.gems||0) - r.target);
+    if(r.type==='zodiacTokens') G.zodiacTokens = Math.max(0, (G.zodiacTokens||0) - r.target);
+  }
+
+  // 创建未知英雄
+  var template = UNKNOWN_HERO_TEMPLATES[Math.floor(Math.random() * UNKNOWN_HERO_TEMPLATES.length)];
+  var hero = createHero(template.id, 1);
+  hero.quality = 'unknown';
+  hero.isUnknown = true;
+  hero.isUnlocked = false;
+  hero.unknownTemplate = template;
+  hero.unlockQuest = generateUnlockQuest(template, G.stageProgress);
+  G.heroes.push(hero);
+
+  // 设置冷却
+  G.unknownExchangeCooldown = Date.now() + UNKNOWN_HERO_EXCHANGE.cooldownDays * 24 * 60 * 60 * 1000;
+  G.unknownExchangeCount = (G.unknownExchangeCount || 0) + 1;
+
+  saveGame();
+  updateResUI();
+  showToast('🌌 兑换成功！获得未知英雄：'+template.name);
+
+  // 打开英雄页面展示
+  switchTab('heroes');
+}
+
+// 打开未知英雄兑换面板
+function openUnknownExchangePanel(){
+  var progress = getUnknownExchangeProgress();
+  var reqsHtml = progress.requirements.map(function(r){
+    var pct = Math.min(100, Math.floor((r.current / r.target) * 100));
+    var done = r.completed;
+    var barColor = done ? '#00ff88' : '#f59e0b';
+    var statusIcon = done ? '✅' : '⏳';
+    return '<div style="margin-bottom:10px;padding:10px;background:rgba(255,255,255,.03);border-radius:8px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+      +'<span style="font-size:12px;color:var(--text2)">'+statusIcon+' '+r.icon+' '+r.desc+'</span>'
+      +'<span style="font-size:12px;color:'+(done?'#00ff88':'var(--text3)')+'">'+formatResource(r.current)+'/'+formatResource(r.target)+'</span>'
+      +'</div>'
+      +'<div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden">'
+      +'<div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:2px;transition:width .3s"></div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+
+  var canExchange = progress.allCompleted && !progress.onCooldown;
+  var cooldownText = progress.onCooldown ? '<div style="margin-top:10px;padding:8px;background:rgba(220,38,38,.1);border-radius:6px;color:#ff6b6b;font-size:12px">⏳ 兑换冷却中，还剩 <b>'+progress.cooldownRemaining+'</b> 天</div>' : '';
+  var exchangeCountText = '<div style="margin-top:8px;font-size:11px;color:var(--text3)">已累计兑换 <b style="color:var(--gold)">'+progress.exchangeCount+'</b> 个未知英雄</div>';
+
+  openModal('<div class="panel" style="max-width:340px">'
+    +'<div class="panel-title" style="color:#ff00ff">🌌 未知英雄兑换</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:12px">合成概率仅0.1%，也可通过完成以下苛刻条件直接兑换</div>'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:12px">兑换冷却：7天 | 每次兑换消耗大量资源</div>'
+    +reqsHtml
+    +cooldownText
+    +exchangeCountText
+    +'<div style="margin-top:12px">'
+    +'<button class="btn '+(canExchange?'btn-primary':'')+'" style="width:100%;'+(canExchange?'':'opacity:.5;cursor:not-allowed')+'" onclick="'+(canExchange?'exchangeUnknownHero()':'')+'" '+(canExchange?'':'disabled')+'>'+(canExchange?'🌌 立即兑换未知英雄':'条件未满足')+'</button>'
+    +'</div>'
+    +'</div>');
 }
 
 function showModal(title,contentHTML,buttons){
@@ -10128,6 +10275,10 @@ async function finishArenaBattle(isWin,playerUnits,enemyUnits,reward){
       }
     });
     
+    // 累计竞技场胜利追踪
+    if(typeof G.arenaTotalWins !== 'number') G.arenaTotalWins = 0;
+    G.arenaTotalWins++;
+
     showToast('🎉 竞技场胜利！💰'+reward.gold+' 🏆'+reward.fame+extraMsg+matMsg);
     updateResUI();
   }else{
@@ -17691,6 +17842,11 @@ function renderTown(el){
             +'<div class="town-module-btn-info" style="color:#666">'+(G.stageProgress-1)+'/100关</div>'
           +'</div>'
       )
+      +'<div class="town-module-btn" onclick="openUnknownExchangePanel()" style="background:linear-gradient(135deg,rgba(255,0,255,.12),rgba(180,0,180,.08));border-color:rgba(255,0,255,.3)">'
+      +'<div class="town-module-btn-icon" style="filter:drop-shadow(0 0 6px rgba(255,0,255,.5))">🌌</div>'
+      +'<div class="town-module-btn-name" style="color:#ff00ff">未知兑换</div>'
+      +'<div class="town-module-btn-info" style="color:#d946ef">苛刻条件</div>'
+      +'</div>'
     +'</div>';}catch(htmlErr){
     console.error('[Town Error] HTML generation:',htmlErr);
     // 降级渲染：显示核心功能按钮，避免完全黑屏
@@ -23822,7 +23978,13 @@ function rlOnBattleWin(savedTeam, savedHeroes, floorData) {
 
   // 记录最深层数
   var best = parseInt(localStorage.getItem('_rl_best_floor')||'0',10);
-  if(G_RL.floor > best) localStorage.setItem('_rl_best_floor', G_RL.floor);
+  if(G_RL.floor > best) {
+    localStorage.setItem('_rl_best_floor', G_RL.floor);
+    // 同步到存档变量
+    G.rlBestFloor = G_RL.floor;
+  } else if(!G.rlBestFloor || G.rlBestFloor < best) {
+    G.rlBestFloor = best;
+  }
 
   // 英雄经验升级
   var expGain = 12 + G_RL.floor * 4;
