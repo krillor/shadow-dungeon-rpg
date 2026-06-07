@@ -18520,9 +18520,8 @@ function renderHeroCard(h){
   var displayRole = isUnknown ? 'unknown' : h.role;
   
   var _uidJson = JSON.stringify(h.uid);
-  var unknownBadgeStyle = isUnknown ? 'background:linear-gradient(90deg,#ff00ff,#ff00cc);' + (inTeam ? 'top:38px;left:8px;' : '') : '';
+  var unknownBadgeStyle = isUnknown ? 'background:linear-gradient(90deg,#ff00ff,#ff00cc);' : '';
   return '<div class="hero-card quality-'+displayQuality+'" data-role="'+displayRole+'" data-quality="'+displayQuality+'" data-uid="'+h.uid+'" onclick=\'showHeroDetail('+_uidJson+')\' style="cursor:pointer">'
-    +(inTeam?'<div class="hero-team-badge">🛡️ 队伍中</div>':'')
     +(isUnknown?'<div class="hero-team-badge" style="'+unknownBadgeStyle+'">🔒 未解锁</div>':'')
     +'<button class="hero-lock-btn'+(h.locked?' hero-lock-btn-locked':'')+'" onclick=\'event.stopPropagation();toggleHeroLock('+_uidJson+')\' title="'+(h.locked?'解锁':'锁定')+'">'+(h.locked?'🔒':'🔓')+'</button>'
     +'<div class="hero-avatar" style="background:rgba('+(isUnknown?'255,0,255':h.quality==='common'?'100,100,100':h.quality==='rare'?'50,120,220':h.quality==='epic'?'140,50,220':h.quality==='legendary'?'220,160,30':'220,50,50')+',.2)">'
