@@ -3641,6 +3641,40 @@ function formatOmenTime(seconds) {
   return mins + ':' + (secs < 10 ? '0' : '') + secs;
 }
 
+// 合成疲劳恢复（每30分钟恢复1点，每天最多恢复10点）
+function recoverMergeFatigue(){
+  if(!G.mergeFatigue || G.mergeFatigue <= 0) return 0;
+  var now = Date.now();
+  var lastTime = G.mergeFatigueLastTime || now;
+  var elapsed = now - lastTime;
+  var recoverCount = Math.floor(elapsed / (30 * 60 * 1000)); // 每30分钟1点
+  recoverCount = Math.min(recoverCount, 10); // 每天最多恢复10点
+  var oldFatigue = G.mergeFatigue;
+  G.mergeFatigue = Math.max(0, G.mergeFatigue - recoverCount);
+  if(recoverCount > 0){
+    G.mergeFatigueLastTime = now;
+  }
+  return oldFatigue - G.mergeFatigue;
+}
+
+// 获取当前疲劳惩罚系数
+function getMergeFatiguePenalty(){
+  recoverMergeFatigue(); // 先恢复
+  var fatigue = G.mergeFatigue || 0;
+  if(fatigue <= 3) return 0; // 前3次无惩罚
+  var penalty = Math.min(0.30, (fatigue - 3) * 0.02); // 每次+2%，最多30%
+  return penalty;
+}
+
+// 获取疲劳状态描述
+function getMergeFatigueDesc(){
+  var fatigue = G.mergeFatigue || 0;
+  if(fatigue <= 3) return {text:'精神饱满 ✨', color:'#00ff88', penalty:0};
+  if(fatigue <= 8) return {text:'略有疲惫 😴', color:'#f59e0b', penalty:getMergeFatiguePenalty()};
+  if(fatigue <= 15) return {text:'非常疲劳 😵', color:'#ff6b00', penalty:getMergeFatiguePenalty()};
+  return {text:'精疲力竭 💀', color:'#dc2626', penalty:getMergeFatiguePenalty()};
+}
+
 // 等级成长：对数衰减曲线，前期快后期慢，避免无限膨胀
 // 公式: stat = baseStat * qualityMult * (1 + GROWTH_RATE * ln(1 + level))
 const GROWTH_RATE = 0.55;
@@ -5009,6 +5043,59 @@ const ZODIAC_BOSSES = [
   },
 ];
 
+// 特殊关卡机制（每N关触发一次）
+const STAGE_MECHANICS = {
+  // 物理免疫关（每10关）
+  physImmune: {
+    id: 'physImmune', name: '物理免疫', icon: '🛡️', desc: '敌人90%物理免疫，需要魔法伤害',
+    trigger: function(stageId){ return stageId % 10 === 0 && stageId > 10; },
+    apply: function(enemy){ enemy.physImmune = 0.90; }
+  },
+  // 沉默关（每15关）
+  silence: {
+    id: 'silence', name: '魔力封印', icon: '🔇', desc: '前3回合禁止使用技能',
+    trigger: function(stageId){ return stageId % 15 === 0 && stageId > 15; },
+    apply: function(battle){ battle.silenceRounds = 3; }
+  },
+  // 吸血关（每20关）
+  lifesteal: {
+    id: 'lifesteal', name: '血之渴望', icon: '🩸', desc: '敌人吸血50%，需要DOT/控制',
+    trigger: function(stageId){ return stageId % 20 === 0 && stageId > 20; },
+    apply: function(enemy){ enemy.lifesteal = 0.50; }
+  },
+  // 镜像关（每25关）
+  mirror: {
+    id: 'mirror', name: '镜像迷宫', icon: '🪞', desc: '复制玩家队伍属性',
+    trigger: function(stageId){ return stageId % 25 === 0 && stageId > 25; },
+    apply: function(enemy, playerUnits){ 
+      if(playerUnits && playerUnits.length > 0){
+        var target = playerUnits[Math.floor(Math.random()*playerUnits.length)];
+        enemy.maxHP = Math.floor(target.maxHP * 0.8);
+        enemy.hp = enemy.maxHP;
+        enemy.atk = Math.floor(target.atk * 0.8);
+        enemy.def = Math.floor(target.def * 0.8);
+        enemy.spd = Math.floor(target.spd * 0.9);
+      }
+    }
+  },
+  // 试炼关（每30关）
+  trial: {
+    id: 'trial', name: '英雄试炼', icon: '⚔️', desc: '只能上阵1-2名英雄',
+    trigger: function(stageId){ return stageId % 30 === 0 && stageId > 30; },
+    apply: function(){}
+  },
+  // 元素弱点关（每12关）
+  elemental: {
+    id: 'elemental', name: '元素风暴', icon: '❄️', desc: '敌人有元素弱点，需要对应主题羁绊',
+    trigger: function(stageId){ return stageId % 12 === 0 && stageId > 12; },
+    apply: function(enemy){
+      var elements = ['fire','ice','shadow','holy','dragon','undead','nature','thunder'];
+      enemy.weakness = elements[Math.floor(Math.random()*elements.length)];
+      enemy.weaknessBonus = 2.0; // 对应元素伤害×2
+    }
+  }
+};
+
 function getStage(id){
   if(id<=STAGES.length){
     var s=STAGES[id-1];
@@ -5029,25 +5116,35 @@ var DYNAMIC_DIFFICULTY = {
   getDifficultyMult: function() {
     var mult = 1.0;
     
-    // 基于最高通关关卡
+    // 基于最高通关关卡（更频繁：每10关+8%）
     var maxStage = G.maxStageReached || 1;
-    mult += Math.floor(maxStage / 20) * 0.1; // 每20关+10%
+    mult += Math.floor(maxStage / 10) * 0.08; // 每10关+8%
     
-    // 基于玩家平均战力
+    // 基于玩家平均战力（更灵敏：每3000战力+4%）
     if (G.heroes && G.heroes.length > 0) {
       var avgPower = G.heroes.reduce(function(s, h) { return s + (calcHeroPower ? calcHeroPower(h) : 0); }, 0) / G.heroes.length;
-      mult += Math.floor(avgPower / 5000) * 0.05; // 每5000战力+5%
+      mult += Math.floor(avgPower / 3000) * 0.04; // 每3000战力+4%
     }
     
-    // 基于隐藏融合英雄数量（玩家越强，敌人越强）
+    // 基于隐藏融合英雄数量
     var hiddenRuleCount = G.heroes ? G.heroes.filter(function(h) { return h.hiddenRule; }).length : 0;
-    mult += hiddenRuleCount * 0.05; // 每个隐藏规则英雄+5%
+    mult += hiddenRuleCount * 0.08; // 每个+8%（提高）
     
     // 基于异变/隐藏英雄数量
     var mutationCount = G.heroes ? G.heroes.filter(function(h) { return h.isMutation || h.isHidden; }).length : 0;
-    mult += mutationCount * 0.03; // 每个异变/隐藏英雄+3%
+    mult += mutationCount * 0.05; // 每个+5%（提高）
     
-    return Math.min(3.0, mult); // 上限300%
+    // 新增：基于总合成次数（频繁合成=更高难度）
+    var totalMerges = G.totalMerges || 0;
+    mult += Math.floor(totalMerges / 50) * 0.03; // 每50次合成+3%
+    
+    // 新增：基于合成疲劳（疲劳越低=越频繁合成=更高难度）
+    var fatigue = G.mergeFatigue || 0;
+    if(fatigue <= 3) {
+      mult += 0.10; // 频繁合成时额外+10%
+    }
+    
+    return Math.min(4.0, mult); // 上限提高到400%
   },
   
   // 应用难度到敌人属性
@@ -5322,6 +5419,19 @@ function generateStage(id){
       });
     }
   }
+
+  // 应用特殊关卡机制
+  var activeMechanics = [];
+  for(var mk in STAGE_MECHANICS){
+    var mech = STAGE_MECHANICS[mk];
+    if(mech.trigger && mech.trigger(id)){
+      activeMechanics.push(mech);
+      if(mech.apply){
+        enemies.forEach(function(e){ mech.apply(e); });
+      }
+    }
+  }
+  stage.mechanics = activeMechanics;
 
   // 关卡特性
   var modifiers=getStageModifiers(id,posInCycle);
@@ -6405,6 +6515,9 @@ let G = {
   autoDecompose: { enabled: false, maxQuality: 'common' }, // 自动分解设置
   // 羁绊槽位系统
   bondSlots: [null, null, null], // 3个羁绊激活槽位，存储 bond.id
+  // 合成疲劳系统
+  mergeFatigue: 0, // 合成疲劳值（每次合成+1，影响品质概率和属性继承）
+  mergeFatigueLastTime: 0, // 上次合成时间戳
 };
 
 // ==================== 存档系统 V5（无损序列化 + IndexedDB 为主存储） ====================
@@ -7333,6 +7446,12 @@ function initGameAfterLoad() {
   if (!G.zodiacChallenges) G.zodiacChallenges = {};
   if (!G.zodiacClearCount) G.zodiacClearCount = {};
   if (typeof G.zodiacTokens !== 'number') G.zodiacTokens = 0;
+  // 难度节奏控制新字段
+  if(typeof G.mergeFatigue !== 'number') G.mergeFatigue = 0;
+  if(typeof G.mergeFatigueLastTime !== 'number') G.mergeFatigueLastTime = 0;
+  if(typeof G.totalMerges !== 'number') G.totalMerges = 0;
+  if(typeof G.totalPotionsUsed !== 'number') G.totalPotionsUsed = 0;
+  if(typeof G.breakthroughMaterials !== 'number') G.breakthroughMaterials = 0;
   // 英雄per-field补丁
   if (G.heroes) G.heroes.forEach(function(h) {
     if (!h) return;
@@ -8815,6 +8934,9 @@ function updateResUI(){
   if(stoneEl)stoneEl.textContent=formatResource(G.resources.stone||0);
   if(ironEl)ironEl.textContent=formatResource(G.resources.iron||0);
   if(zodiacTokensEl)zodiacTokensEl.textContent=(G.zodiacTokens||0).toString();
+  // 突破材料显示
+  var breakMatEl = document.getElementById('res-breakthrough');
+  if(breakMatEl) breakMatEl.textContent = G.breakthroughMaterials || 0;
 }
 
 // 资源栏更新别名（兼容不同调用）
@@ -10559,6 +10681,17 @@ function calcDamage(attacker,defender,skill=null,skillIdx=-1){
     if(dmg > capMax) dmg = capMax;
   }
 
+  // 物理免疫检查
+  if(defender.physImmune && (!skill || skill.type !== 'damage' || skill.damageType !== 'magic')){
+    dmg = Math.floor(dmg * (1 - defender.physImmune));
+  }
+
+  // 元素弱点检查
+  if(defender.weakness && defender.weaknessBonus && attacker.element === defender.weakness){
+    dmg = Math.floor(dmg * defender.weaknessBonus);
+    // 元素克制的日志在executeSkill中输出
+  }
+
   // 术士：灵魂虹吸 - 造成伤害的15%转化为生命恢复
   if(attacker.role==='warlock' && !attacker.isEnemy){
     const heal=Math.floor(dmg*0.15);
@@ -10571,7 +10704,7 @@ function calcDamage(attacker,defender,skill=null,skillIdx=-1){
       attacker.hp=Math.min(attacker.maxHP,attacker.hp+heal);
     }
   });
-  
+
   return{dmg,crit,dodged:false};
 }
 
@@ -11851,6 +11984,16 @@ async function runBattle(stageOrId){
   const teamHeroes=G.team.filter(h=>h!==null && !(h.isUnknown && !h.isUnlocked));
   if(teamHeroes.length===0){showToast('请先编队！');G_battleRunning=false;return;}
 
+  // 试炼关：限制队伍人数
+  if(stage.mechanics){
+    var trialMech = stage.mechanics.find(function(m){return m.id==='trial';});
+    if(trialMech && teamHeroes.length > 2){
+      showToast('⚔️ 英雄试炼：只能上阵2名英雄！');
+      G_battleRunning=false;
+      return;
+    }
+  }
+
   let playerUnits=teamHeroes.map(h=>createBattleUnit(h,false));
 
   // 羁绊系统（通关20关后才生效）
@@ -12241,6 +12384,13 @@ async function runBattle(stageOrId){
     pbbRound=round;
     roundBadge.textContent='回合 '+round;
     log('—— 第 '+round+' 回合 ——','title');
+    // 特殊关卡机制：魔力封印
+    if(stage.mechanics){
+      var silenceMech = stage.mechanics.find(function(m){return m.id==='silence';});
+      if(silenceMech && round <= 3){
+        log('🔇 魔力封印生效！前3回合无法使用技能','system');
+      }
+    }
     // 每3回合有概率触发探索事件（地下城堡风格）
     if(round%3===0 && round<maxRounds-2){
       triggerExploreEvent(log);
@@ -12402,6 +12552,16 @@ async function runBattle(stageOrId){
       if(smartChoice){
         skillId=smartChoice.id;
         chosenSkill=smartChoice.skill;
+      }
+
+      // 魔力封印检查（前3回合玩家只能普通攻击）
+      if(chosenSkill && stage.mechanics){
+        var silenceMech = stage.mechanics.find(function(m){return m.id==='silence';});
+        if(silenceMech && round <= 3 && !unit.isEnemy){
+          log('🔇 '+unit.name+' 被魔力封印，只能普通攻击！','debuff');
+          chosenSkill = null;
+          skillId = 'basic_attack';
+        }
       }
 
       if(chosenSkill){
@@ -13553,10 +13713,12 @@ function generateFusedHero(heroes){
     // 正常随机判定
     // 先知之眼：应用品质概率加成
     var oracleBonus = G.oracleBonus || {};
-    var hiddenRate = G_HIDDEN_DIRECT_RATE + (oracleBonus.hidden || 0);
-    var mythicRate = G_MYTHIC_DIRECT_RATE + (oracleBonus.mythic || 0);
-    var legendaryRate = G_LEGENDARY_DIRECT_RATE + (oracleBonus.legendary || 0);
-    var qualityUpRate = G_QUALITY_UP_RATE + (oracleBonus.rare || 0);
+    var fatiguePenalty = getMergeFatiguePenalty();
+    var hiddenRate = (G_HIDDEN_DIRECT_RATE + (oracleBonus.hidden || 0)) * (1 - fatiguePenalty);
+    var mythicRate = (G_MYTHIC_DIRECT_RATE + (oracleBonus.mythic || 0)) * (1 - fatiguePenalty);
+    var legendaryRate = (G_LEGENDARY_DIRECT_RATE + (oracleBonus.legendary || 0)) * (1 - fatiguePenalty);
+    var qualityUpRate = (G_QUALITY_UP_RATE + (oracleBonus.rare || 0)) * (1 - fatiguePenalty);
+    var effectiveMutationRate = Math.min(0.50, (G_MUTATION_RATE + luckyBonus + scrollLuckyBonus) * (1 - fatiguePenalty * 0.5));
     // 使用先知加成后清零（一次性）
     G.oracleBonus = {};
     
@@ -13788,7 +13950,8 @@ function generateFusedHero(heroes){
     
     var quantityBonus=1+(heroes.length-2)*0.1;
     var qualityBonus=1+resultQualityIdx*0.05;
-    var inheritMult=1.2*quantityBonus*qualityBonus*bondMult;
+    var fatiguePenalty = getMergeFatiguePenalty();
+    var inheritMult=1.2*quantityBonus*qualityBonus*bondMult*(1-fatiguePenalty*0.5);
     if(upsetBonus)inheritMult+=0.2;
     if(streakCount>=3)inheritMult+=0.1;
     
@@ -15850,10 +16013,11 @@ function executeMerge(heroUids){
   var activeScroll = getActiveScrollEffect();
   var scrollUsed = false;
 
-  // === 合成消耗：金币 = 材料最高品质 × 200（已降低）===
+  // === 合成消耗：金币 = 200 × 1.5^品质指数（指数增长）===
   var qualities=heroes.map(function(h){return QUALITIES.indexOf(h.quality)});
   var maxQIdx=Math.max.apply(null,qualities);
-  var mergeCost = (maxQIdx+1) * 200;
+  var mergeCost = Math.floor(200 * Math.pow(1.5, maxQIdx));
+  // common: 200, rare: 300, epic: 450, legendary: 675, mythic: 1013, hidden: 1519
 
   // === 卷轴：合成折扣（归零） ===
   if (activeScroll && activeScroll.effect === 'goldDiscount') {
@@ -15886,6 +16050,13 @@ function executeMerge(heroUids){
     return false;
   }
   G.resources.gold -= mergeCost;
+
+  // 增加合成疲劳
+  G.mergeFatigue = (G.mergeFatigue || 0) + 1;
+  G.mergeFatigueLastTime = Date.now();
+
+  // 追踪总合成次数（用于动态难度）
+  G.totalMerges = (G.totalMerges || 0) + 1;
 
   // === 所有前置检查通过，现在扣除卷轴 ===
   if (activeScroll) {
@@ -17405,6 +17576,7 @@ function renderTown(el){
           +'<div class="town-res-item" title="经验药水"><span class="town-res-icon">🧪</span><span class="town-res-val potion" id="res-expPotion">'+expPotion+'</span></div>'
           +'<div class="town-res-item" title="铁矿"><span class="town-res-icon">⛏️</span><span class="town-res-val iron" id="res-iron">'+iron+'</span></div>'
           +'<div class="town-res-item" title="生肖币"><span class="town-res-icon">🐉</span><span class="town-res-val gold" id="res-zodiacTokens" style="color:#ffa500">'+(G.zodiacTokens||0)+'</span></div>'
+          +'<div class="town-res-item" title="突破材料"><span class="town-res-icon">🔮</span><span class="town-res-val gold" id="res-breakthrough" style="color:#a855f7">'+(G.breakthroughMaterials||0)+'</span></div>'
         +'</div>'
       +'</div>'
       // 英雄统计摘要（带图标）
@@ -18502,16 +18674,22 @@ function useExpPotion(heroUid,mult=1){
   }
 
   const totalCost=unitCost*actualMult;
+
+  // 经验药水衰减：每使用100瓶后效果-10%（最低50%）
+  var totalPotionsUsed = G.totalPotionsUsed || 0;
+  var decayFactor = Math.max(0.5, 1.0 - Math.floor(totalPotionsUsed / 100) * 0.1);
+
   const expPerUnit=getPotionExpPerUnit(hero.level);
-  const totalExp=expPerUnit*actualMult;
-  
+  const totalExp=Math.floor(expPerUnit*actualMult*decayFactor);
+
   if((G.resources.expPotion||0)<totalCost){
     showToast(`经验药水不足！需要 🧪${totalCost}`);
     return;
   }
-  
+
   // 消耗药水并增加经验
   G.resources.expPotion-=totalCost;
+  G.totalPotionsUsed = (G.totalPotionsUsed || 0) + actualMult;
   const leveledUp=addHeroExp(hero,totalExp);
   
   updateResourceBar();
@@ -19893,10 +20071,15 @@ function stageAction(stageId){
   if(stage.modifiers&&stage.modifiers.length>0){
     modHtml='<div style="margin:8px 0;display:flex;flex-wrap:wrap;gap:4px">'+stage.modifiers.map(function(m){return '<span class="stage-modifier-tag" style="font-size:10px;padding:2px 6px">'+m.name+'</span>'}).join('')+'</div>';
   }
+  var mechHtml='';
+  if(stage.mechanics&&stage.mechanics.length>0){
+    mechHtml='<div style="margin:8px 0;display:flex;flex-wrap:wrap;gap:4px">'+stage.mechanics.map(function(m){return '<span class="stage-modifier-tag" style="font-size:10px;padding:2px 6px;background:rgba(220,38,38,.2);color:#ff6b6b;border-color:#dc2626">'+m.icon+' '+m.name+'</span>'}).join('')+'</div>';
+  }
   openModal('<div class="panel" style="max-width:300px">'
     +'<div style="font-size:16px;font-weight:bold;margin-bottom:12px;color:var(--gold)">'+stage.icon+' '+stage.name+'</div>'
     +'<div class="text-dim text-sm mb-8">'+stage.desc+'</div>'
     +modHtml
+    +mechHtml
     +'<div style="display:flex;flex-direction:column;gap:8px">'
     +'<button class="btn btn-primary" onclick="closeModal();startBattle('+stageId+')">⚔️ 重新战斗</button>'
     +'<button class="btn" style="background:rgba(100,200,255,.2)" onclick="closeModal();quickClear('+stageId+')">⚡ 快速扫荡</button>'
@@ -20381,7 +20564,13 @@ function renderMerge(el){
         ${bondHtml}
         
         <div class="merge-actions">
-          <div class="merge-cost-info">💰 消耗: <b style="color:${canAfford?'var(--gold)':'var(--red)'}">${totalCostText}</b></div>
+          <div>
+            <div class="merge-cost-info">💰 消耗: <b style="color:${canAfford?'var(--gold)':'var(--red)'}">${totalCostText}</b></div>
+            ${(()=>{
+              var fd = getMergeFatigueDesc();
+              return '<div style="font-size:11px;margin-top:4px"><span style="color:'+fd.color+'">'+fd.text+'</span> <span style="color:var(--text3)">(疲劳'+G.mergeFatigue+')</span></div>';
+            })()}
+          </div>
           <div class="merge-btn-group">
             <button class="btn-merge-go" id="merge-btn" onclick="doMerge()" disabled style="flex:1;font-size:16px;padding:14px 24px">⚗️ 开始融合</button>
           </div>
@@ -21457,12 +21646,28 @@ function enhanceEquipment(equipUid){
   // 强化消耗：铁矿随等级递增
   var ironCost=10+level*5;
   var goldCost=50+level*30;
+
+  // +8以上需要突破材料（从竞技场/生肖Boss获取）
+  var breakMaterialCost = 0;
+  if(level >= 8){
+    breakMaterialCost = (level - 7); // +8需要1个，+9需要2个，+10需要3个
+    var currentMaterials = G.breakthroughMaterials || 0;
+    if(currentMaterials < breakMaterialCost){
+      showToast('突破材料不足！需要 '+breakMaterialCost+' 个（从竞技场/生肖Boss获取）');
+      return;
+    }
+  }
   
   if((G.resources.iron||0)<ironCost){showToast('铁矿不足！需要 '+ironCost+' ⛏️');return}
   if((G.resources.gold||0)<goldCost){showToast('金币不足！需要 '+goldCost+' 💰');return}
   
   G.resources.iron-=ironCost;
   G.resources.gold-=goldCost;
+
+  if(breakMaterialCost > 0){
+    G.breakthroughMaterials = (G.breakthroughMaterials || 0) - breakMaterialCost;
+  }
+
   eq.enhance=level+1;
   
   var tpl=EQUIP_TEMPLATES.find(function(t){return t.id===eq.id});
