@@ -7450,7 +7450,7 @@ function initGameAfterLoad() {
   if(typeof G.mergeFatigueLastTime !== 'number') G.mergeFatigueLastTime = 0;
   if(typeof G.totalMerges !== 'number') G.totalMerges = 0;
   if(typeof G.totalPotionsUsed !== 'number') G.totalPotionsUsed = 0;
-  if(typeof G.breakthroughMaterials !== 'number') G.breakthroughMaterials = 0;
+  if(!G.breakthroughMaterials || typeof G.breakthroughMaterials !== 'object') G.breakthroughMaterials = {rare:0,epic:0,legendary:0,mythic:0,hidden:0};
   // 英雄per-field补丁
   if (G.heroes) G.heroes.forEach(function(h) {
     if (!h) return;
@@ -8935,7 +8935,11 @@ function updateResUI(){
   if(zodiacTokensEl)zodiacTokensEl.textContent=(G.zodiacTokens||0).toString();
   // 突破材料显示
   var breakMatEl = document.getElementById('res-breakthrough');
-  if(breakMatEl) breakMatEl.textContent = G.breakthroughMaterials || 0;
+  if(breakMatEl){
+    var bt = G.breakthroughMaterials || {};
+    var total = (bt.rare||0) + (bt.epic||0) + (bt.legendary||0) + (bt.mythic||0) + (bt.hidden||0);
+    breakMatEl.textContent = total;
+  }
 }
 
 // 资源栏更新别名（兼容不同调用）
