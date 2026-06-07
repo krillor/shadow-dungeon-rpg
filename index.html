@@ -18149,6 +18149,34 @@ function consumeQuickRecruitUse() {
 // ==================== 一键招募功能 ====================
 const RECRUIT_PASSWORD = '1076667471'; // 一键招募密码（备用）
 
+// ==================== 广告位 ID 调试工具 ====================
+// 在调试面板添加广告位测试功能
+window.testAdUnitId = function() {
+  var newId = prompt('请输入广告位 ID（adUnitId）来测试：', '1057287');
+  if (newId && newId.trim()) {
+    newId = newId.trim();
+    debugLog('[ADT] 用户输入广告位 ID: ' + newId);
+    showToast('已设置广告位 ID: ' + newId + '，请重新打开一键招募');
+    
+    // 更新广告系统
+    if (window.tap && rewardedVideoAd) {
+      debugLog('[ADT] 重新初始化广告系统...');
+      // 重新初始化广告系统（注意：这一步可能需要重新加载页面
+      showToast('提示：请重新打开游戏页面来应用新的广告位 ID');
+    }
+  }
+};
+
+// 在调试面板添加广告位测试按钮
+window.testAdNoPassword = function() {
+  debugLog('[ADT] 临时解锁一键招募（无需广告）');
+  G.recruitAdData.todayIsUnlocked = true;
+  G.recruitAdData.remainingUses = 999;
+  saveGame();
+  showToast('✅ 今日一键招募已临时解锁！');
+  closeModal();
+};
+
 // 显示一键招募品质筛选菜单（广告版本）
 function showRecruitPasswordDialog(quality){
   if (canUseQuickRecruit()) {
@@ -27818,12 +27846,38 @@ function toggleDebugPanel() {
     if (!el) {
       el = document.createElement('div');
       el.id = 'debug-panel';
-      el.style.cssText = 'position:fixed;top:40px;right:5px;width:180px;max-height:200px;overflow-y:auto;background:rgba(0,0,0,.9);color:#0f0;font-size:10px;padding:6px;border-radius:6px;z-index:99999;font-family:monospace;white-space:pre-wrap;word-break:break-all;line-height:1.4';
+      el.style.cssText = 'position:fixed;top:40px;right:5px;width:220px;max-height:280px;overflow-y:auto;background:rgba(0,0,0,.95);color:#0f0;font-size:10px;padding:8px;border-radius:8px;z-index:99999;font-family:monospace;white-space:pre-wrap;word-break:break-all;line-height:1.4;border:1px solid #0f0';
       document.body.appendChild(el);
     }
+    
+    // 构建面板内容
+    var html = '<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #0f0;">';
+    html += '<strong>📋 调试面板</strong>';
+    html += '</div>';
+    
+    // 快捷按钮区域
+    html += '<div style="margin-bottom:8px;">';
+    html += '<div style="margin-bottom:6px;"><strong>🎬 广告测试</strong></div>';
+    html += '<button onclick="testAdNoPassword()" style="font-size:10px;margin:2px 0;width:100%;background:#27ae60;color:#fff;border:none;padding:4px;border-radius:4px;cursor:pointer;">✅ 临时解锁一键招募</button>';
+    html += '<button onclick="window.testAdUnitId && window.testAdUnitId()" style="font-size:10px;margin:2px 0;width:100%;background:#3498db;color:#fff;border:none;padding:4px;border-radius:4px;cursor:pointer;">🔧 测试广告位ID</button>';
+    html += '</div>';
+    
+    // 日志显示区域
+    html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #0f0;">';
+    html += '<div style="margin-bottom:6px;"><strong>📝 日志输出</strong></div>';
+    html += '<div id="debug-log-content" style="max-height:120px;overflow-y:auto;">';
+    html += _debugLog.join('\n');
+    html += '</div>';
+    html += '</div>';
+    
+    el.innerHTML = html;
     el.style.display = 'block';
-    el.textContent = _debugLog.join('\n');
-    el.scrollTop = el.scrollHeight;
+    
+    // 滚动到最新
+    setTimeout(function() {
+      var logContent = document.getElementById('debug-log-content');
+      if (logContent) logContent.scrollTop = logContent.scrollHeight;
+    }, 10);
   } else if (el) {
     el.style.display = 'none';
   }
