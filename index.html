@@ -6670,6 +6670,13 @@ let G = {
   // 合成疲劳系统
   mergeFatigue: 0, // 合成疲劳值（每次合成+1，影响品质概率和属性继承）
   mergeFatigueLastTime: 0, // 上次合成时间戳
+  // 一键招募广告系统
+  recruitAdData: {
+    dailyWatchCount: 0, // 今日观看广告次数
+    remainingUses: 0, // 剩余使用次数
+    lastAdDate: '', // 上次看广告日期
+    todayIsUnlocked: false, // 今日是否已解锁免费使用
+  },
 };
 
 // ==================== 存档系统 V5（无损序列化 + IndexedDB 为主存储） ====================
@@ -17794,13 +17801,181 @@ function recruitAllHeroes(minQuality){
   renderTavernRecruit();
 }
 
-// 一键招募密码验证状态（已从全局变量改为G对象属性，实现持久化）
+// ==================== 激励视频广告系统（一键招募） ====================
+var rewardedVideoAd = null;
 var G_pendingRecruitQuality = null; // 待执行的品质筛选
-const RECRUIT_PASSWORD = '1076667471'; // 一键招募密码
 
-// 显示一键招募品质筛选菜单（已移除密码限制）
+// 初始化广告系统
+function initAdSystem() {
+  // 重置每日数据
+  const today = new Date().toDateString();
+  if (G.recruitAdData.lastAdDate !== today) {
+    G.recruitAdData.dailyWatchCount = 0;
+    G.recruitAdData.todayIsUnlocked = false;
+    G.recruitAdData.lastAdDate = today;
+  }
+
+  // 兼容模式：没有tap环境时提供模拟
+  if (!window.tap) {
+    console.log('[AdSystem] 模拟模式运行');
+    window.tap = {
+      createRewardedVideoAd: function (cfg) {
+        console.log('[AdSystem] 创建模拟激励广告:', cfg.adUnitId);
+        return {
+          onLoad: function (cb) { setTimeout(cb, 200); },
+          onError: function (cb) { },
+          onClose: function (cb) { this.closeCb = cb; },
+          load: function () { return Promise.resolve(); },
+          show: function () {
+            const self = this;
+            return new Promise(function (resolve, reject) {
+              setTimeout(function () {
+                if (confirm('模拟：观看完整广告？（是=获得奖励，否=中途退出）')) {
+                  self.closeCb && self.closeCb({ isEnded: true });
+                } else {
+                  self.closeCb && self.closeCb({ isEnded: false });
+                }
+                resolve();
+              }, 500);
+            });
+          }
+        };
+      },
+      showToast: function (obj) { showToast(obj.title); }
+    };
+  }
+
+  // 创建激励视频广告实例
+  rewardedVideoAd = window.tap.createRewardedVideoAd({
+    adUnitId: 'your-ad-unit-id'
+  });
+
+  // 监听广告加载成功
+  rewardedVideoAd.onLoad(function () {
+    console.log('[AdSystem] 激励视频广告加载成功');
+  });
+
+  // 监听广告加载失败
+  rewardedVideoAd.onError(function (err) {
+    console.log('[AdSystem] 激励视频广告加载失败', err);
+  });
+
+  // 监听广告关闭
+  rewardedVideoAd.onClose(function (res) {
+    if (res && res.isEnded) {
+      giveRecruitAdReward();
+    } else {
+      window.tap.showToast({
+        title: '观看完整视频才能获得奖励哦',
+        icon: 'none'
+      });
+    }
+  });
+}
+
+// 播放激励视频广告获取一键招募使用次数
+function showRewardedVideoAd() {
+  rewardedVideoAd.show()
+    .catch(function (err) {
+      // 广告未加载完成，尝试加载后再播放
+      rewardedVideoAd.load()
+        .then(function () { return rewardedVideoAd.show(); })
+        .catch(function (err) {
+          window.tap.showToast({
+            title: '暂无广告，请稍后再试',
+            icon: 'none'
+          });
+        });
+    });
+}
+
+// 发放奖励
+function giveRecruitAdReward() {
+  const today = new Date().toDateString();
+  G.recruitAdData.lastAdDate = today;
+  G.recruitAdData.dailyWatchCount += 1;
+  G.recruitAdData.remainingUses += 5;
+
+  var shouldExecute = false;
+  if (G.recruitAdData.dailyWatchCount >= 30 && !G.recruitAdData.todayIsUnlocked) {
+    G.recruitAdData.todayIsUnlocked = true;
+    shouldExecute = true;
+    window.tap.showToast({
+      title: '🎉 今日已免费解锁无限使用！',
+      icon: 'success'
+    });
+  } else {
+    shouldExecute = true;
+    window.tap.showToast({
+      title: '✅ 获得 5 次一键招募使用次数！',
+      icon: 'success'
+    });
+  }
+  saveGame();
+  
+  // 关闭广告对话框，执行待处理的招募
+  closeModal();
+  if (shouldExecute && G_pendingRecruitQuality !== null) {
+    setTimeout(function() {
+      if (consumeQuickRecruitUse()) {
+        recruitAllHeroes(G_pendingRecruitQuality);
+      }
+      G_pendingRecruitQuality = null;
+    }, 300);
+  }
+  renderTavernRecruit(); // 刷新招募界面
+}
+
+// 检查是否可以使用一键招募
+function canUseQuickRecruit() {
+  if (G.recruitAdData.todayIsUnlocked) return true;
+  if (G.recruitAdData.remainingUses > 0) return true;
+  return false;
+}
+
+// 使用一键招募（扣除次数）
+function consumeQuickRecruitUse() {
+  if (G.recruitAdData.todayIsUnlocked) return true;
+  if (G.recruitAdData.remainingUses > 0) {
+    G.recruitAdData.remainingUses -= 1;
+    saveGame();
+    return true;
+  }
+  return false;
+}
+
+// ==================== 一键招募功能 ====================
+const RECRUIT_PASSWORD = '1076667471'; // 一键招募密码（备用）
+
+// 显示一键招募品质筛选菜单（广告版本）
 function showRecruitPasswordDialog(quality){
-  recruitAllHeroes(quality);
+  if (canUseQuickRecruit()) {
+    if (consumeQuickRecruitUse()) {
+      recruitAllHeroes(quality);
+    }
+  } else {
+    showRecruitAdDialog(quality);
+  }
+}
+
+// 显示看广告获取权限的对话框
+function showRecruitAdDialog(pendingQuality){
+  G_pendingRecruitQuality = pendingQuality;
+  var html = '<div style="padding:20px;text-align:center">';
+  html += '<div style="font-size:20px;margin-bottom:16px">⚡ 一键招募</div>';
+  html += '<div style="font-size:14px;color:var(--text2);margin-bottom:20px;line-height:1.8">';
+  html += '<div style="margin-bottom:8px">📺 观看一次广告获得 <b style="color:var(--green)">5次</b> 使用权</div>';
+  html += '<div style="margin-bottom:8px">🎯 今日已观看 ' + G.recruitAdData.dailyWatchCount + '/30 次广告</div>';
+  if (G.recruitAdData.dailyWatchCount >= 30) {
+    html += '<div style="color:var(--gold)">🎉 今日已解锁免费无限使用！</div>';
+  } else {
+    html += '<div style="color:var(--purple)">' + (30 - G.recruitAdData.dailyWatchCount) + ' 次后解锁今日无限使用</div>';
+  }
+  html += '</div>';
+  html += '<button class="btn btn-primary" style="width:100%" onclick="showRewardedVideoAd()">📺 观看广告获取权限</button>';
+  html += '<button class="btn" style="width:100%;margin-top:8px" onclick="closeModal()">取消</button>';
+  html += '</div>';
+  showModal('⚡ 一键招募', html);
 }
 
 // 验证密码
@@ -17828,6 +18003,9 @@ function verifyRecruitPassword(){
 
 // 显示一键招募品质筛选菜单
 function showRecruitAllMenu(){
+  // 确保广告系统初始化
+  if (!rewardedVideoAd) initAdSystem();
+  
   const MAX_RECRUIT_PER_BATCH = 100;
   const MAX_TOTAL_HEROES = 200;
   
@@ -17856,6 +18034,14 @@ function showRecruitAllMenu(){
   
   var html = '<div style="padding:16px">';
   html += '<div style="font-size:14px;font-weight:bold;margin-bottom:12px;text-align:center">⚡ 一键招募 - 选择品质筛选</div>';
+  
+  // 广告状态显示
+  if (G.recruitAdData.todayIsUnlocked) {
+    html += '<div style="text-align:center;padding:10px;margin-bottom:12px;background:rgba(46,213,115,.15);border-radius:8px;border:1px solid rgba(46,213,115,.4);color:var(--green)">🎉 今日已解锁无限使用！</div>';
+  } else {
+    html += '<div style="text-align:center;padding:10px;margin-bottom:12px;background:rgba(102,126,234,.15);border-radius:8px;border:1px solid rgba(102,126,234,.4);color:var(--purple)">📺 剩余使用次数：<b>' + G.recruitAdData.remainingUses + '</b> | 今日观看：' + G.recruitAdData.dailyWatchCount + '/30 <button class="btn btn-xs" style="margin-left:8px" onclick="closeModal();showRecruitAdDialog()">+</button></div>';
+  }
+  
   html += '<div style="font-size:12px;color:var(--text2);margin-bottom:16px;text-align:center">当前英雄：' + currentHeroCount + '/' + MAX_TOTAL_HEROES + ' | 本次最多招募：' + maxBatchSize + '个<br>酒馆等级：' + tavernLevel + ' | 最高品质：' + QUALITY_NAMES[maxQuality] + '</div>';
   
   // 全部招募选项
