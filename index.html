@@ -486,6 +486,16 @@ body{
   color:var(--gold);
   font-weight:600;
 }
+#sidebar .nav-btn.nav-locked {
+  opacity: 0.4;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}
+#sidebar .nav-btn.nav-locked:hover {
+  opacity: 0.6;
+  background: transparent;
+  color: var(--text3);
+}
 
 /* ===== 主内容区 ===== */
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden;padding-bottom:var(--nav-h)}
@@ -2715,26 +2725,26 @@ if(!Array.prototype.concat){Array.prototype.concat=function(){var arr=[],i=0;for
 <body>
 <div id="app">
   <div id="sidebar">
-    <div class="nav-btn active" data-tab="town" title="城镇">🏰<div class="nav-label">城镇</div></div>
-    <div class="nav-btn" data-tab="heroes" title="英雄">⚔️<div class="nav-label">英雄</div></div>
-    <div class="nav-btn" data-tab="team" title="编队">🛡️<div class="nav-label">编队</div></div>
-    <div class="nav-btn" id="battle-nav-btn" data-tab="battle" title="战斗">💀<div class="nav-label">战斗</div></div>
-    <div class="nav-btn" id="merge-nav-btn" data-tab="merge" title="合成">⚗️<div class="nav-label">合成</div></div>
-    <div class="nav-btn" data-tab="equip" title="装备">🗡️<div class="nav-label">装备</div></div>
+    <div class="nav-btn active" data-tab="town" title="城镇" onclick="onNavClick('town')">🏰<div class="nav-label">城镇</div></div>
+    <div class="nav-btn" data-tab="heroes" title="英雄" onclick="onNavClick('heroes')">⚔️<div class="nav-label">英雄</div></div>
+    <div class="nav-btn" data-tab="team" title="编队" onclick="onNavClick('team')">🛡️<div class="nav-label">编队</div></div>
+    <div class="nav-btn" id="battle-nav-btn" data-tab="battle" title="战斗" onclick="onNavClick('battle')">💀<div class="nav-label">战斗</div></div>
+    <div class="nav-btn" id="merge-nav-btn" data-tab="merge" title="合成" onclick="onNavClick('merge')">⚗️<div class="nav-label">合成</div></div>
+    <div class="nav-btn" data-tab="equip" title="装备" onclick="onNavClick('equip')">🗡️<div class="nav-label">装备</div></div>
     <!-- 屏蔽建筑模块 -->
-    <!-- <div class="nav-btn" data-tab="buildings" title="建筑">🏗️<div class="nav-label">建筑</div></div> -->
+    <!-- <div class="nav-btn" data-tab="buildings" title="建筑" onclick="onNavClick('buildings')">🏗️<div class="nav-label">建筑</div></div> -->
     <!-- 屏蔽竞技场模块 -->
-    <!-- <div class="nav-btn" data-tab="arena" title="竞技场">🏟️<div class="nav-label">竞技场</div></div> -->
+    <!-- <div class="nav-btn" data-tab="arena" title="竞技场" onclick="onNavClick('arena')">🏟️<div class="nav-label">竞技场</div></div> -->
     <!-- 屏蔽突破模块 -->
-    <!-- <div class="nav-btn" data-tab="breakthrough" title="突破">⚡<div class="nav-label">突破</div></div> -->
+    <!-- <div class="nav-btn" data-tab="breakthrough" title="突破" onclick="onNavClick('breakthrough')">⚡<div class="nav-label">突破</div></div> -->
     <!-- 屏蔽图鉴模块 -->
-    <!-- <div class="nav-btn" data-tab="codex" title="图鉴">📖<div class="nav-label">图鉴</div></div> -->
+    <!-- <div class="nav-btn" data-tab="codex" title="图鉴" onclick="onNavClick('codex')">📖<div class="nav-label">图鉴</div></div> -->
     <!-- 屏蔽成就模块 -->
-    <!-- <div class="nav-btn" data-tab="achievements" title="成就">🏅<div class="nav-label">成就</div></div> -->
-    <div class="nav-btn" data-tab="roguelike" title="肉鸽地牢">🎲<div class="nav-label">肉鸽</div></div>
-    <div class="nav-btn" data-tab="leaderboard" title="排行">🏆<div class="nav-label">排行</div></div>
-    <div class="nav-btn" data-tab="cheats" id="nav-cheats-btn" title="金手指" style="color:#c0392b">🔓<div class="nav-label">金手指</div></div>
-    <div class="nav-btn" data-tab="zodiac" title="生肖Boss">🐉<div class="nav-label">生肖</div></div>
+    <!-- <div class="nav-btn" data-tab="achievements" title="成就" onclick="onNavClick('achievements')">🏅<div class="nav-label">成就</div></div> -->
+    <div class="nav-btn" data-tab="roguelike" title="肉鸽地牢" onclick="onNavClick('roguelike')">🎲<div class="nav-label">肉鸽</div></div>
+    <div class="nav-btn" data-tab="leaderboard" title="排行" onclick="onNavClick('leaderboard')">🏆<div class="nav-label">排行</div></div>
+    <div class="nav-btn" data-tab="cheats" id="nav-cheats-btn" title="金手指" style="color:#c0392b" onclick="onNavClick('cheats')">🔓<div class="nav-label">金手指</div></div>
+    <div class="nav-btn" data-tab="zodiac" title="生肖Boss" onclick="onNavClick('zodiac')">🐉<div class="nav-label">生肖</div></div>
   </div>
   <div id="main">
     <!-- 顶部快捷工具栏（兑换码/存档/修复状态/调试） -->
@@ -13216,6 +13226,8 @@ async function runBattle(stageOrId){
     G.resources.iron=Math.min((G.resources.iron||0)+finalIron, RESOURCE_LIMITS.iron);
     G.resources.gems=Math.min((G.resources.gems||0)+(rw.gems||0), RESOURCE_LIMITS.gems);
     if(stage.id>=G.stageProgress){G.stageProgress=stage.id+1}
+    // 更新导航栏锁定状态（可能解锁新系统）
+    updateNavLockState();
     // 羁绊系统解锁提示（通关第20关）
     if(G.stageProgress===21 && !G._bondUnlockNotified){
       G._bondUnlockNotified=true;
@@ -17823,6 +17835,90 @@ function recruitHero(templateId){
   }
 }
 
+// ==================== 系统解锁配置 ====================
+const SYSTEM_UNLOCKS = {
+  // 默认解锁（第1关）
+  town: { stage: 1, name: '城镇', icon: '🏰', desc: '基础功能' },
+  heroes: { stage: 1, name: '英雄', icon: '⚔️', desc: '查看和管理英雄' },
+  team: { stage: 1, name: '编队', icon: '🛡️', desc: '组建战斗队伍' },
+  battle: { stage: 1, name: '战斗', icon: '⚔️', desc: '挑战关卡' },
+  merge: { stage: 1, name: '合成', icon: '⚗️', desc: '融合英雄' },
+
+  // 渐进解锁
+  equip: { stage: 5, name: '装备', icon: '🛡️', desc: '装备系统' },
+  buildings: { stage: 8, name: '建筑', icon: '🏗️', desc: '升级建筑' },
+  codex: { stage: 10, name: '图鉴', icon: '📚', desc: '英雄图鉴' },
+  arena: { stage: 15, name: '竞技场', icon: '🏆', desc: 'PVP挑战' },
+  roguelike: { stage: 20, name: '肉鸽', icon: '🎲', desc: '肉鸽模式' },
+  achievements: { stage: 25, name: '成就', icon: '🏅', desc: '成就系统' },
+  leaderboard: { stage: 30, name: '排行', icon: '📊', desc: '排行榜' },
+  zodiac: { stage: 35, name: '生肖', icon: '🐉', desc: '生肖试炼' },
+  unknownExchange: { stage: 50, name: '未知兑换', icon: '🌌', desc: '未知英雄兑换' },
+};
+
+// 检查系统是否已解锁
+function isSystemUnlocked(systemId){
+  var config = SYSTEM_UNLOCKS[systemId];
+  if(!config) return true; // 未知系统默认解锁
+  return (G.stageProgress || 1) >= config.stage;
+}
+
+// 获取系统解锁信息
+function getSystemUnlockInfo(systemId){
+  var config = SYSTEM_UNLOCKS[systemId];
+  if(!config) return null;
+  var currentStage = G.stageProgress || 1;
+  var unlocked = currentStage >= config.stage;
+  return {
+    name: config.name,
+    icon: config.icon,
+    desc: config.desc,
+    requiredStage: config.stage,
+    unlocked: unlocked,
+    remaining: unlocked ? 0 : config.stage - currentStage
+  };
+}
+
+// 锁定提示弹窗
+function showSystemLocked(systemId){
+  var info = getSystemUnlockInfo(systemId);
+  if(!info) return;
+  showToast('🔒 '+info.name+' 将在通关第'+info.requiredStage+'关后解锁（当前第'+(G.stageProgress||1)+'关）');
+}
+
+// 导航栏点击处理（带解锁检查）
+function onNavClick(tabId){
+  if(!isSystemUnlocked(tabId)){
+    showSystemLocked(tabId);
+    return;
+  }
+  switchTab(tabId);
+}
+
+// 更新导航栏锁定状态
+function updateNavLockState(){
+  var navBtns = document.querySelectorAll('#sidebar .nav-btn');
+  navBtns.forEach(function(btn){
+    var tabId = btn.dataset.tab;
+    if(!tabId) return;
+    var info = getSystemUnlockInfo(tabId);
+    if(!info || info.unlocked){
+      btn.classList.remove('nav-locked');
+      // 恢复原始图标（如果之前被替换过）
+      if(btn._originalIcon && btn._originalIcon !== btn.childNodes[0].textContent){
+        btn.childNodes[0].textContent = btn._originalIcon;
+      }
+    } else {
+      btn.classList.add('nav-locked');
+      // 保存原始图标并替换为锁定图标
+      if(!btn._originalIcon){
+        btn._originalIcon = btn.childNodes[0].textContent;
+      }
+      btn.childNodes[0].textContent = '🔒';
+    }
+  });
+}
+
 // ==================== UI渲染 ====================
 let currentTab='town';
 
@@ -17865,6 +17961,17 @@ function renderCurrentTab(){
     if(battlePanel) battlePanel.style.display='none';
   }
   
+  // 检查当前标签页是否已解锁（金手指除外，它有自己的检查）
+  if(currentTab !== 'town' && currentTab !== 'cheats' && !isSystemUnlocked(currentTab)){
+    showSystemLocked(currentTab);
+    currentTab = 'town';
+    document.querySelectorAll('.nav-btn').forEach(function(b){
+      b.classList.toggle('active', b.dataset.tab === 'town');
+    });
+    renderTown(contentEl);
+    return;
+  }
+
   switch(currentTab){
     case 'town': renderTown(contentEl);break;
     case 'heroes': renderHeroes(contentEl);break;
@@ -18026,38 +18133,66 @@ function renderTown(el){
         +'<div class="town-module-btn-name">合成</div>'
         +'<div class="town-module-btn-info">融合晋升</div>'
       +'</div>'
-      +'<div class="town-module-btn" onclick="switchTab(\'equip\')">'
-        +'<div class="town-module-btn-icon">🛡️</div>'
-        +'<div class="town-module-btn-name">装备</div>'
-        +'<div class="town-module-btn-info">'+equipCount+' 件闲置</div>'
-      +'</div>'
-      +'<div class="town-module-btn" onclick="switchTab(\'roguelike\')" style="background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(139,69,197,.08));border-color:rgba(168,85,247,.3)">'
-        +'<div class="town-module-btn-icon" style="filter:drop-shadow(0 0 6px rgba(168,85,247,.5))">🎲</div>'
-        +'<div class="town-module-btn-name" style="color:#c084fc">肉鸽地牢</div>'
-        +'<div class="town-module-btn-info" style="color:#a855f7">随机挑战</div>'
-      +'</div>'
-      +'<div class="town-module-btn" onclick="switchTab(\'leaderboard\')">'
-        +'<div class="town-module-btn-icon">🏆</div>'
-        +'<div class="town-module-btn-name">排行</div>'
-        +'<div class="town-module-btn-info">竞技榜单</div>'
-      +'</div>'
-      +(G.stageProgress>=101
+      +(isSystemUnlocked('equip')
+        ? '<div class="town-module-btn" onclick="switchTab(\'equip\')">'
+            +'<div class="town-module-btn-icon">🛡️</div>'
+            +'<div class="town-module-btn-name">装备</div>'
+            +'<div class="town-module-btn-info">'+equipCount+' 件闲置</div>'
+          +'</div>'
+        : '<div class="town-module-btn" style="opacity:.45;cursor:not-allowed" onclick="showSystemLocked(\'equip\')">'
+            +'<div class="town-module-btn-icon">🔒</div>'
+            +'<div class="town-module-btn-name" style="color:#888">装备</div>'
+            +'<div class="town-module-btn-info" style="color:#666">第5关解锁</div>'
+          +'</div>'
+      )
+      +(isSystemUnlocked('roguelike')
+        ? '<div class="town-module-btn" onclick="switchTab(\'roguelike\')" style="background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(139,69,197,.08));border-color:rgba(168,85,247,.3)">'
+            +'<div class="town-module-btn-icon" style="filter:drop-shadow(0 0 6px rgba(168,85,247,.5))">🎲</div>'
+            +'<div class="town-module-btn-name" style="color:#c084fc">肉鸽地牢</div>'
+            +'<div class="town-module-btn-info" style="color:#a855f7">随机挑战</div>'
+          +'</div>'
+        : '<div class="town-module-btn" style="opacity:.45;cursor:not-allowed" onclick="showSystemLocked(\'roguelike\')">'
+            +'<div class="town-module-btn-icon">🔒</div>'
+            +'<div class="town-module-btn-name" style="color:#888">肉鸽地牢</div>'
+            +'<div class="town-module-btn-info" style="color:#666">第20关解锁</div>'
+          +'</div>'
+      )
+      +(isSystemUnlocked('leaderboard')
+        ? '<div class="town-module-btn" onclick="switchTab(\'leaderboard\')">'
+            +'<div class="town-module-btn-icon">🏆</div>'
+            +'<div class="town-module-btn-name">排行</div>'
+            +'<div class="town-module-btn-info">竞技榜单</div>'
+          +'</div>'
+        : '<div class="town-module-btn" style="opacity:.45;cursor:not-allowed" onclick="showSystemLocked(\'leaderboard\')">'
+            +'<div class="town-module-btn-icon">🔒</div>'
+            +'<div class="town-module-btn-name" style="color:#888">排行</div>'
+            +'<div class="town-module-btn-info" style="color:#666">第30关解锁</div>'
+          +'</div>'
+      )
+      +(isSystemUnlocked('zodiac')
         ? '<div class="town-module-btn zodiac-entry-btn" onclick="switchTab(\'zodiac\')" style="border-color:rgba(255,180,0,.5);background:linear-gradient(135deg,rgba(255,140,0,.12),rgba(180,80,0,.08))">'
             +'<div class="town-module-btn-icon" style="filter:drop-shadow(0 0 6px #ffd700)">🐉</div>'
             +'<div class="town-module-btn-name" style="color:#ffd700">生肖试炼</div>'
             +'<div class="town-module-btn-info" style="color:#ffa500">十二Boss</div>'
           +'</div>'
-        : '<div class="town-module-btn" style="opacity:.45;cursor:not-allowed" title="通关第100关后解锁">'
+        : '<div class="town-module-btn" style="opacity:.45;cursor:not-allowed" onclick="showSystemLocked(\'zodiac\')">'
             +'<div class="town-module-btn-icon">🔒</div>'
             +'<div class="town-module-btn-name" style="color:#888">生肖试炼</div>'
-            +'<div class="town-module-btn-info" style="color:#666">'+(G.stageProgress-1)+'/100关</div>'
+            +'<div class="town-module-btn-info" style="color:#666">第35关解锁</div>'
           +'</div>'
       )
-      +'<div class="town-module-btn" onclick="openUnknownExchangePanel()" style="background:linear-gradient(135deg,rgba(255,0,255,.12),rgba(180,0,180,.08));border-color:rgba(255,0,255,.3)">'
-      +'<div class="town-module-btn-icon" style="filter:drop-shadow(0 0 6px rgba(255,0,255,.5))">🌌</div>'
-      +'<div class="town-module-btn-name" style="color:#ff00ff">未知兑换</div>'
-      +'<div class="town-module-btn-info" style="color:#d946ef">苛刻条件</div>'
-      +'</div>'
+      +(isSystemUnlocked('unknownExchange')
+        ? '<div class="town-module-btn" onclick="openUnknownExchangePanel()" style="background:linear-gradient(135deg,rgba(255,0,255,.12),rgba(180,0,180,.08));border-color:rgba(255,0,255,.3)">'
+            +'<div class="town-module-btn-icon" style="filter:drop-shadow(0 0 6px rgba(255,0,255,.5))">🌌</div>'
+            +'<div class="town-module-btn-name" style="color:#ff00ff">未知兑换</div>'
+            +'<div class="town-module-btn-info" style="color:#d946ef">苛刻条件</div>'
+          +'</div>'
+        : '<div class="town-module-btn" style="opacity:.45;cursor:not-allowed" onclick="showSystemLocked(\'unknownExchange\')">'
+            +'<div class="town-module-btn-icon">🔒</div>'
+            +'<div class="town-module-btn-name" style="color:#888">未知兑换</div>'
+            +'<div class="town-module-btn-info" style="color:#666">第50关解锁</div>'
+          +'</div>'
+      )
     +'</div>';}catch(htmlErr){
     console.error('[Town Error] HTML generation:',htmlErr);
     // 降级渲染：显示核心功能按钮，避免完全黑屏
@@ -27264,6 +27399,7 @@ async function initGame(){
     try {
       updateResUI();
       startAutoProduction();
+      updateNavLockState();
       switchTab('town');
       showToast('📂 已读取存档');
       checkDailyHelp();
@@ -27274,6 +27410,7 @@ async function initGame(){
         if (!G.heroes) G.heroes = [];
         if (!G.resources) G.resources = {gold:0,gems:0};
         updateResUI();
+        updateNavLockState();
         switchTab('town');
       } catch(e2) {
         console.error('[IG] 强制恢复UI也失败:', e2);
@@ -27481,6 +27618,7 @@ function initNewGame(){
     updateResUI();
     G.stageProgress=1;
     startAutoProduction();
+    updateNavLockState();
     switchTab('town');
     saveGame();
     checkDailyHelp();
