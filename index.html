@@ -85,8 +85,14 @@ var BGM = {
     }
   },
   // 切换标签页音乐
+  // 除战斗界面外，所有界面使用编队(team)BGM
   playForTab: function(tab) {
-    var trackUrl = this.tracks[tab] || this.tracks.default;
+    var trackUrl;
+    if (tab === 'battle') {
+      trackUrl = this.tracks.battle;
+    } else {
+      trackUrl = this.tracks.team;
+    }
     this.play(trackUrl);
   },
   // 停止音乐
