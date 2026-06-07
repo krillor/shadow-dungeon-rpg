@@ -23494,9 +23494,24 @@ function rlOnBattleWin(savedTeam, savedHeroes, floorData) {
   if(oreReward > 0) rewardText += ' ⛏️'+oreReward;
   showToast('🎲 第'+floor+'层通关！获得 '+rewardText);
 
-  // ── 肉鸽卷轴掉落（概率不高，深层品质更高） ──
-  var scrollDropChance = 0.08 + floor * 0.004; // 基础8%，每层+0.4%，第30层约20%
-  if(floorData.isBoss) scrollDropChance += 0.10; // Boss层额外+10%
+  // ── 肉鸽卷轴掉落（难度曲线：前期稀有，中后期逐步提升） ──
+  // 普通层：前5层5%，5-15层6-8%，15-30层8-12%，30-50层12-18%，50+层18-22%
+  // Boss层：额外+8%（不再是+10%）
+  var scrollDropChance;
+  if(floor <= 3){
+    scrollDropChance = 0.04; // 前3层：4%（几乎不掉，保证难度）
+  } else if(floor <= 8){
+    scrollDropChance = 0.05; // 4-8层：5%
+  } else if(floor <= 15){
+    scrollDropChance = 0.05 + (floor - 8) * 0.004; // 8-15层：5%-8%
+  } else if(floor <= 30){
+    scrollDropChance = 0.08 + (floor - 15) * 0.003; // 15-30层：8%-12.5%
+  } else if(floor <= 50){
+    scrollDropChance = 0.125 + (floor - 30) * 0.003; // 30-50层：12.5%-18.5%
+  } else {
+    scrollDropChance = Math.min(0.22, 0.185 + (floor - 50) * 0.001); // 50+层：封顶22%
+  }
+  if(floorData.isBoss) scrollDropChance += 0.08; // Boss层额外+8%
   if(Math.random() < scrollDropChance && typeof MERGE_SCROLL_DEFS !== 'undefined'){
     // 根据层数决定品质权重
     var scrollWeights;
