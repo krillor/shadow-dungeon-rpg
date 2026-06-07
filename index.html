@@ -22,6 +22,135 @@
 <!-- Pako 压缩库（云存档压缩） -->
 <script src="https://cdn.jsdelivr.net/npm/pako@2/dist/pako.min.js"></script>
 <script>
+// ==================== 背景音乐系统 ====================
+// 使用免费CC音乐（需署名） - Music by Kevin MacLeod
+var BGM = {
+  audio: null,
+  currentTrack: null,
+  volume: 0.3, // 音量30%
+  isMuted: false,
+  tracks: {
+    // 城镇界面 - 奇幻冒险风格
+    town: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Moonlight%20Hall.mp3',
+    // 英雄界面 - 史诗奇幻
+    heroes: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Adventure%20Meme.mp3',
+    // 队伍界面 - 紧张准备
+    team: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Village%20Consort.mp3',
+    // 战斗界面 - 热血战斗
+    battle: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Prelude%20and%20Action.mp3',
+    // 熔炉/合成 - 神秘魔法
+    merge: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Magic%20Escape%20Room.mp3',
+    // 装备界面 - 史诗氛围
+    equip: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Fantasy%20Adventure.mp3',
+    // 建筑界面 - 城镇建设
+    buildings: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Hep%20Cats.mp3',
+    // 竞技场 - 紧张对决
+    arena: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Chase.mp3',
+    // 图鉴 - 神秘探索
+    codex: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Mystic%20Force.mp3',
+    // 成就 - 胜利凯旋
+    achievements: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Victory.mp3',
+    // 地牢爬行 - 神秘紧张
+    roguelike: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Dark%20Dungeon.mp3',
+    // 突破 - 力量觉醒
+    breakthrough: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Heavy%20Interrogation.mp3',
+    // 默认主界面
+    default: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Moonlight%20Hall.mp3'
+  },
+  // 初始化音频
+  init: function() {
+    if (this.audio) return;
+    this.audio = new Audio();
+    this.audio.loop = true; // 循环播放
+    this.audio.volume = this.volume;
+    this.audio.addEventListener('ended', function() {
+      this.currentTime = 0;
+      this.play();
+    });
+    // 尝试预加载
+    this.audio.preload = 'auto';
+  },
+  // 播放指定音乐
+  play: function(trackUrl) {
+    if (!this.audio) this.init();
+    if (!trackUrl) return;
+    if (this.currentTrack === trackUrl && !this.audio.paused) return; // 已在播放同一首歌
+    this.currentTrack = trackUrl;
+    this.audio.src = trackUrl;
+    this.audio.load();
+    if (!this.isMuted) {
+      this.audio.play().catch(function(e) {
+        console.log('[BGM] 自动播放被阻止，等待用户交互', e);
+      });
+    }
+  },
+  // 切换标签页音乐
+  playForTab: function(tab) {
+    var trackUrl = this.tracks[tab] || this.tracks.default;
+    this.play(trackUrl);
+  },
+  // 停止音乐
+  stop: function() {
+    if (this.audio) {
+      this.audio.pause();
+      this.audio.currentTime = 0;
+    }
+  },
+  // 暂停音乐
+  pause: function() {
+    if (this.audio) this.audio.pause();
+  },
+  // 恢复播放
+  resume: function() {
+    if (this.audio && !this.isMuted) {
+      this.audio.play().catch(function(e) {
+        console.log('[BGM] 恢复播放失败', e);
+      });
+    }
+  },
+  // 静音切换
+  toggleMute: function() {
+    this.isMuted = !this.isMuted;
+    if (this.audio) {
+      this.audio.muted = this.isMuted;
+      if (this.isMuted) {
+        this.audio.pause();
+      } else {
+        this.audio.play().catch(function(e) {
+          console.log('[BGM] 取消静音播放失败', e);
+        });
+      }
+    }
+    return this.isMuted;
+  },
+  // 静音/取消静音
+  mute: function(muted) {
+    this.isMuted = muted;
+    if (this.audio) {
+      this.audio.muted = this.isMuted;
+    }
+  },
+  // 设置音量
+  setVolume: function(vol) {
+    this.volume = Math.max(0, Math.min(1, vol));
+    if (this.audio) {
+      this.audio.volume = this.volume;
+    }
+  }
+};
+
+// 页面加载时初始化音乐
+document.addEventListener('DOMContentLoaded', function() {
+  BGM.init();
+});
+
+// 点击页面时尝试播放音乐（解决浏览器自动播放限制）
+document.addEventListener('click', function() {
+  if (BGM.audio && BGM.audio.paused && !BGM.isMuted) {
+    BGM.resume();
+  }
+}, { once: true });
+
 // ==================== 大数值处理系统 V3 ====================
 // JavaScript 安全整数上限是 2^53-1 ≈ 9e15，超过会丢失精度
 // 解决方案：1) BigInt处理 2) 对数压缩 3) 分片存储
@@ -2750,6 +2879,7 @@ if(!Array.prototype.concat){Array.prototype.concat=function(){var arr=[],i=0;for
   <div id="main">
     <!-- 顶部快捷工具栏（兑换码/存档/修复状态/调试） -->
     <div id="top-toolbar" style="display:flex;gap:6px;padding:6px 8px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto">
+      <button class="btn btn-sm" style="flex:none;font-size:11px;padding:5px 10px;white-space:nowrap" onclick="BGM.toggleMute(); this.textContent = BGM.isMuted ? '🔇 BGM' : '🔊 BGM';" id="bgm-toggle-btn">🔊 BGM</button>
       <button class="btn btn-sm" style="flex:none;font-size:11px;padding:5px 10px;white-space:nowrap" onclick="showRedeemModal()">🎁 兑换码</button>
       <button class="btn btn-sm" style="flex:none;font-size:11px;padding:5px 10px;white-space:nowrap" onclick="showSaveManageModal()">💾 存档</button>
       <button class="btn btn-sm" style="flex:none;font-size:11px;padding:5px 10px;white-space:nowrap;border-color:rgba(52,152,219,.4);color:var(--blue)" onclick="repairRuntimeState()">🔧 修复状态</button>
@@ -17933,6 +18063,8 @@ function switchTab(tab){
     b.classList.toggle('active',b.dataset.tab===tab);
   });
   hideGuideTip();
+  // 切换标签页时播放对应背景音乐
+  BGM.playForTab(tab);
   renderCurrentTab();
   if(tab==='merge' && G.tutorialPhase==='guide' && G.tutorialStep===6){
     onGuideMergeClick();
