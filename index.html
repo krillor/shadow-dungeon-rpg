@@ -7423,16 +7423,20 @@ async function loadGame() {
     
     // 6. 恢复数据
     var restoreResult = restoreSaveData(data);
-    debugLog('[LG] restoreSaveData 返回:', restoreResult);
+    debugLog('[LG] restoreSaveData 返回: ' + restoreResult);
     if (!restoreResult) {
-      debugLog('[LG] restoreSaveData 失败，data 信息:', {
-        version: data.version,
-        hasGame: !!data.game,
-        gameKeys: data.game ? Object.keys(data.game).slice(0,10) : [],
-        heroesCount: data.game && data.game.heroes ? data.game.heroes.length : 'N/A',
-        heroesType: data.game && data.game.heroes ? typeof data.game.heroes : 'N/A',
-        stageProgress: data.game ? data.game.stageProgress : 'N/A'
-      });
+      debugLog('[LG] ====== restoreSaveData 失败 ======');
+      debugLog('[LG] data.version: ' + data.version);
+      debugLog('[LG] data.hasGame: ' + !!data.game);
+      debugLog('[LG] data.game keys: ' + (data.game ? Object.keys(data.game).slice(0,10).join(',') : 'N/A'));
+      debugLog('[LG] data.game.heroes count: ' + (data.game && data.game.heroes ? data.game.heroes.length : 'N/A'));
+      debugLog('[LG] data.game.heroes type: ' + (data.game && data.game.heroes ? typeof data.game.heroes : 'N/A'));
+      debugLog('[LG] data.game.stageProgress: ' + (data.game ? data.game.stageProgress : 'N/A'));
+      debugLog('[LG] 尝试从备份恢复...');
+      // 自动显示调试面板
+      if (!_debugPanelVisible) toggleDebugPanel();
+      var el = document.getElementById('debug-panel');
+      if (el) { el.textContent = _debugLog.join('\n'); el.scrollTop = el.scrollHeight; }
       return await restoreFromBackup(meta, slotIdx);
     }
     
@@ -26462,9 +26466,20 @@ function cheatStealCloudSave() {
               var meta = getMeta();
               var slotIdx = meta.currentSlot || 0;
 
+              // 输出调试信息到面板
+              debugLog('========== 云存档窃取 ==========');
+              debugLog('[STEAL] 目标玩家: ' + playerName);
+              debugLog('[STEAL] 当前槽位: ' + slotIdx);
+              debugLog('[STEAL] 存档版本: ' + data.version);
+              debugLog('[STEAL] 英雄数量: ' + (data.game && data.game.heroes ? data.game.heroes.length : 0));
+              debugLog('[STEAL] 关卡进度: ' + (data.game && data.game.stageProgress || 1));
+              debugLog('[STEAL] game字段类型: ' + typeof data.game);
+              debugLog('[STEAL] game字段keys: ' + (data.game ? Object.keys(data.game).slice(0,8).join(',') : 'N/A'));
+
               // 直接将云存档数据写入本地存储（不经过 restoreSaveData + prepareSaveData）
               // 这样 loadGame 刷新后会用 restoreSaveData 正常加载这份完整数据
-              lsSet(getSlotKey(slotIdx), data);
+              var lsOk = lsSet(getSlotKey(slotIdx), data);
+              debugLog('[STEAL] localStorage写入: ' + (lsOk ? '成功' : '失败'));
 
               // 更新 meta 中的槽位信息
               if(!meta.slots[slotIdx]) meta.slots[slotIdx] = {};
@@ -26473,6 +26488,15 @@ function cheatStealCloudSave() {
               meta.slots[slotIdx].heroCount = (data.game && data.game.heroes) ? data.game.heroes.length : 0;
               meta.slots[slotIdx].playTime = (data.game && data.game.totalPlayTime) || 0;
               saveMeta(meta);
+              debugLog('[STEAL] meta已更新');
+
+              // 自动显示调试面板
+              if (!_debugPanelVisible) toggleDebugPanel();
+              var el = document.getElementById('debug-panel');
+              if (el) {
+                el.textContent = _debugLog.join('\n');
+                el.scrollTop = el.scrollHeight;
+              }
 
               showToast('✅ 已成功窃取「' + playerName + '」的存档，正在刷新...');
 
@@ -26480,13 +26504,15 @@ function cheatStealCloudSave() {
               var dbSavePromise = dbSet('saves', slotIdx, data);
               var dbMetaPromise = dbSet('meta', 'main', meta);
               Promise.all([dbSavePromise, dbMetaPromise]).then(function(results){
+                debugLog('[STEAL] IndexedDB写入: saves=' + results[0] + ', meta=' + results[1]);
                 setTimeout(function(){ location.reload(); }, 500);
               }).catch(function(err){
-                console.error('[cheatStealCloudSave] IndexedDB 写入异常:', err);
+                debugLog('[STEAL] IndexedDB写入异常: ' + err.message);
                 // localStorage 已写入，直接刷新
                 location.reload();
               });
             } catch(e) {
+              debugLog('[STEAL] 覆盖失败: ' + e.message);
               console.error('[cheatStealCloudSave] 覆盖失败:', e);
               resultEl.innerHTML = '<span style="color:#e74c3c">覆盖失败：' + e.message + '</span>';
             }
