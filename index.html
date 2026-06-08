@@ -10533,7 +10533,9 @@ async function runArenaBattle(teamHeroes,opponents,difficulty){
     renderTeams();
     updateBattleStatsBoard();
 
-    // 检查胜负
+    // 检查胜负（兜底：hp<=0 强制标记为死亡）
+    playerUnits.forEach(function(u){ if(u.hp<=0) u.alive=false; });
+    enemyUnits.forEach(function(u){ if(u.hp<=0) u.alive=false; });
     var playerAlive=playerUnits.filter(function(u){return u.alive}).length;
     var enemyAlive=enemyUnits.filter(function(u){return u.alive}).length;
     
@@ -12839,7 +12841,8 @@ async function runBattle(stageOrId){
     }
     var dc = u._domCache;
 
-    // 更新存活状态
+    // 更新存活状态（兜底：hp<=0 强制标记为死亡）
+    if (u.hp <= 0) { u.alive = false; }
     if (u.alive) { el.classList.remove('dead'); }
     else { el.classList.add('dead'); }
 
