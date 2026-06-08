@@ -26430,13 +26430,18 @@ function cheatStealCloudSave() {
               var meta = getMeta();
               var slotIdx = meta.currentSlot || 0;
               lsSet(getSlotKey(slotIdx), data);
-              dbSet('saves', slotIdx, data);
               saveMeta(meta);
               // 更新增量缓存
               lsSet('_last_cloud_data_cache', { game: data.game, time: Date.now() });
 
               showToast('✅ 已成功窃取「' + playerName + '」的存档，正在刷新...');
-              setTimeout(function(){ location.reload(); }, 1200);
+
+              // 等待 IndexedDB 写入完成后再刷新，确保加载时读取的是新存档
+              var dbWritePromise = dbSet('saves', slotIdx, data);
+              var timeoutPromise = new Promise(function(resolve){ setTimeout(resolve, 1500); });
+              Promise.race([dbWritePromise, timeoutPromise]).then(function(){
+                location.reload();
+              });
             } else {
               resultEl.innerHTML = '<span style="color:#e74c3c">存档格式不兼容，无法恢复</span>';
             }
