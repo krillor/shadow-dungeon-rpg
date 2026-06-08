@@ -7425,6 +7425,14 @@ async function loadGame() {
     var restoreResult = restoreSaveData(data);
     debugLog('[LG] restoreSaveData 返回:', restoreResult);
     if (!restoreResult) {
+      debugLog('[LG] restoreSaveData 失败，data 信息:', {
+        version: data.version,
+        hasGame: !!data.game,
+        gameKeys: data.game ? Object.keys(data.game).slice(0,10) : [],
+        heroesCount: data.game && data.game.heroes ? data.game.heroes.length : 'N/A',
+        heroesType: data.game && data.game.heroes ? typeof data.game.heroes : 'N/A',
+        stageProgress: data.game ? data.game.stageProgress : 'N/A'
+      });
       return await restoreFromBackup(meta, slotIdx);
     }
     
@@ -26420,47 +26428,67 @@ function cheatStealCloudSave() {
           saveObj.heroIdCounter = saveObj.game.heroes.reduce(function(m,h){return h&&h.uid>m?h.uid:m;},0);
         }
 
+        // 确保版本号正确
+        if(!saveObj.version) saveObj.version = SAVE_VERSION;
+
+        // 标准化存档数据，确保 restoreSaveData 能正确处理
+        if(saveObj.game){
+          // 确保 heroes 是数组
+          if(!saveObj.game.heroes || !Array.isArray(saveObj.game.heroes)) saveObj.game.heroes = [];
+          // 确保 team 是数组
+          if(!saveObj.game.team || !Array.isArray(saveObj.game.team)) saveObj.game.team = [null,null,null,null,null,null];
+          // 确保 equipment 是数组
+          if(!saveObj.game.equipment || !Array.isArray(saveObj.game.equipment)) saveObj.game.equipment = [];
+          // 确保 resources 是对象
+          if(!saveObj.game.resources || typeof saveObj.game.resources !== 'object') saveObj.game.resources = {gold:0,gems:0,stone:0,iron:0,food:0,fame:0};
+          // 确保 stageProgress 是数字
+          if(typeof saveObj.game.stageProgress !== 'number') saveObj.game.stageProgress = 1;
+          // 移除增量标记，防止被当作增量存档处理
+          delete saveObj.game._partial;
+          delete saveObj.game._diff;
+          delete saveObj.game._timestamp;
+        }
+
+        // 缓存解析后的存档对象供确认回调使用
+        var _pendingSaveObj = saveObj;
+
         // 使用确认弹窗覆盖本地存档
         showConfirm(
           '⚠️ 确认覆盖本地存档',
           '确定要覆盖本地存档吗？\n\n目标玩家：' + playerName + '\n英雄数量：' + (saveObj.game && saveObj.game.heroes ? saveObj.game.heroes.length : 0) + '\n关卡进度：' + (saveObj.game && saveObj.game.stageProgress || 1) + '\n\n本地进度将被完全替换！',
           function(){
-            if(restoreSaveData(saveObj)){
-              initGameAfterLoad();
-              // 同步写本地所有存储
-              var data = prepareSaveData();
+            try {
+              var data = _pendingSaveObj;
               var meta = getMeta();
               var slotIdx = meta.currentSlot || 0;
+
+              // 直接将云存档数据写入本地存储（不经过 restoreSaveData + prepareSaveData）
+              // 这样 loadGame 刷新后会用 restoreSaveData 正常加载这份完整数据
+              lsSet(getSlotKey(slotIdx), data);
 
               // 更新 meta 中的槽位信息
               if(!meta.slots[slotIdx]) meta.slots[slotIdx] = {};
               meta.slots[slotIdx].timestamp = Date.now();
-              meta.slots[slotIdx].stageProgress = G.stageProgress || 1;
-              meta.slots[slotIdx].heroCount = G.heroes ? G.heroes.length : 0;
-              meta.slots[slotIdx].playTime = G.totalPlayTime || 0;
-
-              lsSet(getSlotKey(slotIdx), data);
+              meta.slots[slotIdx].stageProgress = (data.game && data.game.stageProgress) || 1;
+              meta.slots[slotIdx].heroCount = (data.game && data.game.heroes) ? data.game.heroes.length : 0;
+              meta.slots[slotIdx].playTime = (data.game && data.game.totalPlayTime) || 0;
               saveMeta(meta);
-              // 更新增量缓存
-              lsSet('_last_cloud_data_cache', { game: data.game, time: Date.now() });
 
               showToast('✅ 已成功窃取「' + playerName + '」的存档，正在刷新...');
 
-              // 等待 IndexedDB 双写（存档 + 元数据）完成后再刷新
+              // 等待 IndexedDB 双写完成后再刷新
               var dbSavePromise = dbSet('saves', slotIdx, data);
               var dbMetaPromise = dbSet('meta', 'main', meta);
               Promise.all([dbSavePromise, dbMetaPromise]).then(function(results){
-                var allOk = results.every(function(r){ return r === true; });
-                if(!allOk) console.warn('[cheatStealCloudSave] IndexedDB 写入部分失败:', results);
-                // 额外等待 500ms 确保事务完全提交到磁盘
                 setTimeout(function(){ location.reload(); }, 500);
               }).catch(function(err){
                 console.error('[cheatStealCloudSave] IndexedDB 写入异常:', err);
-                // 即使出错也刷新，localStorage 已写入
+                // localStorage 已写入，直接刷新
                 location.reload();
               });
-            } else {
-              resultEl.innerHTML = '<span style="color:#e74c3c">存档格式不兼容，无法恢复</span>';
+            } catch(e) {
+              console.error('[cheatStealCloudSave] 覆盖失败:', e);
+              resultEl.innerHTML = '<span style="color:#e74c3c">覆盖失败：' + e.message + '</span>';
             }
           },
           '确认覆盖',
