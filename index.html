@@ -7625,6 +7625,25 @@ function initGameAfterLoad() {
     // 清理队伍中的重复英雄
     cleanTeamDuplicates();
     debugLog('[IGAL] 队伍二次重建后: 非null数=' + G.team.filter(function(t){return t!==null}).length);
+
+    // 队伍重建后如果全部为空，但有英雄可用，自动用最强英雄填充
+    var nonNullCount = G.team.filter(function(t){return t!==null}).length;
+    if (nonNullCount === 0 && G.heroes && G.heroes.length > 0) {
+      debugLog('[IGAL] 队伍为空，自动用最强英雄填充...');
+      // 按战力排序（战力 = atk + def + maxHP/10 + spd）
+      var sorted = G.heroes.slice().sort(function(a, b) {
+        var powerA = (a.atk||0) + (a.def||0) + (a.maxHP||0)/10 + (a.spd||0);
+        var powerB = (b.atk||0) + (b.def||0) + (b.maxHP||0)/10 + (b.spd||0);
+        return powerB - powerA;
+      });
+      var teamSize = Math.min(6, sorted.length);
+      G.team = [];
+      for (var i = 0; i < teamSize; i++) {
+        G.team.push(sorted[i]);
+      }
+      while (G.team.length < 6) G.team.push(null);
+      debugLog('[IGAL] 自动填充完成: 队伍英雄=' + G.team.filter(function(t){return t!==null}).length);
+    }
   }
 
   // ===== 新版字段补丁（所有旧存档加载后执行）=====
