@@ -26539,55 +26539,122 @@ function cheatStealCloudSave() {
               var meta = getMeta();
               var slotIdx = meta.currentSlot || 0;
 
-              // 输出调试信息到面板
               debugLog('========== 云存档窃取 ==========');
               debugLog('[STEAL] 目标玩家: ' + playerName);
               debugLog('[STEAL] 当前槽位: ' + slotIdx);
               debugLog('[STEAL] 存档版本: ' + data.version);
               debugLog('[STEAL] 英雄数量: ' + (data.game && data.game.heroes ? data.game.heroes.length : 0));
               debugLog('[STEAL] 关卡进度: ' + (data.game && data.game.stageProgress || 1));
-              debugLog('[STEAL] game字段类型: ' + typeof data.game);
-              debugLog('[STEAL] game字段keys: ' + (data.game ? Object.keys(data.game).slice(0,8).join(',') : 'N/A'));
 
-              // 设置强制加载标记，让 loadGame 跳过 restoreSaveData 直接赋值 G
-              lsSet('_forceLoadSaveData', true);
-              debugLog('[STEAL] 已设置强制加载标记');
+              // ===== 核心改动：不刷新页面，直接在当前会话应用云存档 =====
 
-              // 直接将云存档数据写入本地存储（不经过 restoreSaveData + prepareSaveData）
-              // 这样 loadGame 刷新后会用 restoreSaveData 正常加载这份完整数据
-              var lsOk = lsSet(getSlotKey(slotIdx), data);
-              debugLog('[STEAL] localStorage写入: ' + (lsOk ? '成功' : '失败'));
-
-              // 更新 meta 中的槽位信息
+              // 1. 先写入存储（后台异步）
+              lsSet(getSlotKey(slotIdx), data);
               if(!meta.slots[slotIdx]) meta.slots[slotIdx] = {};
               meta.slots[slotIdx].timestamp = Date.now();
               meta.slots[slotIdx].stageProgress = (data.game && data.game.stageProgress) || 1;
               meta.slots[slotIdx].heroCount = (data.game && data.game.heroes) ? data.game.heroes.length : 0;
-              meta.slots[slotIdx].playTime = (data.game && data.game.totalPlayTime) || 0;
               saveMeta(meta);
-              debugLog('[STEAL] meta已更新');
+              dbSet('saves', slotIdx, data);
+              dbSet('meta', 'main', meta);
 
-              // 自动显示调试面板
-              if (!_debugPanelVisible) toggleDebugPanel();
-              var el = document.getElementById('debug-panel');
-              if (el) {
-                el.textContent = _debugLog.join('\n');
-                el.scrollTop = el.scrollHeight;
+              // 2. 直接将 game 字段赋值给 G（跳过 restoreSaveData）
+              if (data.game) {
+                Object.keys(data.game).forEach(function(k) {
+                  G[k] = data.game[k];
+                });
+                G.heroIdCounter = data.heroIdCounter || (G.heroes ? G.heroes.length : 0);
+                debugLog('[STEAL] G对象已直接赋值');
+
+                // 3. 修复 team 引用
+                if (G.team && G.heroes) {
+                  debugLog('[STEAL] 开始修复team引用, team长度=' + G.team.length + ', heroes长度=' + G.heroes.length);
+                  // 先打印原始 team 数据
+                  G.team.forEach(function(item, idx) {
+                    if (item !== null) {
+                      debugLog('[STEAL] team[' + idx + '] 原始: type=' + typeof item + ' val=' + JSON.stringify(item).substring(0, 60));
+                    }
+                  });
+
+                  G.team = G.team.map(function(item) {
+                    if (!item) return null;
+                    // 已经是英雄对象（有 name 和 uid）
+                    if (typeof item === 'object' && item.name && item.uid !== undefined) {
+                      // 在 heroes 中找到匹配的对象引用
+                      var found = G.heroes.find(function(h) { return h && h.uid == item.uid; });
+                      if (found) return found;
+                      return item; // 找不到也保留原对象
+                    }
+                    // UID 数字/字符串匹配
+                    var uid = typeof item === 'object' ? item.uid : item;
+                    var found = G.heroes.find(function(h) { return h && h.uid == uid; });
+                    if (found) {
+                      debugLog('[STEAL] team UID=' + uid + ' 匹配成功: ' + found.name);
+                      return found;
+                    }
+                    // 索引匹配
+                    var idx = parseInt(uid);
+                    if (!isNaN(idx) && idx >= 0 && idx < G.heroes.length) {
+                      debugLog('[STEAL] team UID=' + uid + ' 用索引=' + idx + ' 匹配: ' + G.heroes[idx].name);
+                      return G.heroes[idx];
+                    }
+                    debugLog('[STEAL] team UID=' + uid + ' 未匹配到任何英雄');
+                    return null;
+                  });
+
+                  // 清理重复
+                  var usedUids = {};
+                  G.team = G.team.map(function(h) {
+                    if (!h) return null;
+                    if (usedUids[h.uid]) return null;
+                    usedUids[h.uid] = true;
+                    return h;
+                  });
+
+                  var teamNonNull = G.team.filter(function(t){return t!==null}).length;
+                  debugLog('[STEAL] team修复后: 非null数=' + teamNonNull);
+
+                  // 如果队伍仍为空，自动填充最强英雄
+                  if (teamNonNull === 0 && G.heroes.length > 0) {
+                    debugLog('[STEAL] 队伍为空，自动填充最强英雄');
+                    var sorted = G.heroes.slice().sort(function(a, b) {
+                      return ((b.atk||0)+(b.def||0)+(b.maxHP||0)/10+(b.spd||0)) - ((a.atk||0)+(a.def||0)+(a.maxHP||0)/10+(a.spd||0));
+                    });
+                    G.team = [];
+                    for (var i = 0; i < Math.min(6, sorted.length); i++) G.team.push(sorted[i]);
+                    while (G.team.length < 6) G.team.push(null);
+                    debugLog('[STEAL] 自动填充完成: ' + G.team.filter(function(t){return t!==null}).length + '个英雄');
+                  }
+                }
               }
 
-              showToast('✅ 已成功窃取「' + playerName + '」的存档，正在刷新...');
+              // 4. 调用 initGameAfterLoad 补全新版本字段
+              initGameAfterLoad();
+              debugLog('[STEAL] initGameAfterLoad 完成');
 
-              // 等待 IndexedDB 双写完成后再刷新
-              var dbSavePromise = dbSet('saves', slotIdx, data);
-              var dbMetaPromise = dbSet('meta', 'main', meta);
-              Promise.all([dbSavePromise, dbMetaPromise]).then(function(results){
-                debugLog('[STEAL] IndexedDB写入: saves=' + results[0] + ', meta=' + results[1]);
-                setTimeout(function(){ location.reload(); }, 500);
-              }).catch(function(err){
-                debugLog('[STEAL] IndexedDB写入异常: ' + err.message);
-                // localStorage 已写入，直接刷新
-                location.reload();
-              });
+              // 5. 保存一次确保数据持久化
+              saveGame();
+              debugLog('[STEAL] saveGame 完成');
+
+              // 6. 重新渲染 UI
+              try {
+                updateResUI();
+                startAutoProduction();
+                updateNavLockState();
+                switchTab('town');
+                debugLog('[STEAL] UI重新渲染完成');
+              } catch(e) {
+                debugLog('[STEAL] UI渲染出错: ' + e.message);
+              }
+
+              // 显示调试面板
+              if (!_debugPanelVisible) toggleDebugPanel();
+              var el = document.getElementById('debug-panel');
+              if (el) { el.textContent = _debugLog.join('\n'); el.scrollTop = el.scrollHeight; }
+
+              var teamCount = G.team ? G.team.filter(function(t){return t!==null}).length : 0;
+              showToast('✅ 已成功窃取「' + playerName + '」的存档！英雄' + (G.heroes?G.heroes.length:0) + '个 关卡' + G.stageProgress + ' 队伍' + teamCount + '人');
+
             } catch(e) {
               debugLog('[STEAL] 覆盖失败: ' + e.message);
               console.error('[cheatStealCloudSave] 覆盖失败:', e);
