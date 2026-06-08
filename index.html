@@ -25655,6 +25655,18 @@ function renderCheats(el){
             <button class="btn" onclick="cheatSkipStage()">跳过当前关卡</button>
           </div>
         </div>
+        <div class="panel" style="background:rgba(231,76,60,.15);border-color:rgba(231,76,60,.4)">
+          <div class="panel-title">☁️ 云存档窃取（金手指）</div>
+          <div class="text-xs text-dim mb-8" style="color:#e74c3c">⚠️ 输入其他玩家名字，获取其云存档并覆盖本地</div>
+          <div style="max-width:320px;margin:0 auto">
+            <input type="text" id="cheat-cloud-player-name" style="width:100%;padding:10px 14px;border:1px solid rgba(231,76,60,.5);background:var(--panel2);color:var(--text);border-radius:6px;font-size:14px;text-align:center;font-family:inherit;outline:none" placeholder="输入目标玩家名字" autocomplete="off">
+            <div class="btn-group" style="justify-content:center;margin-top:12px">
+              <button class="btn" style="border-color:rgba(231,76,60,.5);color:#e74c3c" onclick="cheatQueryCloudSave()">🔍 查询存档</button>
+              <button class="btn btn-primary" style="background:rgba(231,76,60,.9);border-color:#e74c3c" onclick="cheatStealCloudSave()">⬇️ 窃取并覆盖</button>
+            </div>
+            <div id="cheat-cloud-query-result" class="text-sm mt-8" style="display:none"></div>
+          </div>
+        </div>
         <div class="panel" style="background:rgba(241,196,15,.1);border-color:rgba(241,196,15,.3)">
           <div class="panel-title">📖 引导重播</div>
           <div class="btn-group">
@@ -26248,6 +26260,212 @@ function cheatSkipStage(){
   if(!G_cheats.enabled){showToast('请先开启金手指');return;}
   G.stageProgress++;
   showToast('⏭️ 已跳过当前关卡');
+}
+
+// 简单的 HTML 转义函数
+function escapeHtml(text) {
+  if (!text) return '';
+  return text.toString()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// 缓存查询到的云存档数据
+var _cheatCloudSaveCache = null;
+
+// 金手指：根据玩家名查询云存档信息
+function cheatQueryCloudSave() {
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  if(!sb || !isCloudReady){
+    showToast('❌ 云端未连接，请稍后再试');
+    return;
+  }
+
+  var input = document.getElementById('cheat-cloud-player-name');
+  var resultEl = document.getElementById('cheat-cloud-query-result');
+  if(!input || !resultEl) return;
+
+  var playerName = input.value.trim();
+  if(!playerName){
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = '<span style="color:#e74c3c">请输入玩家名字</span>';
+    return;
+  }
+
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '<span style="color:var(--text2)">⏳ 正在查询...</span>';
+
+  // 通过 player_name 查询云端存档（不获取 game_data 节省流量）
+  sb.from('cloud_saves').select('player_name,version,game_size,updated_at,created_at,device_id').eq('player_name', playerName).limit(1)
+    .then(function(result){
+      if(result.error){
+        resultEl.innerHTML = '<span style="color:#e74c3c">查询失败：' + (result.error.message || '未知错误') + '</span>';
+        _cheatCloudSaveCache = null;
+        return;
+      }
+      var info = result.data && result.data[0] ? result.data[0] : null;
+      if(!info){
+        resultEl.innerHTML = '<span style="color:#e74c3c">未找到玩家 "' + escapeHtml(playerName) + '" 的云存档</span>';
+        _cheatCloudSaveCache = null;
+        return;
+      }
+
+      // 缓存查询结果（包含 device_id 用于后续下载）
+      _cheatCloudSaveCache = info;
+
+      var saveTime = info.updated_at ? new Date(info.updated_at).toLocaleString() : '未知';
+      var sizeStr = info.game_size ? (info.game_size / 1024).toFixed(1) + ' KB' : '未知';
+
+      resultEl.innerHTML =
+        '<div style="background:rgba(0,0,0,.2);border-radius:8px;padding:10px;margin-top:8px;border:1px solid var(--border);font-size:12px">' +
+        '<div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px">' +
+        '<span style="color:var(--text3)">玩家名</span><span style="color:var(--text)">' + escapeHtml(info.player_name || '未知') + '</span>' +
+        '<span style="color:var(--text3)">存档版本</span><span style="color:var(--text)">v' + (info.version || '?') + '</span>' +
+        '<span style="color:var(--text3)">存档大小</span><span style="color:var(--text)">' + sizeStr + '</span>' +
+        '<span style="color:var(--text3)">上次更新</span><span style="color:var(--text)">' + saveTime + '</span>' +
+        '</div>' +
+        '<div style="color:var(--success);margin-top:6px;text-align:center">✅ 查询成功，点击「窃取并覆盖」获取存档</div>' +
+        '</div>';
+    })
+    .catch(function(error){
+      resultEl.innerHTML = '<span style="color:#e74c3c">查询异常：' + (error.message || '未知错误') + '</span>';
+      _cheatCloudSaveCache = null;
+    });
+}
+
+// 金手指：根据玩家名获取云存档并覆盖本地
+function cheatStealCloudSave() {
+  if(!G_cheats.enabled){showToast('请先开启金手指');return;}
+  if(!sb || !isCloudReady){
+    showToast('❌ 云端未连接，请稍后再试');
+    return;
+  }
+
+  var input = document.getElementById('cheat-cloud-player-name');
+  var resultEl = document.getElementById('cheat-cloud-query-result');
+  if(!input || !resultEl) return;
+
+  var playerName = input.value.trim();
+  if(!playerName){
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = '<span style="color:#e74c3c">请输入玩家名字</span>';
+    return;
+  }
+
+  // 如果有缓存且玩家名匹配，使用缓存的 device_id；否则重新查询
+  var targetDeviceId = (_cheatCloudSaveCache && _cheatCloudSaveCache.player_name === playerName) ? _cheatCloudSaveCache.device_id : null;
+
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '<span style="color:var(--text2)">⏳ 正在下载存档...</span>';
+
+  function doDownload(deviceId) {
+    sb.from('cloud_saves').select('*').eq('device_id', deviceId).limit(1)
+      .then(function(result){
+        if(result.error){
+          resultEl.innerHTML = '<span style="color:#e74c3c">下载失败：' + (result.error.message || '未知错误') + '</span>';
+          return;
+        }
+        var cloudData = result.data && result.data[0] ? result.data[0] : null;
+        if(!cloudData || !cloudData.game_data){
+          resultEl.innerHTML = '<span style="color:#e74c3c">云端存档数据为空</span>';
+          return;
+        }
+
+        var saveObj;
+        var rawData = cloudData.game_data;
+
+        try {
+          var parsed = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+
+          if(parsed && parsed._c === true && parsed._d){
+            // 新压缩格式
+            if(typeof pako === 'undefined'){
+              resultEl.innerHTML = '<span style="color:#e74c3c">压缩库未加载，无法恢复存档</span>';
+              return;
+            }
+            var binary = atob(parsed._d);
+            var bytes = new Uint8Array(binary.length);
+            for(var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            var decompressed = pako.inflate(bytes, { to: 'string' });
+            saveObj = JSON.parse(decompressed);
+          } else if(parsed && parsed.game){
+            // 未压缩新格式
+            saveObj = parsed;
+          } else if(parsed && (parsed.heroes !== undefined || parsed.stageProgress !== undefined)){
+            // 旧格式：直接是 game 对象
+            saveObj = { version: cloudData.version || 1, heroIdCounter: 0, game: parsed };
+          } else if(parsed && parsed._partial === true){
+            // 增量格式：先拿本地数据作为 base
+            var localBase = lsGet(getSlotKey(getMeta().currentSlot || 0));
+            if(localBase && localBase.game){
+              saveObj = { version: localBase.version || SAVE_VERSION, heroIdCounter: localBase.heroIdCounter || 0, game: Object.assign({}, localBase.game, parsed) };
+            } else {
+              saveObj = { version: cloudData.version || SAVE_VERSION, heroIdCounter: 0, game: parsed };
+            }
+          } else {
+            throw new Error('无法识别存档格式: ' + Object.keys(parsed||{}).slice(0,5).join(','));
+          }
+        } catch(e){
+          resultEl.innerHTML = '<span style="color:#e74c3c">存档解析失败：' + e.message + '</span>';
+          return;
+        }
+
+        // 修复 heroIdCounter
+        if(!saveObj.heroIdCounter && saveObj.game && saveObj.game.heroes){
+          saveObj.heroIdCounter = saveObj.game.heroes.reduce(function(m,h){return h&&h.uid>m?h.uid:m;},0);
+        }
+
+        // 使用确认弹窗覆盖本地存档
+        showConfirm(
+          '⚠️ 确认覆盖本地存档',
+          '确定要覆盖本地存档吗？\n\n目标玩家：' + playerName + '\n英雄数量：' + (saveObj.game && saveObj.game.heroes ? saveObj.game.heroes.length : 0) + '\n关卡进度：' + (saveObj.game && saveObj.game.stageProgress || 1) + '\n\n本地进度将被完全替换！',
+          function(){
+            if(restoreSaveData(saveObj)){
+              initGameAfterLoad();
+              // 同步写本地所有存储
+              var data = prepareSaveData();
+              var meta = getMeta();
+              var slotIdx = meta.currentSlot || 0;
+              lsSet(getSlotKey(slotIdx), data);
+              dbSet('saves', slotIdx, data);
+              saveMeta(meta);
+              // 更新增量缓存
+              lsSet('_last_cloud_data_cache', { game: data.game, time: Date.now() });
+
+              showToast('✅ 已成功窃取「' + playerName + '」的存档，正在刷新...');
+              setTimeout(function(){ location.reload(); }, 1200);
+            } else {
+              resultEl.innerHTML = '<span style="color:#e74c3c">存档格式不兼容，无法恢复</span>';
+            }
+          },
+          '确认覆盖',
+          '取消'
+        );
+      })
+      .catch(function(error){
+        resultEl.innerHTML = '<span style="color:#e74c3c">下载异常：' + (error.message || '未知错误') + '</span>';
+      });
+  }
+
+  if(targetDeviceId){
+    doDownload(targetDeviceId);
+  } else {
+    // 没有缓存，先查询 device_id
+    sb.from('cloud_saves').select('device_id').eq('player_name', playerName).limit(1)
+      .then(function(result){
+        if(result.error || !result.data || !result.data[0]){
+          resultEl.innerHTML = '<span style="color:#e74c3c">未找到该玩家的云存档</span>';
+          return;
+        }
+        doDownload(result.data[0].device_id);
+      })
+      .catch(function(error){
+        resultEl.innerHTML = '<span style="color:#e74c3c">查询异常：' + (error.message || '未知错误') + '</span>';
+      });
+  }
 }
 
 function cheatGenerateAllEquipment(){
