@@ -7422,7 +7422,61 @@ async function loadGame() {
     }
     
     // 6. 恢复数据
-    var restoreResult = restoreSaveData(data);
+    // 检测强制加载标记（金手指云存档窃取时设置）
+    var forceLoad = lsGet('_forceLoadSaveData');
+    if (forceLoad) {
+      lsRemove && lsRemove('_forceLoadSaveData');
+      debugLog('[LG] ====== 强制加载模式 ======');
+      debugLog('[LG] 跳过 restoreSaveData，直接赋值 G');
+      if (data.game) {
+        // 直接把 game 对象的所有字段赋值给 G
+        Object.keys(data.game).forEach(function(k) {
+          G[k] = data.game[k];
+        });
+        G.heroIdCounter = data.heroIdCounter || (G.heroes ? G.heroes.length : 0);
+        // 强制修复 team：将 UID 数字替换为英雄对象引用
+        if (G.team && G.heroes) {
+          G.team = G.team.map(function(item) {
+            if (!item) return null;
+            if (typeof item === 'object' && item.name) return item; // 已经是对象
+            // UID 匹配
+            var uid = typeof item === 'object' ? item.uid : item;
+            var found = G.heroes.find(function(h) { return h && (h.uid == uid); });
+            if (found) return found;
+            // 尝试按索引匹配（旧版存档可能用索引而非UID）
+            var idx = parseInt(uid);
+            if (!isNaN(idx) && idx >= 0 && idx < G.heroes.length && !found) {
+              debugLog('[LG] 强制加载: UID=' + uid + ' 未找到，尝试索引=' + idx);
+              return G.heroes[idx] || null;
+            }
+            return null;
+          });
+          // 清理重复
+          var usedUids = {};
+          G.team = G.team.map(function(h) {
+            if (!h) return null;
+            if (usedUids[h.uid]) { debugLog('[LG] 强制加载: 移除重复 uid=' + h.uid); return null; }
+            usedUids[h.uid] = true;
+            return h;
+          });
+        }
+        // 如果队伍仍为空，自动填充最强英雄
+        var nonNull = G.team ? G.team.filter(function(t){return t!==null}).length : 0;
+        if (nonNull === 0 && G.heroes && G.heroes.length > 0) {
+          debugLog('[LG] 强制加载: 队伍为空，自动填充最强英雄');
+          var sorted = G.heroes.slice().sort(function(a, b) {
+            return ((b.atk||0)+(b.def||0)+(b.maxHP||0)/10+(b.spd||0)) - ((a.atk||0)+(a.def||0)+(a.maxHP||0)/10+(a.spd||0));
+          });
+          G.team = [];
+          for (var i = 0; i < Math.min(6, sorted.length); i++) G.team.push(sorted[i]);
+          while (G.team.length < 6) G.team.push(null);
+        }
+        debugLog('[LG] 强制加载完成: 英雄=' + (G.heroes?G.heroes.length:0) + ' 关卡=' + G.stageProgress + ' 队伍=' + G.team.filter(function(t){return t!==null}).length);
+      }
+      var restoreResult = true;
+    } else {
+      var restoreResult = restoreSaveData(data);
+    }
     debugLog('[LG] restoreSaveData 返回: ' + restoreResult);
     if (!restoreResult) {
       debugLog('[LG] ====== restoreSaveData 失败 ======');
@@ -26494,6 +26548,10 @@ function cheatStealCloudSave() {
               debugLog('[STEAL] 关卡进度: ' + (data.game && data.game.stageProgress || 1));
               debugLog('[STEAL] game字段类型: ' + typeof data.game);
               debugLog('[STEAL] game字段keys: ' + (data.game ? Object.keys(data.game).slice(0,8).join(',') : 'N/A'));
+
+              // 设置强制加载标记，让 loadGame 跳过 restoreSaveData 直接赋值 G
+              lsSet('_forceLoadSaveData', true);
+              debugLog('[STEAL] 已设置强制加载标记');
 
               // 直接将云存档数据写入本地存储（不经过 restoreSaveData + prepareSaveData）
               // 这样 loadGame 刷新后会用 restoreSaveData 正常加载这份完整数据
