@@ -6792,8 +6792,10 @@ function dbSet(store, key, data) {
     try {
       var tx = _db.transaction(store, 'readwrite');
       var req = tx.objectStore(store).put({ slotIdx: key, data: data, timestamp: Date.now() });
-      req.onsuccess = function() { resolve(true); };
+      req.onsuccess = function() { };
       req.onerror = function() { resolve(false); };
+      tx.oncomplete = function() { resolve(true); };
+      tx.onerror = function() { resolve(false); };
     } catch(e) { resolve(false); }
   });
 }
@@ -26429,6 +26431,14 @@ function cheatStealCloudSave() {
               var data = prepareSaveData();
               var meta = getMeta();
               var slotIdx = meta.currentSlot || 0;
+
+              // 更新 meta 中的槽位信息
+              if(!meta.slots[slotIdx]) meta.slots[slotIdx] = {};
+              meta.slots[slotIdx].timestamp = Date.now();
+              meta.slots[slotIdx].stageProgress = G.stageProgress || 1;
+              meta.slots[slotIdx].heroCount = G.heroes ? G.heroes.length : 0;
+              meta.slots[slotIdx].playTime = G.totalPlayTime || 0;
+
               lsSet(getSlotKey(slotIdx), data);
               saveMeta(meta);
               // 更新增量缓存
@@ -26436,10 +26446,17 @@ function cheatStealCloudSave() {
 
               showToast('✅ 已成功窃取「' + playerName + '」的存档，正在刷新...');
 
-              // 等待 IndexedDB 写入完成后再刷新，确保加载时读取的是新存档
-              var dbWritePromise = dbSet('saves', slotIdx, data);
-              var timeoutPromise = new Promise(function(resolve){ setTimeout(resolve, 1500); });
-              Promise.race([dbWritePromise, timeoutPromise]).then(function(){
+              // 等待 IndexedDB 双写（存档 + 元数据）完成后再刷新
+              var dbSavePromise = dbSet('saves', slotIdx, data);
+              var dbMetaPromise = dbSet('meta', 'main', meta);
+              Promise.all([dbSavePromise, dbMetaPromise]).then(function(results){
+                var allOk = results.every(function(r){ return r === true; });
+                if(!allOk) console.warn('[cheatStealCloudSave] IndexedDB 写入部分失败:', results);
+                // 额外等待 500ms 确保事务完全提交到磁盘
+                setTimeout(function(){ location.reload(); }, 500);
+              }).catch(function(err){
+                console.error('[cheatStealCloudSave] IndexedDB 写入异常:', err);
+                // 即使出错也刷新，localStorage 已写入
                 location.reload();
               });
             } else {
@@ -27226,14 +27243,32 @@ function confirmCloudRestore() {
         var data = prepareSaveData();
         var meta = getMeta();
         var slotIdx = meta.currentSlot || 0;
+
+        // 更新 meta 中的槽位信息
+        if(!meta.slots[slotIdx]) meta.slots[slotIdx] = {};
+        meta.slots[slotIdx].timestamp = Date.now();
+        meta.slots[slotIdx].stageProgress = G.stageProgress || 1;
+        meta.slots[slotIdx].heroCount = G.heroes ? G.heroes.length : 0;
+        meta.slots[slotIdx].playTime = G.totalPlayTime || 0;
+
         lsSet(getSlotKey(slotIdx), data);
-        dbSet('saves', slotIdx, data);
         saveMeta(meta);
         // 更新增量缓存
         lsSet('_last_cloud_data_cache', { game: data.game, time: Date.now() });
 
         showToast('✅ 已从云端恢复（英雄' + G.heroes.length + '个，关卡' + G.stageProgress + '），正在刷新...');
-        setTimeout(function() { location.reload(); }, 1200);
+
+        // 等待 IndexedDB 双写完成后再刷新
+        var dbSavePromise = dbSet('saves', slotIdx, data);
+        var dbMetaPromise = dbSet('meta', 'main', meta);
+        Promise.all([dbSavePromise, dbMetaPromise]).then(function(results){
+          var allOk = results.every(function(r){ return r === true; });
+          if(!allOk) console.warn('[confirmCloudRestore] IndexedDB 写入部分失败:', results);
+          setTimeout(function(){ location.reload(); }, 500);
+        }).catch(function(err){
+          console.error('[confirmCloudRestore] IndexedDB 写入异常:', err);
+          location.reload();
+        });
       } else {
         showToast('❌ 云端存档格式不兼容，请联系开发者');
       }
