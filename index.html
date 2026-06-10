@@ -15275,11 +15275,12 @@ function rollMergeAccident(hero, materials) {
       hero.hp = hero.maxHP;
       hero.mp = hero.maxMP;
       hero.isAwakened = true;
-      // 正确授予天赋点：51~65级共15点 + 觉醒额外1点 = 16点
+      // 正确授予天赋点：51~120级共15点 + 觉醒额外1点 = 16点
       // （因直接 set level=levelCap 跳过了 addHeroExp 循环，必须在此处手工补齐）
+      // 注意：使用赋值而非累加，因为 retroTalent 已包含从unlockLevel到levelCap的全部天赋点
       var retroTalent = Math.min(Math.max(0, levelCap - TALENT_CONFIG.unlockLevel), TALENT_CONFIG.maxPoints);
       var bonusTalent = 1;
-      hero.talentPoints = (hero.talentPoints || 0) + retroTalent + bonusTalent;
+      hero.talentPoints = retroTalent + bonusTalent;
       hero.awakeningBonusTalent = bonusTalent;
       result.hero = hero;
       result.message = '🏆 英雄觉醒！直接升到满级Lv.' + levelCap + '，并获得 ' + (retroTalent + bonusTalent) + ' 点天赋点！';
