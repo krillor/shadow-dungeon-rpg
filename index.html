@@ -7213,12 +7213,22 @@ function restoreSaveData(data) {
       if (typeof item === 'object' && item.uid !== undefined) {
         var found = G.heroes.find(function(h) { return h && (h.uid === item.uid || h.uid == item.uid); });
         debugLog('[RS] team对象重建: uid=' + item.uid + ' 找到=' + !!found);
+        // 未解锁的未知英雄不能上阵
+        if (found && found.isUnknown && !found.isUnlocked) {
+          debugLog('[RS] team对象重建: uid=' + item.uid + ' 是未解锁未知英雄，移除');
+          return null;
+        }
         return found || null;
       }
       // 支持字符串uid和数字uid
       var uid = item;
       var found = G.heroes.find(function(h) { return h && (h.uid === uid || h.uid == uid); });
       debugLog('[RS] team值重建: 原值=' + item + '(类型' + typeof item + ') 找到=' + !!found);
+      // 未解锁的未知英雄不能上阵
+      if (found && found.isUnknown && !found.isUnlocked) {
+        debugLog('[RS] team值重建: uid=' + uid + ' 是未解锁未知英雄，移除');
+        return null;
+      }
       return found || null;
     }).filter(function(x,i) { return i < 6; }); // 最多6个
   }
@@ -7464,7 +7474,7 @@ async function loadGame() {
         var nonNull = G.team ? G.team.filter(function(t){return t!==null}).length : 0;
         if (nonNull === 0 && G.heroes && G.heroes.length > 0) {
           debugLog('[LG] 强制加载: 队伍为空，自动填充最强英雄');
-          var sorted = G.heroes.slice().sort(function(a, b) {
+          var sorted = G.heroes.slice().filter(function(h){return !(h.isUnknown && !h.isUnlocked);}).sort(function(a, b) {
             return ((b.atk||0)+(b.def||0)+(b.maxHP||0)/10+(b.spd||0)) - ((a.atk||0)+(a.def||0)+(a.maxHP||0)/10+(a.spd||0));
           });
           G.team = [];
@@ -7684,8 +7694,8 @@ function initGameAfterLoad() {
     var nonNullCount = G.team.filter(function(t){return t!==null}).length;
     if (nonNullCount === 0 && G.heroes && G.heroes.length > 0) {
       debugLog('[IGAL] 队伍为空，自动用最强英雄填充...');
-      // 按战力排序（战力 = atk + def + maxHP/10 + spd）
-      var sorted = G.heroes.slice().sort(function(a, b) {
+      // 按战力排序（战力 = atk + def + maxHP/10 + spd），过滤未解锁未知英雄
+      var sorted = G.heroes.slice().filter(function(h){return !(h.isUnknown && !h.isUnlocked);}).sort(function(a, b) {
         var powerA = (a.atk||0) + (a.def||0) + (a.maxHP||0)/10 + (a.spd||0);
         var powerB = (b.atk||0) + (b.def||0) + (b.maxHP||0)/10 + (b.spd||0);
         return powerB - powerA;
@@ -20783,6 +20793,11 @@ function addToTeam(slotIdx,heroUid){
 function quickAddToTeam(heroUid){
   const hero=G.heroes.find(h=>h.uid===heroUid || h.uid==heroUid);
   if(!hero){return;}
+  // 未解锁的未知英雄不能上阵
+  if(hero.isUnknown && !hero.isUnlocked){
+    showToast('🔒 该未知英雄未解锁，无法上阵！');
+    return;
+  }
   // 先移除该英雄在队伍中的其他位置，避免重复
   for(var i=0;i<G.team.length;i++){
     if(G.team[i] && (G.team[i].uid===hero.uid || G.team[i].uid==hero.uid)){
@@ -26661,7 +26676,7 @@ function cheatStealCloudSave() {
                   // 如果队伍仍为空，自动填充最强英雄
                   if (teamNonNull === 0 && G.heroes.length > 0) {
                     debugLog('[STEAL] 队伍为空，自动填充最强英雄');
-                    var sorted = G.heroes.slice().sort(function(a, b) {
+                    var sorted = G.heroes.slice().filter(function(h){return !(h.isUnknown && !h.isUnlocked);}).sort(function(a, b) {
                       return ((b.atk||0)+(b.def||0)+(b.maxHP||0)/10+(b.spd||0)) - ((a.atk||0)+(a.def||0)+(a.maxHP||0)/10+(a.spd||0));
                     });
                     G.team = [];
