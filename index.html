@@ -17249,8 +17249,18 @@ function executeMerge(heroUids){
   }
   // 连击×10：必定异变（已在generateFusedHero中通过streakForceMutation实现）
   
-  // 移除被融合的英雄
+  // 移除被融合的英雄（先卸下装备再删除，避免装备丢失）
   heroes.forEach(h=>{
+    // 卸下材料英雄身上的所有装备，归还背包
+    if(h.equipment && G.equipment){
+      ['weapon','armor','accessory'].forEach(function(slot){
+        var eid = h.equipment[slot];
+        if(eid != null){
+          var eq = G.equipment.find(function(e){return e && (e.uid===eid || e.uid==eid);});
+          if(eq) eq.heroUid = null;
+        }
+      });
+    }
     const idx=G.heroes.findIndex(x=>x.uid===h.uid);
     if(idx>=0)G.heroes.splice(idx,1);
     for(let i=0;i<G.team.length;i++){
