@@ -7181,6 +7181,11 @@ function restoreSaveData(data) {
   if (!saved.exploreStats || typeof saved.exploreStats !== 'object') saved.exploreStats = {totalBattles:0,totalEvents:0,totalChests:0,totalShrines:0};
   if (!saved.zodiacDailyScrollShopDate) saved.zodiacDailyScrollShopDate = '';
   if (!saved.redeemedCodes || typeof saved.redeemedCodes !== 'object') saved.redeemedCodes = {};
+  if (typeof saved.saveVersion !== 'number') saved.saveVersion = SAVE_VERSION || 5;
+  if (!saved.autoDecompose || typeof saved.autoDecompose !== 'object') saved.autoDecompose = {enabled:false,maxQuality:'common'};
+  if (!saved.currentOmen) saved.currentOmen = 'normal';
+  if (typeof saved.omenExpireTime !== 'number') saved.omenExpireTime = 0;
+  if (typeof saved.recruitPasswordVerified !== 'boolean') saved.recruitPasswordVerified = false;
   // 合成疲劳
   if (typeof saved.mergeFatigue !== 'number') saved.mergeFatigue = 0;
   if (typeof saved.mergeFatigueLastTime !== 'number') saved.mergeFatigueLastTime = 0;
@@ -7763,6 +7768,17 @@ function initGameAfterLoad() {
   // 竞技场/肉鸽统计
   if(typeof G.arenaTotalWins !== 'number') G.arenaTotalWins = 0;
   if(typeof G.rlBestFloor !== 'number') G.rlBestFloor = 0;
+  // 兑换码
+  if(!G.redeemedCodes || typeof G.redeemedCodes !== 'object') G.redeemedCodes = {};
+  // 存档版本
+  if(typeof G.saveVersion !== 'number') G.saveVersion = SAVE_VERSION || 5;
+  // 自动分解设置
+  if(!G.autoDecompose || typeof G.autoDecompose !== 'object') G.autoDecompose = {enabled:false,maxQuality:'common'};
+  // 天象系统
+  if(!G.currentOmen) G.currentOmen = 'normal';
+  if(typeof G.omenExpireTime !== 'number') G.omenExpireTime = 0;
+  // 招募密码验证
+  if(typeof G.recruitPasswordVerified !== 'boolean') G.recruitPasswordVerified = false;
   // 英雄per-field补丁
   if (G.heroes) G.heroes.forEach(function(h) {
     if (!h) return;
@@ -7782,6 +7798,48 @@ function initGameAfterLoad() {
     if (!eq.affixes) eq.affixes = [];
     if (typeof eq.enhance !== 'number') eq.enhance = 0;
   });
+
+  // 修复装备双向引用一致性：确保 hero.equipment 和 equipment.heroUid 互相匹配
+  if (G.heroes && G.equipment) {
+    var slots = ['weapon','armor','accessory'];
+    // 第一步：根据 hero.equipment 修正 equipment.heroUid
+    G.heroes.forEach(function(h) {
+      if (!h || !h.equipment) return;
+      slots.forEach(function(slot) {
+        var eid = h.equipment[slot];
+        if (eid != null) {
+          var eq = G.equipment.find(function(e){return e && (e.uid===eid || e.uid==eid);});
+          if (eq) {
+            eq.heroUid = h.uid;
+          } else {
+            // 装备已不存在，清空引用
+            h.equipment[slot] = null;
+          }
+        }
+      });
+    });
+    // 第二步：根据 equipment.heroUid 修正 hero.equipment（处理孤立的 heroUid）
+    G.equipment.forEach(function(eq) {
+      if (!eq || eq.heroUid == null) return;
+      var hero = G.heroes.find(function(h){return h && (h.uid===eq.heroUid || h.uid==eq.heroUid);});
+      if (!hero) {
+        // 英雄已不存在，清空装备引用
+        eq.heroUid = null;
+        return;
+      }
+      if (!hero.equipment) hero.equipment = {weapon:null,armor:null,accessory:null};
+      var equipped = false;
+      slots.forEach(function(slot) {
+        if (hero.equipment[slot] === eq.uid || hero.equipment[slot] == eq.uid) {
+          equipped = true;
+        }
+      });
+      if (!equipped) {
+        // 装备声称属于某英雄，但该英雄没有引用它，清空装备引用
+        eq.heroUid = null;
+      }
+    });
+  }
 
   // 每日重置
   var today = new Date().toDateString();
@@ -7845,6 +7903,12 @@ function initGameAfterLoad() {
       if (typeof G.bondPanelCollapsed !== 'boolean') G.bondPanelCollapsed = false;
       if (typeof G.arenaTotalWins !== 'number') G.arenaTotalWins = 0;
       if (typeof G.rlBestFloor !== 'number') G.rlBestFloor = 0;
+      if (!G.redeemedCodes || typeof G.redeemedCodes !== 'object') G.redeemedCodes = {};
+      if (typeof G.saveVersion !== 'number') G.saveVersion = SAVE_VERSION || 5;
+      if (!G.autoDecompose || typeof G.autoDecompose !== 'object') G.autoDecompose = {enabled:false,maxQuality:'common'};
+      if (!G.currentOmen) G.currentOmen = 'normal';
+      if (typeof G.omenExpireTime !== 'number') G.omenExpireTime = 0;
+      if (typeof G.recruitPasswordVerified !== 'boolean') G.recruitPasswordVerified = false;
       // 修复英雄数据
       if (G.heroes) G.heroes.forEach(function(h) {
         if (!h) return;
