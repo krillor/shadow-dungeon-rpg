@@ -17937,10 +17937,46 @@ function generateRandomHeroForRecruit(minQuality){
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+// 一键招募广告展示
+function showRecruitAd(minQuality){
+  var html = '<div style="padding:20px;text-align:center">';
+  html += '<div style="font-size:48px;margin-bottom:12px">📺</div>';
+  html += '<div style="font-size:16px;font-weight:bold;margin-bottom:8px">观看广告解锁一键招募</div>';
+  html += '<div style="font-size:12px;color:var(--text2);margin-bottom:20px">观看完广告后即可使用一键招募功能<br>每次使用需重新观看</div>';
+  html += '<button class="btn btn-primary" onclick="watchRecruitAd(\'' + (minQuality||'') + '\')" style="padding:10px 32px;font-size:14px">▶️ 观看广告</button>';
+  html += '<button class="btn btn-sm" onclick="closeModal()" style="margin-left:8px;padding:8px 20px;font-size:12px;background:transparent;color:var(--text2)">取消</button>';
+  html += '</div>';
+  showModal('📺 广告', html);
+}
+
+// 模拟观看广告（实际项目中接入广告SDK）
+function watchRecruitAd(minQuality){
+  closeModal();
+  // 模拟广告加载和观看过程
+  showToast('📺 正在加载广告...');
+  setTimeout(function(){
+    showToast('📺 广告播放中...');
+    setTimeout(function(){
+      G._recruitAdWatched = true;
+      showToast('✅ 广告观看完成！');
+      // 自动执行之前的一键招募
+      recruitAllHeroes(minQuality || undefined);
+    }, 2000);
+  }, 1000);
+}
+
 // 一键招募所有可招募英雄（支持品质筛选，根据资源持续招募）
 function recruitAllHeroes(minQuality){
   const MAX_RECRUIT_PER_BATCH = 100; // 每次一键招募最多100个
-  
+
+  // 广告开关：每次一键招募前需要观看广告
+  if(!G._recruitAdWatched){
+    showRecruitAd(minQuality);
+    return;
+  }
+  // 重置广告标记（下次一键招募需要再次观看广告）
+  G._recruitAdWatched = false;
+
   var recruited = 0;
   var totalCost = {gold: 0, gems: 0};
   var goldCosts = {common:30, rare:100, epic:300, legendary:0, mythic:0};
